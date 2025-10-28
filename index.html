@@ -1380,11 +1380,10 @@ while True:
                 if (!state.isCollecting) {
                     // Mostrar todos los datos cuando no estamos capturando
                     updateTable(displayData);
-                } else if (state.rawData.length % 20 === 0) {
-                    // Durante captura, actualizar cada 20 puntos
-                    // Solo mostrar últimos 150 puntos para mantener fluidez
-                    const lastPoints = displayData.slice(-150);
-                    updateTable(lastPoints);
+                } else if (state.rawData.length % 5 === 0) {
+                    // Durante captura, actualizar cada 5 puntos nuevos
+                    // Mostrar todos los datos pero la tabla tiene scroll
+                    updateTable(displayData);
                 }
 
                 exportBtn.disabled = state.rawData.length === 0;
