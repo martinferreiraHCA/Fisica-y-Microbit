@@ -209,7 +209,13 @@
         }
         
         .data-table tr.selected {
-            background: #e0e0e0;
+            background: #ffebee;
+            border-left: 3px solid #ff0000;
+        }
+        
+        .data-table tr.selected td {
+            color: #d32f2f;
+            font-weight: 600;
         }
         
         .data-table input {
@@ -550,6 +556,7 @@
         
         <button id="helpBtn" class="toolbar-btn">?</button>
         
+        <span class="status-text" id="pointInfo" style="display: none; background: #ffebee; border-color: #ff0000; color: #d32f2f;"></span>
         <span class="status-text" id="statusText">DESCONECTADO</span>
     </div>
 
@@ -973,6 +980,7 @@ while True:
         const exportBtn = document.getElementById('exportBtn');
         const clearBtn = document.getElementById('clearBtn');
         const statusText = document.getElementById('statusText');
+        const pointInfo = document.getElementById('pointInfo');
         const xAxisLabel = document.getElementById('xAxisLabel');
         const yAxisLabel = document.getElementById('yAxisLabel');
         const timeUnit = document.getElementById('timeUnit');
@@ -1287,7 +1295,10 @@ while True:
                     y: d.value
                 }));
                 chart.data.datasets[0].pointBackgroundColor = displayData.map(d =>
-                    state.selectedPoints.has(d.id) ? '#666' : '#000'
+                    state.selectedPoints.has(d.id) ? '#ff0000' : '#000'
+                );
+                chart.data.datasets[0].pointBorderColor = displayData.map(d =>
+                    state.selectedPoints.has(d.id) ? '#ff0000' : '#000'
                 );
                 chart.data.datasets[0].pointRadius = displayData.map(d =>
                     state.selectedPoints.has(d.id) ? 6 : 3
@@ -1350,11 +1361,30 @@ while True:
         }
 
         function toggleSelect(id) {
+            const pointIndex = state.rawData.findIndex(d => d.id === id);
+            
             if (state.selectedPoints.has(id)) {
                 state.selectedPoints.delete(id);
             } else {
-                state.selectedPoints.add(id); // Permitir múltiples selecciones
+                state.selectedPoints.add(id);
             }
+            
+            // Actualizar el indicador con información de selección
+            if (state.selectedPoints.size === 1) {
+                // Si solo hay un punto seleccionado, mostrar su número
+                const selectedId = Array.from(state.selectedPoints)[0];
+                const selectedIndex = state.rawData.findIndex(d => d.id === selectedId);
+                pointInfo.textContent = `PUNTO #${selectedIndex + 1} SELECCIONADO`;
+                pointInfo.style.display = 'inline-block';
+            } else if (state.selectedPoints.size > 1) {
+                // Si hay múltiples puntos, mostrar el total
+                pointInfo.textContent = `${state.selectedPoints.size} PUNTOS SELECCIONADOS`;
+                pointInfo.style.display = 'inline-block';
+            } else {
+                // Si no hay puntos seleccionados, ocultar
+                pointInfo.style.display = 'none';
+            }
+            
             updateDisplay();
         }
 
@@ -1950,6 +1980,7 @@ while True:
                 state.videoBlob = null;
                 state.recordedChunks = [];
                 fitResults.innerHTML = '';
+                pointInfo.style.display = 'none';
                 if (chart.data.datasets.length > 1) {
                     chart.data.datasets.pop();
                 }
@@ -2072,6 +2103,7 @@ while True:
                 // Eliminar puntos seleccionados
                 state.rawData = state.rawData.filter(d => !state.selectedPoints.has(d.id));
                 state.selectedPoints.clear();
+                pointInfo.style.display = 'none';
                 updateDisplay();
                 
                 alert(`Se eliminaron ${count} punto(s)`);
