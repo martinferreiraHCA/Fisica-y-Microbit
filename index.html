@@ -763,14 +763,6 @@
                 </div>
                 
                 <div class="feature-item">
-                    <div class="feature-icon">⊕</div>
-                    <div class="feature-text">
-                        <strong>EXAMINE</strong>
-                        Herramienta para inspeccionar puntos en la gráfica. Pasa el mouse sobre la gráfica para ver coordenadas exactas.
-                    </div>
-                </div>
-                
-                <div class="feature-item">
                     <div class="feature-icon">Σ</div>
                     <div class="feature-text">
                         <strong>ESTADÍSTICAS</strong>
@@ -782,7 +774,7 @@
                     <div class="feature-icon">📊</div>
                     <div class="feature-text">
                         <strong>AJUSTE DE CURVA</strong>
-                        Aplica ajustes por mínimos cuadrados: lineal, cuadrático, exponencial, potencial y logarítmico.
+                        Aplica ajustes por mínimos cuadrados: lineal, cuadrático, exponencial, potencial, logarítmico y sinusoidal. Se muestra como línea roja punteada sobre los datos.
                     </div>
                 </div>
                 
@@ -793,6 +785,57 @@
                         Descarga los datos en formato CSV para análisis posterior en Excel, Python, etc.
                     </div>
                 </div>
+            </div>
+            
+            <div class="help-section">
+                <h3>⚡ FRECUENCIA DE MUESTREO</h3>
+                <p>El sistema está optimizado para captura en tiempo real con visualización fluida:</p>
+                <ul>
+                    <li><strong>Frecuencia mínima teórica:</strong> Hasta 1000 Hz (1 ms entre muestras)</li>
+                    <li><strong>Frecuencia práctica recomendada:</strong> 10-100 Hz (10-100 ms entre muestras)</li>
+                    <li><strong>Limitaciones principales:</strong></li>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li>Puerto serial USB: 115200 baudios (límite de ~11 KB/s)</li>
+                        <li>Procesamiento de micro:bit: Los sensores internos tienen sus propias limitaciones</li>
+                        <li>Renderizado del navegador: Optimizado para actualizar cada 50ms</li>
+                    </ul>
+                </ul>
+                
+                <p><strong>📊 Frecuencias recomendadas por tipo de experimento:</strong></p>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                    <tr style="background: #f5f5f5; border-bottom: 2px solid black;">
+                        <td style="padding: 8px; font-weight: bold;">Experimento</td>
+                        <td style="padding: 8px; font-weight: bold;">Frecuencia (Hz)</td>
+                        <td style="padding: 8px; font-weight: bold;">Pausa (ms)</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #ccc;">
+                        <td style="padding: 8px;">Temperatura</td>
+                        <td style="padding: 8px;">1-2 Hz</td>
+                        <td style="padding: 8px;">500-1000</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #ccc;">
+                        <td style="padding: 8px;">Luz ambiental</td>
+                        <td style="padding: 8px;">5-10 Hz</td>
+                        <td style="padding: 8px;">100-200</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #ccc;">
+                        <td style="padding: 8px;">Acelerómetro (movimiento lento)</td>
+                        <td style="padding: 8px;">20-50 Hz</td>
+                        <td style="padding: 8px;">20-50</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #ccc;">
+                        <td style="padding: 8px;">Acelerómetro (movimiento rápido)</td>
+                        <td style="padding: 8px;">50-100 Hz</td>
+                        <td style="padding: 8px;">10-20</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px;">Sensores externos analógicos</td>
+                        <td style="padding: 8px;">10-50 Hz</td>
+                        <td style="padding: 8px;">20-100</td>
+                    </tr>
+                </table>
+                
+                <p style="margin-top: 12px;"><strong>💡 Tip:</strong> Usa <code>basic.pause(X)</code> en JavaScript o <code>sleep(X)</code> en Python, donde X es el tiempo en milisegundos entre muestras.</p>
             </div>
             
             <div class="help-section">
@@ -1033,6 +1076,7 @@ while True:
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: false, // Desactivar animaciones para máxima fluidez
                 onClick: handleChartClick,
                 plugins: {
                     legend: { display: false },
@@ -1228,6 +1272,9 @@ while True:
                 state.reader = textDecoder.readable.getReader();
 
                 let buffer = '';
+                let dataBuffer = [];
+                let lastUpdate = Date.now();
+                const UPDATE_INTERVAL = 50; // Actualizar cada 50ms para fluidez
 
                 while (state.isCollecting) {
                     const { value, done } = await state.reader.read();
@@ -1243,16 +1290,35 @@ while True:
                             const numValue = parseFloat(trimmed);
                             if (!isNaN(numValue)) {
                                 const timestamp = Date.now();
-                                state.rawData.push({
+                                const dataPoint = {
                                     time: timestamp,
                                     value: numValue,
                                     id: `${timestamp}-${Math.random()}`
-                                });
-                                // Actualizar display de forma eficiente (sin bloquear)
-                                requestAnimationFrame(() => updateDisplay());
+                                };
+                                
+                                // Agregar al buffer temporal
+                                dataBuffer.push(dataPoint);
+                                
+                                // Actualizar cada UPDATE_INTERVAL ms para mantener fluidez
+                                const now = Date.now();
+                                if (now - lastUpdate >= UPDATE_INTERVAL) {
+                                    // Agregar todos los datos acumulados
+                                    state.rawData.push(...dataBuffer);
+                                    dataBuffer = [];
+                                    lastUpdate = now;
+                                    
+                                    // Actualizar display de forma eficiente
+                                    requestAnimationFrame(() => updateDisplay());
+                                }
                             }
                         }
                     }
+                }
+                
+                // Agregar datos restantes del buffer
+                if (dataBuffer.length > 0) {
+                    state.rawData.push(...dataBuffer);
+                    updateDisplay();
                 }
             } catch (err) {
                 if (err.name !== 'NetworkError') {
@@ -1310,9 +1376,15 @@ while True:
 
                 chart.update('none');
                 
-                // Actualizar tabla solo si no estamos capturando (para no sobrecargar)
-                if (!state.isCollecting || state.rawData.length % 10 === 0) {
+                // Actualizar tabla de forma optimizada
+                if (!state.isCollecting) {
+                    // Mostrar todos los datos cuando no estamos capturando
                     updateTable(displayData);
+                } else if (state.rawData.length % 20 === 0) {
+                    // Durante captura, actualizar cada 20 puntos
+                    // Solo mostrar últimos 150 puntos para mantener fluidez
+                    const lastPoints = displayData.slice(-150);
+                    updateTable(lastPoints);
                 }
 
                 exportBtn.disabled = state.rawData.length === 0;
