@@ -888,6 +888,66 @@
                 </div>
             </div>
 
+            <!-- Ajuste de Curva -->
+            <div class="panel-section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    AJUSTE DE CURVA <span>▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="info-box">
+                        <strong>REGRESIÓN POR MÍNIMOS CUADRADOS:</strong>
+                        Ajusta una función matemática a tus datos experimentales.
+                    </div>
+
+                    <div class="input-row">
+                        <label>Tipo de Ajuste</label>
+                        <select id="fitType">
+                            <option value="linear">Lineal (y = mx + b)</option>
+                            <option value="quadratic">Cuadrático (y = ax² + bx + c)</option>
+                            <option value="cubic">Cúbico (y = ax³ + bx² + cx + d)</option>
+                            <option value="exponential">Exponencial (y = a·e^(bx))</option>
+                            <option value="power">Potencia (y = a·x^b)</option>
+                            <option value="logarithmic">Logarítmico (y = a·ln(x) + b)</option>
+                            <option value="inverse">Inverso (y = a/x + b)</option>
+                        </select>
+                    </div>
+
+                    <div class="input-row">
+                        <label>Variable a Ajustar</label>
+                        <select id="fitVariable">
+                            <option value="0">Variable 1</option>
+                        </select>
+                    </div>
+
+                    <div class="input-row">
+                        <label>Gráfica de Referencia</label>
+                        <select id="fitGraphSelect">
+                            <option value="0">Gráfica 1</option>
+                        </select>
+                    </div>
+
+                    <div class="checkbox-row">
+                        <input type="checkbox" id="fitOnlySelected">
+                        <label for="fitOnlySelected">Solo Puntos Seleccionados</label>
+                    </div>
+
+                    <button class="toolbar-btn primary btn-full" id="performFitBtn" disabled>
+                        REALIZAR AJUSTE
+                    </button>
+
+                    <button class="toolbar-btn btn-full" id="clearFitBtn" disabled style="margin-top: 8px;">
+                        LIMPIAR AJUSTE
+                    </button>
+
+                    <div id="fitResults" style="margin-top: 12px; padding: 12px; background: #f0f0f0; border-radius: 4px; font-family: monospace; font-size: 12px; display: none;">
+                        <div style="margin-bottom: 8px;"><strong>Ecuación:</strong></div>
+                        <div id="fitEquation" style="margin-bottom: 12px; color: #0066cc;"></div>
+                        <div style="margin-bottom: 4px;"><strong>Coeficiente R²:</strong> <span id="fitR2"></span></div>
+                        <div style="margin-bottom: 4px;"><strong>Puntos usados:</strong> <span id="fitPoints"></span></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Depuración de Datos -->
             <div class="panel-section">
                 <div class="section-header" onclick="toggleSection(this)">
@@ -1389,7 +1449,9 @@ basic.forever(function () {
             videoBlob: null,
             recordingStartTime: null,
             // Charts
-            charts: []
+            charts: [],
+            // Curve Fitting
+            fitResult: null  // {type, coeffs, equation, r2, graphIndex, varIndex, dataPoints}
         };
 
         // ========== INICIALIZACIÓN ==========
@@ -1436,6 +1498,7 @@ basic.forever(function () {
             updateGraphConfiguration();
             updateDataTableHeader();
             updateGraphsDisplay();
+            updateFitVariableOptions();
 
             alert(`Configuración aplicada: ${num} variable(s)`);
         }
@@ -1458,6 +1521,8 @@ basic.forever(function () {
 
         function initializeConfiguration() {
             updateGraphConfiguration();
+            updateFitVariableOptions();
+            updateFitGraphOptions();
         }
 
         function updateGraphConfiguration() {
@@ -1527,7 +1592,12 @@ basic.forever(function () {
                 state.graphs[g].yVars = yVars;
             }
 
+            // Limpiar ajuste de curva ya que la configuración cambió
+            state.fitResult = null;
+            document.getElementById('fitResults').style.display = 'none';
+
             updateGraphsDisplay();
+            updateFitGraphOptions();
             alert('Configuración de gráficas aplicada');
         }
 
@@ -1747,6 +1817,328 @@ basic.forever(function () {
             }
         }
 
+        // ========== AJUSTE DE CURVAS - MÍNIMOS CUADRADOS ==========
+
+        // Funciones auxiliares matemáticas
+        function matrixSolve(matrix, vector) {
+            // Solución de sistema lineal Ax = b por eliminación Gaussiana
+            const n = vector.length;
+            const augmented = matrix.map((row, i) => [...row, vector[i]]);
+
+            // Forward elimination
+            for (let i = 0; i < n; i++) {
+                // Find pivot
+                let maxRow = i;
+                for (let k = i + 1; k < n; k++) {
+                    if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) {
+                        maxRow = k;
+                    }
+                }
+                [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
+
+                // Make all rows below this one 0 in current column
+                for (let k = i + 1; k < n; k++) {
+                    const factor = augmented[k][i] / augmented[i][i];
+                    for (let j = i; j <= n; j++) {
+                        augmented[k][j] -= factor * augmented[i][j];
+                    }
+                }
+            }
+
+            // Back substitution
+            const solution = new Array(n);
+            for (let i = n - 1; i >= 0; i--) {
+                solution[i] = augmented[i][n];
+                for (let j = i + 1; j < n; j++) {
+                    solution[i] -= augmented[i][j] * solution[j];
+                }
+                solution[i] /= augmented[i][i];
+            }
+
+            return solution;
+        }
+
+        function calculateR2(xData, yData, predictFunc) {
+            // Calcula coeficiente de determinación R²
+            const yMean = yData.reduce((a, b) => a + b, 0) / yData.length;
+            let ssRes = 0, ssTot = 0;
+
+            for (let i = 0; i < xData.length; i++) {
+                const yPred = predictFunc(xData[i]);
+                ssRes += Math.pow(yData[i] - yPred, 2);
+                ssTot += Math.pow(yData[i] - yMean, 2);
+            }
+
+            return 1 - (ssRes / ssTot);
+        }
+
+        // Ajustes específicos por tipo
+        function fitLinear(xData, yData) {
+            // y = mx + b
+            const n = xData.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+
+            for (let i = 0; i < n; i++) {
+                sumX += xData[i];
+                sumY += yData[i];
+                sumXY += xData[i] * yData[i];
+                sumX2 += xData[i] * xData[i];
+            }
+
+            const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            const b = (sumY - m * sumX) / n;
+
+            const predict = (x) => m * x + b;
+            const r2 = calculateR2(xData, yData, predict);
+
+            const equation = `y = ${m.toFixed(4)}x ${b >= 0 ? '+' : ''} ${b.toFixed(4)}`;
+
+            return { coeffs: [m, b], equation, r2, predict };
+        }
+
+        function fitQuadratic(xData, yData) {
+            // y = ax² + bx + c
+            const n = xData.length;
+            let sumX = 0, sumX2 = 0, sumX3 = 0, sumX4 = 0;
+            let sumY = 0, sumXY = 0, sumX2Y = 0;
+
+            for (let i = 0; i < n; i++) {
+                const x = xData[i];
+                const y = yData[i];
+                const x2 = x * x;
+                const x3 = x2 * x;
+                const x4 = x2 * x2;
+
+                sumX += x;
+                sumX2 += x2;
+                sumX3 += x3;
+                sumX4 += x4;
+                sumY += y;
+                sumXY += x * y;
+                sumX2Y += x2 * y;
+            }
+
+            const matrix = [
+                [sumX4, sumX3, sumX2],
+                [sumX3, sumX2, sumX],
+                [sumX2, sumX, n]
+            ];
+            const vector = [sumX2Y, sumXY, sumY];
+
+            const [a, b, c] = matrixSolve(matrix, vector);
+
+            const predict = (x) => a * x * x + b * x + c;
+            const r2 = calculateR2(xData, yData, predict);
+
+            const equation = `y = ${a.toFixed(4)}x² ${b >= 0 ? '+' : ''} ${b.toFixed(4)}x ${c >= 0 ? '+' : ''} ${c.toFixed(4)}`;
+
+            return { coeffs: [a, b, c], equation, r2, predict };
+        }
+
+        function fitCubic(xData, yData) {
+            // y = ax³ + bx² + cx + d
+            const n = xData.length;
+            let sums = {x: 0, x2: 0, x3: 0, x4: 0, x5: 0, x6: 0, y: 0, xy: 0, x2y: 0, x3y: 0};
+
+            for (let i = 0; i < n; i++) {
+                const x = xData[i];
+                const y = yData[i];
+                const x2 = x * x;
+                const x3 = x2 * x;
+
+                sums.x += x;
+                sums.x2 += x2;
+                sums.x3 += x3;
+                sums.x4 += x2 * x2;
+                sums.x5 += x3 * x2;
+                sums.x6 += x3 * x3;
+                sums.y += y;
+                sums.xy += x * y;
+                sums.x2y += x2 * y;
+                sums.x3y += x3 * y;
+            }
+
+            const matrix = [
+                [sums.x6, sums.x5, sums.x4, sums.x3],
+                [sums.x5, sums.x4, sums.x3, sums.x2],
+                [sums.x4, sums.x3, sums.x2, sums.x],
+                [sums.x3, sums.x2, sums.x, n]
+            ];
+            const vector = [sums.x3y, sums.x2y, sums.xy, sums.y];
+
+            const [a, b, c, d] = matrixSolve(matrix, vector);
+
+            const predict = (x) => a * x * x * x + b * x * x + c * x + d;
+            const r2 = calculateR2(xData, yData, predict);
+
+            const equation = `y = ${a.toFixed(4)}x³ ${b >= 0 ? '+' : ''} ${b.toFixed(4)}x² ${c >= 0 ? '+' : ''} ${c.toFixed(4)}x ${d >= 0 ? '+' : ''} ${d.toFixed(4)}`;
+
+            return { coeffs: [a, b, c, d], equation, r2, predict };
+        }
+
+        function fitExponential(xData, yData) {
+            // y = a·e^(bx)
+            // Transformación: ln(y) = ln(a) + bx
+            const validPoints = [];
+            for (let i = 0; i < xData.length; i++) {
+                if (yData[i] > 0) {
+                    validPoints.push({ x: xData[i], y: yData[i], lnY: Math.log(yData[i]) });
+                }
+            }
+
+            if (validPoints.length < 2) {
+                throw new Error('Datos insuficientes para ajuste exponencial (requiere y > 0)');
+            }
+
+            const xTransformed = validPoints.map(p => p.x);
+            const yTransformed = validPoints.map(p => p.lnY);
+
+            const linearFit = fitLinear(xTransformed, yTransformed);
+            const b = linearFit.coeffs[0];
+            const lnA = linearFit.coeffs[1];
+            const a = Math.exp(lnA);
+
+            const predict = (x) => a * Math.exp(b * x);
+            const r2 = calculateR2(xData, yData, predict);
+
+            const equation = `y = ${a.toFixed(4)}·e^(${b.toFixed(4)}x)`;
+
+            return { coeffs: [a, b], equation, r2, predict };
+        }
+
+        function fitPower(xData, yData) {
+            // y = a·x^b
+            // Transformación: ln(y) = ln(a) + b·ln(x)
+            const validPoints = [];
+            for (let i = 0; i < xData.length; i++) {
+                if (xData[i] > 0 && yData[i] > 0) {
+                    validPoints.push({
+                        x: xData[i],
+                        y: yData[i],
+                        lnX: Math.log(xData[i]),
+                        lnY: Math.log(yData[i])
+                    });
+                }
+            }
+
+            if (validPoints.length < 2) {
+                throw new Error('Datos insuficientes para ajuste potencia (requiere x > 0, y > 0)');
+            }
+
+            const xTransformed = validPoints.map(p => p.lnX);
+            const yTransformed = validPoints.map(p => p.lnY);
+
+            const linearFit = fitLinear(xTransformed, yTransformed);
+            const b = linearFit.coeffs[0];
+            const lnA = linearFit.coeffs[1];
+            const a = Math.exp(lnA);
+
+            const predict = (x) => a * Math.pow(x, b);
+            const r2 = calculateR2(xData, yData, predict);
+
+            const equation = `y = ${a.toFixed(4)}·x^${b.toFixed(4)}`;
+
+            return { coeffs: [a, b], equation, r2, predict };
+        }
+
+        function fitLogarithmic(xData, yData) {
+            // y = a·ln(x) + b
+            const validPoints = [];
+            for (let i = 0; i < xData.length; i++) {
+                if (xData[i] > 0) {
+                    validPoints.push({ x: xData[i], y: yData[i], lnX: Math.log(xData[i]) });
+                }
+            }
+
+            if (validPoints.length < 2) {
+                throw new Error('Datos insuficientes para ajuste logarítmico (requiere x > 0)');
+            }
+
+            const xTransformed = validPoints.map(p => p.lnX);
+            const yOriginal = validPoints.map(p => p.y);
+
+            const linearFit = fitLinear(xTransformed, yOriginal);
+            const a = linearFit.coeffs[0];
+            const b = linearFit.coeffs[1];
+
+            const predict = (x) => a * Math.log(x) + b;
+            const r2 = calculateR2(xData, yData, predict);
+
+            const equation = `y = ${a.toFixed(4)}·ln(x) ${b >= 0 ? '+' : ''} ${b.toFixed(4)}`;
+
+            return { coeffs: [a, b], equation, r2, predict };
+        }
+
+        function fitInverse(xData, yData) {
+            // y = a/x + b
+            const validPoints = [];
+            for (let i = 0; i < xData.length; i++) {
+                if (xData[i] !== 0) {
+                    validPoints.push({ x: xData[i], y: yData[i], invX: 1 / xData[i] });
+                }
+            }
+
+            if (validPoints.length < 2) {
+                throw new Error('Datos insuficientes para ajuste inverso (requiere x ≠ 0)');
+            }
+
+            const xTransformed = validPoints.map(p => p.invX);
+            const yOriginal = validPoints.map(p => p.y);
+
+            const linearFit = fitLinear(xTransformed, yOriginal);
+            const a = linearFit.coeffs[0];
+            const b = linearFit.coeffs[1];
+
+            const predict = (x) => a / x + b;
+            const r2 = calculateR2(xData, yData, predict);
+
+            const equation = `y = ${a.toFixed(4)}/x ${b >= 0 ? '+' : ''} ${b.toFixed(4)}`;
+
+            return { coeffs: [a, b], equation, r2, predict };
+        }
+
+        // Función principal para realizar ajuste
+        function performCurveFit(fitType, xData, yData) {
+            if (xData.length < 2 || yData.length < 2 || xData.length !== yData.length) {
+                throw new Error('Datos insuficientes o inconsistentes para ajuste');
+            }
+
+            let result;
+            switch (fitType) {
+                case 'linear':
+                    result = fitLinear(xData, yData);
+                    break;
+                case 'quadratic':
+                    result = fitQuadratic(xData, yData);
+                    break;
+                case 'cubic':
+                    result = fitCubic(xData, yData);
+                    break;
+                case 'exponential':
+                    result = fitExponential(xData, yData);
+                    break;
+                case 'power':
+                    result = fitPower(xData, yData);
+                    break;
+                case 'logarithmic':
+                    result = fitLogarithmic(xData, yData);
+                    break;
+                case 'inverse':
+                    result = fitInverse(xData, yData);
+                    break;
+                default:
+                    throw new Error('Tipo de ajuste no reconocido');
+            }
+
+            return {
+                type: fitType,
+                coeffs: result.coeffs,
+                equation: result.equation,
+                r2: result.r2,
+                predict: result.predict
+            };
+        }
+
         // ========== ACTUALIZACIÓN DE DISPLAY ==========
 
         let updateScheduled = false;
@@ -1826,6 +2218,45 @@ basic.forever(function () {
                     pointBorderColor: pointColors,
                     showLine: state.showLines,
                     tension: 0
+                });
+            }
+
+            // Agregar curva de ajuste si existe y corresponde a esta gráfica
+            if (state.fitResult && state.fitResult.graphIndex === index) {
+                // Obtener rango de datos X
+                const xValues = state.rawData.map(d => {
+                    if (config.xAxis === 'time') {
+                        return (d.time - state.timeZeroOffset) / timeUnitValue;
+                    } else {
+                        const xVarIdx = parseInt(config.xAxis.replace('var', ''));
+                        return d.values[xVarIdx];
+                    }
+                });
+
+                const xMin = Math.min(...xValues);
+                const xMax = Math.max(...xValues);
+
+                // Generar puntos para la curva de ajuste
+                const numPoints = 100;
+                const fitData = [];
+                for (let i = 0; i <= numPoints; i++) {
+                    const x = xMin + (xMax - xMin) * i / numPoints;
+                    const y = state.fitResult.predict(x);
+                    fitData.push({ x, y });
+                }
+
+                // Agregar dataset de la curva de ajuste
+                chart.data.datasets.push({
+                    label: `Ajuste: ${state.fitResult.equation}`,
+                    data: fitData,
+                    borderColor: '#ff00ff',
+                    backgroundColor: 'transparent',
+                    borderWidth: 3,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    showLine: true,
+                    tension: 0.2
                 });
             }
 
@@ -2038,7 +2469,115 @@ basic.forever(function () {
         updateDisplay = function() {
             originalUpdateDisplay();
             updateDebugButtons();
+            updateCurveFitButtons();
         };
+
+        // ========== AJUSTE DE CURVAS - CONTROLES ==========
+
+        function updateCurveFitButtons() {
+            const hasData = state.rawData.length >= 2;
+            const hasSelection = state.selectedPoints.size >= 2;
+            const onlySelected = document.getElementById('fitOnlySelected').checked;
+
+            document.getElementById('performFitBtn').disabled = !hasData || (onlySelected && !hasSelection);
+            document.getElementById('clearFitBtn').disabled = !state.fitResult;
+        }
+
+        function updateFitVariableOptions() {
+            const select = document.getElementById('fitVariable');
+            select.innerHTML = '';
+            for (let i = 0; i < state.numVariables; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = state.variables[i].name;
+                select.appendChild(option);
+            }
+        }
+
+        function updateFitGraphOptions() {
+            const select = document.getElementById('fitGraphSelect');
+            select.innerHTML = '';
+            for (let i = 0; i < state.numGraphs; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `Gráfica ${i + 1}`;
+                select.appendChild(option);
+            }
+        }
+
+        // Event handlers para curve fitting
+        document.getElementById('fitOnlySelected').addEventListener('change', updateCurveFitButtons);
+
+        document.getElementById('performFitBtn').addEventListener('click', () => {
+            try {
+                const fitType = document.getElementById('fitType').value;
+                const varIndex = parseInt(document.getElementById('fitVariable').value);
+                const graphIndex = parseInt(document.getElementById('fitGraphSelect').value);
+                const onlySelected = document.getElementById('fitOnlySelected').checked;
+
+                // Obtener configuración del gráfico seleccionado
+                const graphConfig = state.graphs[graphIndex];
+
+                // Preparar datos según configuración del gráfico
+                let dataToFit = state.rawData;
+                if (onlySelected) {
+                    dataToFit = state.rawData.filter(d => state.selectedPoints.has(d.id));
+                }
+
+                if (dataToFit.length < 2) {
+                    alert('Necesitas al menos 2 puntos de datos para realizar el ajuste');
+                    return;
+                }
+
+                // Extraer datos X e Y según configuración del gráfico
+                const timeUnit = parseFloat(document.getElementById('timeUnit').value);
+                let xData, yData;
+
+                if (graphConfig.xAxis === 'time') {
+                    // Eje X es tiempo
+                    xData = dataToFit.map(d => (d.time - state.timeZeroOffset) / timeUnit);
+                    yData = dataToFit.map(d => d.values[varIndex]);
+                } else {
+                    // Eje X es otra variable
+                    const xVarIndex = parseInt(graphConfig.xAxis);
+                    xData = dataToFit.map(d => d.values[xVarIndex]);
+                    yData = dataToFit.map(d => d.values[varIndex]);
+                }
+
+                // Realizar ajuste
+                const fitResult = performCurveFit(fitType, xData, yData);
+
+                // Guardar resultado en estado
+                state.fitResult = {
+                    ...fitResult,
+                    graphIndex: graphIndex,
+                    varIndex: varIndex,
+                    xAxis: graphConfig.xAxis,
+                    dataPoints: dataToFit.length
+                };
+
+                // Mostrar resultados
+                document.getElementById('fitResults').style.display = 'block';
+                document.getElementById('fitEquation').textContent = fitResult.equation;
+                document.getElementById('fitR2').textContent = fitResult.r2.toFixed(6);
+                document.getElementById('fitPoints').textContent = dataToFit.length;
+
+                // Actualizar gráfico con la curva de ajuste
+                updateAllCharts();
+                updateCurveFitButtons();
+
+            } catch (error) {
+                alert('Error al realizar el ajuste: ' + error.message);
+                console.error('Error en curve fit:', error);
+            }
+        });
+
+        document.getElementById('clearFitBtn').addEventListener('click', () => {
+            state.fitResult = null;
+            document.getElementById('fitResults').style.display = 'none';
+            updateAllCharts();
+            updateCurveFitButtons();
+        });
 
         // ========== ESTADÍSTICAS ==========
 
