@@ -1631,6 +1631,12 @@ basic.forever(function () {
                 // Crear chart
                 createChart(i);
             }
+
+            // Restaurar datos si existen
+            if (state.rawData.length > 0) {
+                updateAllCharts();
+                updateDataTable();
+            }
         }
 
         function createChart(index) {
