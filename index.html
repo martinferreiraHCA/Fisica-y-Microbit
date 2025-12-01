@@ -2243,7 +2243,9 @@ basic.forever(function () {
                 const xMax = Math.max(...xValues);
 
                 // Generar puntos para la curva de ajuste
-                const numPoints = 100;
+                // Usar muchos puntos para que curvas complejas se vean suaves
+                // pero siguiendo exactamente la ecuación matemática
+                const numPoints = 300;
                 const fitData = [];
                 for (let i = 0; i <= numPoints; i++) {
                     const x = xMin + (xMax - xMin) * i / numPoints;
@@ -2262,7 +2264,7 @@ basic.forever(function () {
                     pointRadius: 0,
                     pointHoverRadius: 0,
                     showLine: true,
-                    tension: 0.2
+                    tension: 0  // Sin tensión: la línea sigue EXACTAMENTE la ecuación matemática
                 });
             }
 
