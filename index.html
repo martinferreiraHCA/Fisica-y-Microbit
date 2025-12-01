@@ -677,7 +677,6 @@
         <div class="toolbar-separator"></div>
 
         <button id="helpBtn" class="toolbar-btn">AYUDA</button>
-        <button id="multiVarHelpBtn" class="toolbar-btn success">CÓDIGO MULTI-VAR</button>
 
         <span class="status-text" id="pointInfo" style="display: none; background: #ffebee; border-color: #ff0000; color: #d32f2f;"></span>
         <span class="status-text" id="statusText">DESCONECTADO</span>
@@ -885,6 +884,41 @@
 
                     <button class="toolbar-btn btn-full" id="setZeroBtn" disabled>
                         ESTABLECER T=0
+                    </button>
+                </div>
+            </div>
+
+            <!-- Depuración de Datos -->
+            <div class="panel-section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    DEPURACIÓN DE DATOS <span>▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="info-box">
+                        <strong>ELIMINAR PUNTOS:</strong>
+                        Usa estas herramientas para limpiar datos incorrectos o no deseados.
+                    </div>
+
+                    <div class="input-row">
+                        <label>Eliminar Rango (desde)</label>
+                        <input type="number" id="deleteRangeFrom" placeholder="Punto inicial" min="1">
+                    </div>
+
+                    <div class="input-row">
+                        <label>Eliminar Rango (hasta)</label>
+                        <input type="number" id="deleteRangeTo" placeholder="Punto final" min="1">
+                    </div>
+
+                    <button class="toolbar-btn btn-full" id="deleteRangeBtn" disabled>
+                        ELIMINAR RANGO
+                    </button>
+
+                    <button class="toolbar-btn btn-full" id="deleteSelectedBtn" disabled style="margin-top: 8px;">
+                        ELIMINAR SELECCIONADOS
+                    </button>
+
+                    <button class="toolbar-btn btn-full" id="clearSelectionBtn" disabled style="margin-top: 8px;">
+                        LIMPIAR SELECCIÓN
                     </button>
                 </div>
             </div>
@@ -1160,7 +1194,120 @@ while True:
                     <li><strong>Colores Personalizados:</strong> Asigna colores a cada variable</li>
                     <li><strong>Toggle de Líneas:</strong> Activa/desactiva líneas conectoras</li>
                 </ul>
-                <p><strong>Para usar múltiples variables:</strong> Haz clic en el botón verde <strong>"CÓDIGO MULTI-VAR"</strong> en la barra superior para ver ejemplos completos.</p>
+            </div>
+
+            <div class="help-section">
+                <h3>📡 CÓDIGO MÚLTIPLES VARIABLES - FORMATO DE DATOS</h3>
+                <p>Para enviar <strong>múltiples variables</strong>, tu micro:bit debe enviar los valores <strong>separados por comas</strong> en una sola línea.</p>
+
+                <div class="warning-box">
+                    <strong>⚠️ IMPORTANTE:</strong>
+                    El número de valores enviados debe coincidir con el número de variables configurado en la aplicación.
+                </div>
+
+                <p><strong>Pasos para configurar:</strong></p>
+                <ol>
+                    <li>En el panel "VARIABLES", selecciona cuántas variables usar (1, 2 o 3)</li>
+                    <li>Personaliza el nombre y color de cada variable</li>
+                    <li>Haz clic en "APLICAR CONFIGURACIÓN"</li>
+                    <li>Programa tu micro:bit para enviar valores separados por comas</li>
+                </ol>
+            </div>
+
+            <div class="help-section">
+                <h3>💻 EJEMPLOS - 2 VARIABLES</h3>
+
+                <strong>JavaScript (MakeCode):</strong>
+                <div class="code-block">
+                    <pre>// Ejemplo: Acelerómetro X e Y
+basic.forever(function () {
+    let accelX = input.acceleration(Dimension.X)
+    let accelY = input.acceleration(Dimension.Y)
+
+    // Enviar separados por coma
+    serial.writeLine("" + accelX + "," + accelY)
+
+    basic.pause(100)  // 100ms entre lecturas
+})</pre>
+                </div>
+
+                <strong>Python (MicroPython):</strong>
+                <div class="code-block">
+                    <pre># Ejemplo: Temperatura y nivel de luz
+from microbit import *
+
+while True:
+    temp = temperature()
+    light = display.read_light_level()
+
+    # Enviar separados por coma
+    print(str(temp) + "," + str(light))
+
+    sleep(100)</pre>
+                </div>
+            </div>
+
+            <div class="help-section">
+                <h3>💻 EJEMPLOS - 3 VARIABLES</h3>
+
+                <strong>JavaScript (MakeCode):</strong>
+                <div class="code-block">
+                    <pre>// Ejemplo: Acelerómetro X, Y, Z
+basic.forever(function () {
+    let accelX = input.acceleration(Dimension.X)
+    let accelY = input.acceleration(Dimension.Y)
+    let accelZ = input.acceleration(Dimension.Z)
+
+    // Enviar separados por coma
+    serial.writeLine("" + accelX + "," + accelY + "," + accelZ)
+
+    basic.pause(50)  // 50ms = 20 lecturas/segundo
+})</pre>
+                </div>
+
+                <strong>Python (MicroPython):</strong>
+                <div class="code-block">
+                    <pre># Ejemplo: Acelerómetro completo
+from microbit import *
+
+while True:
+    x = accelerometer.get_x()
+    y = accelerometer.get_y()
+    z = accelerometer.get_z()
+
+    # Enviar separados por coma
+    print("{},{},{}".format(x, y, z))
+
+    sleep(50)</pre>
+                </div>
+            </div>
+
+            <div class="help-section">
+                <h3>🎯 EJEMPLOS PRÁCTICOS MULTI-VARIABLE</h3>
+
+                <strong>Sensor de distancia + Temperatura:</strong>
+                <div class="code-block">
+                    <pre>// Usando sensor ultrasónico HC-SR04 en P0
+basic.forever(function () {
+    let distancia = pins.pulseIn(DigitalPin.P0, PulseValue.High)
+    let temp = input.temperature()
+
+    serial.writeLine("" + distancia + "," + temp)
+    basic.pause(200)
+})</pre>
+                </div>
+
+                <strong>Sensor analógico + Luz + Brújula:</strong>
+                <div class="code-block">
+                    <pre>basic.forever(function () {
+    let sensorP0 = pins.analogReadPin(AnalogPin.P0)
+    let luz = input.lightLevel()
+    let direccion = input.compassHeading()
+
+    serial.writeLine("" + sensorP0 + "," + luz + "," + direccion)
+    basic.pause(100)
+})</pre>
+                </div>
             </div>
 
             <div class="help-section">
@@ -1206,146 +1353,6 @@ while True:
             </div>
 
             <button class="toolbar-btn primary modal-close" onclick="closeHelpModal()">CERRAR</button>
-        </div>
-    </div>
-
-    <!-- Modal de ayuda para código multi-variable -->
-    <div class="modal" id="multiVarHelpModal">
-        <div class="modal-content help-modal">
-            <div class="modal-header">CÓDIGO PARA MÚLTIPLES VARIABLES</div>
-
-            <div class="help-section">
-                <h3>📡 FORMATO DE DATOS</h3>
-                <p>Para enviar <strong>múltiples variables</strong>, tu micro:bit debe enviar los valores <strong>separados por comas</strong> en una sola línea.</p>
-
-                <div class="warning-box">
-                    <strong>⚠️ IMPORTANTE:</strong>
-                    El número de valores enviados debe coincidir con el número de variables configurado en la aplicación.
-                </div>
-            </div>
-
-            <div class="help-section">
-                <h3>💻 EJEMPLOS DE CÓDIGO</h3>
-
-                <strong>2 VARIABLES - JavaScript (MakeCode):</strong>
-                <div class="code-block">
-                    <pre>// Ejemplo: Acelerómetro X e Y
-basic.forever(function () {
-    let accelX = input.acceleration(Dimension.X)
-    let accelY = input.acceleration(Dimension.Y)
-
-    // Enviar separados por coma
-    serial.writeLine("" + accelX + "," + accelY)
-
-    basic.pause(100)  // 100ms entre lecturas
-})</pre>
-                </div>
-
-                <strong>2 VARIABLES - Python (MicroPython):</strong>
-                <div class="code-block">
-                    <pre># Ejemplo: Temperatura y nivel de luz
-from microbit import *
-
-while True:
-    temp = temperature()
-    light = display.read_light_level()
-
-    # Enviar separados por coma
-    print(str(temp) + "," + str(light))
-
-    sleep(100)</pre>
-                </div>
-
-                <strong>3 VARIABLES - JavaScript (MakeCode):</strong>
-                <div class="code-block">
-                    <pre>// Ejemplo: Acelerómetro X, Y, Z
-basic.forever(function () {
-    let accelX = input.acceleration(Dimension.X)
-    let accelY = input.acceleration(Dimension.Y)
-    let accelZ = input.acceleration(Dimension.Z)
-
-    // Enviar separados por coma
-    serial.writeLine("" + accelX + "," + accelY + "," + accelZ)
-
-    basic.pause(50)  // 50ms = 20 lecturas/segundo
-})</pre>
-                </div>
-
-                <strong>3 VARIABLES - Python (MicroPython):</strong>
-                <div class="code-block">
-                    <pre># Ejemplo: Acelerómetro completo
-from microbit import *
-
-while True:
-    x = accelerometer.get_x()
-    y = accelerometer.get_y()
-    z = accelerometer.get_z()
-
-    # Enviar separados por coma
-    print("{},{},{}".format(x, y, z))
-
-    sleep(50)</pre>
-                </div>
-            </div>
-
-            <div class="help-section">
-                <h3>🎯 EJEMPLOS PRÁCTICOS</h3>
-
-                <strong>Sensor de distancia + Temperatura:</strong>
-                <div class="code-block">
-                    <pre>// Usando sensor ultrasónico HC-SR04 en P0
-basic.forever(function () {
-    let distancia = pins.pulseIn(DigitalPin.P0, PulseValue.High)
-    let temp = input.temperature()
-
-    serial.writeLine("" + distancia + "," + temp)
-    basic.pause(200)
-})</pre>
-                </div>
-
-                <strong>Sensor analógico + Luz + Brújula:</strong>
-                <div class="code-block">
-                    <pre>basic.forever(function () {
-    let sensorP0 = pins.analogReadPin(AnalogPin.P0)
-    let luz = input.lightLevel()
-    let direccion = input.compassHeading()
-
-    serial.writeLine("" + sensorP0 + "," + luz + "," + direccion)
-    basic.pause(100)
-})</pre>
-                </div>
-            </div>
-
-            <div class="help-section">
-                <h3>✅ CHECKLIST DE CONFIGURACIÓN</h3>
-                <ul>
-                    <li>✓ Configura el número de variables en la app (1, 2 o 3)</li>
-                    <li>✓ Asigna nombres descriptivos a cada variable</li>
-                    <li>✓ Selecciona colores diferentes para cada variable</li>
-                    <li>✓ Programa tu micro:bit para enviar valores separados por comas</li>
-                    <li>✓ El número de valores debe coincidir con las variables configuradas</li>
-                    <li>✓ Usa serial.writeLine() en JavaScript o print() en Python</li>
-                    <li>✓ Conecta y prueba la captura de datos</li>
-                </ul>
-            </div>
-
-            <div class="help-section">
-                <h3>🔧 SOLUCIÓN DE PROBLEMAS</h3>
-                <p><strong>No aparecen todos los valores:</strong></p>
-                <ul>
-                    <li>Verifica que el número de variables en la app coincida con tu código</li>
-                    <li>Asegúrate de usar comas (,) como separador, no puntos ni espacios</li>
-                </ul>
-
-                <p><strong>Los datos se ven incorrectos:</strong></p>
-                <ul>
-                    <li>Verifica que no haya espacios antes o después de las comas</li>
-                    <li>Asegúrate de enviar solo números, sin texto adicional</li>
-                    <li>Revisa que el orden de los valores sea consistente</li>
-                </ul>
-            </div>
-
-            <button class="toolbar-btn primary modal-close" onclick="closeMultiVarHelpModal()">CERRAR</button>
         </div>
     </div>
 
@@ -1963,6 +1970,76 @@ basic.forever(function () {
 
         document.getElementById('timeUnit').addEventListener('change', updateDisplay);
 
+        // ========== DEPURACIÓN DE DATOS ==========
+
+        // Habilitar/deshabilitar botones según datos disponibles
+        function updateDebugButtons() {
+            const hasData = state.rawData.length > 0;
+            const hasSelection = state.selectedPoints.size > 0;
+            const from = parseInt(document.getElementById('deleteRangeFrom').value);
+            const to = parseInt(document.getElementById('deleteRangeTo').value);
+            const hasValidRange = !isNaN(from) && !isNaN(to) && from > 0 && to > 0 && from <= to && to <= state.rawData.length;
+
+            document.getElementById('deleteRangeBtn').disabled = !hasData || !hasValidRange;
+            document.getElementById('deleteSelectedBtn').disabled = !hasSelection;
+            document.getElementById('clearSelectionBtn').disabled = !hasSelection;
+        }
+
+        // Actualizar botones cuando cambien los inputs
+        document.getElementById('deleteRangeFrom').addEventListener('input', updateDebugButtons);
+        document.getElementById('deleteRangeTo').addEventListener('input', updateDebugButtons);
+
+        // Eliminar rango
+        document.getElementById('deleteRangeBtn').addEventListener('click', () => {
+            const from = parseInt(document.getElementById('deleteRangeFrom').value);
+            const to = parseInt(document.getElementById('deleteRangeTo').value);
+
+            if (from && to && from <= to) {
+                const fromIdx = from - 1;
+                const toIdx = to - 1;
+
+                if (fromIdx >= 0 && toIdx < state.rawData.length) {
+                    const pointsToRemove = state.rawData.slice(fromIdx, toIdx + 1);
+                    pointsToRemove.forEach(p => state.selectedPoints.delete(p.id));
+                    state.rawData.splice(fromIdx, toIdx - fromIdx + 1);
+
+                    document.getElementById('deleteRangeFrom').value = '';
+                    document.getElementById('deleteRangeTo').value = '';
+
+                    updateDisplay();
+                    updateDebugButtons();
+                }
+            }
+        });
+
+        // Eliminar seleccionados
+        document.getElementById('deleteSelectedBtn').addEventListener('click', () => {
+            if (state.selectedPoints.size > 0) {
+                const idsToDelete = Array.from(state.selectedPoints);
+                state.rawData = state.rawData.filter(d => !idsToDelete.includes(d.id));
+                state.selectedPoints.clear();
+                document.getElementById('pointInfo').style.display = 'none';
+
+                updateDisplay();
+                updateDebugButtons();
+            }
+        });
+
+        // Limpiar selección
+        document.getElementById('clearSelectionBtn').addEventListener('click', () => {
+            state.selectedPoints.clear();
+            document.getElementById('pointInfo').style.display = 'none';
+            updateDisplay();
+            updateDebugButtons();
+        });
+
+        // Actualizar botones con cada cambio en los datos
+        const originalUpdateDisplay = updateDisplay;
+        updateDisplay = function() {
+            originalUpdateDisplay();
+            updateDebugButtons();
+        };
+
         // ========== ESTADÍSTICAS ==========
 
         document.getElementById('statsBtn').addEventListener('click', () => {
@@ -2247,16 +2324,8 @@ basic.forever(function () {
             document.getElementById('helpModal').classList.add('active');
         });
 
-        document.getElementById('multiVarHelpBtn').addEventListener('click', () => {
-            document.getElementById('multiVarHelpModal').classList.add('active');
-        });
-
         function closeHelpModal() {
             document.getElementById('helpModal').classList.remove('active');
-        }
-
-        function closeMultiVarHelpModal() {
-            document.getElementById('multiVarHelpModal').classList.remove('active');
         }
 
         // ========== UTILIDADES ==========
@@ -2280,17 +2349,15 @@ basic.forever(function () {
                 closeStatsModal();
                 closeVideoModal();
                 closeHelpModal();
-                closeMultiVarHelpModal();
             }
         });
 
-        ['statsModal', 'videoModal', 'helpModal', 'multiVarHelpModal'].forEach(modalId => {
+        ['statsModal', 'videoModal', 'helpModal'].forEach(modalId => {
             document.getElementById(modalId).addEventListener('click', (e) => {
                 if (e.target.classList.contains('modal')) {
                     if (modalId === 'statsModal') closeStatsModal();
                     if (modalId === 'videoModal') closeVideoModal();
                     if (modalId === 'helpModal') closeHelpModal();
-                    if (modalId === 'multiVarHelpModal') closeMultiVarHelpModal();
                 }
             });
         });
