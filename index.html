@@ -1805,6 +1805,10 @@ basic.forever(function () {
         });
 
         document.getElementById('collectBtn').addEventListener('click', () => {
+            // Establecer tiempo inicial en el momento de comenzar a capturar
+            // Esto hace que el primer dato tenga tiempo ≈ 0
+            state.timeZeroOffset = Date.now();
+
             state.isCollecting = true;
             document.getElementById('collectBtn').style.display = 'none';
             document.getElementById('stopBtn').style.display = 'inline-block';
