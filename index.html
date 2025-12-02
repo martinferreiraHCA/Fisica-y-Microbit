@@ -1909,10 +1909,45 @@ basic.forever(function () {
             return 1 - (ssRes / ssTot);
         }
 
+        // Función para crear predictor basado en tipo y coeficientes
+        function createPredictor(type, coeffs) {
+            switch(type) {
+                case 'linear':
+                    // y = mx + b
+                    return (x) => coeffs[0] * x + coeffs[1];
+                case 'quadratic':
+                    // y = ax² + bx + c
+                    return (x) => coeffs[0] * x * x + coeffs[1] * x + coeffs[2];
+                case 'cubic':
+                    // y = ax³ + bx² + cx + d
+                    return (x) => coeffs[0] * x * x * x + coeffs[1] * x * x + coeffs[2] * x + coeffs[3];
+                case 'exponential':
+                    // y = a·e^(bx)
+                    return (x) => coeffs[0] * Math.exp(coeffs[1] * x);
+                case 'power':
+                    // y = a·x^b
+                    return (x) => coeffs[0] * Math.pow(x, coeffs[1]);
+                case 'logarithmic':
+                    // y = a·ln(x) + b
+                    return (x) => coeffs[0] * Math.log(x) + coeffs[1];
+                case 'inverse':
+                    // y = a/x + b
+                    return (x) => coeffs[0] / x + coeffs[1];
+                default:
+                    return (x) => 0;
+            }
+        }
+
         // Ajustes específicos por tipo
         function fitLinear(xData, yData) {
             // y = mx + b
             const n = xData.length;
+
+            console.log('=== AJUSTE LINEAL - DEBUG ===');
+            console.log('Número de puntos:', n);
+            console.log('xData:', xData);
+            console.log('yData:', yData);
+
             let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
 
             for (let i = 0; i < n; i++) {
@@ -1922,13 +1957,40 @@ basic.forever(function () {
                 sumX2 += xData[i] * xData[i];
             }
 
-            const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            console.log('Sumas calculadas:', { sumX, sumY, sumXY, sumX2 });
+
+            const denominator = (n * sumX2 - sumX * sumX);
+            const numerator = (n * sumXY - sumX * sumY);
+
+            console.log('Denominador:', denominator);
+            console.log('Numerador:', numerator);
+
+            const m = numerator / denominator;
             const b = (sumY - m * sumX) / n;
 
+            console.log('Coeficientes calculados: m =', m, ', b =', b);
+
+            // Verificar que los coeficientes son números válidos
+            if (!isFinite(m) || !isFinite(b)) {
+                console.error('ERROR: Coeficientes inválidos!');
+                throw new Error('Error en cálculo de ajuste lineal: coeficientes inválidos');
+            }
+
             const predict = (x) => m * x + b;
+
+            // Verificar algunos puntos
+            console.log('Prueba de predicción:');
+            for (let i = 0; i < Math.min(3, n); i++) {
+                const pred = predict(xData[i]);
+                console.log(`  x=${xData[i]}, y_real=${yData[i]}, y_pred=${pred}`);
+            }
+
             const r2 = calculateR2(xData, yData, predict);
+            console.log('R² calculado:', r2);
 
             const equation = `y = ${m.toFixed(4)}x ${b >= 0 ? '+' : ''} ${b.toFixed(4)}`;
+            console.log('Ecuación:', equation);
+            console.log('=== FIN DEBUG ===');
 
             return { coeffs: [m, b], equation, r2, predict };
         }
@@ -2260,6 +2322,11 @@ basic.forever(function () {
 
             // Agregar curva de ajuste si existe y corresponde a esta gráfica
             if (state.fitResult && state.fitResult.graphIndex === index) {
+                console.log('=== DIBUJANDO CURVA DE AJUSTE ===');
+                console.log('Tipo de ajuste:', state.fitResult.type);
+                console.log('Coeficientes:', state.fitResult.coeffs);
+                console.log('Ecuación:', state.fitResult.equation);
+
                 // Obtener rango de datos X
                 const xValues = state.rawData.map(d => {
                     if (config.xAxis === 'time') {
@@ -2273,6 +2340,12 @@ basic.forever(function () {
                 const xMin = Math.min(...xValues);
                 const xMax = Math.max(...xValues);
 
+                console.log('Rango X para curva:', { xMin, xMax });
+
+                // RECREAR la función predict basándose en tipo y coeficientes
+                // Esto evita problemas de scope y serialización
+                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs);
+
                 // Generar puntos para la curva de ajuste
                 // Usar muchos puntos para que curvas complejas se vean suaves
                 // pero siguiendo exactamente la ecuación matemática
@@ -2280,9 +2353,12 @@ basic.forever(function () {
                 const fitData = [];
                 for (let i = 0; i <= numPoints; i++) {
                     const x = xMin + (xMax - xMin) * i / numPoints;
-                    const y = state.fitResult.predict(x);
+                    const y = predict(x);
                     fitData.push({ x, y });
                 }
+
+                console.log('Primeros 5 puntos de la curva:', fitData.slice(0, 5));
+                console.log('Últimos 5 puntos de la curva:', fitData.slice(-5));
 
                 // Agregar dataset de la curva de ajuste
                 chart.data.datasets.push({
@@ -2297,6 +2373,8 @@ basic.forever(function () {
                     showLine: true,
                     tension: 0  // Sin tensión: la línea sigue EXACTAMENTE la ecuación matemática
                 });
+
+                console.log('=== FIN DIBUJANDO CURVA ===');
             }
 
             chart.update('none');
