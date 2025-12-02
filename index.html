@@ -929,9 +929,34 @@
                         </select>
                     </div>
 
-                    <div class="checkbox-row">
-                        <input type="checkbox" id="fitOnlySelected">
-                        <label for="fitOnlySelected">Solo Puntos Seleccionados</label>
+                    <div style="margin-top: 12px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
+                        <div style="margin-bottom: 8px; font-weight: bold; font-size: 11px;">DATOS A AJUSTAR:</div>
+
+                        <div class="checkbox-row">
+                            <input type="radio" id="fitModeAll" name="fitMode" value="all" checked>
+                            <label for="fitModeAll">Todos los Datos</label>
+                        </div>
+
+                        <div class="checkbox-row">
+                            <input type="radio" id="fitModeSelected" name="fitMode" value="selected">
+                            <label for="fitModeSelected">Puntos Seleccionados Manualmente</label>
+                        </div>
+
+                        <div class="checkbox-row">
+                            <input type="radio" id="fitModeRange" name="fitMode" value="range">
+                            <label for="fitModeRange">Rango de Puntos</label>
+                        </div>
+
+                        <div id="fitRangeInputs" style="margin-top: 8px; display: none;">
+                            <div class="input-row">
+                                <label>Desde Punto</label>
+                                <input type="number" id="fitRangeFrom" placeholder="Ej: 1" min="1" style="font-size: 12px;">
+                            </div>
+                            <div class="input-row">
+                                <label>Hasta Punto</label>
+                                <input type="number" id="fitRangeTo" placeholder="Ej: 50" min="1" style="font-size: 12px;">
+                            </div>
+                        </div>
                     </div>
 
                     <button class="toolbar-btn primary btn-full" id="performFitBtn" disabled>
@@ -2539,9 +2564,24 @@ basic.forever(function () {
         function updateCurveFitButtons() {
             const hasData = state.rawData.length >= 2;
             const hasSelection = state.selectedPoints.size >= 2;
-            const onlySelected = document.getElementById('fitOnlySelected').checked;
+            const fitModeChecked = document.querySelector('input[name="fitMode"]:checked');
+            const fitMode = fitModeChecked ? fitModeChecked.value : 'all';
 
-            document.getElementById('performFitBtn').disabled = !hasData || (onlySelected && !hasSelection);
+            let canPerformFit = hasData;
+
+            if (fitMode === 'selected') {
+                // Necesita puntos seleccionados
+                canPerformFit = hasSelection;
+            } else if (fitMode === 'range') {
+                // Necesita rango válido
+                const from = parseInt(document.getElementById('fitRangeFrom').value);
+                const to = parseInt(document.getElementById('fitRangeTo').value);
+                canPerformFit = hasData && from >= 1 && to >= 1 && from <= to &&
+                                from <= state.rawData.length && to <= state.rawData.length &&
+                                (to - from + 1) >= 2; // Al menos 2 puntos en el rango
+            }
+
+            document.getElementById('performFitBtn').disabled = !canPerformFit;
             document.getElementById('clearFitBtn').disabled = !state.fitResult;
         }
 
@@ -2568,23 +2608,58 @@ basic.forever(function () {
         }
 
         // Event handlers para curve fitting
-        document.getElementById('fitOnlySelected').addEventListener('change', updateCurveFitButtons);
+        // Mostrar/ocultar inputs de rango según modo seleccionado
+        document.querySelectorAll('input[name="fitMode"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const rangeInputs = document.getElementById('fitRangeInputs');
+                rangeInputs.style.display = this.value === 'range' ? 'block' : 'none';
+                updateCurveFitButtons();
+            });
+        });
+
+        // Actualizar botones cuando cambien los inputs de rango
+        document.getElementById('fitRangeFrom').addEventListener('input', updateCurveFitButtons);
+        document.getElementById('fitRangeTo').addEventListener('input', updateCurveFitButtons);
 
         document.getElementById('performFitBtn').addEventListener('click', () => {
             try {
                 const fitType = document.getElementById('fitType').value;
                 const varIndex = parseInt(document.getElementById('fitVariable').value);
                 const graphIndex = parseInt(document.getElementById('fitGraphSelect').value);
-                const onlySelected = document.getElementById('fitOnlySelected').checked;
+                const fitMode = document.querySelector('input[name="fitMode"]:checked').value;
 
                 // Obtener configuración del gráfico seleccionado
                 const graphConfig = state.graphs[graphIndex];
 
-                // Preparar datos según configuración del gráfico
+                // Preparar datos según el modo seleccionado
                 let dataToFit = state.rawData;
-                if (onlySelected) {
+
+                if (fitMode === 'selected') {
+                    // Solo puntos seleccionados manualmente
                     dataToFit = state.rawData.filter(d => state.selectedPoints.has(d.id));
+                } else if (fitMode === 'range') {
+                    // Rango de puntos
+                    const from = parseInt(document.getElementById('fitRangeFrom').value);
+                    const to = parseInt(document.getElementById('fitRangeTo').value);
+
+                    if (!from || !to || from < 1 || to < 1 || from > to) {
+                        alert('Por favor ingresa un rango válido (desde ≤ hasta)');
+                        return;
+                    }
+
+                    if (from > state.rawData.length || to > state.rawData.length) {
+                        alert(`El rango excede el número de datos (máximo: ${state.rawData.length})`);
+                        return;
+                    }
+
+                    // Extraer el rango (los índices son base-1, convertir a base-0)
+                    const fromIdx = from - 1;
+                    const toIdx = to - 1;
+                    dataToFit = state.rawData.slice(fromIdx, toIdx + 1);
+
+                    console.log(`Ajustando rango: puntos ${from} a ${to} (${dataToFit.length} puntos)`);
                 }
+                // Si fitMode === 'all', dataToFit ya es state.rawData
 
                 if (dataToFit.length < 2) {
                     alert('Necesitas al menos 2 puntos de datos para realizar el ajuste');
