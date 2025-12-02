@@ -1416,6 +1416,37 @@ basic.forever(function () {
         </div>
     </div>
 
+    <!-- Footer con Licencia Creative Commons -->
+    <footer style="background: #f5f5f5; border-top: 2px solid #333; padding: 20px; text-align: center; font-size: 12px; margin-top: 20px;">
+        <div style="max-width: 800px; margin: 0 auto;">
+            <p style="margin: 8px 0; font-weight: bold; font-size: 14px;">
+                Sistema de Captura y Análisis de Datos - micro:bit
+            </p>
+            <p style="margin: 8px 0;">
+                Desarrollado por <strong>Martin Ferreira</strong> y <strong>Pablo Godoy</strong>
+            </p>
+            <p style="margin: 8px 0;">
+                <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="license"
+                   style="color: #0066cc; text-decoration: none; font-weight: bold;">
+                    📄 Licencia Creative Commons BY-SA 4.0
+                </a>
+            </p>
+            <p style="margin: 8px 0; color: #666; font-size: 11px;">
+                Esta obra está bajo una Licencia Creative Commons Atribución-CompartirIgual 4.0 Internacional.
+                <br>
+                Eres libre de compartir y adaptar este material, siempre que des crédito a los autores originales
+                y distribuyas tus contribuciones bajo la misma licencia.
+            </p>
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd;">
+                <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="license">
+                    <img src="https://licensebuttons.net/l/by-sa/4.0/88x31.png"
+                         alt="Licencia Creative Commons"
+                         style="border: 0; margin: 4px auto; display: block;">
+                </a>
+            </div>
+        </div>
+    </footer>
+
     <script>
         // Estado global
         let state = {
@@ -2547,9 +2578,18 @@ basic.forever(function () {
                     yData = dataToFit.map(d => d.values[varIndex]);
                 } else {
                     // Eje X es otra variable
-                    const xVarIndex = parseInt(graphConfig.xAxis);
+                    const xVarIndex = parseInt(graphConfig.xAxis.replace('var', ''));
                     xData = dataToFit.map(d => d.values[xVarIndex]);
                     yData = dataToFit.map(d => d.values[varIndex]);
+                }
+
+                // Debug: verificar que los datos son válidos
+                console.log('Datos para ajuste:', { fitType, xData, yData, varIndex, graphConfig });
+
+                if (xData.some(x => isNaN(x)) || yData.some(y => isNaN(y))) {
+                    alert('Error: Datos inválidos detectados. Verifica la configuración de la gráfica.');
+                    console.error('Datos inválidos:', { xData, yData });
+                    return;
                 }
 
                 // Realizar ajuste
