@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>micro:bit DataLab Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- regression-js: Librería para ajuste de curvas por mínimos cuadrados -->
+    <!-- Autor: Tom Alexander - https://github.com/Tom-Alexander/regression-js -->
+    <script src="https://cdn.jsdelivr.net/npm/regression@2.0.1/dist/regression.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -1444,6 +1447,23 @@ basic.forever(function () {
                          style="border: 0; margin: 4px auto; display: block;">
                 </a>
             </div>
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd; color: #666; font-size: 11px;">
+                <p style="margin: 4px 0;">
+                    <strong>Librerías utilizadas:</strong>
+                </p>
+                <p style="margin: 4px 0;">
+                    • <a href="https://github.com/Tom-Alexander/regression-js" target="_blank"
+                         style="color: #0066cc; text-decoration: none;">
+                        regression-js
+                    </a> por <strong>Tom Alexander</strong> - Ajuste de curvas por mínimos cuadrados
+                </p>
+                <p style="margin: 4px 0;">
+                    • <a href="https://www.chartjs.org/" target="_blank"
+                         style="color: #0066cc; text-decoration: none;">
+                        Chart.js
+                    </a> - Visualización de gráficas
+                </p>
+            </div>
         </div>
     </footer>
 
@@ -1938,234 +1958,159 @@ basic.forever(function () {
             }
         }
 
+        // ========== AJUSTES USANDO REGRESSION-JS ==========
+        // Librería: regression-js por Tom Alexander
+        // https://github.com/Tom-Alexander/regression-js
+
         // Ajustes específicos por tipo
         function fitLinear(xData, yData) {
-            // y = mx + b
-            const n = xData.length;
-
-            console.log('=== AJUSTE LINEAL - DEBUG ===');
-            console.log('Número de puntos:', n);
+            // y = mx + b usando regression.linear()
+            console.log('=== AJUSTE LINEAL (regression-js) ===');
+            console.log('Número de puntos:', xData.length);
             console.log('xData:', xData);
             console.log('yData:', yData);
 
-            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+            // Preparar datos en formato [[x, y], [x, y], ...]
+            const data = xData.map((x, i) => [x, yData[i]]);
+            console.log('Datos para regression-js:', data);
 
-            for (let i = 0; i < n; i++) {
-                sumX += xData[i];
-                sumY += yData[i];
-                sumXY += xData[i] * yData[i];
-                sumX2 += xData[i] * xData[i];
-            }
+            // Usar regression-js para el ajuste
+            const result = regression.linear(data);
 
-            console.log('Sumas calculadas:', { sumX, sumY, sumXY, sumX2 });
+            console.log('Resultado de regression-js:', result);
 
-            const denominator = (n * sumX2 - sumX * sumX);
-            const numerator = (n * sumXY - sumX * sumY);
+            // result.equation = [m, b] para y = mx + b
+            const m = result.equation[0];
+            const b = result.equation[1];
 
-            console.log('Denominador:', denominator);
-            console.log('Numerador:', numerator);
-
-            const m = numerator / denominator;
-            const b = (sumY - m * sumX) / n;
-
-            console.log('Coeficientes calculados: m =', m, ', b =', b);
-
-            // Verificar que los coeficientes son números válidos
-            if (!isFinite(m) || !isFinite(b)) {
-                console.error('ERROR: Coeficientes inválidos!');
-                throw new Error('Error en cálculo de ajuste lineal: coeficientes inválidos');
-            }
+            console.log('Coeficientes: m =', m, ', b =', b);
+            console.log('R² =', result.r2);
 
             const predict = (x) => m * x + b;
-
-            // Verificar algunos puntos
-            console.log('Prueba de predicción:');
-            for (let i = 0; i < Math.min(3, n); i++) {
-                const pred = predict(xData[i]);
-                console.log(`  x=${xData[i]}, y_real=${yData[i]}, y_pred=${pred}`);
-            }
-
-            const r2 = calculateR2(xData, yData, predict);
-            console.log('R² calculado:', r2);
-
             const equation = `y = ${m.toFixed(4)}x ${b >= 0 ? '+' : ''} ${b.toFixed(4)}`;
-            console.log('Ecuación:', equation);
-            console.log('=== FIN DEBUG ===');
 
-            return { coeffs: [m, b], equation, r2, predict };
+            console.log('Ecuación:', equation);
+            console.log('=== FIN AJUSTE LINEAL ===');
+
+            return { coeffs: [m, b], equation, r2: result.r2, predict };
         }
 
         function fitQuadratic(xData, yData) {
-            // y = ax² + bx + c
-            const n = xData.length;
-            let sumX = 0, sumX2 = 0, sumX3 = 0, sumX4 = 0;
-            let sumY = 0, sumXY = 0, sumX2Y = 0;
+            // y = ax² + bx + c usando regression.polynomial(data, 2)
+            console.log('=== AJUSTE CUADRÁTICO (regression-js) ===');
 
-            for (let i = 0; i < n; i++) {
-                const x = xData[i];
-                const y = yData[i];
-                const x2 = x * x;
-                const x3 = x2 * x;
-                const x4 = x2 * x2;
+            const data = xData.map((x, i) => [x, yData[i]]);
+            const result = regression.polynomial(data, 2);
 
-                sumX += x;
-                sumX2 += x2;
-                sumX3 += x3;
-                sumX4 += x4;
-                sumY += y;
-                sumXY += x * y;
-                sumX2Y += x2 * y;
-            }
+            // result.equation = [a, b, c] para y = ax² + bx + c
+            const a = result.equation[0];
+            const b = result.equation[1];
+            const c = result.equation[2];
 
-            const matrix = [
-                [sumX4, sumX3, sumX2],
-                [sumX3, sumX2, sumX],
-                [sumX2, sumX, n]
-            ];
-            const vector = [sumX2Y, sumXY, sumY];
-
-            const [a, b, c] = matrixSolve(matrix, vector);
+            console.log('Coeficientes:', { a, b, c });
+            console.log('R² =', result.r2);
 
             const predict = (x) => a * x * x + b * x + c;
-            const r2 = calculateR2(xData, yData, predict);
-
             const equation = `y = ${a.toFixed(4)}x² ${b >= 0 ? '+' : ''} ${b.toFixed(4)}x ${c >= 0 ? '+' : ''} ${c.toFixed(4)}`;
 
-            return { coeffs: [a, b, c], equation, r2, predict };
+            return { coeffs: [a, b, c], equation, r2: result.r2, predict };
         }
 
         function fitCubic(xData, yData) {
-            // y = ax³ + bx² + cx + d
-            const n = xData.length;
-            let sums = {x: 0, x2: 0, x3: 0, x4: 0, x5: 0, x6: 0, y: 0, xy: 0, x2y: 0, x3y: 0};
+            // y = ax³ + bx² + cx + d usando regression.polynomial(data, 3)
+            console.log('=== AJUSTE CÚBICO (regression-js) ===');
 
-            for (let i = 0; i < n; i++) {
-                const x = xData[i];
-                const y = yData[i];
-                const x2 = x * x;
-                const x3 = x2 * x;
+            const data = xData.map((x, i) => [x, yData[i]]);
+            const result = regression.polynomial(data, 3);
 
-                sums.x += x;
-                sums.x2 += x2;
-                sums.x3 += x3;
-                sums.x4 += x2 * x2;
-                sums.x5 += x3 * x2;
-                sums.x6 += x3 * x3;
-                sums.y += y;
-                sums.xy += x * y;
-                sums.x2y += x2 * y;
-                sums.x3y += x3 * y;
-            }
+            // result.equation = [a, b, c, d] para y = ax³ + bx² + cx + d
+            const a = result.equation[0];
+            const b = result.equation[1];
+            const c = result.equation[2];
+            const d = result.equation[3];
 
-            const matrix = [
-                [sums.x6, sums.x5, sums.x4, sums.x3],
-                [sums.x5, sums.x4, sums.x3, sums.x2],
-                [sums.x4, sums.x3, sums.x2, sums.x],
-                [sums.x3, sums.x2, sums.x, n]
-            ];
-            const vector = [sums.x3y, sums.x2y, sums.xy, sums.y];
-
-            const [a, b, c, d] = matrixSolve(matrix, vector);
+            console.log('Coeficientes:', { a, b, c, d });
+            console.log('R² =', result.r2);
 
             const predict = (x) => a * x * x * x + b * x * x + c * x + d;
-            const r2 = calculateR2(xData, yData, predict);
-
             const equation = `y = ${a.toFixed(4)}x³ ${b >= 0 ? '+' : ''} ${b.toFixed(4)}x² ${c >= 0 ? '+' : ''} ${c.toFixed(4)}x ${d >= 0 ? '+' : ''} ${d.toFixed(4)}`;
 
-            return { coeffs: [a, b, c, d], equation, r2, predict };
+            return { coeffs: [a, b, c, d], equation, r2: result.r2, predict };
         }
 
         function fitExponential(xData, yData) {
-            // y = a·e^(bx)
-            // Transformación: ln(y) = ln(a) + bx
-            const validPoints = [];
-            for (let i = 0; i < xData.length; i++) {
-                if (yData[i] > 0) {
-                    validPoints.push({ x: xData[i], y: yData[i], lnY: Math.log(yData[i]) });
-                }
-            }
+            // y = a·e^(bx) usando regression.exponential()
+            console.log('=== AJUSTE EXPONENCIAL (regression-js) ===');
 
-            if (validPoints.length < 2) {
+            // Verificar que todos los y > 0
+            if (yData.some(y => y <= 0)) {
                 throw new Error('Datos insuficientes para ajuste exponencial (requiere y > 0)');
             }
 
-            const xTransformed = validPoints.map(p => p.x);
-            const yTransformed = validPoints.map(p => p.lnY);
+            const data = xData.map((x, i) => [x, yData[i]]);
+            const result = regression.exponential(data);
 
-            const linearFit = fitLinear(xTransformed, yTransformed);
-            const b = linearFit.coeffs[0];
-            const lnA = linearFit.coeffs[1];
-            const a = Math.exp(lnA);
+            // result.equation = [a, b] para y = a·e^(bx)
+            const a = result.equation[0];
+            const b = result.equation[1];
+
+            console.log('Coeficientes:', { a, b });
+            console.log('R² =', result.r2);
 
             const predict = (x) => a * Math.exp(b * x);
-            const r2 = calculateR2(xData, yData, predict);
-
             const equation = `y = ${a.toFixed(4)}·e^(${b.toFixed(4)}x)`;
 
-            return { coeffs: [a, b], equation, r2, predict };
+            return { coeffs: [a, b], equation, r2: result.r2, predict };
         }
 
         function fitPower(xData, yData) {
-            // y = a·x^b
-            // Transformación: ln(y) = ln(a) + b·ln(x)
-            const validPoints = [];
-            for (let i = 0; i < xData.length; i++) {
-                if (xData[i] > 0 && yData[i] > 0) {
-                    validPoints.push({
-                        x: xData[i],
-                        y: yData[i],
-                        lnX: Math.log(xData[i]),
-                        lnY: Math.log(yData[i])
-                    });
-                }
-            }
+            // y = a·x^b usando regression.power()
+            console.log('=== AJUSTE POTENCIA (regression-js) ===');
 
-            if (validPoints.length < 2) {
+            // Verificar que todos los x > 0 y y > 0
+            if (xData.some(x => x <= 0) || yData.some(y => y <= 0)) {
                 throw new Error('Datos insuficientes para ajuste potencia (requiere x > 0, y > 0)');
             }
 
-            const xTransformed = validPoints.map(p => p.lnX);
-            const yTransformed = validPoints.map(p => p.lnY);
+            const data = xData.map((x, i) => [x, yData[i]]);
+            const result = regression.power(data);
 
-            const linearFit = fitLinear(xTransformed, yTransformed);
-            const b = linearFit.coeffs[0];
-            const lnA = linearFit.coeffs[1];
-            const a = Math.exp(lnA);
+            // result.equation = [a, b] para y = a·x^b
+            const a = result.equation[0];
+            const b = result.equation[1];
+
+            console.log('Coeficientes:', { a, b });
+            console.log('R² =', result.r2);
 
             const predict = (x) => a * Math.pow(x, b);
-            const r2 = calculateR2(xData, yData, predict);
-
             const equation = `y = ${a.toFixed(4)}·x^${b.toFixed(4)}`;
 
-            return { coeffs: [a, b], equation, r2, predict };
+            return { coeffs: [a, b], equation, r2: result.r2, predict };
         }
 
         function fitLogarithmic(xData, yData) {
-            // y = a·ln(x) + b
-            const validPoints = [];
-            for (let i = 0; i < xData.length; i++) {
-                if (xData[i] > 0) {
-                    validPoints.push({ x: xData[i], y: yData[i], lnX: Math.log(xData[i]) });
-                }
-            }
+            // y = a·ln(x) + b usando regression.logarithmic()
+            console.log('=== AJUSTE LOGARÍTMICO (regression-js) ===');
 
-            if (validPoints.length < 2) {
+            // Verificar que todos los x > 0
+            if (xData.some(x => x <= 0)) {
                 throw new Error('Datos insuficientes para ajuste logarítmico (requiere x > 0)');
             }
 
-            const xTransformed = validPoints.map(p => p.lnX);
-            const yOriginal = validPoints.map(p => p.y);
+            const data = xData.map((x, i) => [x, yData[i]]);
+            const result = regression.logarithmic(data);
 
-            const linearFit = fitLinear(xTransformed, yOriginal);
-            const a = linearFit.coeffs[0];
-            const b = linearFit.coeffs[1];
+            // result.equation = [a, b] para y = a·ln(x) + b
+            const a = result.equation[0];
+            const b = result.equation[1];
+
+            console.log('Coeficientes:', { a, b });
+            console.log('R² =', result.r2);
 
             const predict = (x) => a * Math.log(x) + b;
-            const r2 = calculateR2(xData, yData, predict);
-
             const equation = `y = ${a.toFixed(4)}·ln(x) ${b >= 0 ? '+' : ''} ${b.toFixed(4)}`;
 
-            return { coeffs: [a, b], equation, r2, predict };
+            return { coeffs: [a, b], equation, r2: result.r2, predict };
         }
 
         function fitInverse(xData, yData) {
