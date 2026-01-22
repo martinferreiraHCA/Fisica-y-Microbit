@@ -1375,10 +1375,199 @@
                 document.getElementById('statusText').textContent = t.paused;
             }
 
+            // Actualizar contenido del modal de ayuda
+            updateHelpModalContent(lang);
+
             // Guardar preferencia
             localStorage.setItem('microbit-language', lang);
 
             console.log(`Idioma cambiado a: ${lang}`);
+        }
+
+        // Función para actualizar contenido del modal de ayuda
+        function updateHelpModalContent(lang) {
+            const t = translations[lang];
+            document.getElementById('helpModalTitle').textContent =
+                lang === 'es' ? 'TUTORIAL Y GUÍA DE USO' :
+                lang === 'en' ? 'TUTORIAL AND USER GUIDE' :
+                'TUTORIAL E GUIA DE USO';
+
+            document.getElementById('helpModalClose').textContent = t.help === 'HELP' ? 'CLOSE' : t.help === 'AJUDA' ? 'FECHAR' : 'CERRAR';
+
+            // Generar contenido según idioma
+            const content = lang === 'es' ? getHelpContentES() :
+                            lang === 'en' ? getHelpContentEN() :
+                            getHelpContentPT();
+
+            document.getElementById('helpModalContent').innerHTML = content;
+        }
+
+        // Contenido del tutorial en Español
+        function getHelpContentES() {
+            return `
+<div class="help-section">
+    <h3>📋 COMPONENTES DEL SISTEMA</h3>
+    <div class="feature-item">
+        <div class="feature-icon">●</div>
+        <div class="feature-text">
+            <strong>CONECTAR</strong>
+            Establece conexión serial con la micro:bit vía USB. Usa Web Serial API del navegador.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">▶</div>
+        <div class="feature-text">
+            <strong>CAPTURAR / DETENER</strong>
+            Inicia y detiene la captura de datos en tiempo real.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">📹</div>
+        <div class="feature-text">
+            <strong>CÁMARA</strong>
+            Activa la webcam para grabar video del experimento sincronizado con los datos.
+        </div>
+    </div>
+</div>
+
+<div class="help-section">
+    <h3>💻 CÓDIGO BÁSICO MICRO:BIT</h3>
+    <p>Tu micro:bit debe enviar datos por serial. Ejemplo JavaScript:</p>
+    <div class="code-block">
+        <pre>basic.forever(function () {
+    serial.writeNumber(input.acceleration(Dimension.X))
+    serial.writeLine("")
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>⚠️ IMPORTANTE:</strong> Envía SOLO números, sin texto adicional.</p>
+</div>
+
+<div class="help-section">
+    <h3>🚀 MÚLTIPLES VARIABLES</h3>
+    <p>Para capturar múltiples variables, envía valores separados por comas:</p>
+    <div class="code-block">
+        <pre>basic.forever(function () {
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    serial.writeLine("" + x + "," + y)
+    basic.pause(100)
+})</pre>
+    </div>
+</div>
+`;
+        }
+
+        // Contenido del tutorial en Inglés
+        function getHelpContentEN() {
+            return `
+<div class="help-section">
+    <h3>📋 SYSTEM COMPONENTS</h3>
+    <div class="feature-item">
+        <div class="feature-icon">●</div>
+        <div class="feature-text">
+            <strong>CONNECT</strong>
+            Establishes serial connection with micro:bit via USB. Uses browser's Web Serial API.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">▶</div>
+        <div class="feature-text">
+            <strong>CAPTURE / STOP</strong>
+            Starts and stops real-time data capture.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">📹</div>
+        <div class="feature-text">
+            <strong>CAMERA</strong>
+            Activates webcam to record experiment video synchronized with data.
+        </div>
+    </div>
+</div>
+
+<div class="help-section">
+    <h3>💻 BASIC MICRO:BIT CODE</h3>
+    <p>Your micro:bit must send data via serial. JavaScript example:</p>
+    <div class="code-block">
+        <pre>basic.forever(function () {
+    serial.writeNumber(input.acceleration(Dimension.X))
+    serial.writeLine("")
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>⚠️ IMPORTANT:</strong> Send ONLY numbers, no additional text.</p>
+</div>
+
+<div class="help-section">
+    <h3>🚀 MULTIPLE VARIABLES</h3>
+    <p>To capture multiple variables, send comma-separated values:</p>
+    <div class="code-block">
+        <pre>basic.forever(function () {
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    serial.writeLine("" + x + "," + y)
+    basic.pause(100)
+})</pre>
+    </div>
+</div>
+`;
+        }
+
+        // Contenido del tutorial en Portugués
+        function getHelpContentPT() {
+            return `
+<div class="help-section">
+    <h3>📋 COMPONENTES DO SISTEMA</h3>
+    <div class="feature-item">
+        <div class="feature-icon">●</div>
+        <div class="feature-text">
+            <strong>CONECTAR</strong>
+            Estabelece conexão serial com o micro:bit via USB. Usa Web Serial API do navegador.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">▶</div>
+        <div class="feature-text">
+            <strong>CAPTURAR / PARAR</strong>
+            Inicia e para a captura de dados em tempo real.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">📹</div>
+        <div class="feature-text">
+            <strong>CÂMERA</strong>
+            Ativa a webcam para gravar vídeo do experimento sincronizado com os dados.
+        </div>
+    </div>
+</div>
+
+<div class="help-section">
+    <h3>💻 CÓDIGO BÁSICO MICRO:BIT</h3>
+    <p>Seu micro:bit deve enviar dados via serial. Exemplo JavaScript:</p>
+    <div class="code-block">
+        <pre>basic.forever(function () {
+    serial.writeNumber(input.acceleration(Dimension.X))
+    serial.writeLine("")
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>⚠️ IMPORTANTE:</strong> Envie APENAS números, sem texto adicional.</p>
+</div>
+
+<div class="help-section">
+    <h3>🚀 MÚLTIPLAS VARIÁVEIS</h3>
+    <p>Para capturar múltiplas variáveis, envie valores separados por vírgula:</p>
+    <div class="code-block">
+        <pre>basic.forever(function () {
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    serial.writeLine("" + x + "," + y)
+    basic.pause(100)
+})</pre>
+    </div>
+</div>
+`;
         }
 
         // Cargar idioma guardado o detectar idioma del navegador
