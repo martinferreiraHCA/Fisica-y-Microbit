@@ -725,9 +725,9 @@
 
         <!-- Selector de Idioma -->
         <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
-            <option value="es">🇪🇸 ES</option>
-            <option value="en">🇬🇧 EN</option>
-            <option value="pt">🇧🇷 PT</option>
+            <option value="es">ES</option>
+            <option value="en">EN</option>
+            <option value="pt">PT</option>
         </select>
 
         <span class="status-text" id="pointInfo" style="display: none; background: #ffebee; border-color: #ff0000; color: #d32f2f;"></span>
@@ -1126,8 +1126,8 @@
         </div>
     </div>
 
-    <footer style="background: #f5f5f5; border-top: 2px solid #333; padding: 20px; text-align: center; font-size: 12px; margin-top: 20px;">
-        <div style="max-width: 800px; margin: 0 auto;">
+    <footer id="footerContent" style="background: #f5f5f5; border-top: 2px solid #333; padding: 20px; text-align: center; font-size: 12px; margin-top: 20px;">
+        <div id="footerInner" style="max-width: 800px; margin: 0 auto;">
             <p style="margin: 8px 0; font-weight: bold; font-size: 14px;">
                 Sistema de Captura y Análisis de Datos - micro:bit
             </p>
@@ -1244,7 +1244,40 @@
                 data: 'DATOS',
                 noData: 'SIN DATOS',
                 time: 'Tiempo',
-                graph: 'Gráfica'
+                graph: 'Gráfica',
+                // Secciones del panel
+                video: 'VIDEO',
+                variables: 'VARIABLES',
+                stopCamera: 'DETENER CÁMARA',
+                variable: 'Variable',
+                color: 'Color',
+                oneVariable: '1 Variable',
+                twoVariables: '2 Variables',
+                threeVariables: '3 Variables',
+                oneGraph: '1 Gráfica',
+                twoGraphs: '2 Gráficas',
+                threeGraphs: '3 Gráficas',
+                axisConfig: 'CONFIGURACIÓN DE EJES:',
+                axisConfigInfo: 'Personaliza qué variables mostrar en cada gráfica y en qué ejes.',
+                yAxisVars: 'Variables en Eje Y',
+                regressionInfo: 'REGRESIÓN POR MÍNIMOS CUADRADOS:',
+                regressionInfoText: 'Ajusta una función matemática a tus datos experimentales.',
+                // Tabla
+                searchPlaceholder: 'Buscar...',
+                all: 'Todos',
+                selected: 'Seleccionados',
+                close: 'CERRAR',
+                statisticsTitle: 'ESTADÍSTICAS',
+                // Footer
+                footerTitle: 'Sistema de Captura y Análisis de Datos - micro:bit',
+                developedBy: 'Desarrollado por',
+                licenseCC: 'Licencia Creative Commons BY-SA 4.0',
+                licenseText: 'Esta obra está bajo una Licencia Creative Commons Atribución-CompartirIgual 4.0 Internacional.',
+                licenseText2: 'Eres libre de compartir y adaptar este material, siempre que des crédito a los autores originales y distribuyas tus contribuciones bajo la misma licencia.',
+                librariesUsed: 'Librerías utilizadas:',
+                by: 'por',
+                curveFittingLib: 'Ajuste de curvas por mínimos cuadrados',
+                graphVisualization: 'Visualización de gráficas'
             },
             en: {
                 // Toolbar
@@ -1314,7 +1347,40 @@
                 data: 'DATA',
                 noData: 'NO DATA',
                 time: 'Time',
-                graph: 'Graph'
+                graph: 'Graph',
+                // Panel sections
+                video: 'VIDEO',
+                variables: 'VARIABLES',
+                stopCamera: 'STOP CAMERA',
+                variable: 'Variable',
+                color: 'Color',
+                oneVariable: '1 Variable',
+                twoVariables: '2 Variables',
+                threeVariables: '3 Variables',
+                oneGraph: '1 Graph',
+                twoGraphs: '2 Graphs',
+                threeGraphs: '3 Graphs',
+                axisConfig: 'AXIS CONFIGURATION:',
+                axisConfigInfo: 'Customize which variables to display on each graph and on which axes.',
+                yAxisVars: 'Y Axis Variables',
+                regressionInfo: 'LEAST SQUARES REGRESSION:',
+                regressionInfoText: 'Fit a mathematical function to your experimental data.',
+                // Table
+                searchPlaceholder: 'Search...',
+                all: 'All',
+                selected: 'Selected',
+                close: 'CLOSE',
+                statisticsTitle: 'STATISTICS',
+                // Footer
+                footerTitle: 'Data Capture and Analysis System - micro:bit',
+                developedBy: 'Developed by',
+                licenseCC: 'Creative Commons BY-SA 4.0 License',
+                licenseText: 'This work is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License.',
+                licenseText2: 'You are free to share and adapt this material, as long as you give credit to the original authors and distribute your contributions under the same license.',
+                librariesUsed: 'Libraries used:',
+                by: 'by',
+                curveFittingLib: 'Curve fitting by least squares',
+                graphVisualization: 'Graph visualization'
             },
             pt: {
                 // Toolbar
@@ -1384,9 +1450,92 @@
                 data: 'DADOS',
                 noData: 'SEM DADOS',
                 time: 'Tempo',
-                graph: 'Gráfico'
+                graph: 'Gráfico',
+                // Seções do painel
+                video: 'VÍDEO',
+                variables: 'VARIÁVEIS',
+                stopCamera: 'PARAR CÂMERA',
+                variable: 'Variável',
+                color: 'Cor',
+                oneVariable: '1 Variável',
+                twoVariables: '2 Variáveis',
+                threeVariables: '3 Variáveis',
+                oneGraph: '1 Gráfico',
+                twoGraphs: '2 Gráficos',
+                threeGraphs: '3 Gráficos',
+                axisConfig: 'CONFIGURAÇÃO DE EIXOS:',
+                axisConfigInfo: 'Personalize quais variáveis mostrar em cada gráfico e em quais eixos.',
+                yAxisVars: 'Variáveis no Eixo Y',
+                regressionInfo: 'REGRESSÃO POR MÍNIMOS QUADRADOS:',
+                regressionInfoText: 'Ajuste uma função matemática aos seus dados experimentais.',
+                // Tabela
+                searchPlaceholder: 'Buscar...',
+                all: 'Todos',
+                selected: 'Selecionados',
+                close: 'FECHAR',
+                statisticsTitle: 'ESTATÍSTICAS',
+                // Rodapé
+                footerTitle: 'Sistema de Captura e Análise de Dados - micro:bit',
+                developedBy: 'Desenvolvido por',
+                licenseCC: 'Licença Creative Commons BY-SA 4.0',
+                licenseText: 'Esta obra está sob uma Licença Creative Commons Atribuição-CompartilhaIgual 4.0 Internacional.',
+                licenseText2: 'Você é livre para compartilhar e adaptar este material, desde que dê crédito aos autores originais e distribua suas contribuições sob a mesma licença.',
+                librariesUsed: 'Bibliotecas utilizadas:',
+                by: 'por',
+                curveFittingLib: 'Ajuste de curvas por mínimos quadrados',
+                graphVisualization: 'Visualização de gráficos'
             }
         };
+
+        // Función para actualizar el footer según el idioma
+        function updateFooter(lang) {
+            const t = translations[lang];
+            const footerInner = document.getElementById('footerInner');
+
+            footerInner.innerHTML = `
+                <p style="margin: 8px 0; font-weight: bold; font-size: 14px;">
+                    ${t.footerTitle}
+                </p>
+                <p style="margin: 8px 0;">
+                    ${t.developedBy} <strong>Martin Ferreira</strong> ${lang === 'en' ? 'and' : lang === 'pt' ? 'e' : 'y'} <strong>Pablo Godoy</strong>
+                </p>
+                <p style="margin: 8px 0;">
+                    <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="license"
+                       style="color: #0066cc; text-decoration: none; font-weight: bold;">
+                        📄 ${t.licenseCC}
+                    </a>
+                </p>
+                <p style="margin: 8px 0; color: #666; font-size: 11px;">
+                    ${t.licenseText}
+                    <br>
+                    ${t.licenseText2}
+                </p>
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd;">
+                    <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="license">
+                        <img src="https://licensebuttons.net/l/by-sa/4.0/88x31.png"
+                             alt="Licencia Creative Commons"
+                             style="border: 0; margin: 4px auto; display: block;">
+                    </a>
+                </div>
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd; color: #666; font-size: 11px;">
+                    <p style="margin: 4px 0;">
+                        <strong>${t.librariesUsed}</strong>
+                    </p>
+                    <p style="margin: 4px 0;">
+                        • <a href="https://github.com/Tom-Alexander/regression-js" target="_blank"
+                             style="color: #0066cc; text-decoration: none;">
+                            regression-js
+                        </a> ${t.by} <strong>Tom Alexander</strong> - ${t.curveFittingLib}
+                    </p>
+                    <p style="margin: 4px 0;">
+                        • <a href="https://www.chartjs.org/" target="_blank"
+                             style="color: #0066cc; text-decoration: none;">
+                            Chart.js
+                        </a> - ${t.graphVisualization}
+                    </p>
+                </div>
+            `;
+        }
 
         // Función para cambiar idioma
         function changeLanguage(lang) {
@@ -1415,8 +1564,208 @@
                 document.getElementById('statusText').textContent = t.paused;
             }
 
+            // Panel lateral - Secciones
+            document.querySelectorAll('.section-header').forEach((header, index) => {
+                const text = header.textContent.trim();
+                if (text.includes('VIDEO') || text.includes('VÍDEO')) {
+                    header.innerHTML = `${t.video} <span>${header.querySelector('span').textContent}</span>`;
+                } else if (text.includes('VARIABLE')) {
+                    header.innerHTML = `${t.variables} <span>${header.querySelector('span').textContent}</span>`;
+                } else if (text.includes('CONFIGURACIÓN DE GRÁFICAS') || text.includes('GRAPH CONFIGURATION') || text.includes('CONFIGURAÇÃO DE GRÁFICOS')) {
+                    header.innerHTML = `${t.graphConfig} <span>${header.querySelector('span').textContent}</span>`;
+                } else if (text.includes('AJUSTE DE CURVA') || text.includes('CURVE FITTING')) {
+                    header.innerHTML = `${t.curveFit} <span>${header.querySelector('span').textContent}</span>`;
+                } else if (text.includes('DEPURACIÓN DE DATOS') || text.includes('DATA DEBUGGING') || text.includes('DEPURAÇÃO DE DADOS')) {
+                    header.innerHTML = `${t.dataDebug} <span>${header.querySelector('span').textContent}</span>`;
+                } else if (text.includes('DATOS') || text.includes('DATA') || text.includes('DADOS')) {
+                    header.innerHTML = `${t.data} <span>${header.querySelector('span').textContent}</span>`;
+                }
+            });
+
+            // Panel lateral - Botones
+            const stopCameraBtn = document.getElementById('stopCameraBtn');
+            if (stopCameraBtn) stopCameraBtn.textContent = t.stopCamera;
+
+            const applyVarConfigBtn = document.getElementById('applyVarConfigBtn');
+            if (applyVarConfigBtn) applyVarConfigBtn.textContent = t.applyVarConfig;
+
+            const applyGraphConfigBtn = document.getElementById('applyGraphConfigBtn');
+            if (applyGraphConfigBtn) applyGraphConfigBtn.textContent = t.applyGraphConfig;
+
+            const setZeroBtn = document.getElementById('setZeroBtn');
+            if (setZeroBtn) setZeroBtn.textContent = t.setZero;
+
+            // Panel lateral - Labels
+            document.querySelectorAll('.input-row label').forEach(label => {
+                const text = label.textContent.trim();
+                if (text.startsWith('Número de Variables') || text.startsWith('Number of Variables') || text.startsWith('Número de Variáveis')) {
+                    label.textContent = t.numVars;
+                } else if (text.startsWith('Número de Gráficas') || text.startsWith('Number of Graphs') || text.startsWith('Número de Gráficos')) {
+                    label.textContent = t.numGraphs;
+                } else if (text.startsWith('Nombre') && !text.includes('Variable')) {
+                    label.textContent = t.varName;
+                } else if (text === 'Color' || text === 'Cor') {
+                    // Preservar el color preview si existe
+                    const preview = label.querySelector('.color-preview');
+                    label.textContent = t.color + ' ';
+                    if (preview) label.appendChild(preview);
+                } else if (text.startsWith('Eje X') || text.startsWith('X Axis') || text.startsWith('Eixo X')) {
+                    label.textContent = t.xAxis;
+                } else if (text.startsWith('Variables en Eje Y') || text.startsWith('Y Axis Variables') || text.startsWith('Variáveis no Eixo Y')) {
+                    label.textContent = t.yVars;
+                } else if (text.startsWith('Etiqueta Eje X') || text.startsWith('X Axis Label') || text.startsWith('Rótulo Eixo X')) {
+                    label.textContent = t.xLabel;
+                } else if (text.startsWith('Etiqueta Eje Y') || text.startsWith('Y Axis Label') || text.startsWith('Rótulo Eixo Y')) {
+                    label.textContent = t.yLabel;
+                } else if (text.startsWith('Unidad tiempo') || text.startsWith('Time Unit') || text.startsWith('Unidade de tempo')) {
+                    label.textContent = t.timeUnit;
+                } else if (text.startsWith('Mostrar Líneas') || text.startsWith('Show Lines') || text.startsWith('Mostrar Linhas')) {
+                    label.textContent = t.showLines;
+                } else if (text.startsWith('Tipo de Ajuste') || text.startsWith('Fit Type') || text.startsWith('Tipo de Ajuste')) {
+                    label.textContent = t.fitType;
+                } else if (text.startsWith('Variable a Ajustar') || text.startsWith('Variable to Fit') || text.startsWith('Variável a Ajustar')) {
+                    label.textContent = t.fitVariable;
+                } else if (text.startsWith('Gráfica de Referencia') || text.startsWith('Reference Graph') || text.startsWith('Gráfico de Referência')) {
+                    label.textContent = t.fitGraph;
+                } else if (text.startsWith('Desde Punto') || text.startsWith('From Point') || text.startsWith('Do Ponto')) {
+                    label.textContent = t.fromPoint;
+                } else if (text.startsWith('Hasta Punto') || text.startsWith('To Point') || text.startsWith('Até o Ponto')) {
+                    label.textContent = t.toPoint;
+                }
+            });
+
+            // Panel lateral - Opciones de select
+            const numVarsSelect = document.getElementById('numVariables');
+            if (numVarsSelect) {
+                numVarsSelect.options[0].textContent = t.oneVariable;
+                numVarsSelect.options[1].textContent = t.twoVariables;
+                numVarsSelect.options[2].textContent = t.threeVariables;
+            }
+
+            const numGraphsSelect = document.getElementById('numGraphs');
+            if (numGraphsSelect) {
+                numGraphsSelect.options[0].textContent = t.oneGraph;
+                numGraphsSelect.options[1].textContent = t.twoGraphs;
+                numGraphsSelect.options[2].textContent = t.threeGraphs;
+            }
+
+            // Unidades de tiempo
+            const timeUnitSelect = document.getElementById('timeUnit');
+            if (timeUnitSelect) {
+                timeUnitSelect.options[0].textContent = t.milliseconds;
+                timeUnitSelect.options[1].textContent = t.seconds;
+                timeUnitSelect.options[2].textContent = t.minutes;
+            }
+
+            // Opciones de eje X (Tiempo en cada select de gráfica)
+            ['graph1XAxis', 'graph2XAxis', 'graph3XAxis'].forEach(id => {
+                const select = document.getElementById(id);
+                if (select && select.options[0]) {
+                    select.options[0].textContent = t.time;
+                }
+            });
+
+            // Tipo de ajuste
+            const fitTypeSelect = document.getElementById('fitType');
+            if (fitTypeSelect) {
+                fitTypeSelect.options[0].textContent = t.fitLinear;
+                fitTypeSelect.options[1].textContent = t.fitQuadratic;
+                fitTypeSelect.options[2].textContent = t.fitCubic;
+                fitTypeSelect.options[3].textContent = t.fitExponential;
+                fitTypeSelect.options[4].textContent = t.fitPower;
+                fitTypeSelect.options[5].textContent = t.fitLogarithmic;
+                fitTypeSelect.options[6].textContent = t.fitInverse;
+            }
+
+            // Info boxes
+            document.querySelectorAll('.info-box').forEach(box => {
+                const text = box.innerHTML;
+                if (text.includes('CONFIGURACIÓN DE EJES') || text.includes('AXIS CONFIGURATION') || text.includes('CONFIGURAÇÃO DE EIXOS')) {
+                    box.innerHTML = `<strong>${t.axisConfig}</strong>\n${t.axisConfigInfo}`;
+                } else if (text.includes('REGRESIÓN') || text.includes('REGRESSION') || text.includes('REGRESSÃO')) {
+                    box.innerHTML = `<strong>${t.regressionInfo}</strong>\n${t.regressionInfoText}`;
+                } else if (text.includes('ELIMINAR PUNTOS') || text.includes('DELETE POINTS') || text.includes('ELIMINAR PONTOS')) {
+                    box.innerHTML = `<strong>${t.deletePoints}</strong>\n${t.deleteInfo}`;
+                }
+            });
+
+            // Ajuste de curva - Radio buttons
+            const fitModeAllLabel = document.querySelector('label[for="fitModeAll"]');
+            if (fitModeAllLabel) fitModeAllLabel.textContent = t.allData;
+
+            const fitModeSelectedLabel = document.querySelector('label[for="fitModeSelected"]');
+            if (fitModeSelectedLabel) fitModeSelectedLabel.textContent = t.selectedPoints;
+
+            const fitModeRangeLabel = document.querySelector('label[for="fitModeRange"]');
+            if (fitModeRangeLabel) fitModeRangeLabel.textContent = t.rangePoints;
+
+            // Ajuste de curva - Botones
+            const performFitBtn = document.getElementById('performFitBtn');
+            if (performFitBtn) performFitBtn.textContent = t.performFit;
+
+            const clearFitBtn = document.getElementById('clearFitBtn');
+            if (clearFitBtn) clearFitBtn.textContent = t.clearFit;
+
+            // Depuración de datos - Botones
+            const deleteRangeBtn = document.getElementById('deleteRangeBtn');
+            if (deleteRangeBtn) deleteRangeBtn.textContent = t.deleteRange;
+
+            const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+            if (deleteSelectedBtn) deleteSelectedBtn.textContent = t.deleteSelected;
+
+            const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+            if (clearSelectionBtn) clearSelectionBtn.textContent = t.clearSelection;
+
+            // Títulos de variables y gráficas
+            document.querySelectorAll('.variable-config h4').forEach((h4, index) => {
+                h4.textContent = `${t.variable} ${index + 1}`;
+            });
+
+            document.querySelectorAll('[id^="graph"][id$="Config"] h4').forEach((h4, index) => {
+                h4.textContent = `${t.graph.toUpperCase()} ${index + 1}`;
+            });
+
+            // DATOS A AJUSTAR (encabezado en ajuste de curva)
+            document.querySelectorAll('div[style*="font-weight: bold"]').forEach(div => {
+                const text = div.textContent.trim();
+                if (text === 'DATOS A AJUSTAR:' || text === 'DATA TO FIT:' || text === 'DADOS A AJUSTAR:') {
+                    div.textContent = t.dataToFit;
+                }
+            });
+
+            // Tabla de datos
+            const tableSearch = document.getElementById('tableSearch');
+            if (tableSearch) tableSearch.placeholder = t.searchPlaceholder;
+
+            const tableFilter = document.getElementById('tableFilter');
+            if (tableFilter) {
+                tableFilter.options[0].textContent = t.all;
+                tableFilter.options[1].textContent = t.selected;
+            }
+
+            // Texto "SIN DATOS" en tabla vacía
+            const dataTableBody = document.getElementById('dataTableBody');
+            if (dataTableBody && dataTableBody.querySelector('td[colspan]')) {
+                const emptyCell = dataTableBody.querySelector('td[colspan]');
+                if (emptyCell.textContent.includes('SIN DATOS') || emptyCell.textContent.includes('NO DATA') || emptyCell.textContent.includes('SEM DADOS')) {
+                    emptyCell.textContent = t.noData;
+                }
+            }
+
+            // Modales - Botones cerrar
+            document.querySelectorAll('.modal-close').forEach(btn => {
+                btn.textContent = t.close;
+            });
+
+            // Modal de estadísticas - Título
+            const statsModalHeader = document.querySelector('#statsModal .modal-header');
+            if (statsModalHeader) statsModalHeader.textContent = t.statisticsTitle;
+
             // Actualizar contenido del modal de ayuda
             updateHelpModalContent(lang);
+
+            // Actualizar footer
+            updateFooter(lang);
 
             // Guardar preferencia
             localStorage.setItem('microbit-language', lang);
