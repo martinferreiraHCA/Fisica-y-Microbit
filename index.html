@@ -681,6 +681,15 @@
 
         <button id="helpBtn" class="toolbar-btn">AYUDA</button>
 
+        <div class="toolbar-separator"></div>
+
+        <!-- Selector de Idioma -->
+        <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
+            <option value="es">🇪🇸 ES</option>
+            <option value="en">🇬🇧 EN</option>
+            <option value="pt">🇧🇷 PT</option>
+        </select>
+
         <span class="status-text" id="pointInfo" style="display: none; background: #ffebee; border-color: #ff0000; color: #d32f2f;"></span>
         <span class="status-text" id="statusText">DESCONECTADO</span>
     </div>
@@ -1493,6 +1502,269 @@ basic.forever(function () {
     </footer>
 
     <script>
+        // ========== SISTEMA DE TRADUCCIONES ==========
+        const translations = {
+            es: {
+                // Toolbar
+                connect: 'CONECTAR',
+                capture: 'CAPTURAR',
+                stop: 'DETENER',
+                camera: 'CÁMARA',
+                statistics: 'ESTADÍSTICAS',
+                exportCSV: 'EXPORTAR CSV',
+                importCSV: 'IMPORTAR CSV',
+                clear: 'LIMPIAR',
+                help: 'AYUDA',
+                disconnected: 'DESCONECTADO',
+                connected: 'CONECTADO',
+                capturing: 'CAPTURANDO',
+                paused: 'PAUSADO',
+                // Panel lateral
+                varConfig: 'CONFIGURACIÓN DE VARIABLES',
+                numVars: 'Número de Variables',
+                varName: 'Nombre Variable',
+                varColor: 'Color',
+                applyVarConfig: 'APLICAR CONFIGURACIÓN',
+                graphConfig: 'CONFIGURACIÓN DE GRÁFICAS',
+                numGraphs: 'Número de Gráficas',
+                xAxis: 'Eje X',
+                yVars: 'Variables en Eje Y',
+                xLabel: 'Etiqueta Eje X',
+                yLabel: 'Etiqueta Eje Y',
+                timeUnit: 'Unidad tiempo',
+                milliseconds: 'Milisegundos',
+                seconds: 'Segundos',
+                minutes: 'Minutos',
+                showLines: 'Mostrar Líneas',
+                applyGraphConfig: 'APLICAR CONFIGURACIÓN',
+                setZero: 'ESTABLECER T=0',
+                curveFit: 'AJUSTE DE CURVA',
+                curveFitInfo: 'Ajusta una función matemática a tus datos experimentales.',
+                fitType: 'Tipo de Ajuste',
+                fitLinear: 'Lineal (y = mx + b)',
+                fitQuadratic: 'Cuadrático (y = ax² + bx + c)',
+                fitCubic: 'Cúbico (y = ax³ + bx² + cx + d)',
+                fitExponential: 'Exponencial (y = a·e^(bx))',
+                fitPower: 'Potencia (y = a·x^b)',
+                fitLogarithmic: 'Logarítmico (y = a·ln(x) + b)',
+                fitInverse: 'Inverso (y = a/x + b)',
+                fitVariable: 'Variable a Ajustar',
+                fitGraph: 'Gráfica de Referencia',
+                dataToFit: 'DATOS A AJUSTAR:',
+                allData: 'Todos los Datos',
+                selectedPoints: 'Puntos Seleccionados Manualmente',
+                rangePoints: 'Rango de Puntos',
+                fromPoint: 'Desde Punto',
+                toPoint: 'Hasta Punto',
+                performFit: 'REALIZAR AJUSTE',
+                clearFit: 'LIMPIAR AJUSTE',
+                equation: 'Ecuación:',
+                r2Coeff: 'Coeficiente R²:',
+                pointsUsed: 'Puntos usados:',
+                dataDebug: 'DEPURACIÓN DE DATOS',
+                deletePoints: 'ELIMINAR PUNTOS:',
+                deleteInfo: 'Usa estas herramientas para limpiar datos incorrectos o no deseados.',
+                deleteRangeFrom: 'Eliminar Rango (desde)',
+                deleteRangeTo: 'Eliminar Rango (hasta)',
+                deleteRange: 'ELIMINAR RANGO',
+                deleteSelected: 'ELIMINAR SELECCIONADOS',
+                clearSelection: 'LIMPIAR SELECCIÓN',
+                data: 'DATOS',
+                noData: 'SIN DATOS',
+                time: 'Tiempo',
+                graph: 'Gráfica'
+            },
+            en: {
+                // Toolbar
+                connect: 'CONNECT',
+                capture: 'CAPTURE',
+                stop: 'STOP',
+                camera: 'CAMERA',
+                statistics: 'STATISTICS',
+                exportCSV: 'EXPORT CSV',
+                importCSV: 'IMPORT CSV',
+                clear: 'CLEAR',
+                help: 'HELP',
+                disconnected: 'DISCONNECTED',
+                connected: 'CONNECTED',
+                capturing: 'CAPTURING',
+                paused: 'PAUSED',
+                // Side panel
+                varConfig: 'VARIABLE CONFIGURATION',
+                numVars: 'Number of Variables',
+                varName: 'Variable Name',
+                varColor: 'Color',
+                applyVarConfig: 'APPLY CONFIGURATION',
+                graphConfig: 'GRAPH CONFIGURATION',
+                numGraphs: 'Number of Graphs',
+                xAxis: 'X Axis',
+                yVars: 'Y Axis Variables',
+                xLabel: 'X Axis Label',
+                yLabel: 'Y Axis Label',
+                timeUnit: 'Time Unit',
+                milliseconds: 'Milliseconds',
+                seconds: 'Seconds',
+                minutes: 'Minutes',
+                showLines: 'Show Lines',
+                applyGraphConfig: 'APPLY CONFIGURATION',
+                setZero: 'SET T=0',
+                curveFit: 'CURVE FITTING',
+                curveFitInfo: 'Fit a mathematical function to your experimental data.',
+                fitType: 'Fit Type',
+                fitLinear: 'Linear (y = mx + b)',
+                fitQuadratic: 'Quadratic (y = ax² + bx + c)',
+                fitCubic: 'Cubic (y = ax³ + bx² + cx + d)',
+                fitExponential: 'Exponential (y = a·e^(bx))',
+                fitPower: 'Power (y = a·x^b)',
+                fitLogarithmic: 'Logarithmic (y = a·ln(x) + b)',
+                fitInverse: 'Inverse (y = a/x + b)',
+                fitVariable: 'Variable to Fit',
+                fitGraph: 'Reference Graph',
+                dataToFit: 'DATA TO FIT:',
+                allData: 'All Data',
+                selectedPoints: 'Manually Selected Points',
+                rangePoints: 'Point Range',
+                fromPoint: 'From Point',
+                toPoint: 'To Point',
+                performFit: 'PERFORM FIT',
+                clearFit: 'CLEAR FIT',
+                equation: 'Equation:',
+                r2Coeff: 'R² Coefficient:',
+                pointsUsed: 'Points used:',
+                dataDebug: 'DATA DEBUGGING',
+                deletePoints: 'DELETE POINTS:',
+                deleteInfo: 'Use these tools to clean incorrect or unwanted data.',
+                deleteRangeFrom: 'Delete Range (from)',
+                deleteRangeTo: 'Delete Range (to)',
+                deleteRange: 'DELETE RANGE',
+                deleteSelected: 'DELETE SELECTED',
+                clearSelection: 'CLEAR SELECTION',
+                data: 'DATA',
+                noData: 'NO DATA',
+                time: 'Time',
+                graph: 'Graph'
+            },
+            pt: {
+                // Toolbar
+                connect: 'CONECTAR',
+                capture: 'CAPTURAR',
+                stop: 'PARAR',
+                camera: 'CÂMERA',
+                statistics: 'ESTATÍSTICAS',
+                exportCSV: 'EXPORTAR CSV',
+                importCSV: 'IMPORTAR CSV',
+                clear: 'LIMPAR',
+                help: 'AJUDA',
+                disconnected: 'DESCONECTADO',
+                connected: 'CONECTADO',
+                capturing: 'CAPTURANDO',
+                paused: 'PAUSADO',
+                // Painel lateral
+                varConfig: 'CONFIGURAÇÃO DE VARIÁVEIS',
+                numVars: 'Número de Variáveis',
+                varName: 'Nome da Variável',
+                varColor: 'Cor',
+                applyVarConfig: 'APLICAR CONFIGURAÇÃO',
+                graphConfig: 'CONFIGURAÇÃO DE GRÁFICOS',
+                numGraphs: 'Número de Gráficos',
+                xAxis: 'Eixo X',
+                yVars: 'Variáveis no Eixo Y',
+                xLabel: 'Rótulo Eixo X',
+                yLabel: 'Rótulo Eixo Y',
+                timeUnit: 'Unidade de tempo',
+                milliseconds: 'Milissegundos',
+                seconds: 'Segundos',
+                minutes: 'Minutos',
+                showLines: 'Mostrar Linhas',
+                applyGraphConfig: 'APLICAR CONFIGURAÇÃO',
+                setZero: 'DEFINIR T=0',
+                curveFit: 'AJUSTE DE CURVA',
+                curveFitInfo: 'Ajuste uma função matemática aos seus dados experimentais.',
+                fitType: 'Tipo de Ajuste',
+                fitLinear: 'Linear (y = mx + b)',
+                fitQuadratic: 'Quadrático (y = ax² + bx + c)',
+                fitCubic: 'Cúbico (y = ax³ + bx² + cx + d)',
+                fitExponential: 'Exponencial (y = a·e^(bx))',
+                fitPower: 'Potência (y = a·x^b)',
+                fitLogarithmic: 'Logarítmico (y = a·ln(x) + b)',
+                fitInverse: 'Inverso (y = a/x + b)',
+                fitVariable: 'Variável a Ajustar',
+                fitGraph: 'Gráfico de Referência',
+                dataToFit: 'DADOS A AJUSTAR:',
+                allData: 'Todos os Dados',
+                selectedPoints: 'Pontos Selecionados Manualmente',
+                rangePoints: 'Intervalo de Pontos',
+                fromPoint: 'Do Ponto',
+                toPoint: 'Até o Ponto',
+                performFit: 'REALIZAR AJUSTE',
+                clearFit: 'LIMPAR AJUSTE',
+                equation: 'Equação:',
+                r2Coeff: 'Coeficiente R²:',
+                pointsUsed: 'Pontos usados:',
+                dataDebug: 'DEPURAÇÃO DE DADOS',
+                deletePoints: 'ELIMINAR PONTOS:',
+                deleteInfo: 'Use essas ferramentas para limpar dados incorretos ou indesejados.',
+                deleteRangeFrom: 'Eliminar Intervalo (de)',
+                deleteRangeTo: 'Eliminar Intervalo (até)',
+                deleteRange: 'ELIMINAR INTERVALO',
+                deleteSelected: 'ELIMINAR SELECIONADOS',
+                clearSelection: 'LIMPAR SELEÇÃO',
+                data: 'DADOS',
+                noData: 'SEM DADOS',
+                time: 'Tempo',
+                graph: 'Gráfico'
+            }
+        };
+
+        // Función para cambiar idioma
+        function changeLanguage(lang) {
+            const t = translations[lang];
+
+            // Toolbar
+            document.getElementById('connectBtn').textContent = t.connect;
+            document.getElementById('collectBtn').textContent = t.capture;
+            document.getElementById('stopBtn').textContent = t.stop;
+            document.getElementById('cameraBtn').textContent = t.camera;
+            document.getElementById('statsBtn').textContent = t.statistics;
+            document.getElementById('exportBtn').textContent = t.exportCSV;
+            document.getElementById('importBtn').textContent = t.importCSV;
+            document.getElementById('clearBtn').textContent = t.clear;
+            document.getElementById('helpBtn').textContent = t.help;
+
+            // Actualizar status según estado actual
+            const statusText = document.getElementById('statusText').textContent;
+            if (statusText.includes('DESCONECTADO') || statusText.includes('DISCONNECTED') || statusText.includes('DESCONECTADO')) {
+                document.getElementById('statusText').textContent = t.disconnected;
+            } else if (statusText.includes('CONECTADO') || statusText.includes('CONNECTED')) {
+                document.getElementById('statusText').textContent = t.connected;
+            } else if (statusText.includes('CAPTURANDO') || statusText.includes('CAPTURING')) {
+                document.getElementById('statusText').textContent = t.capturing;
+            } else if (statusText.includes('PAUSADO') || statusText.includes('PAUSED')) {
+                document.getElementById('statusText').textContent = t.paused;
+            }
+
+            // Guardar preferencia
+            localStorage.setItem('microbit-language', lang);
+
+            console.log(`Idioma cambiado a: ${lang}`);
+        }
+
+        // Cargar idioma guardado o detectar idioma del navegador
+        function loadLanguage() {
+            let savedLang = localStorage.getItem('microbit-language');
+
+            if (!savedLang) {
+                // Detectar idioma del navegador
+                const browserLang = navigator.language || navigator.userLanguage;
+                if (browserLang.startsWith('es')) savedLang = 'es';
+                else if (browserLang.startsWith('pt')) savedLang = 'pt';
+                else savedLang = 'en';
+            }
+
+            document.getElementById('languageSelector').value = savedLang;
+            changeLanguage(savedLang);
+        }
+
         // Estado global
         let state = {
             port: null,
@@ -1539,6 +1811,14 @@ basic.forever(function () {
         // Inicializar configuración
         initializeConfiguration();
         updateGraphsDisplay();
+
+        // Inicializar idioma
+        loadLanguage();
+
+        // Event listener para cambio de idioma
+        document.getElementById('languageSelector').addEventListener('change', function() {
+            changeLanguage(this.value);
+        });
 
         // ========== CONFIGURACIÓN DE VARIABLES ==========
 
