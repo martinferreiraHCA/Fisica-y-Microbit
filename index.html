@@ -1080,380 +1080,12 @@
     <!-- Modal de ayuda básica -->
     <div class="modal" id="helpModal">
         <div class="modal-content help-modal">
-            <div class="modal-header">TUTORIAL Y GUÍA DE USO</div>
-
-            <div class="help-section">
-                <h3>📋 COMPONENTES DEL SISTEMA</h3>
-
-                <div class="feature-item">
-                    <div class="feature-icon">●</div>
-                    <div class="feature-text">
-                        <strong>CONECTAR</strong>
-                        Establece conexión serial con la micro:bit vía USB. Usa Web Serial API del navegador.
-                    </div>
-                </div>
-
-                <div class="feature-item">
-                    <div class="feature-icon">▶</div>
-                    <div class="feature-text">
-                        <strong>CAPTURAR / DETENER</strong>
-                        Inicia y detiene la captura de datos en tiempo real. Si la cámara está activa, también graba video sincronizado.
-                    </div>
-                </div>
-
-                <div class="feature-item">
-                    <div class="feature-icon">📹</div>
-                    <div class="feature-text">
-                        <strong>CÁMARA</strong>
-                        Activa la webcam para grabar video del experimento. El video se sincroniza automáticamente con los datos capturados.
-                    </div>
-                </div>
-
-                <div class="feature-item">
-                    <div class="feature-icon">Σ</div>
-                    <div class="feature-text">
-                        <strong>ESTADÍSTICAS</strong>
-                        Calcula media, mínimo, máximo, desviación estándar y número total de puntos.
-                    </div>
-                </div>
-
-                <div class="feature-item">
-                    <div class="feature-icon">💾</div>
-                    <div class="feature-text">
-                        <strong>EXPORTAR/IMPORTAR</strong>
-                        Descarga los datos en formato CSV para análisis posterior, o carga experimentos previos.
-                    </div>
-                </div>
-            </div>
-
-            <div class="help-section">
-                <h3>⚡ FRECUENCIA DE MUESTREO</h3>
-                <p>El sistema está optimizado para captura en tiempo real con visualización fluida:</p>
-                <ul>
-                    <li><strong>Frecuencia mínima teórica:</strong> Hasta 1000 Hz (1 ms entre muestras)</li>
-                    <li><strong>Frecuencia práctica recomendada:</strong> 10-100 Hz (10-100 ms entre muestras)</li>
-                    <li><strong>Limitaciones principales:</strong></li>
-                    <ul style="margin-left: 20px; margin-top: 8px;">
-                        <li>Puerto serial USB: 115200 baudios (límite de ~11 KB/s)</li>
-                        <li>Procesamiento de micro:bit: Los sensores internos tienen sus propias limitaciones</li>
-                        <li>Renderizado del navegador: Optimizado para actualizar cada 50ms</li>
-                    </ul>
-                </ul>
-
-                <p><strong>📊 Frecuencias recomendadas por tipo de experimento:</strong></p>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                    <tr style="background: #f5f5f5; border-bottom: 2px solid black;">
-                        <td style="padding: 8px; font-weight: bold;">Experimento</td>
-                        <td style="padding: 8px; font-weight: bold;">Frecuencia (Hz)</td>
-                        <td style="padding: 8px; font-weight: bold;">Pausa (ms)</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #ccc;">
-                        <td style="padding: 8px;">Temperatura</td>
-                        <td style="padding: 8px;">1-2 Hz</td>
-                        <td style="padding: 8px;">500-1000</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #ccc;">
-                        <td style="padding: 8px;">Luz ambiental</td>
-                        <td style="padding: 8px;">5-10 Hz</td>
-                        <td style="padding: 8px;">100-200</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #ccc;">
-                        <td style="padding: 8px;">Acelerómetro (movimiento lento)</td>
-                        <td style="padding: 8px;">20-50 Hz</td>
-                        <td style="padding: 8px;">20-50</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #ccc;">
-                        <td style="padding: 8px;">Acelerómetro (movimiento rápido)</td>
-                        <td style="padding: 8px;">50-100 Hz</td>
-                        <td style="padding: 8px;">10-20</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px;">Sensores externos analógicos</td>
-                        <td style="padding: 8px;">10-50 Hz</td>
-                        <td style="padding: 8px;">20-100</td>
-                    </tr>
-                </table>
-
-                <p style="margin-top: 12px;"><strong>💡 Tip:</strong> Usa <code>basic.pause(X)</code> en JavaScript o <code>sleep(X)</code> en Python, donde X es el tiempo en milisegundos entre muestras.</p>
-            </div>
-
-            <div class="help-section">
-                <h3>🚀 FLUJO DE TRABAJO - UNA VARIABLE</h3>
-                <p><span class="step-number">1</span> Conecta tu micro:bit por USB a la computadora</p>
-                <p><span class="step-number">2</span> Haz clic en <strong>CONECTAR</strong> y selecciona el puerto USB</p>
-                <p><span class="step-number">3</span> (Opcional) Activa la <strong>CÁMARA</strong> para grabar video</p>
-                <p><span class="step-number">4</span> Haz clic en <strong>CAPTURAR</strong> para iniciar</p>
-                <p><span class="step-number">5</span> Realiza tu experimento</p>
-                <p><span class="step-number">6</span> Haz clic en <strong>DETENER</strong> cuando termines</p>
-                <p><span class="step-number">7</span> Analiza los datos:</p>
-                <ul>
-                    <li>Click en puntos para seleccionar</li>
-                    <li>Botón ▶ en tabla para ver video en ese momento</li>
-                    <li>Configura ejes y establece tiempo cero</li>
-                    <li>Exporta resultados</li>
-                </ul>
-            </div>
-
-            <div class="help-section">
-                <h3>💻 CÓDIGO PARA MICRO:BIT - UNA VARIABLE</h3>
-                <p>Tu micro:bit debe enviar datos por serial. Aquí tienes ejemplos básicos:</p>
-
-                <strong>JavaScript (MakeCode):</strong>
-                <div class="code-block">
-                    <pre>// Enviar valor del acelerómetro
-basic.forever(function () {
-    serial.writeNumber(input.acceleration(Dimension.X))
-    serial.writeLine("")
-    basic.pause(100)  // 100ms = 10 datos/segundo
-})</pre>
-                </div>
-
-                <strong>Python (MicroPython):</strong>
-                <div class="code-block">
-                    <pre># Enviar valor de temperatura
-from microbit import *
-
-while True:
-    valor = temperature()
-    print(valor)
-    sleep(100)</pre>
-                </div>
-
-                <p><strong>⚠️ IMPORTANTE:</strong></p>
-                <ul>
-                    <li>Envía <strong>SOLO EL NÚMERO</strong>, sin texto adicional</li>
-                    <li>Usa <code>serial.writeNumber()</code> en JavaScript o <code>print()</code> en Python</li>
-                    <li>Termina cada valor con salto de línea (<code>serial.writeLine("")</code> o automático con <code>print()</code>)</li>
-                    <li>Ajusta <code>basic.pause()</code> o <code>sleep()</code> según la frecuencia deseada</li>
-                </ul>
-            </div>
-
-            <div class="help-section">
-                <h3>📹 VIDEO SINCRONIZADO</h3>
-                <p>El sistema graba video del experimento y lo sincroniza con los datos:</p>
-                <ul>
-                    <li>Activa la cámara <strong>ANTES</strong> de capturar datos</li>
-                    <li>Al hacer clic en <strong>CAPTURAR</strong>, inicia video + datos simultáneamente</li>
-                    <li>Cada dato tiene un timestamp asociado al video</li>
-                    <li>Click en botón <strong>▶</strong> en la tabla para ver ese momento exacto</li>
-                    <li>El video se reproduce desde el instante del punto seleccionado</li>
-                </ul>
-            </div>
-
-            <div class="help-section">
-                <h3>🎯 EJEMPLOS DE SENSORES</h3>
-
-                <strong>Acelerómetro (X, Y o Z):</strong>
-                <div class="code-block">
-                    <pre>basic.forever(function () {
-    serial.writeNumber(input.acceleration(Dimension.X))
-    serial.writeLine("")
-    basic.pause(50)
-})</pre>
-                </div>
-
-                <strong>Nivel de luz:</strong>
-                <div class="code-block">
-                    <pre>basic.forever(function () {
-    serial.writeNumber(input.lightLevel())
-    serial.writeLine("")
-    basic.pause(100)
-})</pre>
-                </div>
-
-                <strong>Brújula (orientación):</strong>
-                <div class="code-block">
-                    <pre>basic.forever(function () {
-    serial.writeNumber(input.compassHeading())
-    serial.writeLine("")
-    basic.pause(100)
-})</pre>
-                </div>
-
-                <strong>Sensor analógico (Pin P0):</strong>
-                <div class="code-block">
-                    <pre>basic.forever(function () {
-    let valor = pins.analogReadPin(AnalogPin.P0)
-    serial.writeNumber(valor)
-    serial.writeLine("")
-    basic.pause(100)
-})</pre>
-                </div>
-            </div>
-
-            <div class="help-section">
-                <h3>🚀 FUNCIONES AVANZADAS - MÚLTIPLES VARIABLES</h3>
-                <p>Esta versión PRO incluye capacidades avanzadas:</p>
-                <ul>
-                    <li><strong>Múltiples Variables:</strong> Captura hasta 3 variables simultáneamente</li>
-                    <li><strong>Múltiples Gráficas:</strong> Visualiza 1, 2 o 3 gráficas independientes</li>
-                    <li><strong>Ejes Personalizables:</strong> Grafica variable vs variable, no solo vs tiempo</li>
-                    <li><strong>Colores Personalizados:</strong> Asigna colores a cada variable</li>
-                    <li><strong>Toggle de Líneas:</strong> Activa/desactiva líneas conectoras</li>
-                </ul>
-            </div>
-
-            <div class="help-section">
-                <h3>📡 CÓDIGO MÚLTIPLES VARIABLES - FORMATO DE DATOS</h3>
-                <p>Para enviar <strong>múltiples variables</strong>, tu micro:bit debe enviar los valores <strong>separados por comas</strong> en una sola línea.</p>
-
-                <div class="warning-box">
-                    <strong>⚠️ IMPORTANTE:</strong>
-                    El número de valores enviados debe coincidir con el número de variables configurado en la aplicación.
-                </div>
-
-                <p><strong>Pasos para configurar:</strong></p>
-                <ol>
-                    <li>En el panel "VARIABLES", selecciona cuántas variables usar (1, 2 o 3)</li>
-                    <li>Personaliza el nombre y color de cada variable</li>
-                    <li>Haz clic en "APLICAR CONFIGURACIÓN"</li>
-                    <li>Programa tu micro:bit para enviar valores separados por comas</li>
-                </ol>
-            </div>
-
-            <div class="help-section">
-                <h3>💻 EJEMPLOS - 2 VARIABLES</h3>
-
-                <strong>JavaScript (MakeCode):</strong>
-                <div class="code-block">
-                    <pre>// Ejemplo: Acelerómetro X e Y
-basic.forever(function () {
-    let accelX = input.acceleration(Dimension.X)
-    let accelY = input.acceleration(Dimension.Y)
-
-    // Enviar separados por coma
-    serial.writeLine("" + accelX + "," + accelY)
-
-    basic.pause(100)  // 100ms entre lecturas
-})</pre>
-                </div>
-
-                <strong>Python (MicroPython):</strong>
-                <div class="code-block">
-                    <pre># Ejemplo: Temperatura y nivel de luz
-from microbit import *
-
-while True:
-    temp = temperature()
-    light = display.read_light_level()
-
-    # Enviar separados por coma
-    print(str(temp) + "," + str(light))
-
-    sleep(100)</pre>
-                </div>
-            </div>
-
-            <div class="help-section">
-                <h3>💻 EJEMPLOS - 3 VARIABLES</h3>
-
-                <strong>JavaScript (MakeCode):</strong>
-                <div class="code-block">
-                    <pre>// Ejemplo: Acelerómetro X, Y, Z
-basic.forever(function () {
-    let accelX = input.acceleration(Dimension.X)
-    let accelY = input.acceleration(Dimension.Y)
-    let accelZ = input.acceleration(Dimension.Z)
-
-    // Enviar separados por coma
-    serial.writeLine("" + accelX + "," + accelY + "," + accelZ)
-
-    basic.pause(50)  // 50ms = 20 lecturas/segundo
-})</pre>
-                </div>
-
-                <strong>Python (MicroPython):</strong>
-                <div class="code-block">
-                    <pre># Ejemplo: Acelerómetro completo
-from microbit import *
-
-while True:
-    x = accelerometer.get_x()
-    y = accelerometer.get_y()
-    z = accelerometer.get_z()
-
-    # Enviar separados por coma
-    print("{},{},{}".format(x, y, z))
-
-    sleep(50)</pre>
-                </div>
-            </div>
-
-            <div class="help-section">
-                <h3>🎯 EJEMPLOS PRÁCTICOS MULTI-VARIABLE</h3>
-
-                <strong>Sensor de distancia + Temperatura:</strong>
-                <div class="code-block">
-                    <pre>// Usando sensor ultrasónico HC-SR04 en P0
-basic.forever(function () {
-    let distancia = pins.pulseIn(DigitalPin.P0, PulseValue.High)
-    let temp = input.temperature()
-
-    serial.writeLine("" + distancia + "," + temp)
-    basic.pause(200)
-})</pre>
-                </div>
-
-                <strong>Sensor analógico + Luz + Brújula:</strong>
-                <div class="code-block">
-                    <pre>basic.forever(function () {
-    let sensorP0 = pins.analogReadPin(AnalogPin.P0)
-    let luz = input.lightLevel()
-    let direccion = input.compassHeading()
-
-    serial.writeLine("" + sensorP0 + "," + luz + "," + direccion)
-    basic.pause(100)
-})</pre>
-                </div>
-            </div>
-
-            <div class="help-section">
-                <h3>⚙️ REQUISITOS DEL SISTEMA</h3>
-                <ul>
-                    <li><strong>Navegador:</strong> Chrome, Edge u Opera (con Web Serial API)</li>
-                    <li><strong>Sistema:</strong> Windows, macOS o Linux</li>
-                    <li><strong>Hardware:</strong> micro:bit v1 o v2 con cable USB</li>
-                    <li><strong>Webcam:</strong> Opcional, para grabación de video</li>
-                    <li><strong>Conexión:</strong> No requiere internet una vez cargada la página</li>
-                </ul>
-            </div>
-
-            <div class="help-section">
-                <h3>❓ SOLUCIÓN DE PROBLEMAS</h3>
-
-                <p><strong>No aparece el puerto al conectar:</strong></p>
-                <ul>
-                    <li>Verifica que el cable USB esté bien conectado</li>
-                    <li>Prueba con otro puerto USB</li>
-                    <li>Reinicia el navegador</li>
-                </ul>
-
-                <p><strong>No llegan datos:</strong></p>
-                <ul>
-                    <li>Asegúrate de que el código esté corriendo en la micro:bit</li>
-                    <li>Verifica que uses <code>serial.writeNumber()</code> + <code>serial.writeLine("")</code></li>
-                    <li>No envíes texto, solo números</li>
-                </ul>
-
-                <p><strong>La cámara no funciona:</strong></p>
-                <ul>
-                    <li>Permite el acceso a la cámara cuando el navegador lo solicite</li>
-                    <li>Verifica que otra aplicación no esté usando la cámara</li>
-                    <li>Prueba en modo incógnito del navegador</li>
-                </ul>
-
-                <p><strong>El video y los datos no coinciden:</strong></p>
-                <ul>
-                    <li>Activa la cámara ANTES de capturar datos</li>
-                    <li>Ambos deben iniciar con el mismo botón CAPTURAR</li>
-                </ul>
-            </div>
-
-            <button class="toolbar-btn primary modal-close" onclick="closeHelpModal()">CERRAR</button>
+            <div class="modal-header" id="helpModalTitle">TUTORIAL Y GUÍA DE USO</div>
+            <div id="helpModalContent"></div>
+            <button class="toolbar-btn primary modal-close" id="helpModalClose" onclick="closeHelpModal()">CERRAR</button>
         </div>
     </div>
 
-    <!-- Footer con Licencia Creative Commons -->
     <footer style="background: #f5f5f5; border-top: 2px solid #333; padding: 20px; text-align: center; font-size: 12px; margin-top: 20px;">
         <div style="max-width: 800px; margin: 0 auto;">
             <p style="margin: 8px 0; font-weight: bold; font-size: 14px;">
@@ -1743,10 +1375,199 @@ basic.forever(function () {
                 document.getElementById('statusText').textContent = t.paused;
             }
 
+            // Actualizar contenido del modal de ayuda
+            updateHelpModalContent(lang);
+
             // Guardar preferencia
             localStorage.setItem('microbit-language', lang);
 
             console.log(`Idioma cambiado a: ${lang}`);
+        }
+
+        // Función para actualizar contenido del modal de ayuda
+        function updateHelpModalContent(lang) {
+            const t = translations[lang];
+            document.getElementById('helpModalTitle').textContent =
+                lang === 'es' ? 'TUTORIAL Y GUÍA DE USO' :
+                lang === 'en' ? 'TUTORIAL AND USER GUIDE' :
+                'TUTORIAL E GUIA DE USO';
+
+            document.getElementById('helpModalClose').textContent = t.help === 'HELP' ? 'CLOSE' : t.help === 'AJUDA' ? 'FECHAR' : 'CERRAR';
+
+            // Generar contenido según idioma
+            const content = lang === 'es' ? getHelpContentES() :
+                            lang === 'en' ? getHelpContentEN() :
+                            getHelpContentPT();
+
+            document.getElementById('helpModalContent').innerHTML = content;
+        }
+
+        // Contenido del tutorial en Español
+        function getHelpContentES() {
+            return `
+<div class="help-section">
+    <h3>📋 COMPONENTES DEL SISTEMA</h3>
+    <div class="feature-item">
+        <div class="feature-icon">●</div>
+        <div class="feature-text">
+            <strong>CONECTAR</strong>
+            Establece conexión serial con la micro:bit vía USB. Usa Web Serial API del navegador.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">▶</div>
+        <div class="feature-text">
+            <strong>CAPTURAR / DETENER</strong>
+            Inicia y detiene la captura de datos en tiempo real.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">📹</div>
+        <div class="feature-text">
+            <strong>CÁMARA</strong>
+            Activa la webcam para grabar video del experimento sincronizado con los datos.
+        </div>
+    </div>
+</div>
+
+<div class="help-section">
+    <h3>💻 CÓDIGO BÁSICO MICRO:BIT</h3>
+    <p>Tu micro:bit debe enviar datos por serial. Ejemplo JavaScript:</p>
+    <div class="code-block">
+        <pre>basic.forever(function () {
+    serial.writeNumber(input.acceleration(Dimension.X))
+    serial.writeLine("")
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>⚠️ IMPORTANTE:</strong> Envía SOLO números, sin texto adicional.</p>
+</div>
+
+<div class="help-section">
+    <h3>🚀 MÚLTIPLES VARIABLES</h3>
+    <p>Para capturar múltiples variables, envía valores separados por comas:</p>
+    <div class="code-block">
+        <pre>basic.forever(function () {
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    serial.writeLine("" + x + "," + y)
+    basic.pause(100)
+})</pre>
+    </div>
+</div>
+`;
+        }
+
+        // Contenido del tutorial en Inglés
+        function getHelpContentEN() {
+            return `
+<div class="help-section">
+    <h3>📋 SYSTEM COMPONENTS</h3>
+    <div class="feature-item">
+        <div class="feature-icon">●</div>
+        <div class="feature-text">
+            <strong>CONNECT</strong>
+            Establishes serial connection with micro:bit via USB. Uses browser's Web Serial API.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">▶</div>
+        <div class="feature-text">
+            <strong>CAPTURE / STOP</strong>
+            Starts and stops real-time data capture.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">📹</div>
+        <div class="feature-text">
+            <strong>CAMERA</strong>
+            Activates webcam to record experiment video synchronized with data.
+        </div>
+    </div>
+</div>
+
+<div class="help-section">
+    <h3>💻 BASIC MICRO:BIT CODE</h3>
+    <p>Your micro:bit must send data via serial. JavaScript example:</p>
+    <div class="code-block">
+        <pre>basic.forever(function () {
+    serial.writeNumber(input.acceleration(Dimension.X))
+    serial.writeLine("")
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>⚠️ IMPORTANT:</strong> Send ONLY numbers, no additional text.</p>
+</div>
+
+<div class="help-section">
+    <h3>🚀 MULTIPLE VARIABLES</h3>
+    <p>To capture multiple variables, send comma-separated values:</p>
+    <div class="code-block">
+        <pre>basic.forever(function () {
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    serial.writeLine("" + x + "," + y)
+    basic.pause(100)
+})</pre>
+    </div>
+</div>
+`;
+        }
+
+        // Contenido del tutorial en Portugués
+        function getHelpContentPT() {
+            return `
+<div class="help-section">
+    <h3>📋 COMPONENTES DO SISTEMA</h3>
+    <div class="feature-item">
+        <div class="feature-icon">●</div>
+        <div class="feature-text">
+            <strong>CONECTAR</strong>
+            Estabelece conexão serial com o micro:bit via USB. Usa Web Serial API do navegador.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">▶</div>
+        <div class="feature-text">
+            <strong>CAPTURAR / PARAR</strong>
+            Inicia e para a captura de dados em tempo real.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">📹</div>
+        <div class="feature-text">
+            <strong>CÂMERA</strong>
+            Ativa a webcam para gravar vídeo do experimento sincronizado com os dados.
+        </div>
+    </div>
+</div>
+
+<div class="help-section">
+    <h3>💻 CÓDIGO BÁSICO MICRO:BIT</h3>
+    <p>Seu micro:bit deve enviar dados via serial. Exemplo JavaScript:</p>
+    <div class="code-block">
+        <pre>basic.forever(function () {
+    serial.writeNumber(input.acceleration(Dimension.X))
+    serial.writeLine("")
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>⚠️ IMPORTANTE:</strong> Envie APENAS números, sem texto adicional.</p>
+</div>
+
+<div class="help-section">
+    <h3>🚀 MÚLTIPLAS VARIÁVEIS</h3>
+    <p>Para capturar múltiplas variáveis, envie valores separados por vírgula:</p>
+    <div class="code-block">
+        <pre>basic.forever(function () {
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    serial.writeLine("" + x + "," + y)
+    basic.pause(100)
+})</pre>
+    </div>
+</div>
+`;
         }
 
         // Cargar idioma guardado o detectar idioma del navegador
