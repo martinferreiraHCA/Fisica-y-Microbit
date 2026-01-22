@@ -488,6 +488,46 @@
             line-height: 1.5;
         }
 
+        /* Acordeón para help modal */
+        .help-accordion-header {
+            background: #f5f5f5;
+            padding: 12px 16px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 2px;
+            transition: background 0.2s;
+        }
+
+        .help-accordion-header:hover {
+            background: #e8e8e8;
+        }
+
+        .help-accordion-content {
+            padding: 16px;
+            background: white;
+            border-left: 2px solid #ddd;
+            border-right: 2px solid #ddd;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 12px;
+        }
+
+        .help-accordion-content.collapsed {
+            display: none;
+        }
+
+        .help-accordion-arrow {
+            font-size: 0.9rem;
+            transition: transform 0.2s;
+        }
+
         .code-block {
             background: #f5f5f5;
             border: 2px solid black;
@@ -1405,8 +1445,10 @@
         // Contenido del tutorial en Español
         function getHelpContentES() {
             return `
-<div class="help-section">
-    <h3>📋 COMPONENTES DEL SISTEMA</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📋 COMPONENTES DEL SISTEMA <span class="help-accordion-arrow">▼</span>
+</div>
+<div class="help-accordion-content">
     <div class="feature-item">
         <div class="feature-icon">●</div>
         <div class="feature-text">
@@ -1445,8 +1487,10 @@
     </div>
 </div>
 
-<div class="help-section">
-    <h3>⚙️ CONFIGURACIÓN DE VARIABLES</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    ⚙️ CONFIGURACIÓN DE VARIABLES <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Configura hasta 3 variables simultáneas con nombres y colores personalizados:</p>
     <ul>
         <li><strong>Número de Variables:</strong> Selecciona 1, 2 o 3 variables</li>
@@ -1457,8 +1501,10 @@
     <p><strong>Importante:</strong> El número de valores que envía tu micro:bit debe coincidir con el número de variables configurado.</p>
 </div>
 
-<div class="help-section">
-    <h3>📊 CONFIGURACIÓN DE GRÁFICAS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📊 CONFIGURACIÓN DE GRÁFICAS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Crea hasta 3 gráficas independientes con configuración personalizada:</p>
     <ul>
         <li><strong>Número de Gráficas:</strong> 1, 2 o 3 gráficas simultáneas</li>
@@ -1471,8 +1517,10 @@
     <p><strong>ESTABLECER T=0:</strong> Selecciona un punto en la tabla y presiona este botón para establecerlo como tiempo cero.</p>
 </div>
 
-<div class="help-section">
-    <h3>📈 AJUSTE DE CURVA (Mínimos Cuadrados)</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📈 AJUSTE DE CURVA (Mínimos Cuadrados) <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Ajusta funciones matemáticas a tus datos experimentales usando regresión:</p>
     <ul>
         <li><strong>Tipos de Ajuste:</strong>
@@ -1500,8 +1548,10 @@
     <p><strong>Librería:</strong> Usa regression-js por Tom Alexander para cálculos precisos.</p>
 </div>
 
-<div class="help-section">
-    <h3>🗑️ DEPURACIÓN DE DATOS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    🗑️ DEPURACIÓN DE DATOS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Herramientas para limpiar datos incorrectos o no deseados:</p>
     <ul>
         <li><strong>Eliminar Rango:</strong> Ingresa número de punto inicial y final (ej: del 1 al 10)</li>
@@ -1511,8 +1561,10 @@
     <p>Click en puntos de la gráfica para seleccionarlos (se marcan en rojo).</p>
 </div>
 
-<div class="help-section">
-    <h3>📋 TABLA DE DATOS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📋 TABLA DE DATOS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Visualiza todos los datos capturados en formato tabular:</p>
     <ul>
         <li><strong>Buscar:</strong> Filtra datos por valor o tiempo</li>
@@ -1523,8 +1575,10 @@
     </ul>
 </div>
 
-<div class="help-section">
-    <h3>💻 CÓDIGO MICRO:BIT - UNA VARIABLE</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    💻 CÓDIGO MICRO:BIT - UNA VARIABLE <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p><strong>JavaScript (MakeCode):</strong></p>
     <div class="code-block">
         <pre>basic.forever(function () {
@@ -1542,8 +1596,10 @@ while True:
     </div>
 </div>
 
-<div class="help-section">
-    <h3>💻 CÓDIGO MICRO:BIT - MÚLTIPLES VARIABLES</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    💻 CÓDIGO MICRO:BIT - MÚLTIPLES VARIABLES <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Envía valores <strong>separados por comas</strong>:</p>
     <p><strong>2 Variables (JavaScript):</strong></p>
     <div class="code-block">
@@ -1566,8 +1622,10 @@ while True:
     </div>
 </div>
 
-<div class="help-section">
-    <h3>📹 VIDEO SINCRONIZADO</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📹 VIDEO SINCRONIZADO <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <ul>
         <li>Activa <strong>CÁMARA</strong> antes de presionar CAPTURAR</li>
         <li>El video y datos inician juntos automáticamente</li>
@@ -1577,8 +1635,10 @@ while True:
     </ul>
 </div>
 
-<div class="help-section">
-    <h3>⚡ FRECUENCIAS RECOMENDADAS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    ⚡ FRECUENCIAS RECOMENDADAS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <table style="width:100%; border-collapse:collapse; margin-top:10px;">
         <tr style="background:#f5f5f5; border-bottom:2px solid black;">
             <td style="padding:8px; font-weight:bold;">Experimento</td>
@@ -1603,16 +1663,20 @@ while True:
     </table>
 </div>
 
-<div class="help-section">
-    <h3>❓ SOLUCIÓN DE PROBLEMAS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    ❓ SOLUCIÓN DE PROBLEMAS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p><strong>No aparece el puerto:</strong> Verifica cable USB, prueba otro puerto, reinicia navegador.</p>
     <p><strong>No llegan datos:</strong> Asegúrate de usar serial.writeNumber() + serial.writeLine(""). No envíes texto.</p>
     <p><strong>Cámara no funciona:</strong> Permite acceso cuando el navegador lo solicite. Verifica que otra app no la use.</p>
     <p><strong>Video no sincroniza:</strong> Activa cámara ANTES de presionar CAPTURAR.</p>
 </div>
 
-<div class="help-section">
-    <h3>📜 LICENCIA Y CRÉDITOS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📜 LICENCIA Y CRÉDITOS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Desarrollado por <strong>Martin Ferreira</strong> y <strong>Pablo Godoy</strong></p>
     <p>Licencia: <strong>Creative Commons BY-SA 4.0</strong></p>
     <p>Librerías: regression-js (Tom Alexander), Chart.js</p>
@@ -1623,8 +1687,10 @@ while True:
         // Contenido del tutorial en Inglés
         function getHelpContentEN() {
             return `
-<div class="help-section">
-    <h3>📋 SYSTEM COMPONENTS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📋 SYSTEM COMPONENTS <span class="help-accordion-arrow">▼</span>
+</div>
+<div class="help-accordion-content">
     <div class="feature-item">
         <div class="feature-icon">●</div>
         <div class="feature-text">
@@ -1663,8 +1729,10 @@ while True:
     </div>
 </div>
 
-<div class="help-section">
-    <h3>⚙️ VARIABLE CONFIGURATION</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    ⚙️ VARIABLE CONFIGURATION <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Configure up to 3 simultaneous variables with custom names and colors:</p>
     <ul>
         <li><strong>Number of Variables:</strong> Select 1, 2 or 3 variables</li>
@@ -1675,8 +1743,10 @@ while True:
     <p><strong>Important:</strong> Number of values sent by your micro:bit must match the configured number of variables.</p>
 </div>
 
-<div class="help-section">
-    <h3>📊 GRAPH CONFIGURATION</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📊 GRAPH CONFIGURATION <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Create up to 3 independent graphs with custom settings:</p>
     <ul>
         <li><strong>Number of Graphs:</strong> 1, 2 or 3 simultaneous graphs</li>
@@ -1689,8 +1759,10 @@ while True:
     <p><strong>SET T=0:</strong> Select a point in the table and press this button to set it as time zero.</p>
 </div>
 
-<div class="help-section">
-    <h3>📈 CURVE FITTING (Least Squares)</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📈 CURVE FITTING (Least Squares) <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Fit mathematical functions to experimental data using regression:</p>
     <ul>
         <li><strong>Fit Types:</strong>
@@ -1718,8 +1790,10 @@ while True:
     <p><strong>Library:</strong> Uses regression-js by Tom Alexander for precise calculations.</p>
 </div>
 
-<div class="help-section">
-    <h3>🗑️ DATA DEBUGGING</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    🗑️ DATA DEBUGGING <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Tools to clean incorrect or unwanted data:</p>
     <ul>
         <li><strong>Delete Range:</strong> Enter initial and final point numbers (e.g., 1 to 10)</li>
@@ -1729,8 +1803,10 @@ while True:
     <p>Click points on graph to select them (marked in red).</p>
 </div>
 
-<div class="help-section">
-    <h3>📋 DATA TABLE</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📋 DATA TABLE <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>View all captured data in tabular format:</p>
     <ul>
         <li><strong>Search:</strong> Filter data by value or time</li>
@@ -1741,8 +1817,10 @@ while True:
     </ul>
 </div>
 
-<div class="help-section">
-    <h3>💻 MICRO:BIT CODE - SINGLE VARIABLE</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    💻 MICRO:BIT CODE - SINGLE VARIABLE <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p><strong>JavaScript (MakeCode):</strong></p>
     <div class="code-block">
         <pre>basic.forever(function () {
@@ -1760,8 +1838,10 @@ while True:
     </div>
 </div>
 
-<div class="help-section">
-    <h3>💻 MICRO:BIT CODE - MULTIPLE VARIABLES</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    💻 MICRO:BIT CODE - MULTIPLE VARIABLES <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Send values <strong>separated by commas</strong>:</p>
     <p><strong>2 Variables (JavaScript):</strong></p>
     <div class="code-block">
@@ -1784,8 +1864,10 @@ while True:
     </div>
 </div>
 
-<div class="help-section">
-    <h3>📹 SYNCHRONIZED VIDEO</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📹 SYNCHRONIZED VIDEO <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <ul>
         <li>Activate <strong>CAMERA</strong> before pressing CAPTURE</li>
         <li>Video and data start together automatically</li>
@@ -1795,8 +1877,10 @@ while True:
     </ul>
 </div>
 
-<div class="help-section">
-    <h3>⚡ RECOMMENDED FREQUENCIES</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    ⚡ RECOMMENDED FREQUENCIES <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <table style="width:100%; border-collapse:collapse; margin-top:10px;">
         <tr style="background:#f5f5f5; border-bottom:2px solid black;">
             <td style="padding:8px; font-weight:bold;">Experiment</td>
@@ -1821,16 +1905,20 @@ while True:
     </table>
 </div>
 
-<div class="help-section">
-    <h3>❓ TROUBLESHOOTING</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    ❓ TROUBLESHOOTING <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p><strong>Port doesn't appear:</strong> Check USB cable, try another port, restart browser.</p>
     <p><strong>No data arriving:</strong> Make sure to use serial.writeNumber() + serial.writeLine(""). Don't send text.</p>
     <p><strong>Camera not working:</strong> Allow access when browser requests. Check no other app is using it.</p>
     <p><strong>Video doesn't sync:</strong> Activate camera BEFORE pressing CAPTURE.</p>
 </div>
 
-<div class="help-section">
-    <h3>📜 LICENSE AND CREDITS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📜 LICENSE AND CREDITS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Developed by <strong>Martin Ferreira</strong> and <strong>Pablo Godoy</strong></p>
     <p>License: <strong>Creative Commons BY-SA 4.0</strong></p>
     <p>Libraries: regression-js (Tom Alexander), Chart.js</p>
@@ -1841,8 +1929,10 @@ while True:
         // Contenido del tutorial en Portugués
         function getHelpContentPT() {
             return `
-<div class="help-section">
-    <h3>📋 COMPONENTES DO SISTEMA</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📋 COMPONENTES DO SISTEMA <span class="help-accordion-arrow">▼</span>
+</div>
+<div class="help-accordion-content">
     <div class="feature-item">
         <div class="feature-icon">●</div>
         <div class="feature-text">
@@ -1881,8 +1971,10 @@ while True:
     </div>
 </div>
 
-<div class="help-section">
-    <h3>⚙️ CONFIGURAÇÃO DE VARIÁVEIS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    ⚙️ CONFIGURAÇÃO DE VARIÁVEIS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Configure até 3 variáveis simultâneas com nomes e cores personalizadas:</p>
     <ul>
         <li><strong>Número de Variáveis:</strong> Selecione 1, 2 ou 3 variáveis</li>
@@ -1893,8 +1985,10 @@ while True:
     <p><strong>Importante:</strong> O número de valores enviados pelo seu micro:bit deve coincidir com o número de variáveis configuradas.</p>
 </div>
 
-<div class="help-section">
-    <h3>📊 CONFIGURAÇÃO DE GRÁFICOS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📊 CONFIGURAÇÃO DE GRÁFICOS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Crie até 3 gráficos independentes com configuração personalizada:</p>
     <ul>
         <li><strong>Número de Gráficos:</strong> 1, 2 ou 3 gráficos simultâneos</li>
@@ -1907,8 +2001,10 @@ while True:
     <p><strong>DEFINIR T=0:</strong> Selecione um ponto na tabela e pressione este botão para estabelecê-lo como tempo zero.</p>
 </div>
 
-<div class="help-section">
-    <h3>📈 AJUSTE DE CURVA (Mínimos Quadrados)</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📈 AJUSTE DE CURVA (Mínimos Quadrados) <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Ajuste funções matemáticas aos seus dados experimentais usando regressão:</p>
     <ul>
         <li><strong>Tipos de Ajuste:</strong>
@@ -1936,8 +2032,10 @@ while True:
     <p><strong>Biblioteca:</strong> Usa regression-js por Tom Alexander para cálculos precisos.</p>
 </div>
 
-<div class="help-section">
-    <h3>🗑️ DEPURAÇÃO DE DADOS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    🗑️ DEPURAÇÃO DE DADOS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Ferramentas para limpar dados incorretos ou indesejados:</p>
     <ul>
         <li><strong>Eliminar Intervalo:</strong> Digite número do ponto inicial e final (ex: de 1 a 10)</li>
@@ -1947,8 +2045,10 @@ while True:
     <p>Clique nos pontos do gráfico para selecioná-los (marcados em vermelho).</p>
 </div>
 
-<div class="help-section">
-    <h3>📋 TABELA DE DADOS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📋 TABELA DE DADOS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Visualize todos os dados capturados em formato tabular:</p>
     <ul>
         <li><strong>Buscar:</strong> Filtra dados por valor ou tempo</li>
@@ -1959,8 +2059,10 @@ while True:
     </ul>
 </div>
 
-<div class="help-section">
-    <h3>💻 CÓDIGO MICRO:BIT - UMA VARIÁVEL</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    💻 CÓDIGO MICRO:BIT - UMA VARIÁVEL <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p><strong>JavaScript (MakeCode):</strong></p>
     <div class="code-block">
         <pre>basic.forever(function () {
@@ -1978,8 +2080,10 @@ while True:
     </div>
 </div>
 
-<div class="help-section">
-    <h3>💻 CÓDIGO MICRO:BIT - MÚLTIPLAS VARIÁVEIS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    💻 CÓDIGO MICRO:BIT - MÚLTIPLAS VARIÁVEIS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Envie valores <strong>separados por vírgulas</strong>:</p>
     <p><strong>2 Variáveis (JavaScript):</strong></p>
     <div class="code-block">
@@ -2002,8 +2106,10 @@ while True:
     </div>
 </div>
 
-<div class="help-section">
-    <h3>📹 VÍDEO SINCRONIZADO</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📹 VÍDEO SINCRONIZADO <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <ul>
         <li>Ative <strong>CÂMERA</strong> antes de pressionar CAPTURAR</li>
         <li>Vídeo e dados iniciam juntos automaticamente</li>
@@ -2013,8 +2119,10 @@ while True:
     </ul>
 </div>
 
-<div class="help-section">
-    <h3>⚡ FREQUÊNCIAS RECOMENDADAS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    ⚡ FREQUÊNCIAS RECOMENDADAS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <table style="width:100%; border-collapse:collapse; margin-top:10px;">
         <tr style="background:#f5f5f5; border-bottom:2px solid black;">
             <td style="padding:8px; font-weight:bold;">Experimento</td>
@@ -2039,16 +2147,20 @@ while True:
     </table>
 </div>
 
-<div class="help-section">
-    <h3>❓ SOLUÇÃO DE PROBLEMAS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    ❓ SOLUÇÃO DE PROBLEMAS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p><strong>Porta não aparece:</strong> Verifique cabo USB, tente outra porta, reinicie navegador.</p>
     <p><strong>Dados não chegam:</strong> Certifique-se de usar serial.writeNumber() + serial.writeLine(""). Não envie texto.</p>
     <p><strong>Câmera não funciona:</strong> Permita acesso quando o navegador solicitar. Verifique se outro app não está usando.</p>
     <p><strong>Vídeo não sincroniza:</strong> Ative câmera ANTES de pressionar CAPTURAR.</p>
 </div>
 
-<div class="help-section">
-    <h3>📜 LICENÇA E CRÉDITOS</h3>
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📜 LICENÇA E CRÉDITOS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
     <p>Desenvolvido por <strong>Martin Ferreira</strong> e <strong>Pablo Godoy</strong></p>
     <p>Licença: <strong>Creative Commons BY-SA 4.0</strong></p>
     <p>Bibliotecas: regression-js (Tom Alexander), Chart.js</p>
