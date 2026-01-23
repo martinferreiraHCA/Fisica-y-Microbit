@@ -843,7 +843,7 @@
 
                     <!-- Configuración Gráfica 1 -->
                     <div id="graph1Config">
-                        <h4 style="margin-bottom: 8px; font-size: 0.85rem;">GRÁFICA 1</h4>
+                        <h4 id="graph1Title" style="margin-bottom: 8px; font-size: 0.85rem;">GRÁFICA 1</h4>
                         <div class="input-row">
                             <label>Eje X</label>
                             <select id="graph1XAxis">
@@ -868,7 +868,7 @@
 
                     <!-- Configuración Gráfica 2 -->
                     <div id="graph2Config" class="hidden" style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e0e0e0;">
-                        <h4 style="margin-bottom: 8px; font-size: 0.85rem;">GRÁFICA 2</h4>
+                        <h4 id="graph2Title" style="margin-bottom: 8px; font-size: 0.85rem;">GRÁFICA 2</h4>
                         <div class="input-row">
                             <label>Eje X</label>
                             <select id="graph2XAxis">
@@ -893,7 +893,7 @@
 
                     <!-- Configuración Gráfica 3 -->
                     <div id="graph3Config" class="hidden" style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e0e0e0;">
-                        <h4 style="margin-bottom: 8px; font-size: 0.85rem;">GRÁFICA 3</h4>
+                        <h4 id="graph3Title" style="margin-bottom: 8px; font-size: 0.85rem;">GRÁFICA 3</h4>
                         <div class="input-row">
                             <label>Eje X</label>
                             <select id="graph3XAxis">
@@ -1277,7 +1277,28 @@
                 librariesUsed: 'Librerías utilizadas:',
                 by: 'por',
                 curveFittingLib: 'Ajuste de curvas por mínimos cuadrados',
-                graphVisualization: 'Visualización de gráficas'
+                graphVisualization: 'Visualización de gráficas',
+                // Placeholders
+                exampleFrom: 'Ej: 1',
+                exampleTo: 'Ej: 50',
+                initialPoint: 'Punto inicial',
+                finalPoint: 'Punto final',
+                // Valores por defecto
+                variableDefault: 'Variable',
+                graphDefault: 'Gráfica',
+                timeSeconds: 'Tiempo (s)',
+                value: 'Valor',
+                recording: '● REC',
+                // Headers de tabla (se mantienen cortos intencionalmente)
+                tableHeaderNumber: '#',
+                tableHeaderTime: 'T',
+                // Estadísticas
+                noDataAlert: 'No hay datos',
+                mean: 'MEDIA',
+                minimum: 'MÍNIMO',
+                maximum: 'MÁXIMO',
+                stdDev: 'DESV. EST',
+                totalPoints: 'PUNTOS TOTALES'
             },
             en: {
                 // Toolbar
@@ -1380,7 +1401,28 @@
                 librariesUsed: 'Libraries used:',
                 by: 'by',
                 curveFittingLib: 'Curve fitting by least squares',
-                graphVisualization: 'Graph visualization'
+                graphVisualization: 'Graph visualization',
+                // Placeholders
+                exampleFrom: 'Ex: 1',
+                exampleTo: 'Ex: 50',
+                initialPoint: 'Initial point',
+                finalPoint: 'Final point',
+                // Default values
+                variableDefault: 'Variable',
+                graphDefault: 'Graph',
+                timeSeconds: 'Time (s)',
+                value: 'Value',
+                recording: '● REC',
+                // Table headers (intentionally kept short)
+                tableHeaderNumber: '#',
+                tableHeaderTime: 'T',
+                // Statistics
+                noDataAlert: 'No data',
+                mean: 'MEAN',
+                minimum: 'MINIMUM',
+                maximum: 'MAXIMUM',
+                stdDev: 'STD. DEV',
+                totalPoints: 'TOTAL POINTS'
             },
             pt: {
                 // Toolbar
@@ -1483,9 +1525,33 @@
                 librariesUsed: 'Bibliotecas utilizadas:',
                 by: 'por',
                 curveFittingLib: 'Ajuste de curvas por mínimos quadrados',
-                graphVisualization: 'Visualização de gráficos'
+                graphVisualization: 'Visualização de gráficos',
+                // Placeholders
+                exampleFrom: 'Ex: 1',
+                exampleTo: 'Ex: 50',
+                initialPoint: 'Ponto inicial',
+                finalPoint: 'Ponto final',
+                // Valores padrão
+                variableDefault: 'Variável',
+                graphDefault: 'Gráfico',
+                timeSeconds: 'Tempo (s)',
+                value: 'Valor',
+                recording: '● REC',
+                // Cabeçalhos da tabela (mantidos curtos intencionalmente)
+                tableHeaderNumber: '#',
+                tableHeaderTime: 'T',
+                // Estatísticas
+                noDataAlert: 'Sem dados',
+                mean: 'MÉDIA',
+                minimum: 'MÍNIMO',
+                maximum: 'MÁXIMO',
+                stdDev: 'DESV. PAD',
+                totalPoints: 'PONTOS TOTAIS'
             }
         };
+
+        // Idioma actual (global para acceso desde funciones dinámicas)
+        let currentLanguage = 'es';
 
         // Función para actualizar el footer según el idioma
         function updateFooter(lang) {
@@ -1539,6 +1605,7 @@
 
         // Función para cambiar idioma
         function changeLanguage(lang) {
+            currentLanguage = lang; // Guardar idioma actual
             const t = translations[lang];
 
             // Toolbar
@@ -1721,9 +1788,15 @@
                 h4.textContent = `${t.variable} ${index + 1}`;
             });
 
-            document.querySelectorAll('[id^="graph"][id$="Config"] h4').forEach((h4, index) => {
-                h4.textContent = `${t.graph.toUpperCase()} ${index + 1}`;
-            });
+            // Actualizar títulos de gráficas específicamente
+            const graph1Title = document.getElementById('graph1Title');
+            if (graph1Title) graph1Title.textContent = `${t.graphDefault.toUpperCase()} 1`;
+
+            const graph2Title = document.getElementById('graph2Title');
+            if (graph2Title) graph2Title.textContent = `${t.graphDefault.toUpperCase()} 2`;
+
+            const graph3Title = document.getElementById('graph3Title');
+            if (graph3Title) graph3Title.textContent = `${t.graphDefault.toUpperCase()} 3`;
 
             // DATOS A AJUSTAR (encabezado en ajuste de curva)
             document.querySelectorAll('div[style*="font-weight: bold"]').forEach(div => {
@@ -1760,6 +1833,66 @@
             // Modal de estadísticas - Título
             const statsModalHeader = document.querySelector('#statsModal .modal-header');
             if (statsModalHeader) statsModalHeader.textContent = t.statisticsTitle;
+
+            // Placeholders
+            const fitRangeFrom = document.getElementById('fitRangeFrom');
+            if (fitRangeFrom) fitRangeFrom.placeholder = t.exampleFrom;
+
+            const fitRangeTo = document.getElementById('fitRangeTo');
+            if (fitRangeTo) fitRangeTo.placeholder = t.exampleTo;
+
+            const deleteRangeFrom = document.getElementById('deleteRangeFrom');
+            if (deleteRangeFrom) deleteRangeFrom.placeholder = t.initialPoint;
+
+            const deleteRangeTo = document.getElementById('deleteRangeTo');
+            if (deleteRangeTo) deleteRangeTo.placeholder = t.finalPoint;
+
+            // Valores por defecto de inputs - Variables
+            const var1Name = document.getElementById('var1Name');
+            if (var1Name && (var1Name.value === 'Variable 1' || var1Name.value === 'Variável 1')) {
+                var1Name.value = `${t.variableDefault} 1`;
+            }
+
+            const var2Name = document.getElementById('var2Name');
+            if (var2Name && (var2Name.value === 'Variable 2' || var2Name.value === 'Variável 2')) {
+                var2Name.value = `${t.variableDefault} 2`;
+            }
+
+            const var3Name = document.getElementById('var3Name');
+            if (var3Name && (var3Name.value === 'Variable 3' || var3Name.value === 'Variável 3')) {
+                var3Name.value = `${t.variableDefault} 3`;
+            }
+
+            // Valores por defecto - Etiquetas de ejes
+            ['graph1XLabel', 'graph2XLabel', 'graph3XLabel'].forEach(id => {
+                const input = document.getElementById(id);
+                if (input && (input.value === 'Tiempo (s)' || input.value === 'Time (s)' || input.value === 'Tempo (s)')) {
+                    input.value = t.timeSeconds;
+                }
+            });
+
+            ['graph1YLabel', 'graph2YLabel', 'graph3YLabel'].forEach(id => {
+                const input = document.getElementById(id);
+                if (input && (input.value === 'Valor' || input.value === 'Value')) {
+                    input.value = t.value;
+                }
+            });
+
+            // Indicador de grabación
+            const recordingIndicator = document.getElementById('recordingIndicator');
+            if (recordingIndicator) recordingIndicator.textContent = t.recording;
+
+            // Resultados de ajuste de curva (textos estáticos en el HTML)
+            document.querySelectorAll('#fitResults strong').forEach(strong => {
+                const text = strong.textContent.trim();
+                if (text === 'Ecuación:' || text === 'Equation:' || text === 'Equação:') {
+                    strong.textContent = t.equation;
+                } else if (text === 'Coeficiente R²:' || text === 'R² Coefficient:' || text === 'Coeficiente R²:') {
+                    strong.textContent = t.r2Coeff;
+                } else if (text === 'Puntos usados:' || text === 'Points used:' || text === 'Pontos usados:') {
+                    strong.textContent = t.pointsUsed;
+                }
+            });
 
             // Actualizar contenido del modal de ayuda
             updateHelpModalContent(lang);
@@ -2529,6 +2662,7 @@ while True:
                 else savedLang = 'en';
             }
 
+            currentLanguage = savedLang; // Establecer idioma actual
             document.getElementById('languageSelector').value = savedLang;
             changeLanguage(savedLang);
         }
@@ -2650,10 +2784,12 @@ while True:
         }
 
         function updateGraphConfiguration() {
+            const t = translations[currentLanguage];
+
             // Actualizar opciones de eje X para incluir variables
             for (let g = 1; g <= 3; g++) {
                 const select = document.getElementById(`graph${g}XAxis`);
-                select.innerHTML = '<option value="time">Tiempo</option>';
+                select.innerHTML = `<option value="time">${t.time}</option>`;
 
                 for (let i = 0; i < state.numVariables; i++) {
                     const option = document.createElement('option');
@@ -3403,13 +3539,14 @@ while True:
         }
 
         function updateDataTable() {
+            const t = translations[currentLanguage];
             const tbody = document.getElementById('dataTableBody');
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
             const searchTerm = document.getElementById('tableSearch').value.toLowerCase();
             const filter = document.getElementById('tableFilter').value;
 
             if (state.rawData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px;">SIN DATOS</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px;">${t.noData}</td></tr>`;
                 return;
             }
 
@@ -3649,12 +3786,13 @@ while True:
         }
 
         function updateFitGraphOptions() {
+            const t = translations[currentLanguage];
             const select = document.getElementById('fitGraphSelect');
             select.innerHTML = '';
             for (let i = 0; i < state.numGraphs; i++) {
                 const option = document.createElement('option');
                 option.value = i;
-                option.textContent = `Gráfica ${i + 1}`;
+                option.textContent = `${t.graphDefault} ${i + 1}`;
                 select.appendChild(option);
             }
         }
@@ -3780,8 +3918,10 @@ while True:
         // ========== ESTADÍSTICAS ==========
 
         document.getElementById('statsBtn').addEventListener('click', () => {
+            const t = translations[currentLanguage];
+
             if (state.rawData.length === 0) {
-                alert('No hay datos');
+                alert(t.noDataAlert);
                 return;
             }
 
@@ -3796,15 +3936,15 @@ while True:
 
                 statsHtml += `
                     <strong>${state.variables[i].name}:</strong><br>
-                    MEDIA: ${mean.toFixed(4)}<br>
-                    MÍNIMO: ${min.toFixed(4)}<br>
-                    MÁXIMO: ${max.toFixed(4)}<br>
-                    DESV. EST: ${stdDev.toFixed(4)}<br>
+                    ${t.mean}: ${mean.toFixed(4)}<br>
+                    ${t.minimum}: ${min.toFixed(4)}<br>
+                    ${t.maximum}: ${max.toFixed(4)}<br>
+                    ${t.stdDev}: ${stdDev.toFixed(4)}<br>
                     <br>
                 `;
             }
 
-            statsHtml += `PUNTOS TOTALES: ${state.rawData.length}`;
+            statsHtml += `${t.totalPoints}: ${state.rawData.length}`;
 
             document.getElementById('statsBody').innerHTML = statsHtml;
             document.getElementById('statsModal').classList.add('active');
