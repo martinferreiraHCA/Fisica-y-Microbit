@@ -845,6 +845,10 @@
                     <div id="graph1Config">
                         <h4 id="graph1Title" style="margin-bottom: 8px; font-size: 0.85rem;">GRÁFICA 1</h4>
                         <div class="input-row">
+                            <label id="graph1TitleLabel">Gráfica:</label>
+                            <input type="text" id="graph1TitleInput" value="Gráfica 1">
+                        </div>
+                        <div class="input-row">
                             <label>Eje X</label>
                             <select id="graph1XAxis">
                                 <option value="time">Tiempo</option>
@@ -870,6 +874,10 @@
                     <div id="graph2Config" class="hidden" style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e0e0e0;">
                         <h4 id="graph2Title" style="margin-bottom: 8px; font-size: 0.85rem;">GRÁFICA 2</h4>
                         <div class="input-row">
+                            <label id="graph2TitleLabel">Gráfica:</label>
+                            <input type="text" id="graph2TitleInput" value="Gráfica 2">
+                        </div>
+                        <div class="input-row">
                             <label>Eje X</label>
                             <select id="graph2XAxis">
                                 <option value="time">Tiempo</option>
@@ -894,6 +902,10 @@
                     <!-- Configuración Gráfica 3 -->
                     <div id="graph3Config" class="hidden" style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e0e0e0;">
                         <h4 id="graph3Title" style="margin-bottom: 8px; font-size: 0.85rem;">GRÁFICA 3</h4>
+                        <div class="input-row">
+                            <label id="graph3TitleLabel">Gráfica:</label>
+                            <input type="text" id="graph3TitleInput" value="Gráfica 3">
+                        </div>
                         <div class="input-row">
                             <label>Eje X</label>
                             <select id="graph3XAxis">
@@ -1298,7 +1310,9 @@
                 minimum: 'MÍNIMO',
                 maximum: 'MÁXIMO',
                 stdDev: 'DESV. EST',
-                totalPoints: 'PUNTOS TOTALES'
+                totalPoints: 'PUNTOS TOTALES',
+                // Título de gráfica
+                graphTitle: 'Gráfica:'
             },
             en: {
                 // Toolbar
@@ -1422,7 +1436,9 @@
                 minimum: 'MINIMUM',
                 maximum: 'MAXIMUM',
                 stdDev: 'STD. DEV',
-                totalPoints: 'TOTAL POINTS'
+                totalPoints: 'TOTAL POINTS',
+                // Graph title
+                graphTitle: 'Graph:'
             },
             pt: {
                 // Toolbar
@@ -1546,7 +1562,9 @@
                 minimum: 'MÍNIMO',
                 maximum: 'MÁXIMO',
                 stdDev: 'DESV. PAD',
-                totalPoints: 'PONTOS TOTAIS'
+                totalPoints: 'PONTOS TOTAIS',
+                // Título do gráfico
+                graphTitle: 'Gráfico:'
             }
         };
 
@@ -1797,6 +1815,16 @@
 
             const graph3Title = document.getElementById('graph3Title');
             if (graph3Title) graph3Title.textContent = `${t.graphDefault.toUpperCase()} 3`;
+
+            // Labels de título de gráfica
+            const graph1TitleLabel = document.getElementById('graph1TitleLabel');
+            if (graph1TitleLabel) graph1TitleLabel.textContent = t.graphTitle;
+
+            const graph2TitleLabel = document.getElementById('graph2TitleLabel');
+            if (graph2TitleLabel) graph2TitleLabel.textContent = t.graphTitle;
+
+            const graph3TitleLabel = document.getElementById('graph3TitleLabel');
+            if (graph3TitleLabel) graph3TitleLabel.textContent = t.graphTitle;
 
             // DATOS A AJUSTAR (encabezado en ajuste de curva)
             document.querySelectorAll('div[style*="font-weight: bold"]').forEach(div => {
@@ -2686,9 +2714,9 @@ while True:
             // Configuración de gráficas
             numGraphs: 1,
             graphs: [
-                { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor' },
-                { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor' },
-                { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor' }
+                { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor', title: 'Gráfica 1' },
+                { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor', title: 'Gráfica 2' },
+                { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor', title: 'Gráfica 3' }
             ],
             showLines: true,
             // Video
@@ -2840,6 +2868,7 @@ while True:
                 state.graphs[g].xAxis = document.getElementById(`graph${graphNum}XAxis`).value;
                 state.graphs[g].xLabel = document.getElementById(`graph${graphNum}XLabel`).value;
                 state.graphs[g].yLabel = document.getElementById(`graph${graphNum}YLabel`).value;
+                state.graphs[g].title = document.getElementById(`graph${graphNum}TitleInput`).value;
 
                 // Obtener variables seleccionadas para eje Y
                 const yVars = [];
@@ -2875,7 +2904,7 @@ while True:
                 const title = document.createElement('div');
                 title.className = 'graph-title';
                 title.id = `graphTitle${i}`;
-                title.textContent = `GRÁFICA ${i + 1}`;
+                title.textContent = state.graphs[i].title || `Gráfica ${i + 1}`;
 
                 const chartContainer = document.createElement('div');
                 chartContainer.className = 'chart-container';
