@@ -86,6 +86,17 @@
             border: 2px solid black;
         }
 
+        .sampling-rate {
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 8px 12px;
+            border: 2px solid #2e7d32;
+            background: #e8f5e9;
+            color: #2e7d32;
+            font-family: 'Courier New', monospace;
+            white-space: nowrap;
+        }
+
         /* Layout principal */
         .main-container {
             display: grid;
@@ -731,6 +742,7 @@
         </select>
 
         <span class="status-text" id="pointInfo" style="display: none; background: #ffebee; border-color: #ff0000; color: #d32f2f;"></span>
+        <span class="sampling-rate" id="samplingRateDisplay" style="display: none;">0 Hz | 0 pts</span>
         <span class="status-text" id="statusText">DESCONECTADO</span>
     </div>
 
@@ -1312,7 +1324,9 @@
                 stdDev: 'DESV. EST',
                 totalPoints: 'PUNTOS TOTALES',
                 // Título de gráfica
-                graphTitle: 'Gráfica:'
+                graphTitle: 'Gráfica:',
+                // Frecuencia de muestreo
+                samplingRate: 'Frec. muestreo'
             },
             en: {
                 // Toolbar
@@ -1438,7 +1452,9 @@
                 stdDev: 'STD. DEV',
                 totalPoints: 'TOTAL POINTS',
                 // Graph title
-                graphTitle: 'Graph:'
+                graphTitle: 'Graph:',
+                // Sampling rate
+                samplingRate: 'Sampling rate'
             },
             pt: {
                 // Toolbar
@@ -1564,7 +1580,9 @@
                 stdDev: 'DESV. PAD',
                 totalPoints: 'PONTOS TOTAIS',
                 // Título do gráfico
-                graphTitle: 'Gráfico:'
+                graphTitle: 'Gráfico:',
+                // Taxa de amostragem
+                samplingRate: 'Taxa de amostragem'
             }
         };
 
@@ -2923,7 +2941,11 @@ while True:
 
             // Restaurar datos si existen
             if (state.rawData.length > 0) {
-                updateAllCharts();
+                if (state.isCollecting && chartDatasetsInitialized) {
+                    initializeChartDatasets();
+                } else {
+                    updateAllCharts();
+                }
                 updateDataTable();
             }
         }
@@ -2998,6 +3020,15 @@ while True:
 
         // ========== CONEXIÓN MICRO:BIT ==========
 
+        // ===== Variables para streaming en tiempo real =====
+        let sampleTimestamps = [];       // Timestamps para calcular frecuencia de muestreo
+        let pendingChartPoints = [];     // Puntos pendientes de dibujar en gráficas
+        let lastChartUpdate = 0;         // Último timestamp de actualización de gráficas
+        let lastTableUpdate = 0;         // Último timestamp de actualización de tabla
+        let lastSamplingRateUpdate = 0;  // Último timestamp de actualización de Hz
+        let serialLoopRunning = false;   // Flag para loop serial activo
+        let chartDatasetsInitialized = false; // Flag de datasets inicializados
+
         document.getElementById('connectBtn').addEventListener('click', async () => {
             try {
                 const filters = [
@@ -3012,6 +3043,10 @@ while True:
                 document.getElementById('connectBtn').style.display = 'none';
                 document.getElementById('collectBtn').style.display = 'inline-block';
                 document.getElementById('statusText').textContent = 'CONECTADO';
+
+                // Iniciar loop serial inmediatamente (modo drain: lee y descarta datos)
+                // Esto evita acumulación de datos en el buffer del puerto serial
+                startSerialLoop();
             } catch (err) {
                 alert('Error: ' + err.message);
             }
@@ -3019,95 +3054,250 @@ while True:
 
         document.getElementById('collectBtn').addEventListener('click', () => {
             // Establecer tiempo inicial en el momento de comenzar a capturar
-            // Esto hace que el primer dato tenga tiempo ≈ 0
             state.timeZeroOffset = Date.now();
+
+            // Limpiar buffers de streaming
+            pendingChartPoints = [];
+            sampleTimestamps = [];
+            lastChartUpdate = 0;
+            lastTableUpdate = 0;
+            lastSamplingRateUpdate = 0;
+
+            // Inicializar datasets vacíos en las gráficas para push incremental
+            initializeChartDatasets();
+            chartDatasetsInitialized = true;
 
             state.isCollecting = true;
             document.getElementById('collectBtn').style.display = 'none';
             document.getElementById('stopBtn').style.display = 'inline-block';
             document.getElementById('statusText').textContent = 'CAPTURANDO';
+            document.getElementById('samplingRateDisplay').style.display = 'inline-block';
 
             if (state.cameraActive) {
                 startVideoRecording();
             }
-
-            startReading();
         });
 
         document.getElementById('stopBtn').addEventListener('click', async () => {
             state.isCollecting = false;
+            chartDatasetsInitialized = false;
             stopVideoRecording();
 
-            if (state.reader) {
-                try {
-                    await state.reader.cancel();
-                } catch (err) {
-                    console.error('Error al cancelar reader:', err);
-                }
+            // Flush puntos pendientes
+            if (pendingChartPoints.length > 0) {
+                pushNewDataToCharts(pendingChartPoints);
+                pendingChartPoints = [];
             }
+
+            // Actualizar tabla con datos finales
+            updateDataTable();
 
             document.getElementById('collectBtn').style.display = 'inline-block';
             document.getElementById('stopBtn').style.display = 'none';
             document.getElementById('statusText').textContent = 'PAUSADO';
+
+            // Mostrar frecuencia final y luego ocultar después de 3 segundos
+            setTimeout(() => {
+                if (!state.isCollecting) {
+                    document.getElementById('samplingRateDisplay').style.display = 'none';
+                }
+            }, 3000);
         });
 
-        async function startReading() {
+        // Inicializa datasets vacíos en las gráficas para push incremental
+        function initializeChartDatasets() {
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+
+            for (let chartIdx = 0; chartIdx < state.numGraphs; chartIdx++) {
+                const chart = state.charts[chartIdx];
+                const config = state.graphs[chartIdx];
+
+                chart.data.datasets = [];
+
+                for (const varIdx of config.yVars) {
+                    chart.data.datasets.push({
+                        label: state.variables[varIdx].name,
+                        data: [],
+                        borderColor: state.variables[varIdx].color,
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: state.variables[varIdx].color,
+                        pointBorderColor: state.variables[varIdx].color,
+                        showLine: state.showLines,
+                        tension: 0
+                    });
+                }
+
+                // Si ya hay datos previos, rellenar con datos existentes
+                if (state.rawData.length > 0) {
+                    for (let dsIdx = 0; dsIdx < config.yVars.length; dsIdx++) {
+                        const varIdx = config.yVars[dsIdx];
+                        for (const d of state.rawData) {
+                            let xVal;
+                            if (config.xAxis === 'time') {
+                                xVal = (d.time - state.timeZeroOffset) / timeUnitValue;
+                            } else {
+                                const xVarIdx = parseInt(config.xAxis.replace('var', ''));
+                                xVal = d.values[xVarIdx];
+                            }
+                            chart.data.datasets[dsIdx].data.push({
+                                x: xVal,
+                                y: d.values[varIdx],
+                                id: d.id
+                            });
+                        }
+                    }
+                }
+
+                chart.update('none');
+            }
+        }
+
+        // Push incremental de nuevos puntos a las gráficas (muy rápido, sin reconstruir)
+        function pushNewDataToCharts(newPoints) {
+            if (newPoints.length === 0) return;
+
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+
+            for (let chartIdx = 0; chartIdx < state.numGraphs; chartIdx++) {
+                const chart = state.charts[chartIdx];
+                const config = state.graphs[chartIdx];
+
+                if (!chart || chart.data.datasets.length === 0) continue;
+
+                for (let dsIdx = 0; dsIdx < config.yVars.length; dsIdx++) {
+                    const varIdx = config.yVars[dsIdx];
+                    const dataset = chart.data.datasets[dsIdx];
+
+                    for (const d of newPoints) {
+                        let xVal;
+                        if (config.xAxis === 'time') {
+                            xVal = (d.time - state.timeZeroOffset) / timeUnitValue;
+                        } else {
+                            const xVarIdx = parseInt(config.xAxis.replace('var', ''));
+                            xVal = d.values[xVarIdx];
+                        }
+                        dataset.data.push({
+                            x: xVal,
+                            y: d.values[varIdx],
+                            id: d.id
+                        });
+                    }
+                }
+
+                chart.update('none');
+            }
+        }
+
+        // Calcula y muestra la frecuencia de muestreo real
+        function updateSamplingRateDisplay() {
+            const now = Date.now();
+            // Solo actualizar cada 500ms para no parpadear
+            if (now - lastSamplingRateUpdate < 500) return;
+            lastSamplingRateUpdate = now;
+
+            // Filtrar timestamps de los últimos 2 segundos
+            const windowMs = 2000;
+            const cutoff = now - windowMs;
+            sampleTimestamps = sampleTimestamps.filter(t => t > cutoff);
+
+            const hz = sampleTimestamps.length / (windowMs / 1000);
+            const totalPts = state.rawData.length;
+
+            const display = document.getElementById('samplingRateDisplay');
+            display.textContent = `${hz.toFixed(1)} Hz | ${totalPts} pts`;
+            display.style.display = 'inline-block';
+        }
+
+        // Loop serial continuo: lee datos del puerto desde la conexión
+        // En modo drain (no collecting): lee y descarta para evitar buffer overflow
+        // En modo collect (isCollecting): parsea, almacena y actualiza gráficas
+        async function startSerialLoop() {
+            if (serialLoopRunning) return;
+            serialLoopRunning = true;
+
             try {
                 const textDecoder = new TextDecoderStream();
                 const readableStreamClosed = state.port.readable.pipeTo(textDecoder.writable);
                 state.reader = textDecoder.readable.getReader();
 
                 let buffer = '';
-                let dataBuffer = [];
-                let lastUpdate = Date.now();
-                const UPDATE_INTERVAL = 50;
+                let rafScheduled = false;
 
-                while (state.isCollecting) {
+                while (state.isConnected) {
                     const { value, done } = await state.reader.read();
                     if (done) break;
 
                     buffer += value;
                     const lines = buffer.split('\n');
-                    buffer = lines.pop();
+                    buffer = lines.pop(); // Mantener línea incompleta en buffer
 
+                    // Si no estamos capturando, descartar datos (modo drain)
+                    if (!state.isCollecting) continue;
+
+                    // Modo captura: parsear y almacenar
                     for (const line of lines) {
                         const trimmed = line.trim();
-                        if (trimmed) {
-                            // Parsear valores separados por coma
-                            const parts = trimmed.split(',').map(p => parseFloat(p.trim()));
+                        if (!trimmed) continue;
 
-                            // Verificar que tengamos el número correcto de valores
-                            if (parts.length === state.numVariables && parts.every(p => !isNaN(p))) {
-                                const timestamp = Date.now();
-                                const dataPoint = {
-                                    time: timestamp,
-                                    values: parts,
-                                    id: `${timestamp}-${Math.random()}`
-                                };
+                        const parts = trimmed.split(',').map(p => parseFloat(p.trim()));
+                        if (parts.length !== state.numVariables || !parts.every(p => !isNaN(p))) continue;
 
-                                dataBuffer.push(dataPoint);
+                        const timestamp = Date.now();
+                        const dataPoint = {
+                            time: timestamp,
+                            values: parts,
+                            id: `${timestamp}-${Math.random()}`
+                        };
 
-                                const now = Date.now();
-                                if (now - lastUpdate >= UPDATE_INTERVAL) {
-                                    state.rawData.push(...dataBuffer);
-                                    dataBuffer = [];
-                                    lastUpdate = now;
-                                    requestAnimationFrame(() => updateDisplay());
-                                }
+                        state.rawData.push(dataPoint);
+                        pendingChartPoints.push(dataPoint);
+                        sampleTimestamps.push(timestamp);
+                    }
+
+                    // Actualizar gráficas con requestAnimationFrame para máxima fluidez
+                    if (pendingChartPoints.length > 0 && !rafScheduled) {
+                        rafScheduled = true;
+                        requestAnimationFrame(() => {
+                            rafScheduled = false;
+
+                            if (pendingChartPoints.length > 0) {
+                                const pointsToRender = pendingChartPoints;
+                                pendingChartPoints = [];
+                                pushNewDataToCharts(pointsToRender);
                             }
-                        }
+
+                            // Actualizar frecuencia de muestreo
+                            updateSamplingRateDisplay();
+
+                            // Actualizar tabla con menor frecuencia (cada 500ms)
+                            const now = Date.now();
+                            if (now - lastTableUpdate >= 500) {
+                                lastTableUpdate = now;
+                                updateDataTable();
+                            }
+
+                            // Actualizar botones
+                            document.getElementById('exportBtn').disabled = state.rawData.length === 0;
+                            document.getElementById('setZeroBtn').disabled = state.selectedPoints.size !== 1;
+                        });
                     }
                 }
 
-                if (dataBuffer.length > 0) {
-                    state.rawData.push(...dataBuffer);
-                    updateDisplay();
+                // Flush datos restantes al finalizar el loop
+                if (pendingChartPoints.length > 0) {
+                    pushNewDataToCharts(pendingChartPoints);
+                    pendingChartPoints = [];
                 }
+                updateDataTable();
             } catch (err) {
                 if (err.name !== 'NetworkError') {
-                    console.error('Error en lectura:', err);
+                    console.error('Error en lectura serial:', err);
                 }
             } finally {
+                serialLoopRunning = false;
                 if (state.reader) {
                     try {
                         state.reader.releaseLock();
@@ -3434,7 +3624,13 @@ while True:
             updateScheduled = true;
 
             requestAnimationFrame(() => {
-                updateAllCharts();
+                // Si estamos en streaming, reinicializar datasets con valores actualizados
+                // (por si cambió la unidad de tiempo o el offset T=0)
+                if (state.isCollecting && chartDatasetsInitialized) {
+                    initializeChartDatasets();
+                } else {
+                    updateAllCharts();
+                }
                 updateDataTable();
 
                 document.getElementById('exportBtn').disabled = state.rawData.length === 0;
@@ -3595,7 +3791,16 @@ while True:
                 return true;
             });
 
-            tbody.innerHTML = filteredData.map((d, displayIdx) => {
+            // Durante captura en vivo, limitar a los últimos 100 registros para rendimiento
+            const MAX_VISIBLE_ROWS = 100;
+            let displayData = filteredData;
+            let truncatedMsg = '';
+            if (state.isCollecting && filteredData.length > MAX_VISIBLE_ROWS) {
+                displayData = filteredData.slice(-MAX_VISIBLE_ROWS);
+                truncatedMsg = `<tr><td colspan="10" style="text-align:center; padding:4px; background:#f5f5f5; font-size:0.8rem;">... ${filteredData.length - MAX_VISIBLE_ROWS} filas anteriores ocultas durante captura ...</td></tr>`;
+            }
+
+            tbody.innerHTML = truncatedMsg + displayData.map((d, displayIdx) => {
                 const originalIdx = state.rawData.indexOf(d);
                 const adjustedTime = (d.time - state.timeZeroOffset) / timeUnitValue;
 
@@ -4107,6 +4312,12 @@ while True:
                 state.timeZeroOffset = 0;
                 state.videoBlob = null;
                 state.recordedChunks = [];
+                // Limpiar buffers de streaming
+                pendingChartPoints = [];
+                sampleTimestamps = [];
+                if (state.isCollecting && chartDatasetsInitialized) {
+                    initializeChartDatasets();
+                }
                 document.getElementById('pointInfo').style.display = 'none';
                 updateDisplay();
             }
