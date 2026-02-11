@@ -3154,7 +3154,6 @@ while True:
         // ===== Variables para streaming en tiempo real =====
         let sampleTimestamps = [];       // Timestamps para calcular frecuencia de muestreo
         let pendingChartPoints = [];     // Puntos pendientes de dibujar en gráficas
-        let lastChartUpdate = 0;         // Último timestamp de actualización de gráficas
         let lastTableUpdate = 0;         // Último timestamp de actualización de tabla
         let lastSamplingRateUpdate = 0;  // Último timestamp de actualización de Hz
         let serialLoopRunning = false;   // Flag para loop serial activo
@@ -3190,9 +3189,12 @@ while True:
             // Limpiar buffers de streaming
             pendingChartPoints = [];
             sampleTimestamps = [];
-            lastChartUpdate = 0;
             lastTableUpdate = 0;
             lastSamplingRateUpdate = 0;
+            // Reset scale smoothing
+            currentYMin = {};
+            currentYMax = {};
+            scaleInitialized = {};
 
             // Inicializar datasets vacíos en las gráficas para push incremental
             initializeChartDatasets();
@@ -3206,12 +3208,16 @@ while True:
             if (state.cameraActive) {
                 startVideoRecording();
             }
+
+            // Iniciar render loop a 60fps (desacoplado de los datos)
+            startRenderLoop();
         });
 
         document.getElementById('stopBtn').addEventListener('click', async () => {
             state.isCollecting = false;
             chartDatasetsInitialized = false;
             stopVideoRecording();
+            stopRenderLoop();
 
             // Flush puntos pendientes
             if (pendingChartPoints.length > 0) {
@@ -3219,7 +3225,17 @@ while True:
                 pendingChartPoints = [];
             }
 
-            // Actualizar tabla con datos finales
+            // Restaurar escala automática de Chart.js (quitar min/max forzados)
+            for (let i = 0; i < state.numGraphs; i++) {
+                const chart = state.charts[i];
+                if (chart) {
+                    delete chart.options.scales.y.min;
+                    delete chart.options.scales.y.max;
+                }
+            }
+
+            // Rebuild completo con TODOS los datos para análisis estático
+            updateAllCharts();
             updateDataTable();
 
             document.getElementById('collectBtn').style.display = 'inline-block';
@@ -3227,33 +3243,25 @@ while True:
             document.getElementById('statusText').textContent = 'PAUSADO';
         });
 
-        // Genera color de fondo con transparencia para gradientes bajo la línea
-        function colorWithAlpha(hexColor, alpha) {
-            const r = parseInt(hexColor.slice(1, 3), 16);
-            const g = parseInt(hexColor.slice(3, 5), 16);
-            const b = parseInt(hexColor.slice(5, 7), 16);
-            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        }
-
-        // Crea la configuración de dataset optimizada para streaming con
-        // interpolación Bezier monotónica (Fritsch-Carlson)
+        // Crea la configuración de dataset optimizada para streaming
+        // Inspirada en Smoothie.js: líneas suavizadas, sin fill, puntos discretos
         function createStreamingDatasetConfig(varIdx) {
             const color = state.variables[varIdx].color;
             return {
                 label: state.variables[varIdx].name,
                 data: [],
-                // Línea suavizada con interpolación monotónica Fritsch-Carlson
+                // Línea suavizada con interpolación Bezier monotónica (Fritsch-Carlson)
                 borderColor: color,
-                backgroundColor: colorWithAlpha(color, 0.06),
-                fill: true,
+                backgroundColor: 'transparent',
+                fill: false,
                 borderWidth: 2.5,
                 borderCapStyle: 'round',
                 borderJoinStyle: 'round',
                 showLine: state.showLines,
                 tension: 0.35,
                 cubicInterpolationMode: 'monotone',
-                // Puntos reales: visibles como marcadores pequeños
-                pointRadius: 2,
+                // Puntos reales: marcadores pequeños visibles
+                pointRadius: 2.5,
                 pointHoverRadius: 6,
                 pointHitRadius: 8,
                 pointBackgroundColor: color,
@@ -3304,7 +3312,23 @@ while True:
             }
         }
 
-        // Push incremental de nuevos puntos a las gráficas (muy rápido, sin reconstruir)
+        // ========== MOTOR DE RENDERIZADO EN TIEMPO REAL ==========
+        // Arquitectura inspirada en Smoothie.js (usada por MakeCode):
+        // - Loop de datos DESACOPLADO del loop de renderizado
+        // - Render loop a 60fps via requestAnimationFrame (siempre corre)
+        // - Ventana deslizante: solo muestra últimos N puntos en el chart
+        // - Scale smoothing exponencial en eje Y (como Smoothie scaleSmoothing=0.125)
+        // - Datos completos siempre en state.rawData para análisis posterior
+
+        const LIVE_WINDOW_MAX_POINTS = 600;  // Máx puntos visibles en chart durante streaming
+        const SCALE_SMOOTHING = 0.15;        // Factor de suavizado exponencial para eje Y
+        let renderLoopId = null;             // ID del requestAnimationFrame
+        let currentYMin = {};                // {chartIdx: currentMin} - escala Y suavizada
+        let currentYMax = {};                // {chartIdx: currentMax} - escala Y suavizada
+        let scaleInitialized = {};           // {chartIdx: bool}
+
+        // Push incremental de nuevos puntos con ventana deslizante
+        // Mantiene máximo LIVE_WINDOW_MAX_POINTS en el chart para rendimiento constante
         function pushNewDataToCharts(newPoints) {
             if (newPoints.length === 0) return;
 
@@ -3334,27 +3358,113 @@ while True:
                             id: d.id
                         });
                     }
-                }
 
-                chart.update('none');
+                    // Ventana deslizante: podar puntos antiguos para rendimiento constante
+                    if (dataset.data.length > LIVE_WINDOW_MAX_POINTS) {
+                        const excess = dataset.data.length - LIVE_WINDOW_MAX_POINTS;
+                        dataset.data.splice(0, excess);
+                    }
+                }
             }
         }
 
-        // Limpia timestamps antiguos para cálculo de frecuencia de muestreo
-        // El plugin samplingRateOverlay lee directamente sampleTimestamps y state.rawData
-        function updateSamplingRateDisplay() {
-            const now = Date.now();
-            if (now - lastSamplingRateUpdate < 500) return;
-            lastSamplingRateUpdate = now;
+        // Suavizado exponencial del eje Y (inspirado en Smoothie.js scaleSmoothing)
+        // Evita saltos bruscos cuando el rango de datos cambia
+        function applySmoothScale(chartIdx, chart) {
+            let targetMin = Infinity;
+            let targetMax = -Infinity;
 
-            // Mantener solo timestamps de los últimos 2 segundos
-            const cutoff = now - 2000;
-            sampleTimestamps = sampleTimestamps.filter(t => t > cutoff);
+            for (const ds of chart.data.datasets) {
+                for (const pt of ds.data) {
+                    if (pt.y < targetMin) targetMin = pt.y;
+                    if (pt.y > targetMax) targetMax = pt.y;
+                }
+            }
+
+            if (!isFinite(targetMin) || !isFinite(targetMax)) return;
+
+            // Agregar 5% de margen
+            const range = targetMax - targetMin || 1;
+            targetMin -= range * 0.05;
+            targetMax += range * 0.05;
+
+            if (!scaleInitialized[chartIdx]) {
+                // Primera vez: set inmediato
+                currentYMin[chartIdx] = targetMin;
+                currentYMax[chartIdx] = targetMax;
+                scaleInitialized[chartIdx] = true;
+            } else {
+                // Suavizado exponencial: mover 15% hacia el objetivo cada frame
+                currentYMin[chartIdx] += SCALE_SMOOTHING * (targetMin - currentYMin[chartIdx]);
+                currentYMax[chartIdx] += SCALE_SMOOTHING * (targetMax - currentYMax[chartIdx]);
+            }
+
+            chart.options.scales.y.min = currentYMin[chartIdx];
+            chart.options.scales.y.max = currentYMax[chartIdx];
         }
 
-        // Loop serial continuo: lee datos del puerto desde la conexión
-        // En modo drain (no collecting): lee y descarta para evitar buffer overflow
-        // En modo collect (isCollecting): parsea, almacena y actualiza gráficas
+        // Loop de renderizado a 60fps - DESACOPLADO de la llegada de datos
+        // Corre continuamente durante la captura. Cada frame:
+        //   1. Flush puntos pendientes al chart (ventana deslizante)
+        //   2. Aplicar scale smoothing
+        //   3. chart.update('none') - repintar canvas
+        //   4. Actualizar tabla cada 500ms
+        function startRenderLoop() {
+            if (renderLoopId !== null) return;
+
+            function renderFrame() {
+                if (!state.isCollecting) {
+                    renderLoopId = null;
+                    return;
+                }
+
+                // 1. Flush datos pendientes a las gráficas
+                if (pendingChartPoints.length > 0) {
+                    const points = pendingChartPoints;
+                    pendingChartPoints = [];
+                    pushNewDataToCharts(points);
+                }
+
+                // 2. Actualizar cada chart con scale smoothing
+                for (let i = 0; i < state.numGraphs; i++) {
+                    const chart = state.charts[i];
+                    if (!chart) continue;
+                    applySmoothScale(i, chart);
+                    chart.update('none');
+                }
+
+                // 3. Limpiar timestamps antiguos para cálculo de Hz
+                const now = Date.now();
+                if (now - lastSamplingRateUpdate >= 500) {
+                    lastSamplingRateUpdate = now;
+                    const cutoff = now - 2000;
+                    sampleTimestamps = sampleTimestamps.filter(t => t > cutoff);
+                }
+
+                // 4. Tabla y botones cada 500ms
+                if (now - lastTableUpdate >= 500) {
+                    lastTableUpdate = now;
+                    updateDataTable();
+                    document.getElementById('exportBtn').disabled = state.rawData.length === 0;
+                    document.getElementById('setZeroBtn').disabled = state.selectedPoints.size !== 1;
+                }
+
+                renderLoopId = requestAnimationFrame(renderFrame);
+            }
+
+            renderLoopId = requestAnimationFrame(renderFrame);
+        }
+
+        function stopRenderLoop() {
+            if (renderLoopId !== null) {
+                cancelAnimationFrame(renderLoopId);
+                renderLoopId = null;
+            }
+        }
+
+        // Loop serial continuo - SOLO se encarga de leer datos del puerto
+        // No hace ningún renderizado. Los datos se acumulan en pendingChartPoints
+        // y el render loop los consume a 60fps.
         async function startSerialLoop() {
             if (serialLoopRunning) return;
             serialLoopRunning = true;
@@ -3365,7 +3475,6 @@ while True:
                 state.reader = textDecoder.readable.getReader();
 
                 let buffer = '';
-                let rafScheduled = false;
 
                 while (state.isConnected) {
                     const { value, done } = await state.reader.read();
@@ -3373,12 +3482,12 @@ while True:
 
                     buffer += value;
                     const lines = buffer.split('\n');
-                    buffer = lines.pop(); // Mantener línea incompleta en buffer
+                    buffer = lines.pop();
 
-                    // Si no estamos capturando, descartar datos (modo drain)
+                    // Modo drain: leer y descartar para vaciar buffer serial
                     if (!state.isCollecting) continue;
 
-                    // Modo captura: parsear y almacenar
+                    // Modo captura: parsear y agregar a buffer de renderizado
                     for (const line of lines) {
                         const trimmed = line.trim();
                         if (!trimmed) continue;
@@ -3393,46 +3502,14 @@ while True:
                             id: `${timestamp}-${Math.random()}`
                         };
 
+                        // Almacenar en datos completos (para análisis posterior)
                         state.rawData.push(dataPoint);
+                        // Agregar a cola de renderizado (el render loop los consume)
                         pendingChartPoints.push(dataPoint);
+                        // Timestamp para cálculo de Hz
                         sampleTimestamps.push(timestamp);
                     }
-
-                    // Actualizar gráficas con requestAnimationFrame para máxima fluidez
-                    if (pendingChartPoints.length > 0 && !rafScheduled) {
-                        rafScheduled = true;
-                        requestAnimationFrame(() => {
-                            rafScheduled = false;
-
-                            if (pendingChartPoints.length > 0) {
-                                const pointsToRender = pendingChartPoints;
-                                pendingChartPoints = [];
-                                pushNewDataToCharts(pointsToRender);
-                            }
-
-                            // Actualizar frecuencia de muestreo
-                            updateSamplingRateDisplay();
-
-                            // Actualizar tabla con menor frecuencia (cada 500ms)
-                            const now = Date.now();
-                            if (now - lastTableUpdate >= 500) {
-                                lastTableUpdate = now;
-                                updateDataTable();
-                            }
-
-                            // Actualizar botones
-                            document.getElementById('exportBtn').disabled = state.rawData.length === 0;
-                            document.getElementById('setZeroBtn').disabled = state.selectedPoints.size !== 1;
-                        });
-                    }
                 }
-
-                // Flush datos restantes al finalizar el loop
-                if (pendingChartPoints.length > 0) {
-                    pushNewDataToCharts(pendingChartPoints);
-                    pendingChartPoints = [];
-                }
-                updateDataTable();
             } catch (err) {
                 if (err.name !== 'NetworkError') {
                     console.error('Error en lectura serial:', err);
@@ -3839,10 +3916,10 @@ while True:
                 chart.data.datasets.push({
                     label: state.variables[varIdx].name,
                     data: data,
-                    // Línea suavizada con interpolación monotónica Fritsch-Carlson
+                    // Línea suavizada - interpolación Bezier monotónica (Fritsch-Carlson)
                     borderColor: color,
-                    backgroundColor: colorWithAlpha(color, 0.06),
-                    fill: true,
+                    backgroundColor: 'transparent',
+                    fill: false,
                     borderWidth: 2.5,
                     borderCapStyle: 'round',
                     borderJoinStyle: 'round',
@@ -4455,9 +4532,12 @@ while True:
                 state.timeZeroOffset = 0;
                 state.videoBlob = null;
                 state.recordedChunks = [];
-                // Limpiar buffers de streaming
+                // Limpiar buffers de streaming y escalas
                 pendingChartPoints = [];
                 sampleTimestamps = [];
+                currentYMin = {};
+                currentYMax = {};
+                scaleInitialized = {};
                 if (state.isCollecting && chartDatasetsInitialized) {
                     initializeChartDatasets();
                 }
