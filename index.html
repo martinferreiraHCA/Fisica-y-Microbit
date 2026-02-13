@@ -2095,13 +2095,21 @@
     💻 CÓDIGO MICRO:BIT - UNA VARIABLE <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p><strong>JavaScript (MakeCode):</strong></p>
+    <p><strong>Modo estándar - JavaScript (MakeCode):</strong></p>
     <div class="code-block">
         <pre>basic.forever(function () {
     serial.writeNumber(input.acceleration(Dimension.X))
     serial.writeLine("")
-    basic.pause(100)  // 100ms = 10 datos/segundo
+    basic.pause(100)  // ~8 Hz real (forever agrega 20ms)
 })</pre>
+    </div>
+    <p><strong>Modo alta velocidad - JavaScript (MakeCode):</strong></p>
+    <div class="code-block">
+        <pre>// everyInterval evita el retardo de 20ms de forever
+loops.everyInterval(10, function () {
+    serial.writeNumber(input.acceleration(Dimension.X))
+    serial.writeLine("")
+})  // ~100 Hz real</pre>
     </div>
     <p><strong>Python (MicroPython):</strong></p>
     <div class="code-block">
@@ -2117,7 +2125,7 @@ while True:
 </div>
 <div class="help-accordion-content collapsed">
     <p>Envía valores <strong>separados por comas</strong>:</p>
-    <p><strong>2 Variables (JavaScript):</strong></p>
+    <p><strong>2 Variables - Modo estándar (JavaScript):</strong></p>
     <div class="code-block">
         <pre>basic.forever(function () {
     let x = input.acceleration(Dimension.X)
@@ -2125,6 +2133,14 @@ while True:
     serial.writeLine("" + x + "," + y)
     basic.pause(100)
 })</pre>
+    </div>
+    <p><strong>2 Variables - Alta velocidad (JavaScript):</strong></p>
+    <div class="code-block">
+        <pre>loops.everyInterval(20, function () {
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    serial.writeLine("" + x + "," + y)
+})  // ~50 Hz real</pre>
     </div>
     <p><strong>3 Variables (Python):</strong></p>
     <div class="code-block">
@@ -2173,10 +2189,69 @@ while True:
         </tr>
         <tr style="border-bottom:1px solid #ccc;">
             <td style="padding:8px;">Acelerómetro</td>
-            <td style="padding:8px;">20-100 Hz</td>
-            <td style="padding:8px;">10-50</td>
+            <td style="padding:8px;">20-50 Hz</td>
+            <td style="padding:8px;">20-50</td>
         </tr>
     </table>
+</div>
+
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    🔬 LÍMITES REALES DEL HARDWARE <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
+    <p><strong>Es importante conocer los límites reales</strong> para no generar falsas expectativas:</p>
+    <p><strong>El cuello de botella es el software, no el hardware.</strong> El acelerómetro soporta hasta 5376 Hz y el puerto serial a 115200 baud transmite ~11500 caracteres/segundo. Pero el <strong>scheduler de MakeCode</strong> limita la velocidad real:</p>
+    <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+        <tr style="background:#f5f5f5; border-bottom:2px solid black;">
+            <td style="padding:8px; font-weight:bold;">Código MakeCode</td>
+            <td style="padding:8px; font-weight:bold;">Hz teórico</td>
+            <td style="padding:8px; font-weight:bold;">Hz real</td>
+            <td style="padding:8px; font-weight:bold;">Causa</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever + pause(1000)</code></td>
+            <td style="padding:6px;">1 Hz</td>
+            <td style="padding:6px;">~1 Hz</td>
+            <td style="padding:6px; font-size:0.85em;">Pausa domina</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever + pause(100)</code></td>
+            <td style="padding:6px;">10 Hz</td>
+            <td style="padding:6px;"><strong>~8 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">forever agrega 20ms ocultos</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever + pause(50)</code></td>
+            <td style="padding:6px;">20 Hz</td>
+            <td style="padding:6px;"><strong>~14 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">20ms de fiber_sleep</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever + pause(20)</code></td>
+            <td style="padding:6px;">50 Hz</td>
+            <td style="padding:6px;"><strong>~25 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">Overhead = pausa</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever sin pause</code></td>
+            <td style="padding:6px;">max</td>
+            <td style="padding:6px;"><strong>~50 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">Límite de forever (20ms fijo)</td>
+        </tr>
+        <tr style="border-bottom:1px solid #eee; background:#f0fff0;">
+            <td style="padding:6px; font-size:0.9em;"><code>everyInterval(20)</code></td>
+            <td style="padding:6px;">50 Hz</td>
+            <td style="padding:6px;"><strong>~50 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">Sin overhead de forever</td>
+        </tr>
+        <tr style="border-bottom:1px solid #eee; background:#f0fff0;">
+            <td style="padding:6px; font-size:0.9em;"><code>everyInterval(10)</code></td>
+            <td style="padding:6px;">100 Hz</td>
+            <td style="padding:6px;"><strong>~100 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">Máximo recomendado</td>
+        </tr>
+    </table>
+    <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Recomendación:</strong> Para frecuencias &gt; 10 Hz, usa <code>loops.everyInterval()</code> en vez de <code>basic.forever()</code>. El bloque forever tiene un retardo oculto de 20ms (fiber_sleep) en cada iteración que limita su velocidad máxima a ~50 Hz.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -2337,13 +2412,21 @@ while True:
     💻 MICRO:BIT CODE - SINGLE VARIABLE <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p><strong>JavaScript (MakeCode):</strong></p>
+    <p><strong>Standard mode - JavaScript (MakeCode):</strong></p>
     <div class="code-block">
         <pre>basic.forever(function () {
     serial.writeNumber(input.acceleration(Dimension.X))
     serial.writeLine("")
-    basic.pause(100)  // 100ms = 10 data/second
+    basic.pause(100)  // ~8 Hz actual (forever adds 20ms)
 })</pre>
+    </div>
+    <p><strong>High-speed mode - JavaScript (MakeCode):</strong></p>
+    <div class="code-block">
+        <pre>// everyInterval avoids the 20ms delay of forever
+loops.everyInterval(10, function () {
+    serial.writeNumber(input.acceleration(Dimension.X))
+    serial.writeLine("")
+})  // ~100 Hz actual</pre>
     </div>
     <p><strong>Python (MicroPython):</strong></p>
     <div class="code-block">
@@ -2359,7 +2442,7 @@ while True:
 </div>
 <div class="help-accordion-content collapsed">
     <p>Send values <strong>separated by commas</strong>:</p>
-    <p><strong>2 Variables (JavaScript):</strong></p>
+    <p><strong>2 Variables - Standard (JavaScript):</strong></p>
     <div class="code-block">
         <pre>basic.forever(function () {
     let x = input.acceleration(Dimension.X)
@@ -2367,6 +2450,14 @@ while True:
     serial.writeLine("" + x + "," + y)
     basic.pause(100)
 })</pre>
+    </div>
+    <p><strong>2 Variables - High-speed (JavaScript):</strong></p>
+    <div class="code-block">
+        <pre>loops.everyInterval(20, function () {
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    serial.writeLine("" + x + "," + y)
+})  // ~50 Hz actual</pre>
     </div>
     <p><strong>3 Variables (Python):</strong></p>
     <div class="code-block">
@@ -2415,10 +2506,69 @@ while True:
         </tr>
         <tr style="border-bottom:1px solid #ccc;">
             <td style="padding:8px;">Accelerometer</td>
-            <td style="padding:8px;">20-100 Hz</td>
-            <td style="padding:8px;">10-50</td>
+            <td style="padding:8px;">20-50 Hz</td>
+            <td style="padding:8px;">20-50</td>
         </tr>
     </table>
+</div>
+
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    🔬 REAL HARDWARE LIMITS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
+    <p><strong>It's important to know the real limits</strong> to avoid false expectations:</p>
+    <p><strong>The bottleneck is software, not hardware.</strong> The accelerometer supports up to 5376 Hz and the serial port at 115200 baud transmits ~11500 chars/second. But the <strong>MakeCode scheduler</strong> limits the actual speed:</p>
+    <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+        <tr style="background:#f5f5f5; border-bottom:2px solid black;">
+            <td style="padding:8px; font-weight:bold;">MakeCode Code</td>
+            <td style="padding:8px; font-weight:bold;">Theoretical Hz</td>
+            <td style="padding:8px; font-weight:bold;">Actual Hz</td>
+            <td style="padding:8px; font-weight:bold;">Reason</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever + pause(1000)</code></td>
+            <td style="padding:6px;">1 Hz</td>
+            <td style="padding:6px;">~1 Hz</td>
+            <td style="padding:6px; font-size:0.85em;">Pause dominates</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever + pause(100)</code></td>
+            <td style="padding:6px;">10 Hz</td>
+            <td style="padding:6px;"><strong>~8 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">forever adds hidden 20ms</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever + pause(50)</code></td>
+            <td style="padding:6px;">20 Hz</td>
+            <td style="padding:6px;"><strong>~14 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">20ms fiber_sleep overhead</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever + pause(20)</code></td>
+            <td style="padding:6px;">50 Hz</td>
+            <td style="padding:6px;"><strong>~25 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">Overhead = pause</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever without pause</code></td>
+            <td style="padding:6px;">max</td>
+            <td style="padding:6px;"><strong>~50 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">forever limit (fixed 20ms)</td>
+        </tr>
+        <tr style="border-bottom:1px solid #eee; background:#f0fff0;">
+            <td style="padding:6px; font-size:0.9em;"><code>everyInterval(20)</code></td>
+            <td style="padding:6px;">50 Hz</td>
+            <td style="padding:6px;"><strong>~50 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">No forever overhead</td>
+        </tr>
+        <tr style="border-bottom:1px solid #eee; background:#f0fff0;">
+            <td style="padding:6px; font-size:0.9em;"><code>everyInterval(10)</code></td>
+            <td style="padding:6px;">100 Hz</td>
+            <td style="padding:6px;"><strong>~100 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">Maximum recommended</td>
+        </tr>
+    </table>
+    <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Recommendation:</strong> For frequencies &gt; 10 Hz, use <code>loops.everyInterval()</code> instead of <code>basic.forever()</code>. The forever block has a hidden 20ms delay (fiber_sleep) in each iteration that caps its maximum speed at ~50 Hz.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -2579,13 +2729,21 @@ while True:
     💻 CÓDIGO MICRO:BIT - UMA VARIÁVEL <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p><strong>JavaScript (MakeCode):</strong></p>
+    <p><strong>Modo padrão - JavaScript (MakeCode):</strong></p>
     <div class="code-block">
         <pre>basic.forever(function () {
     serial.writeNumber(input.acceleration(Dimension.X))
     serial.writeLine("")
-    basic.pause(100)  // 100ms = 10 dados/segundo
+    basic.pause(100)  // ~8 Hz real (forever adiciona 20ms)
 })</pre>
+    </div>
+    <p><strong>Modo alta velocidade - JavaScript (MakeCode):</strong></p>
+    <div class="code-block">
+        <pre>// everyInterval evita o atraso de 20ms do forever
+loops.everyInterval(10, function () {
+    serial.writeNumber(input.acceleration(Dimension.X))
+    serial.writeLine("")
+})  // ~100 Hz real</pre>
     </div>
     <p><strong>Python (MicroPython):</strong></p>
     <div class="code-block">
@@ -2601,7 +2759,7 @@ while True:
 </div>
 <div class="help-accordion-content collapsed">
     <p>Envie valores <strong>separados por vírgulas</strong>:</p>
-    <p><strong>2 Variáveis (JavaScript):</strong></p>
+    <p><strong>2 Variáveis - Modo padrão (JavaScript):</strong></p>
     <div class="code-block">
         <pre>basic.forever(function () {
     let x = input.acceleration(Dimension.X)
@@ -2609,6 +2767,14 @@ while True:
     serial.writeLine("" + x + "," + y)
     basic.pause(100)
 })</pre>
+    </div>
+    <p><strong>2 Variáveis - Alta velocidade (JavaScript):</strong></p>
+    <div class="code-block">
+        <pre>loops.everyInterval(20, function () {
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    serial.writeLine("" + x + "," + y)
+})  // ~50 Hz real</pre>
     </div>
     <p><strong>3 Variáveis (Python):</strong></p>
     <div class="code-block">
@@ -2657,10 +2823,69 @@ while True:
         </tr>
         <tr style="border-bottom:1px solid #ccc;">
             <td style="padding:8px;">Acelerômetro</td>
-            <td style="padding:8px;">20-100 Hz</td>
-            <td style="padding:8px;">10-50</td>
+            <td style="padding:8px;">20-50 Hz</td>
+            <td style="padding:8px;">20-50</td>
         </tr>
     </table>
+</div>
+
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    🔬 LIMITES REAIS DO HARDWARE <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
+    <p><strong>É importante conhecer os limites reais</strong> para não gerar falsas expectativas:</p>
+    <p><strong>O gargalo é o software, não o hardware.</strong> O acelerômetro suporta até 5376 Hz e a porta serial a 115200 baud transmite ~11500 caracteres/segundo. Mas o <strong>scheduler do MakeCode</strong> limita a velocidade real:</p>
+    <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+        <tr style="background:#f5f5f5; border-bottom:2px solid black;">
+            <td style="padding:8px; font-weight:bold;">Código MakeCode</td>
+            <td style="padding:8px; font-weight:bold;">Hz teórico</td>
+            <td style="padding:8px; font-weight:bold;">Hz real</td>
+            <td style="padding:8px; font-weight:bold;">Causa</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever + pause(1000)</code></td>
+            <td style="padding:6px;">1 Hz</td>
+            <td style="padding:6px;">~1 Hz</td>
+            <td style="padding:6px; font-size:0.85em;">Pausa domina</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever + pause(100)</code></td>
+            <td style="padding:6px;">10 Hz</td>
+            <td style="padding:6px;"><strong>~8 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">forever adiciona 20ms ocultos</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever + pause(50)</code></td>
+            <td style="padding:6px;">20 Hz</td>
+            <td style="padding:6px;"><strong>~14 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">20ms de fiber_sleep</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever + pause(20)</code></td>
+            <td style="padding:6px;">50 Hz</td>
+            <td style="padding:6px;"><strong>~25 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">Overhead = pausa</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ccc;">
+            <td style="padding:6px; font-size:0.9em;"><code>forever sem pause</code></td>
+            <td style="padding:6px;">max</td>
+            <td style="padding:6px;"><strong>~50 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">Limite do forever (20ms fixo)</td>
+        </tr>
+        <tr style="border-bottom:1px solid #eee; background:#f0fff0;">
+            <td style="padding:6px; font-size:0.9em;"><code>everyInterval(20)</code></td>
+            <td style="padding:6px;">50 Hz</td>
+            <td style="padding:6px;"><strong>~50 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">Sem overhead do forever</td>
+        </tr>
+        <tr style="border-bottom:1px solid #eee; background:#f0fff0;">
+            <td style="padding:6px; font-size:0.9em;"><code>everyInterval(10)</code></td>
+            <td style="padding:6px;">100 Hz</td>
+            <td style="padding:6px;"><strong>~100 Hz</strong></td>
+            <td style="padding:6px; font-size:0.85em;">Máximo recomendado</td>
+        </tr>
+    </table>
+    <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Recomendação:</strong> Para frequências &gt; 10 Hz, use <code>loops.everyInterval()</code> em vez de <code>basic.forever()</code>. O bloco forever tem um atraso oculto de 20ms (fiber_sleep) em cada iteração que limita sua velocidade máxima a ~50 Hz.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -2939,13 +3164,12 @@ while True:
         }
 
         // ========== PLUGIN CHART.JS: OVERLAY DE FRECUENCIA DE MUESTREO ==========
-        // Dibuja un recuadro elegante en la esquina superior derecha de la gráfica
-        // mostrando la frecuencia de muestreo real y el total de puntos capturados
+        // Dibuja un recuadro con indicador de calidad de señal en la gráfica
+        // Color según calidad: verde (>= 5 Hz), amarillo (2-5 Hz), rojo (< 2 Hz)
         const samplingRatePlugin = {
             id: 'samplingRateOverlay',
             afterDraw(chart) {
                 if (!state.isCollecting) return;
-                // Solo dibujar en la primera gráfica (index 0) para no duplicar
                 if (state.charts[0] !== chart) return;
 
                 const { ctx, chartArea } = chart;
@@ -2958,26 +3182,43 @@ while True:
                 const hz = recentSamples.length / (windowMs / 1000);
                 const totalPts = state.rawData.length;
 
-                const text = `${hz.toFixed(1)} Hz`;
-                const text2 = `${totalPts} pts`;
+                // Determinar calidad de la señal y colores
+                let qualityColor, qualityBg, qualityLabel;
+                if (hz >= 5) {
+                    qualityColor = '#2e7d32'; // Verde
+                    qualityBg = 'rgba(46, 125, 50, 0.08)';
+                    qualityLabel = hz >= 20 ? 'ALTA' : 'BUENA';
+                } else if (hz >= 2) {
+                    qualityColor = '#f57f17'; // Amarillo/naranja
+                    qualityBg = 'rgba(245, 127, 23, 0.08)';
+                    qualityLabel = 'MEDIA';
+                } else {
+                    qualityColor = '#c62828'; // Rojo
+                    qualityBg = 'rgba(198, 40, 40, 0.08)';
+                    qualityLabel = hz > 0 ? 'BAJA' : 'SIN DATOS';
+                }
+
+                const textHz = `${hz.toFixed(1)} Hz`;
+                const textPts = `${totalPts} pts`;
 
                 ctx.save();
 
                 // Medir texto para dimensionar el recuadro
                 ctx.font = 'bold 12px "Courier New", monospace';
-                const w1 = ctx.measureText(text).width;
-                const w2 = ctx.measureText(text2).width;
-                const boxW = Math.max(w1, w2) + 16;
-                const boxH = 38;
+                const w1 = ctx.measureText(textHz).width;
+                ctx.font = '10px "Courier New", monospace';
+                const w2 = ctx.measureText(textPts).width;
+                const w3 = ctx.measureText(qualityLabel).width;
+                const boxW = Math.max(w1 + 22, w2 + 22, w3 + 22) + 8;
+                const boxH = 50;
                 const boxX = chartArea.right - boxW - 8;
                 const boxY = chartArea.top + 8;
 
-                // Fondo con transparencia y borde
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-                ctx.lineWidth = 1;
-                // Rectángulo con bordes redondeados
-                const r = 4;
+                // Fondo con transparencia y borde coloreado
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+                ctx.strokeStyle = qualityColor + '80'; // Color con 50% opacidad
+                ctx.lineWidth = 1.5;
+                const r = 5;
                 ctx.beginPath();
                 ctx.moveTo(boxX + r, boxY);
                 ctx.lineTo(boxX + boxW - r, boxY);
@@ -2992,26 +3233,39 @@ while True:
                 ctx.fill();
                 ctx.stroke();
 
-                // Indicador verde pulsante (dot)
+                // Indicador pulsante con color de calidad
                 const dotX = boxX + 10;
                 const dotY = boxY + 12;
                 const pulse = 0.5 + 0.5 * Math.sin(now / 300);
-                ctx.fillStyle = `rgba(46, 125, 50, ${0.6 + 0.4 * pulse})`;
+                ctx.fillStyle = qualityColor.replace(')', `, ${0.6 + 0.4 * pulse})`).replace('rgb', 'rgba');
+                // Para colores hex, convertir a rgba
+                const hexToRgba = (hex, alpha) => {
+                    const rr = parseInt(hex.slice(1, 3), 16);
+                    const gg = parseInt(hex.slice(3, 5), 16);
+                    const bb = parseInt(hex.slice(5, 7), 16);
+                    return `rgba(${rr}, ${gg}, ${bb}, ${alpha})`;
+                };
+                ctx.fillStyle = hexToRgba(qualityColor, 0.6 + 0.4 * pulse);
                 ctx.beginPath();
                 ctx.arc(dotX, dotY, 3.5, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Texto Hz
-                ctx.fillStyle = '#1a1a1a';
+                // Texto Hz con color de calidad
+                ctx.fillStyle = qualityColor;
                 ctx.font = 'bold 12px "Courier New", monospace';
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'top';
-                ctx.fillText(text, boxX + 18, boxY + 5);
+                ctx.fillText(textHz, boxX + 18, boxY + 5);
 
                 // Texto puntos
                 ctx.fillStyle = '#666';
                 ctx.font = '10px "Courier New", monospace';
-                ctx.fillText(text2, boxX + 18, boxY + 22);
+                ctx.fillText(textPts, boxX + 18, boxY + 20);
+
+                // Etiqueta de calidad
+                ctx.fillStyle = qualityColor;
+                ctx.font = 'bold 9px "Courier New", monospace';
+                ctx.fillText(qualityLabel, boxX + 18, boxY + 35);
 
                 ctx.restore();
             }
@@ -3462,9 +3716,15 @@ while True:
             }
         }
 
-        // Loop serial continuo - SOLO se encarga de leer datos del puerto
-        // No hace ningún renderizado. Los datos se acumulan en pendingChartPoints
-        // y el render loop los consume a 60fps.
+        // Loop serial continuo - OPTIMIZADO para mínima latencia
+        // Pipeline: read() → split → parse → buffer (sin rendering)
+        // Optimizaciones:
+        //   - Counter atómico para IDs (vs Math.random())
+        //   - Date.now() cacheado por batch de líneas
+        //   - Parsing numérico inline sin .map()/.every()
+        //   - Sin .trim() redundante en partes numéricas
+        let _dataPointCounter = 0;
+
         async function startSerialLoop() {
             if (serialLoopRunning) return;
             serialLoopRunning = true;
@@ -3475,6 +3735,7 @@ while True:
                 state.reader = textDecoder.readable.getReader();
 
                 let buffer = '';
+                const numVars = state.numVariables;
 
                 while (state.isConnected) {
                     const { value, done } = await state.reader.read();
@@ -3487,27 +3748,36 @@ while True:
                     // Modo drain: leer y descartar para vaciar buffer serial
                     if (!state.isCollecting) continue;
 
-                    // Modo captura: parsear y agregar a buffer de renderizado
-                    for (const line of lines) {
-                        const trimmed = line.trim();
-                        if (!trimmed) continue;
+                    // Modo captura: parsear inline y agregar a buffers
+                    const batchTime = Date.now();
+                    const batchLen = lines.length;
 
-                        const parts = trimmed.split(',').map(p => parseFloat(p.trim()));
-                        if (parts.length !== state.numVariables || !parts.every(p => !isNaN(p))) continue;
+                    for (let li = 0; li < batchLen; li++) {
+                        const line = lines[li];
+                        if (line.length === 0 || line === '\r') continue;
 
-                        const timestamp = Date.now();
+                        // Parsing inline optimizado: split + Number() directo
+                        const parts = line.split(',');
+                        if (parts.length !== numVars) continue;
+
+                        const values = new Array(numVars);
+                        let valid = true;
+                        for (let vi = 0; vi < numVars; vi++) {
+                            const n = +parts[vi]; // Unary + es más rápido que parseFloat
+                            if (n !== n) { valid = false; break; } // NaN check sin isNaN()
+                            values[vi] = n;
+                        }
+                        if (!valid) continue;
+
                         const dataPoint = {
-                            time: timestamp,
-                            values: parts,
-                            id: `${timestamp}-${Math.random()}`
+                            time: batchTime,
+                            values: values,
+                            id: 'd' + (++_dataPointCounter)
                         };
 
-                        // Almacenar en datos completos (para análisis posterior)
                         state.rawData.push(dataPoint);
-                        // Agregar a cola de renderizado (el render loop los consume)
                         pendingChartPoints.push(dataPoint);
-                        // Timestamp para cálculo de Hz
-                        sampleTimestamps.push(timestamp);
+                        sampleTimestamps.push(batchTime);
                     }
                 }
             } catch (err) {
