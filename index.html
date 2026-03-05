@@ -831,6 +831,11 @@
                         </select>
                     </div>
 
+                    <div class="input-row" style="align-items: center;">
+                        <label for="microbitTimestamp" style="cursor: pointer;">Micro:bit envía timestamp</label>
+                        <input type="checkbox" id="microbitTimestamp" style="width: auto; cursor: pointer;" title="Marcar si el código del micro:bit envía input.runningTime() como primer valor de cada línea">
+                    </div>
+
                     <!-- Variable 1 -->
                     <div class="variable-config" id="var1Config">
                         <h4>Variable 1</h4>
@@ -1263,6 +1268,7 @@
                 // Panel lateral
                 varConfig: 'CONFIGURACIÓN DE VARIABLES',
                 numVars: 'Número de Variables',
+                microbitTimestamp: 'Micro:bit envía timestamp',
                 varName: 'Nombre Variable',
                 varColor: 'Color',
                 applyVarConfig: 'APLICAR CONFIGURACIÓN',
@@ -1400,6 +1406,7 @@
                 // Side panel
                 varConfig: 'VARIABLE CONFIGURATION',
                 numVars: 'Number of Variables',
+                microbitTimestamp: 'Micro:bit sends timestamp',
                 varName: 'Variable Name',
                 varColor: 'Color',
                 applyVarConfig: 'APPLY CONFIGURATION',
@@ -1537,6 +1544,7 @@
                 // Painel lateral
                 varConfig: 'CONFIGURAÇÃO DE VARIÁVEIS',
                 numVars: 'Número de Variáveis',
+                microbitTimestamp: 'Micro:bit envia timestamp',
                 varName: 'Nome da Variável',
                 varColor: 'Cor',
                 applyVarConfig: 'APLICAR CONFIGURAÇÃO',
@@ -1804,6 +1812,8 @@
                     label.textContent = t.fitVariable;
                 } else if (text.startsWith('Gráfica de Referencia') || text.startsWith('Reference Graph') || text.startsWith('Gráfico de Referência')) {
                     label.textContent = t.fitGraph;
+                } else if (text.startsWith('Micro:bit env') || text.startsWith('Micro:bit sends')) {
+                    label.textContent = t.microbitTimestamp;
                 } else if (text.startsWith('Desde Punto') || text.startsWith('From Point') || text.startsWith('Do Ponto')) {
                     label.textContent = t.fromPoint;
                 } else if (text.startsWith('Hasta Punto') || text.startsWith('To Point') || text.startsWith('Até o Ponto')) {
@@ -2196,7 +2206,7 @@
 })</pre>
     </div>
     <p><strong>Formato con timestamp del micro:bit (recomendado)</strong>:</p>
-    <p style="font-size:0.9em; color:#555;">Envía <code>tiempo,valor</code> — la app detecta automáticamente que el primer número es el timestamp real del micro:bit en milisegundos (<code>input.runningTime()</code>). Esto da tiempos precisos sin depender del navegador.</p>
+    <p style="font-size:0.9em; color:#555;">Envía <code>tiempo,valor</code> — activa el checkbox <strong>"Micro:bit envía timestamp"</strong> en la configuración de variables. El primer número de cada línea es el timestamp real del micro:bit en milisegundos (<code>input.runningTime()</code>). Esto da tiempos precisos sin depender del navegador.</p>
     <div class="code-block">
         <pre>basic.forever(function () {
     let t = input.runningTime()
@@ -2579,7 +2589,7 @@ basic.forever(function () {
 })</pre>
     </div>
     <p><strong>Format with micro:bit timestamp (recommended)</strong>:</p>
-    <p style="font-size:0.9em; color:#555;">Send <code>time,value</code> — the app auto-detects that the first number is the real micro:bit timestamp in milliseconds (<code>input.runningTime()</code>). This gives precise timing without depending on the browser.</p>
+    <p style="font-size:0.9em; color:#555;">Send <code>time,value</code> — enable the <strong>"Micro:bit sends timestamp"</strong> checkbox in the variables configuration. The first number of each line is the real micro:bit timestamp in milliseconds (<code>input.runningTime()</code>). This gives precise timing without depending on the browser.</p>
     <div class="code-block">
         <pre>basic.forever(function () {
     let t = input.runningTime()
@@ -2962,7 +2972,7 @@ basic.forever(function () {
 })</pre>
     </div>
     <p><strong>Formato com timestamp do micro:bit (recomendado)</strong>:</p>
-    <p style="font-size:0.9em; color:#555;">Envie <code>tempo,valor</code> — o app detecta automaticamente que o primeiro número é o timestamp real do micro:bit em milissegundos (<code>input.runningTime()</code>). Isso fornece tempos precisos sem depender do navegador.</p>
+    <p style="font-size:0.9em; color:#555;">Envie <code>tempo,valor</code> — ative o checkbox <strong>"Micro:bit envia timestamp"</strong> na configuração de variáveis. O primeiro número de cada linha é o timestamp real do micro:bit em milissegundos (<code>input.runningTime()</code>). Isso fornece tempos precisos sem depender do navegador.</p>
     <div class="code-block">
         <pre>basic.forever(function () {
     let t = input.runningTime()
@@ -3225,6 +3235,7 @@ basic.forever(function () {
             timeZeroOffset: 0,
             // Configuración de variables
             numVariables: 1,
+            microbitTimestamp: false,  // true si el micro:bit envía input.runningTime() como primer valor
             variables: [
                 { name: 'Variable 1', color: '#000000' },
                 { name: 'Variable 2', color: '#ff0000' },
@@ -3277,6 +3288,10 @@ basic.forever(function () {
             document.getElementById('var1Config').classList.remove('hidden');
             document.getElementById('var2Config').classList.toggle('hidden', num < 2);
             document.getElementById('var3Config').classList.toggle('hidden', num < 3);
+        });
+
+        document.getElementById('microbitTimestamp').addEventListener('change', function() {
+            state.microbitTimestamp = this.checked;
         });
 
         // Color previews
@@ -3852,27 +3867,29 @@ basic.forever(function () {
 
                     const numVars = state.numVariables;
                     const batchTime = Date.now();
+                    const useMbTime = state.microbitTimestamp;
+                    const expectedParts = useMbTime ? numVars + 1 : numVars;
 
                     for (let li = 0; li < lines.length; li++) {
                         const line = lines[li];
                         if (line.length === 0 || line === '\r') continue;
 
                         const parts = line.split(',');
-                        const hasMicrobitTime = parts.length === numVars + 1;
-                        if (parts.length !== numVars && !hasMicrobitTime) continue;
+                        if (parts.length !== expectedParts) continue;
 
                         let pointTime;
                         let valueOffset = 0;
 
-                        if (hasMicrobitTime) {
+                        if (useMbTime) {
                             const mt = +parts[0];
                             if (mt !== mt) continue;
-                            pointTime = mt;
                             valueOffset = 1;
                             if (!state.microbitTimeZeroSet) {
                                 state.timeZeroOffset = mt;
                                 state.microbitTimeZeroSet = true;
                             }
+                            if (mt < state.timeZeroOffset) continue;
+                            pointTime = mt;
                         } else {
                             pointTime = batchTime;
                         }
@@ -4219,33 +4236,37 @@ basic.forever(function () {
                     if (!state.isCollecting) continue;
 
                     // Modo captura: parsear inline y agregar a buffers
-                    // Formato auto-detectado:
-                    //   N valores   → sin timestamp (usa Date.now() del browser)
-                    //   N+1 valores → primer valor es input.runningTime() del micro:bit (ms)
+                    // Si checkbox "microbitTimestamp" activo:
+                    //   Se esperan N+1 valores por línea (timestamp,v1,v2,...vN)
+                    //   El primer valor es input.runningTime() del micro:bit (ms)
+                    // Si no: se esperan N valores (v1,v2,...vN) y se usa Date.now()
                     const batchTime = Date.now();
                     const batchLen = lines.length;
+                    const useMbTime = state.microbitTimestamp;
+                    const expectedParts = useMbTime ? numVars + 1 : numVars;
 
                     for (let li = 0; li < batchLen; li++) {
                         const line = lines[li];
                         if (line.length === 0 || line === '\r') continue;
 
                         const parts = line.split(',');
-                        const hasMicrobitTime = parts.length === numVars + 1;
-                        if (parts.length !== numVars && !hasMicrobitTime) continue;
+                        if (parts.length !== expectedParts) continue;
 
                         let pointTime;
                         let valueOffset = 0;
 
-                        if (hasMicrobitTime) {
+                        if (useMbTime) {
                             const mt = +parts[0];
                             if (mt !== mt) continue; // NaN check
-                            pointTime = mt;
                             valueOffset = 1;
                             // Ajustar T=0 al primer timestamp del micro:bit
                             if (!state.microbitTimeZeroSet) {
                                 state.timeZeroOffset = mt;
                                 state.microbitTimeZeroSet = true;
                             }
+                            // Descartar datos viejos del buffer serial (anteriores a T=0)
+                            if (mt < state.timeZeroOffset) continue;
+                            pointTime = mt;
                         } else {
                             pointTime = batchTime;
                         }
