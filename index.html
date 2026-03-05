@@ -71,6 +71,16 @@
             background: #1b5e20;
         }
 
+        .toolbar-btn.bluetooth {
+            background: #1565c0;
+            color: white;
+            border-color: #1565c0;
+        }
+
+        .toolbar-btn.bluetooth:hover:not(:disabled) {
+            background: #0d47a1;
+        }
+
         .toolbar-separator {
             width: 2px;
             height: 24px;
@@ -696,6 +706,7 @@
     <!-- Toolbar -->
     <div class="toolbar">
         <button id="connectBtn" class="toolbar-btn primary">CONECTAR</button>
+        <button id="connectBluetoothBtn" class="toolbar-btn bluetooth">BLUETOOTH</button>
         <button id="collectBtn" class="toolbar-btn primary" style="display:none;">CAPTURAR</button>
         <button id="stopBtn" class="toolbar-btn" style="display:none;">DETENER</button>
 
@@ -1191,6 +1202,7 @@
             es: {
                 // Toolbar
                 connect: 'CONECTAR',
+                connectBluetooth: 'BLUETOOTH',
                 capture: 'CAPTURAR',
                 stop: 'DETENER',
                 camera: 'CÁMARA',
@@ -1201,6 +1213,7 @@
                 help: 'AYUDA',
                 disconnected: 'DESCONECTADO',
                 connected: 'CONECTADO',
+                connectedBluetooth: 'BLUETOOTH CONECTADO',
                 capturing: 'CAPTURANDO',
                 paused: 'PAUSADO',
                 // Panel lateral
@@ -1319,6 +1332,7 @@
             en: {
                 // Toolbar
                 connect: 'CONNECT',
+                connectBluetooth: 'BLUETOOTH',
                 capture: 'CAPTURE',
                 stop: 'STOP',
                 camera: 'CAMERA',
@@ -1329,6 +1343,7 @@
                 help: 'HELP',
                 disconnected: 'DISCONNECTED',
                 connected: 'CONNECTED',
+                connectedBluetooth: 'BLUETOOTH CONNECTED',
                 capturing: 'CAPTURING',
                 paused: 'PAUSED',
                 // Side panel
@@ -1447,6 +1462,7 @@
             pt: {
                 // Toolbar
                 connect: 'CONECTAR',
+                connectBluetooth: 'BLUETOOTH',
                 capture: 'CAPTURAR',
                 stop: 'PARAR',
                 camera: 'CÂMERA',
@@ -1457,6 +1473,7 @@
                 help: 'AJUDA',
                 disconnected: 'DESCONECTADO',
                 connected: 'CONECTADO',
+                connectedBluetooth: 'BLUETOOTH CONECTADO',
                 capturing: 'CAPTURANDO',
                 paused: 'PAUSADO',
                 // Painel lateral
@@ -1634,6 +1651,7 @@
 
             // Toolbar
             document.getElementById('connectBtn').textContent = t.connect;
+            document.getElementById('connectBluetoothBtn').textContent = t.connectBluetooth;
             document.getElementById('collectBtn').textContent = t.capture;
             document.getElementById('stopBtn').textContent = t.stop;
             document.getElementById('cameraBtn').textContent = t.camera;
@@ -1647,6 +1665,8 @@
             const statusText = document.getElementById('statusText').textContent;
             if (statusText.includes('DESCONECTADO') || statusText.includes('DISCONNECTED') || statusText.includes('DESCONECTADO')) {
                 document.getElementById('statusText').textContent = t.disconnected;
+            } else if (statusText.includes('BLUETOOTH')) {
+                document.getElementById('statusText').textContent = t.connectedBluetooth;
             } else if (statusText.includes('CONECTADO') || statusText.includes('CONNECTED')) {
                 document.getElementById('statusText').textContent = t.connected;
             } else if (statusText.includes('CAPTURANDO') || statusText.includes('CAPTURING')) {
@@ -1972,6 +1992,12 @@
         </div>
     </div>
     <div class="feature-item">
+        <div class="feature-icon" style="color: #1565c0;">●</div>
+        <div class="feature-text">
+            <strong>BLUETOOTH</strong> - Conecta inalámbricamente con la micro:bit vía Bluetooth (UART). Requiere que la micro:bit tenga el servicio Bluetooth UART habilitado en MakeCode. Usa Web Bluetooth API (Chrome/Edge).
+        </div>
+    </div>
+    <div class="feature-item">
         <div class="feature-icon">▶</div>
         <div class="feature-text">
             <strong>CAPTURAR / DETENER</strong> - Inicia y detiene la captura de datos. El tiempo comienza en 0 al presionar CAPTURAR.
@@ -2259,7 +2285,8 @@ while True:
 </div>
 <div class="help-accordion-content collapsed">
     <p><strong>No aparece el puerto:</strong> Verifica cable USB, prueba otro puerto, reinicia navegador.</p>
-    <p><strong>No llegan datos:</strong> Asegúrate de usar serial.writeNumber() + serial.writeLine(""). No envíes texto.</p>
+    <p><strong>Bluetooth no encuentra la micro:bit:</strong> Asegúrate de que la micro:bit tenga un programa con el servicio Bluetooth UART (extensión "bluetooth" en MakeCode). La micro:bit debe estar encendida y cerca. Usa bluetooth.uartWriteNumber() y bluetooth.uartWriteLine("") en lugar de serial.</p>
+    <p><strong>No llegan datos:</strong> Asegúrate de usar serial.writeNumber() + serial.writeLine("") (USB) o bluetooth.uartWriteNumber() + bluetooth.uartWriteLine("") (Bluetooth). No envíes texto.</p>
     <p><strong>Cámara no funciona:</strong> Permite acceso cuando el navegador lo solicite. Verifica que otra app no la use.</p>
     <p><strong>Video no sincroniza:</strong> Activa cámara ANTES de presionar CAPTURAR.</p>
 </div>
@@ -2286,6 +2313,12 @@ while True:
         <div class="feature-icon">●</div>
         <div class="feature-text">
             <strong>CONNECT</strong> - Establishes serial connection with micro:bit via USB. Uses browser's Web Serial API.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon" style="color: #1565c0;">●</div>
+        <div class="feature-text">
+            <strong>BLUETOOTH</strong> - Connects wirelessly to micro:bit via Bluetooth (UART). Requires the micro:bit to have the Bluetooth UART service enabled in MakeCode. Uses Web Bluetooth API (Chrome/Edge).
         </div>
     </div>
     <div class="feature-item">
@@ -2576,7 +2609,8 @@ while True:
 </div>
 <div class="help-accordion-content collapsed">
     <p><strong>Port doesn't appear:</strong> Check USB cable, try another port, restart browser.</p>
-    <p><strong>No data arriving:</strong> Make sure to use serial.writeNumber() + serial.writeLine(""). Don't send text.</p>
+    <p><strong>Bluetooth can't find micro:bit:</strong> Make sure the micro:bit has a program with the Bluetooth UART service ("bluetooth" extension in MakeCode). The micro:bit must be powered on and nearby. Use bluetooth.uartWriteNumber() and bluetooth.uartWriteLine("") instead of serial.</p>
+    <p><strong>No data arriving:</strong> Make sure to use serial.writeNumber() + serial.writeLine("") (USB) or bluetooth.uartWriteNumber() + bluetooth.uartWriteLine("") (Bluetooth). Don't send text.</p>
     <p><strong>Camera not working:</strong> Allow access when browser requests. Check no other app is using it.</p>
     <p><strong>Video doesn't sync:</strong> Activate camera BEFORE pressing CAPTURE.</p>
 </div>
@@ -2603,6 +2637,12 @@ while True:
         <div class="feature-icon">●</div>
         <div class="feature-text">
             <strong>CONECTAR</strong> - Estabelece conexão serial com micro:bit via USB. Usa Web Serial API do navegador.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon" style="color: #1565c0;">●</div>
+        <div class="feature-text">
+            <strong>BLUETOOTH</strong> - Conecta sem fio com micro:bit via Bluetooth (UART). Requer que a micro:bit tenha o serviço Bluetooth UART habilitado no MakeCode. Usa Web Bluetooth API (Chrome/Edge).
         </div>
     </div>
     <div class="feature-item">
@@ -2893,7 +2933,8 @@ while True:
 </div>
 <div class="help-accordion-content collapsed">
     <p><strong>Porta não aparece:</strong> Verifique cabo USB, tente outra porta, reinicie navegador.</p>
-    <p><strong>Dados não chegam:</strong> Certifique-se de usar serial.writeNumber() + serial.writeLine(""). Não envie texto.</p>
+    <p><strong>Bluetooth não encontra a micro:bit:</strong> Certifique-se de que a micro:bit tenha um programa com o serviço Bluetooth UART (extensão "bluetooth" no MakeCode). A micro:bit deve estar ligada e próxima. Use bluetooth.uartWriteNumber() e bluetooth.uartWriteLine("") em vez de serial.</p>
+    <p><strong>Dados não chegam:</strong> Certifique-se de usar serial.writeNumber() + serial.writeLine("") (USB) ou bluetooth.uartWriteNumber() + bluetooth.uartWriteLine("") (Bluetooth). Não envie texto.</p>
     <p><strong>Câmera não funciona:</strong> Permita acesso quando o navegador solicitar. Verifique se outro app não está usando.</p>
     <p><strong>Vídeo não sincroniza:</strong> Ative câmera ANTES de pressionar CAPTURAR.</p>
 </div>
@@ -2931,6 +2972,10 @@ while True:
             port: null,
             reader: null,
             isConnected: false,
+            // Bluetooth
+            btDevice: null,
+            btCharTx: null,
+            isBluetooth: false,
             isCollecting: false,
             rawData: [],  // Array de objetos {time, values: [v1, v2, v3], id}
             selectedPoints: new Set(),
@@ -2966,7 +3011,8 @@ while True:
         // ========== INICIALIZACIÓN ==========
 
         if (!('serial' in navigator)) {
-            alert('Web Serial API no soportada. Usa Chrome, Edge u Opera.');
+            document.getElementById('connectBtn').disabled = true;
+            document.getElementById('connectBtn').title = 'Web Serial API no soportada en este navegador';
         }
 
         // Inicializar configuración
@@ -3423,10 +3469,13 @@ while True:
                 state.port = await navigator.serial.requestPort({ filters });
                 await state.port.open({ baudRate: 115200 });
                 state.isConnected = true;
+                state.isBluetooth = false;
 
                 document.getElementById('connectBtn').style.display = 'none';
+                document.getElementById('connectBluetoothBtn').style.display = 'none';
                 document.getElementById('collectBtn').style.display = 'inline-block';
-                document.getElementById('statusText').textContent = 'CONECTADO';
+                const t = translations[currentLanguage];
+                document.getElementById('statusText').textContent = t.connected;
 
                 // Iniciar loop serial inmediatamente (modo drain: lee y descarta datos)
                 // Esto evita acumulación de datos en el buffer del puerto serial
@@ -3435,6 +3484,124 @@ while True:
                 alert('Error: ' + err.message);
             }
         });
+
+        // ========== CONEXIÓN BLUETOOTH ==========
+        // micro:bit UART Service UUIDs (Nordic UART Service)
+        const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+        const UART_TX_CHAR_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // micro:bit TX (nosotros leemos)
+        const UART_RX_CHAR_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // micro:bit RX (nosotros escribimos)
+
+        let btBuffer = '';
+        let btLoopRunning = false;
+
+        document.getElementById('connectBluetoothBtn').addEventListener('click', async () => {
+            if (!('bluetooth' in navigator)) {
+                const t = translations[currentLanguage];
+                alert(currentLanguage === 'es'
+                    ? 'Web Bluetooth API no soportada. Usa Chrome o Edge en escritorio/Android.'
+                    : currentLanguage === 'pt'
+                    ? 'Web Bluetooth API não suportada. Use Chrome ou Edge no desktop/Android.'
+                    : 'Web Bluetooth API not supported. Use Chrome or Edge on desktop/Android.');
+                return;
+            }
+
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'BBC micro:bit' }],
+                    optionalServices: [UART_SERVICE_UUID]
+                });
+
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(UART_SERVICE_UUID);
+                const txChar = await service.getCharacteristic(UART_TX_CHAR_UUID);
+
+                state.btDevice = device;
+                state.btCharTx = txChar;
+                state.isConnected = true;
+                state.isBluetooth = true;
+
+                // Escuchar desconexión
+                device.addEventListener('gattserverdisconnected', () => {
+                    state.isConnected = false;
+                    state.isBluetooth = false;
+                    state.btDevice = null;
+                    state.btCharTx = null;
+                    btLoopRunning = false;
+                    const t = translations[currentLanguage];
+                    document.getElementById('connectBtn').style.display = 'inline-block';
+                    document.getElementById('connectBluetoothBtn').style.display = 'inline-block';
+                    document.getElementById('collectBtn').style.display = 'none';
+                    document.getElementById('stopBtn').style.display = 'none';
+                    document.getElementById('statusText').textContent = t.disconnected;
+                });
+
+                document.getElementById('connectBtn').style.display = 'none';
+                document.getElementById('connectBluetoothBtn').style.display = 'none';
+                document.getElementById('collectBtn').style.display = 'inline-block';
+                const t = translations[currentLanguage];
+                document.getElementById('statusText').textContent = t.connectedBluetooth;
+
+                // Iniciar lectura Bluetooth via notificaciones
+                startBluetoothLoop(txChar);
+            } catch (err) {
+                if (err.name !== 'NotFoundError') { // Usuario canceló selector
+                    alert('Error Bluetooth: ' + err.message);
+                }
+            }
+        });
+
+        async function startBluetoothLoop(txChar) {
+            if (btLoopRunning) return;
+            btLoopRunning = true;
+            btBuffer = '';
+
+            try {
+                await txChar.startNotifications();
+                txChar.addEventListener('characteristicvaluechanged', (event) => {
+                    const decoder = new TextDecoder();
+                    const chunk = decoder.decode(event.target.value);
+                    btBuffer += chunk;
+
+                    const lines = btBuffer.split('\n');
+                    btBuffer = lines.pop();
+
+                    if (!state.isCollecting) return;
+
+                    const numVars = state.numVariables;
+                    const batchTime = Date.now();
+
+                    for (let li = 0; li < lines.length; li++) {
+                        const line = lines[li];
+                        if (line.length === 0 || line === '\r') continue;
+
+                        const parts = line.split(',');
+                        if (parts.length !== numVars) continue;
+
+                        const values = new Array(numVars);
+                        let valid = true;
+                        for (let vi = 0; vi < numVars; vi++) {
+                            const n = +parts[vi];
+                            if (n !== n) { valid = false; break; }
+                            values[vi] = n;
+                        }
+                        if (!valid) continue;
+
+                        const dataPoint = {
+                            time: batchTime,
+                            values: values,
+                            id: 'd' + (++_dataPointCounter)
+                        };
+
+                        state.rawData.push(dataPoint);
+                        pendingChartPoints.push(dataPoint);
+                        sampleTimestamps.push(batchTime);
+                    }
+                });
+            } catch (err) {
+                console.error('Error en lectura Bluetooth:', err);
+                btLoopRunning = false;
+            }
+        }
 
         document.getElementById('collectBtn').addEventListener('click', () => {
             // Establecer tiempo inicial en el momento de comenzar a capturar
