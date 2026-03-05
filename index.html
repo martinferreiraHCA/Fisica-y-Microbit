@@ -2186,7 +2186,7 @@
     💻 CÓDIGO MICRO:BIT - UNA VARIABLE <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p><strong>Modo estándar - JavaScript (MakeCode):</strong></p>
+    <p><strong>Formato básico</strong> (la app usa el reloj del navegador para el tiempo):</p>
     <div class="code-block">
         <pre>basic.forever(function () {
     serial.writeNumber(input.acceleration(Dimension.X))
@@ -2194,19 +2194,30 @@
     basic.pause(100)  // ~8 Hz real (forever agrega 20ms)
 })</pre>
     </div>
-    <p><strong>Modo alta velocidad - JavaScript (MakeCode):</strong></p>
+    <p><strong>Formato con timestamp del micro:bit (recomendado)</strong>:</p>
+    <p style="font-size:0.9em; color:#555;">Envía <code>tiempo,valor</code> — la app detecta automáticamente que el primer número es el timestamp real del micro:bit en milisegundos (<code>input.runningTime()</code>). Esto da tiempos precisos sin depender del navegador.</p>
     <div class="code-block">
-        <pre>// everyInterval evita el retardo de 20ms de forever
+        <pre>basic.forever(function () {
+    let t = input.runningTime()
+    let valor = input.acceleration(Dimension.X)
+    serial.writeLine("" + t + "," + valor)
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>Alta velocidad con timestamp:</strong></p>
+    <div class="code-block">
+        <pre>// everyInterval evita el retardo oculto de 20ms de forever
 loops.everyInterval(10, function () {
-    serial.writeNumber(input.acceleration(Dimension.X))
-    serial.writeLine("")
+    let t = input.runningTime()
+    let valor = input.acceleration(Dimension.X)
+    serial.writeLine("" + t + "," + valor)
 })  // ~100 Hz real</pre>
     </div>
     <p><strong>Python (MicroPython):</strong></p>
     <div class="code-block">
         <pre>from microbit import *
 while True:
-    print(temperature())
+    print("{},{}".format(running_time(), temperature()))
     sleep(100)</pre>
     </div>
 </div>
@@ -2215,22 +2226,24 @@ while True:
     💻 CÓDIGO MICRO:BIT - MÚLTIPLES VARIABLES <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p>Envía valores <strong>separados por comas</strong>:</p>
-    <p><strong>2 Variables - Modo estándar (JavaScript):</strong></p>
+    <p>Formato: <code>timestamp,var1,var2,...</code> separados por comas. El primer valor es <code>input.runningTime()</code> (ms).</p>
+    <p><strong>2 Variables con timestamp (JavaScript):</strong></p>
     <div class="code-block">
         <pre>basic.forever(function () {
+    let t = input.runningTime()
     let x = input.acceleration(Dimension.X)
     let y = input.acceleration(Dimension.Y)
-    serial.writeLine("" + x + "," + y)
+    serial.writeLine("" + t + "," + x + "," + y)
     basic.pause(100)
 })</pre>
     </div>
     <p><strong>2 Variables - Alta velocidad (JavaScript):</strong></p>
     <div class="code-block">
         <pre>loops.everyInterval(20, function () {
+    let t = input.runningTime()
     let x = input.acceleration(Dimension.X)
     let y = input.acceleration(Dimension.Y)
-    serial.writeLine("" + x + "," + y)
+    serial.writeLine("" + t + "," + x + "," + y)
 })  // ~50 Hz real</pre>
     </div>
     <p><strong>3 Variables (Python):</strong></p>
@@ -2240,9 +2253,54 @@ while True:
     x = accelerometer.get_x()
     y = accelerometer.get_y()
     z = accelerometer.get_z()
-    print("{},{},{}".format(x, y, z))
+    print("{},{},{},{}".format(running_time(), x, y, z))
     sleep(50)</pre>
     </div>
+    <p style="font-size:0.9em; color:#555;"><strong>Nota:</strong> Si no envías timestamp (solo valores), la app usa el reloj del navegador. Pero el reloj del navegador tiene resolución limitada (~16ms) y los datos que llegan en el mismo lote USB/BLE reciben el mismo tiempo. Para fenómenos rápidos, siempre usar <code>input.runningTime()</code>.</p>
+</div>
+
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📶 CÓDIGO MICRO:BIT - BLUETOOTH <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
+    <p>Para enviar datos por <strong>Bluetooth</strong> en vez de USB, usa la extensión <code>bluetooth</code> en MakeCode. Importante: al agregar bluetooth se desactiva el serial USB.</p>
+    <p><strong>1 Variable con timestamp - Bluetooth (recomendado):</strong></p>
+    <div class="code-block">
+        <pre>bluetooth.startUartService()
+
+basic.forever(function () {
+    let t = input.runningTime()
+    let valor = input.acceleration(Dimension.X)
+    bluetooth.uartWriteLine("" + t + "," + valor)
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>2 Variables con timestamp - Bluetooth:</strong></p>
+    <div class="code-block">
+        <pre>bluetooth.startUartService()
+
+basic.forever(function () {
+    let t = input.runningTime()
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    bluetooth.uartWriteLine("" + t + "," + x + "," + y)
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>3 Variables con timestamp - Bluetooth:</strong></p>
+    <div class="code-block">
+        <pre>bluetooth.startUartService()
+
+basic.forever(function () {
+    let t = input.runningTime()
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    let z = input.acceleration(Dimension.Z)
+    bluetooth.uartWriteLine("" + t + "," + x + "," + y + "," + z)
+    basic.pause(50)
+})</pre>
+    </div>
+    <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Importante:</strong> En MakeCode, agregar la extensión <code>bluetooth</code> (menu Extensiones). Al hacerlo se elimina automáticamente la extensión <code>radio</code>. La micro:bit debe estar emparejada con el navegador usando el botón BLUETOOTH de la app.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -2343,6 +2401,7 @@ while True:
         </tr>
     </table>
     <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Recomendación:</strong> Para frecuencias &gt; 10 Hz, usa <code>loops.everyInterval()</code> en vez de <code>basic.forever()</code>. El bloque forever tiene un retardo oculto de 20ms (fiber_sleep) en cada iteración que limita su velocidad máxima a ~50 Hz.</p>
+    <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>¿Por qué usar <code>input.runningTime()</code>?</strong> La ejecución de cada línea de código toma tiempo, y la transmisión USB/Bluetooth agrupa datos en lotes. Si la app usa el reloj del navegador, todos los datos de un mismo lote reciben el mismo timestamp. Enviando <code>input.runningTime()</code> como primer valor, cada dato lleva el instante exacto en que el micro:bit lo midió — independiente de cuándo llegó al navegador.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -2510,7 +2569,7 @@ while True:
     💻 MICRO:BIT CODE - SINGLE VARIABLE <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p><strong>Standard mode - JavaScript (MakeCode):</strong></p>
+    <p><strong>Basic format</strong> (app uses browser clock for timing):</p>
     <div class="code-block">
         <pre>basic.forever(function () {
     serial.writeNumber(input.acceleration(Dimension.X))
@@ -2518,19 +2577,30 @@ while True:
     basic.pause(100)  // ~8 Hz actual (forever adds 20ms)
 })</pre>
     </div>
-    <p><strong>High-speed mode - JavaScript (MakeCode):</strong></p>
+    <p><strong>Format with micro:bit timestamp (recommended)</strong>:</p>
+    <p style="font-size:0.9em; color:#555;">Send <code>time,value</code> — the app auto-detects that the first number is the real micro:bit timestamp in milliseconds (<code>input.runningTime()</code>). This gives precise timing without depending on the browser.</p>
     <div class="code-block">
-        <pre>// everyInterval avoids the 20ms delay of forever
+        <pre>basic.forever(function () {
+    let t = input.runningTime()
+    let value = input.acceleration(Dimension.X)
+    serial.writeLine("" + t + "," + value)
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>High-speed with timestamp:</strong></p>
+    <div class="code-block">
+        <pre>// everyInterval avoids the hidden 20ms delay of forever
 loops.everyInterval(10, function () {
-    serial.writeNumber(input.acceleration(Dimension.X))
-    serial.writeLine("")
+    let t = input.runningTime()
+    let value = input.acceleration(Dimension.X)
+    serial.writeLine("" + t + "," + value)
 })  // ~100 Hz actual</pre>
     </div>
     <p><strong>Python (MicroPython):</strong></p>
     <div class="code-block">
         <pre>from microbit import *
 while True:
-    print(temperature())
+    print("{},{}".format(running_time(), temperature()))
     sleep(100)</pre>
     </div>
 </div>
@@ -2539,22 +2609,24 @@ while True:
     💻 MICRO:BIT CODE - MULTIPLE VARIABLES <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p>Send values <strong>separated by commas</strong>:</p>
-    <p><strong>2 Variables - Standard (JavaScript):</strong></p>
+    <p>Format: <code>timestamp,var1,var2,...</code> separated by commas. The first value is <code>input.runningTime()</code> (ms).</p>
+    <p><strong>2 Variables with timestamp (JavaScript):</strong></p>
     <div class="code-block">
         <pre>basic.forever(function () {
+    let t = input.runningTime()
     let x = input.acceleration(Dimension.X)
     let y = input.acceleration(Dimension.Y)
-    serial.writeLine("" + x + "," + y)
+    serial.writeLine("" + t + "," + x + "," + y)
     basic.pause(100)
 })</pre>
     </div>
     <p><strong>2 Variables - High-speed (JavaScript):</strong></p>
     <div class="code-block">
         <pre>loops.everyInterval(20, function () {
+    let t = input.runningTime()
     let x = input.acceleration(Dimension.X)
     let y = input.acceleration(Dimension.Y)
-    serial.writeLine("" + x + "," + y)
+    serial.writeLine("" + t + "," + x + "," + y)
 })  // ~50 Hz actual</pre>
     </div>
     <p><strong>3 Variables (Python):</strong></p>
@@ -2564,9 +2636,54 @@ while True:
     x = accelerometer.get_x()
     y = accelerometer.get_y()
     z = accelerometer.get_z()
-    print("{},{},{}".format(x, y, z))
+    print("{},{},{},{}".format(running_time(), x, y, z))
     sleep(50)</pre>
     </div>
+    <p style="font-size:0.9em; color:#555;"><strong>Note:</strong> If you don't send a timestamp (values only), the app uses the browser clock. But the browser clock has limited resolution (~16ms) and data arriving in the same USB/BLE batch receives the same timestamp. For fast phenomena, always use <code>input.runningTime()</code>.</p>
+</div>
+
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📶 MICRO:BIT CODE - BLUETOOTH <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
+    <p>To send data via <strong>Bluetooth</strong> instead of USB, use the <code>bluetooth</code> extension in MakeCode. Important: adding bluetooth disables USB serial.</p>
+    <p><strong>1 Variable with timestamp - Bluetooth (recommended):</strong></p>
+    <div class="code-block">
+        <pre>bluetooth.startUartService()
+
+basic.forever(function () {
+    let t = input.runningTime()
+    let value = input.acceleration(Dimension.X)
+    bluetooth.uartWriteLine("" + t + "," + value)
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>2 Variables with timestamp - Bluetooth:</strong></p>
+    <div class="code-block">
+        <pre>bluetooth.startUartService()
+
+basic.forever(function () {
+    let t = input.runningTime()
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    bluetooth.uartWriteLine("" + t + "," + x + "," + y)
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>3 Variables with timestamp - Bluetooth:</strong></p>
+    <div class="code-block">
+        <pre>bluetooth.startUartService()
+
+basic.forever(function () {
+    let t = input.runningTime()
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    let z = input.acceleration(Dimension.Z)
+    bluetooth.uartWriteLine("" + t + "," + x + "," + y + "," + z)
+    basic.pause(50)
+})</pre>
+    </div>
+    <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Important:</strong> In MakeCode, add the <code>bluetooth</code> extension (Extensions menu). This automatically removes the <code>radio</code> extension. The micro:bit must be paired with the browser using the app's BLUETOOTH button.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -2667,6 +2784,7 @@ while True:
         </tr>
     </table>
     <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Recommendation:</strong> For frequencies &gt; 10 Hz, use <code>loops.everyInterval()</code> instead of <code>basic.forever()</code>. The forever block has a hidden 20ms delay (fiber_sleep) in each iteration that caps its maximum speed at ~50 Hz.</p>
+    <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Why use <code>input.runningTime()</code>?</strong> Each line of code takes time to execute, and USB/Bluetooth transmission groups data into batches. If the app uses the browser clock, all data from the same batch gets the same timestamp. By sending <code>input.runningTime()</code> as the first value, each data point carries the exact moment the micro:bit measured it — regardless of when it arrived at the browser.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -2834,7 +2952,7 @@ while True:
     💻 CÓDIGO MICRO:BIT - UMA VARIÁVEL <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p><strong>Modo padrão - JavaScript (MakeCode):</strong></p>
+    <p><strong>Formato básico</strong> (o app usa o relógio do navegador para o tempo):</p>
     <div class="code-block">
         <pre>basic.forever(function () {
     serial.writeNumber(input.acceleration(Dimension.X))
@@ -2842,19 +2960,30 @@ while True:
     basic.pause(100)  // ~8 Hz real (forever adiciona 20ms)
 })</pre>
     </div>
-    <p><strong>Modo alta velocidade - JavaScript (MakeCode):</strong></p>
+    <p><strong>Formato com timestamp do micro:bit (recomendado)</strong>:</p>
+    <p style="font-size:0.9em; color:#555;">Envie <code>tempo,valor</code> — o app detecta automaticamente que o primeiro número é o timestamp real do micro:bit em milissegundos (<code>input.runningTime()</code>). Isso fornece tempos precisos sem depender do navegador.</p>
     <div class="code-block">
-        <pre>// everyInterval evita o atraso de 20ms do forever
+        <pre>basic.forever(function () {
+    let t = input.runningTime()
+    let valor = input.acceleration(Dimension.X)
+    serial.writeLine("" + t + "," + valor)
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>Alta velocidade com timestamp:</strong></p>
+    <div class="code-block">
+        <pre>// everyInterval evita o atraso oculto de 20ms do forever
 loops.everyInterval(10, function () {
-    serial.writeNumber(input.acceleration(Dimension.X))
-    serial.writeLine("")
+    let t = input.runningTime()
+    let valor = input.acceleration(Dimension.X)
+    serial.writeLine("" + t + "," + valor)
 })  // ~100 Hz real</pre>
     </div>
     <p><strong>Python (MicroPython):</strong></p>
     <div class="code-block">
         <pre>from microbit import *
 while True:
-    print(temperature())
+    print("{},{}".format(running_time(), temperature()))
     sleep(100)</pre>
     </div>
 </div>
@@ -2863,22 +2992,24 @@ while True:
     💻 CÓDIGO MICRO:BIT - MÚLTIPLAS VARIÁVEIS <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p>Envie valores <strong>separados por vírgulas</strong>:</p>
-    <p><strong>2 Variáveis - Modo padrão (JavaScript):</strong></p>
+    <p>Formato: <code>timestamp,var1,var2,...</code> separados por vírgulas. O primeiro valor é <code>input.runningTime()</code> (ms).</p>
+    <p><strong>2 Variáveis com timestamp (JavaScript):</strong></p>
     <div class="code-block">
         <pre>basic.forever(function () {
+    let t = input.runningTime()
     let x = input.acceleration(Dimension.X)
     let y = input.acceleration(Dimension.Y)
-    serial.writeLine("" + x + "," + y)
+    serial.writeLine("" + t + "," + x + "," + y)
     basic.pause(100)
 })</pre>
     </div>
     <p><strong>2 Variáveis - Alta velocidade (JavaScript):</strong></p>
     <div class="code-block">
         <pre>loops.everyInterval(20, function () {
+    let t = input.runningTime()
     let x = input.acceleration(Dimension.X)
     let y = input.acceleration(Dimension.Y)
-    serial.writeLine("" + x + "," + y)
+    serial.writeLine("" + t + "," + x + "," + y)
 })  // ~50 Hz real</pre>
     </div>
     <p><strong>3 Variáveis (Python):</strong></p>
@@ -2888,9 +3019,54 @@ while True:
     x = accelerometer.get_x()
     y = accelerometer.get_y()
     z = accelerometer.get_z()
-    print("{},{},{}".format(x, y, z))
+    print("{},{},{},{}".format(running_time(), x, y, z))
     sleep(50)</pre>
     </div>
+    <p style="font-size:0.9em; color:#555;"><strong>Nota:</strong> Se você não enviar timestamp (apenas valores), o app usa o relógio do navegador. Mas o relógio do navegador tem resolução limitada (~16ms) e dados que chegam no mesmo lote USB/BLE recebem o mesmo timestamp. Para fenômenos rápidos, sempre use <code>input.runningTime()</code>.</p>
+</div>
+
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    📶 CÓDIGO MICRO:BIT - BLUETOOTH <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
+    <p>Para enviar dados por <strong>Bluetooth</strong> em vez de USB, use a extensão <code>bluetooth</code> no MakeCode. Importante: ao adicionar bluetooth, o serial USB é desativado.</p>
+    <p><strong>1 Variável com timestamp - Bluetooth (recomendado):</strong></p>
+    <div class="code-block">
+        <pre>bluetooth.startUartService()
+
+basic.forever(function () {
+    let t = input.runningTime()
+    let valor = input.acceleration(Dimension.X)
+    bluetooth.uartWriteLine("" + t + "," + valor)
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>2 Variáveis com timestamp - Bluetooth:</strong></p>
+    <div class="code-block">
+        <pre>bluetooth.startUartService()
+
+basic.forever(function () {
+    let t = input.runningTime()
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    bluetooth.uartWriteLine("" + t + "," + x + "," + y)
+    basic.pause(100)
+})</pre>
+    </div>
+    <p><strong>3 Variáveis com timestamp - Bluetooth:</strong></p>
+    <div class="code-block">
+        <pre>bluetooth.startUartService()
+
+basic.forever(function () {
+    let t = input.runningTime()
+    let x = input.acceleration(Dimension.X)
+    let y = input.acceleration(Dimension.Y)
+    let z = input.acceleration(Dimension.Z)
+    bluetooth.uartWriteLine("" + t + "," + x + "," + y + "," + z)
+    basic.pause(50)
+})</pre>
+    </div>
+    <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Importante:</strong> No MakeCode, adicione a extensão <code>bluetooth</code> (menu Extensões). Isso remove automaticamente a extensão <code>radio</code>. A micro:bit deve ser emparelhada com o navegador usando o botão BLUETOOTH do aplicativo.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -2991,6 +3167,7 @@ while True:
         </tr>
     </table>
     <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Recomendação:</strong> Para frequências &gt; 10 Hz, use <code>loops.everyInterval()</code> em vez de <code>basic.forever()</code>. O bloco forever tem um atraso oculto de 20ms (fiber_sleep) em cada iteração que limita sua velocidade máxima a ~50 Hz.</p>
+    <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Por que usar <code>input.runningTime()</code>?</strong> Cada linha de código leva tempo para executar, e a transmissão USB/Bluetooth agrupa dados em lotes. Se o app usar o relógio do navegador, todos os dados do mesmo lote recebem o mesmo timestamp. Enviando <code>input.runningTime()</code> como primeiro valor, cada dado carrega o instante exato em que o micro:bit o mediu — independente de quando chegou ao navegador.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -3675,42 +3852,38 @@ while True:
                     const numVars = state.numVariables;
                     const batchTime = Date.now();
 
-                    // Contar líneas válidas para interpolación
-                    let validCount = 0;
-                    for (let li = 0; li < lines.length; li++) {
-                        const line = lines[li];
-                        if (line.length === 0 || line === '\r') continue;
-                        const parts = line.split(',');
-                        if (parts.length !== numVars) continue;
-                        validCount++;
-                    }
-
-                    const batchInterval = _lastBatchTime > 0 ? batchTime - _lastBatchTime : 0;
-                    let validIdx = 0;
-
                     for (let li = 0; li < lines.length; li++) {
                         const line = lines[li];
                         if (line.length === 0 || line === '\r') continue;
 
                         const parts = line.split(',');
-                        if (parts.length !== numVars) continue;
+                        const hasMicrobitTime = parts.length === numVars + 1;
+                        if (parts.length !== numVars && !hasMicrobitTime) continue;
+
+                        let pointTime;
+                        let valueOffset = 0;
+
+                        if (hasMicrobitTime) {
+                            const mt = +parts[0];
+                            if (mt !== mt) continue;
+                            pointTime = mt;
+                            valueOffset = 1;
+                            if (!state.microbitTimeZeroSet) {
+                                state.timeZeroOffset = mt;
+                                state.microbitTimeZeroSet = true;
+                            }
+                        } else {
+                            pointTime = batchTime;
+                        }
 
                         const values = new Array(numVars);
                         let valid = true;
                         for (let vi = 0; vi < numVars; vi++) {
-                            const n = +parts[vi];
+                            const n = +parts[vi + valueOffset];
                             if (n !== n) { valid = false; break; }
                             values[vi] = n;
                         }
                         if (!valid) continue;
-
-                        // Interpolar timestamp dentro del lote
-                        let pointTime;
-                        if (validCount <= 1 || batchInterval <= 0) {
-                            pointTime = batchTime;
-                        } else {
-                            pointTime = _lastBatchTime + (batchInterval * (validIdx + 1)) / validCount;
-                        }
 
                         const dataPoint = {
                             time: pointTime,
@@ -3720,10 +3893,8 @@ while True:
 
                         state.rawData.push(dataPoint);
                         pendingChartPoints.push(dataPoint);
-                        sampleTimestamps.push(pointTime);
-                        validIdx++;
+                        sampleTimestamps.push(batchTime);
                     }
-                    _lastBatchTime = batchTime;
                 });
             } catch (err) {
                 console.error('Error en lectura Bluetooth:', err);
@@ -3733,12 +3904,13 @@ while True:
 
         document.getElementById('collectBtn').addEventListener('click', () => {
             // Establecer tiempo inicial en el momento de comenzar a capturar
+            // Se sobrescribe al recibir el primer timestamp del micro:bit (formato N+1)
             state.timeZeroOffset = Date.now();
+            state.microbitTimeZeroSet = false;
 
             // Limpiar buffers de streaming
             pendingChartPoints = [];
             sampleTimestamps = [];
-            _lastBatchTime = 0;
             lastTableUpdate = 0;
             lastSamplingRateUpdate = 0;
             // Reset scale smoothing
@@ -4021,7 +4193,6 @@ while True:
         //   - Parsing numérico inline sin .map()/.every()
         //   - Sin .trim() redundante en partes numéricas
         let _dataPointCounter = 0;
-        let _lastBatchTime = 0; // Para interpolación de timestamps dentro de cada lote
 
         async function startSerialLoop() {
             if (serialLoopRunning) return;
@@ -4047,49 +4218,45 @@ while True:
                     if (!state.isCollecting) continue;
 
                     // Modo captura: parsear inline y agregar a buffers
-                    // Interpolación de timestamps: distribuir uniformemente dentro del lote
-                    // para evitar timestamps duplicados cuando llegan múltiples líneas juntas
+                    // Formato auto-detectado:
+                    //   N valores   → sin timestamp (usa Date.now() del browser)
+                    //   N+1 valores → primer valor es input.runningTime() del micro:bit (ms)
                     const batchTime = Date.now();
                     const batchLen = lines.length;
 
-                    // Contar líneas válidas primero para interpolación precisa
-                    let validCount = 0;
-                    for (let li = 0; li < batchLen; li++) {
-                        const line = lines[li];
-                        if (line.length === 0 || line === '\r') continue;
-                        const parts = line.split(',');
-                        if (parts.length !== numVars) continue;
-                        validCount++;
-                    }
-
-                    // Calcular intervalo de interpolación
-                    const batchInterval = _lastBatchTime > 0 ? batchTime - _lastBatchTime : 0;
-                    let validIdx = 0;
-
                     for (let li = 0; li < batchLen; li++) {
                         const line = lines[li];
                         if (line.length === 0 || line === '\r') continue;
 
-                        // Parsing inline optimizado: split + Number() directo
                         const parts = line.split(',');
-                        if (parts.length !== numVars) continue;
+                        const hasMicrobitTime = parts.length === numVars + 1;
+                        if (parts.length !== numVars && !hasMicrobitTime) continue;
+
+                        let pointTime;
+                        let valueOffset = 0;
+
+                        if (hasMicrobitTime) {
+                            const mt = +parts[0];
+                            if (mt !== mt) continue; // NaN check
+                            pointTime = mt;
+                            valueOffset = 1;
+                            // Ajustar T=0 al primer timestamp del micro:bit
+                            if (!state.microbitTimeZeroSet) {
+                                state.timeZeroOffset = mt;
+                                state.microbitTimeZeroSet = true;
+                            }
+                        } else {
+                            pointTime = batchTime;
+                        }
 
                         const values = new Array(numVars);
                         let valid = true;
                         for (let vi = 0; vi < numVars; vi++) {
-                            const n = +parts[vi]; // Unary + es más rápido que parseFloat
-                            if (n !== n) { valid = false; break; } // NaN check sin isNaN()
+                            const n = +parts[vi + valueOffset];
+                            if (n !== n) { valid = false; break; }
                             values[vi] = n;
                         }
                         if (!valid) continue;
-
-                        // Interpolar timestamp: distribuir entre lastBatch y batchTime
-                        let pointTime;
-                        if (validCount <= 1 || batchInterval <= 0) {
-                            pointTime = batchTime;
-                        } else {
-                            pointTime = _lastBatchTime + (batchInterval * (validIdx + 1)) / validCount;
-                        }
 
                         const dataPoint = {
                             time: pointTime,
@@ -4099,10 +4266,8 @@ while True:
 
                         state.rawData.push(dataPoint);
                         pendingChartPoints.push(dataPoint);
-                        sampleTimestamps.push(pointTime);
-                        validIdx++;
+                        sampleTimestamps.push(batchTime);
                     }
-                    _lastBatchTime = batchTime;
                 }
             } catch (err) {
                 if (err.name !== 'NetworkError') {
