@@ -837,6 +837,11 @@
                         <input type="checkbox" id="microbitTimestamp" style="width: auto; cursor: pointer;" title="Marcar si el código del micro:bit envía input.runningTime() como primer valor de cada línea">
                     </div>
 
+                    <div class="input-row" style="align-items: center;">
+                        <label for="spikeFilter" style="cursor: pointer;">Filtro de picos</label>
+                        <input type="checkbox" id="spikeFilter" style="width: auto; cursor: pointer;" title="Descarta lecturas anómalas causadas por errores de comunicación serial/Bluetooth">
+                    </div>
+
                     <!-- Variable 1 -->
                     <div class="variable-config" id="var1Config">
                         <h4>Variable 1</h4>
@@ -1273,6 +1278,8 @@
                 varConfig: 'CONFIGURACIÓN DE VARIABLES',
                 numVars: 'Número de Variables',
                 microbitTimestamp: 'Micro:bit envía timestamp',
+                spikeFilter: 'Filtro de picos',
+                spikeFilterTitle: 'Descarta lecturas anómalas causadas por errores de comunicación serial/Bluetooth',
                 varName: 'Nombre Variable',
                 varColor: 'Color',
                 applyVarConfig: 'APLICAR CONFIGURACIÓN',
@@ -1414,6 +1421,8 @@
                 varConfig: 'VARIABLE CONFIGURATION',
                 numVars: 'Number of Variables',
                 microbitTimestamp: 'Micro:bit sends timestamp',
+                spikeFilter: 'Spike filter',
+                spikeFilterTitle: 'Discard anomalous readings caused by serial/Bluetooth communication errors',
                 varName: 'Variable Name',
                 varColor: 'Color',
                 applyVarConfig: 'APPLY CONFIGURATION',
@@ -1555,6 +1564,8 @@
                 varConfig: 'CONFIGURAÇÃO DE VARIÁVEIS',
                 numVars: 'Número de Variáveis',
                 microbitTimestamp: 'Micro:bit envia timestamp',
+                spikeFilter: 'Filtro de picos',
+                spikeFilterTitle: 'Descarta leituras anômalas causadas por erros de comunicação serial/Bluetooth',
                 varName: 'Nome da Variável',
                 varColor: 'Cor',
                 applyVarConfig: 'APLICAR CONFIGURAÇÃO',
@@ -1824,6 +1835,10 @@
                     label.textContent = t.fitGraph;
                 } else if (text.startsWith('Micro:bit env') || text.startsWith('Micro:bit sends')) {
                     label.textContent = t.microbitTimestamp;
+                } else if (text.startsWith('Filtro de picos') || text.startsWith('Spike filter')) {
+                    label.textContent = t.spikeFilter;
+                    const sfCb = document.getElementById('spikeFilter');
+                    if (sfCb) sfCb.title = t.spikeFilterTitle;
                 } else if (text.startsWith('Desde Punto') || text.startsWith('From Point') || text.startsWith('Do Ponto')) {
                     label.textContent = t.fromPoint;
                 } else if (text.startsWith('Hasta Punto') || text.startsWith('To Point') || text.startsWith('Até o Ponto')) {
@@ -3246,6 +3261,7 @@ basic.forever(function () {
             // Configuración de variables
             numVariables: 1,
             microbitTimestamp: false,  // true si el micro:bit envía input.runningTime() como primer valor
+            spikeFilter: false,       // true para filtrar picos anómalos de comunicación
             variables: [
                 { name: 'Variable 1', color: '#000000' },
                 { name: 'Variable 2', color: '#ff0000' },
@@ -3302,6 +3318,12 @@ basic.forever(function () {
 
         document.getElementById('microbitTimestamp').addEventListener('change', function() {
             state.microbitTimestamp = this.checked;
+        });
+
+        document.getElementById('spikeFilter').addEventListener('change', function() {
+            state.spikeFilter = this.checked;
+            // Limpiar historial del filtro al cambiar
+            _spikeFilterHistory = {};
         });
 
         // Click en la advertencia de formato → corregir automáticamente el checkbox
@@ -3926,6 +3948,9 @@ basic.forever(function () {
                         }
                         if (!valid) continue;
 
+                        // Filtro de picos: descartar valores anómalos
+                        if (state.spikeFilter && hasSpikeValues(values)) continue;
+
                         const dataPoint = {
                             time: pointTime,
                             values: values,
@@ -3956,6 +3981,7 @@ basic.forever(function () {
             lastSamplingRateUpdate = 0;
             _formatMismatchCount = 0;
             _lastMismatchParts = 0;
+            _spikeFilterHistory = {};
             document.getElementById('formatWarning').style.display = 'none';
             // Reset scale smoothing
             currentYMin = {};
@@ -4247,6 +4273,69 @@ basic.forever(function () {
             }
         }
 
+        // ========== FILTRO DE PICOS ==========
+        // Detecta y descarta lecturas anómalas causadas por errores de
+        // comunicación serial/Bluetooth (bytes perdidos, valores truncados).
+        // Usa una ventana de valores recientes por variable para detectar outliers
+        // mediante la desviación mediana absoluta (MAD).
+        let _spikeFilterHistory = {}; // {varIndex: [últimos valores]}
+        const SPIKE_WINDOW = 5;       // Tamaño de ventana de historial
+        const SPIKE_THRESHOLD = 4;    // Factor de sensibilidad (más alto = menos filtrado)
+
+        // Chequea si un valor es un pico anómalo para una variable dada.
+        // Solo verifica, NO modifica el historial.
+        function isSpikeValue(varIndex, value) {
+            if (!_spikeFilterHistory[varIndex]) {
+                _spikeFilterHistory[varIndex] = [];
+            }
+            const history = _spikeFilterHistory[varIndex];
+
+            // Si no hay suficiente historial, aceptar el valor
+            if (history.length < SPIKE_WINDOW) {
+                return false;
+            }
+
+            // Calcular mediana del historial
+            const sorted = history.slice().sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            const median = sorted.length % 2 === 0
+                ? (sorted[mid - 1] + sorted[mid]) / 2
+                : sorted[mid];
+
+            // Calcular MAD (Median Absolute Deviation)
+            const deviations = sorted.map(v => Math.abs(v - median));
+            deviations.sort((a, b) => a - b);
+            const madMid = Math.floor(deviations.length / 2);
+            const mad = deviations.length % 2 === 0
+                ? (deviations[madMid - 1] + deviations[madMid]) / 2
+                : deviations[madMid];
+
+            // Umbral adaptativo: si MAD es muy pequeño (señal estable), usar
+            // un mínimo basado en la magnitud de la mediana
+            const minDeviation = Math.max(mad * 1.4826, Math.abs(median) * 0.1, 10);
+            const distance = Math.abs(value - median);
+
+            return distance > minDeviation * SPIKE_THRESHOLD;
+        }
+
+        // Verifica si un conjunto de valores contiene picos.
+        // Si todas las variables son válidas, actualiza el historial.
+        // Si alguna es un pico, descarta todo el punto sin modificar historial.
+        function hasSpikeValues(values) {
+            for (let vi = 0; vi < values.length; vi++) {
+                if (isSpikeValue(vi, values[vi])) return true;
+            }
+            // Todas las variables pasaron → actualizar historial
+            for (let vi = 0; vi < values.length; vi++) {
+                if (!_spikeFilterHistory[vi]) _spikeFilterHistory[vi] = [];
+                _spikeFilterHistory[vi].push(values[vi]);
+                if (_spikeFilterHistory[vi].length > SPIKE_WINDOW) {
+                    _spikeFilterHistory[vi].shift();
+                }
+            }
+            return false;
+        }
+
         // Loop serial continuo - OPTIMIZADO para mínima latencia
         // Pipeline: read() → split → parse → buffer (sin rendering)
         // Optimizaciones:
@@ -4329,6 +4418,9 @@ basic.forever(function () {
                             values[vi] = n;
                         }
                         if (!valid) continue;
+
+                        // Filtro de picos: descartar valores anómalos
+                        if (state.spikeFilter && hasSpikeValues(values)) continue;
 
                         const dataPoint = {
                             time: pointTime,
