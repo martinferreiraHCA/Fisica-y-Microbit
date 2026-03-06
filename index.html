@@ -785,6 +785,7 @@
         </select>
 
         <span class="status-text" id="pointInfo" style="display: none; background: #ffebee; border-color: #ff0000; color: #d32f2f;"></span>
+        <span class="status-text" id="formatWarning" style="display: none; background: #fff3e0; border-color: #ff9800; color: #e65100; font-size: 0.85em; cursor: pointer;" title="Click para más info"></span>
         <span class="status-text" id="statusText">DESCONECTADO</span>
     </div>
 
@@ -1265,6 +1266,9 @@
                 connectedBluetooth: 'BLUETOOTH CONECTADO',
                 capturing: 'CAPTURANDO',
                 paused: 'PAUSADO',
+                formatWarn: '⚠ Datos llegan ({got} cols) pero se esperan {exp}.',
+                formatHintEnable: ' Activa "Micro:bit envía timestamp"',
+                formatHintDisable: ' Desactiva "Micro:bit envía timestamp"',
                 // Panel lateral
                 varConfig: 'CONFIGURACIÓN DE VARIABLES',
                 numVars: 'Número de Variables',
@@ -1403,6 +1407,9 @@
                 connectedBluetooth: 'BLUETOOTH CONNECTED',
                 capturing: 'CAPTURING',
                 paused: 'PAUSED',
+                formatWarn: '⚠ Data arriving ({got} cols) but {exp} expected.',
+                formatHintEnable: ' Enable "Micro:bit sends timestamp"',
+                formatHintDisable: ' Disable "Micro:bit sends timestamp"',
                 // Side panel
                 varConfig: 'VARIABLE CONFIGURATION',
                 numVars: 'Number of Variables',
@@ -1541,6 +1548,9 @@
                 connectedBluetooth: 'BLUETOOTH CONECTADO',
                 capturing: 'CAPTURANDO',
                 paused: 'PAUSADO',
+                formatWarn: '⚠ Dados chegam ({got} cols) mas {exp} esperadas.',
+                formatHintEnable: ' Ative "Micro:bit envia timestamp"',
+                formatHintDisable: ' Desative "Micro:bit envia timestamp"',
                 // Painel lateral
                 varConfig: 'CONFIGURAÇÃO DE VARIÁVEIS',
                 numVars: 'Número de Variáveis',
@@ -3294,6 +3304,15 @@ basic.forever(function () {
             state.microbitTimestamp = this.checked;
         });
 
+        // Click en la advertencia de formato → corregir automáticamente el checkbox
+        document.getElementById('formatWarning').addEventListener('click', function() {
+            const cb = document.getElementById('microbitTimestamp');
+            cb.checked = !cb.checked;
+            state.microbitTimestamp = cb.checked;
+            _formatMismatchCount = 0;
+            this.style.display = 'none';
+        });
+
         // Color previews
         ['var1', 'var2', 'var3'].forEach((varId, idx) => {
             const colorInput = document.getElementById(varId + 'Color');
@@ -3875,7 +3894,11 @@ basic.forever(function () {
                         if (line.length === 0 || line === '\r') continue;
 
                         const parts = line.split(',');
-                        if (parts.length !== expectedParts) continue;
+                        if (parts.length !== expectedParts) {
+                            _formatMismatchCount++;
+                            _lastMismatchParts = parts.length;
+                            continue;
+                        }
 
                         let pointTime;
                         let valueOffset = 0;
@@ -3931,6 +3954,9 @@ basic.forever(function () {
             sampleTimestamps = [];
             lastTableUpdate = 0;
             lastSamplingRateUpdate = 0;
+            _formatMismatchCount = 0;
+            _lastMismatchParts = 0;
+            document.getElementById('formatWarning').style.display = 'none';
             // Reset scale smoothing
             currentYMin = {};
             currentYMax = {};
@@ -3958,6 +3984,7 @@ basic.forever(function () {
             chartDatasetsInitialized = false;
             stopVideoRecording();
             stopRenderLoop();
+            document.getElementById('formatWarning').style.display = 'none';
 
             // Flush puntos pendientes
             if (pendingChartPoints.length > 0) {
@@ -4188,6 +4215,23 @@ basic.forever(function () {
                     document.getElementById('exportBtn').disabled = state.rawData.length === 0;
                     document.getElementById('saveGraphBtn').disabled = state.rawData.length === 0;
                     document.getElementById('setZeroBtn').disabled = state.selectedPoints.size !== 1;
+
+                    // Mostrar advertencia si hay datos llegando con formato incorrecto
+                    const fwEl = document.getElementById('formatWarning');
+                    if (_formatMismatchCount > 0 && state.rawData.length === 0) {
+                        const tr = translations[currentLanguage];
+                        const useMbTime = state.microbitTimestamp;
+                        const expected = useMbTime ? state.numVariables + 1 : state.numVariables;
+                        const hint = _lastMismatchParts === state.numVariables + 1 && !useMbTime
+                            ? tr.formatHintEnable
+                            : _lastMismatchParts === state.numVariables && useMbTime
+                            ? tr.formatHintDisable
+                            : '';
+                        fwEl.textContent = tr.formatWarn.replace('{got}', _lastMismatchParts).replace('{exp}', expected) + hint;
+                        fwEl.style.display = 'inline-block';
+                    } else {
+                        fwEl.style.display = 'none';
+                    }
                 }
 
                 renderLoopId = requestAnimationFrame(renderFrame);
@@ -4211,6 +4255,8 @@ basic.forever(function () {
         //   - Parsing numérico inline sin .map()/.every()
         //   - Sin .trim() redundante en partes numéricas
         let _dataPointCounter = 0;
+        let _formatMismatchCount = 0;   // Líneas descartadas por formato incorrecto
+        let _lastMismatchParts = 0;     // Número de columnas de la última línea descartada
 
         async function startSerialLoop() {
             if (serialLoopRunning) return;
@@ -4250,7 +4296,11 @@ basic.forever(function () {
                         if (line.length === 0 || line === '\r') continue;
 
                         const parts = line.split(',');
-                        if (parts.length !== expectedParts) continue;
+                        if (parts.length !== expectedParts) {
+                            _formatMismatchCount++;
+                            _lastMismatchParts = parts.length;
+                            continue;
+                        }
 
                         let pointTime;
                         let valueOffset = 0;
