@@ -3983,10 +3983,13 @@ basic.forever(function () {
             _lastMismatchParts = 0;
             _spikeFilterHistory = {};
             document.getElementById('formatWarning').style.display = 'none';
-            // Reset scale smoothing
+            // Reset scale smoothing y tracking incremental
             currentYMin = {};
             currentYMax = {};
             scaleInitialized = {};
+            datasetYMin = {};
+            datasetYMax = {};
+            chartDirty = false;
 
             // Inicializar datasets vacíos en las gráficas para push incremental
             initializeChartDatasets();
@@ -4115,10 +4118,16 @@ basic.forever(function () {
 
         const LIVE_WINDOW_MAX_POINTS = 600;  // Máx puntos visibles en chart durante streaming
         const SCALE_SMOOTHING = 0.15;        // Factor de suavizado exponencial para eje Y
+        const RENDER_INTERVAL = 33;          // ~30fps en vez de 60fps para menor carga de CPU
         let renderLoopId = null;             // ID del requestAnimationFrame
+        let lastRenderTime = 0;              // Timestamp del último render efectivo
         let currentYMin = {};                // {chartIdx: currentMin} - escala Y suavizada
         let currentYMax = {};                // {chartIdx: currentMax} - escala Y suavizada
         let scaleInitialized = {};           // {chartIdx: bool}
+        let chartDirty = false;              // Flag: hay datos nuevos que renderizar
+        // Tracking incremental de min/max por dataset para evitar O(n) cada frame
+        let datasetYMin = {};                // {chartIdx: {dsIdx: min}}
+        let datasetYMax = {};                // {chartIdx: {dsIdx: max}}
 
         // Push incremental de nuevos puntos con ventana deslizante
         // Mantiene máximo LIVE_WINDOW_MAX_POINTS en el chart para rendimiento constante
@@ -4145,17 +4154,34 @@ basic.forever(function () {
                             const xVarIdx = parseInt(config.xAxis.replace('var', ''));
                             xVal = d.values[xVarIdx];
                         }
+                        const yVal = d.values[varIdx];
                         dataset.data.push({
                             x: xVal,
-                            y: d.values[varIdx],
+                            y: yVal,
                             id: d.id
                         });
+                        // Tracking incremental de min/max
+                        if (!datasetYMin[chartIdx]) { datasetYMin[chartIdx] = {}; datasetYMax[chartIdx] = {}; }
+                        if (datasetYMin[chartIdx][dsIdx] === undefined || yVal < datasetYMin[chartIdx][dsIdx]) {
+                            datasetYMin[chartIdx][dsIdx] = yVal;
+                        }
+                        if (datasetYMax[chartIdx][dsIdx] === undefined || yVal > datasetYMax[chartIdx][dsIdx]) {
+                            datasetYMax[chartIdx][dsIdx] = yVal;
+                        }
                     }
 
                     // Ventana deslizante: podar puntos antiguos para rendimiento constante
                     if (dataset.data.length > LIVE_WINDOW_MAX_POINTS) {
                         const excess = dataset.data.length - LIVE_WINDOW_MAX_POINTS;
                         dataset.data.splice(0, excess);
+                        // Recalcular min/max solo cuando se podan puntos (infrecuente vs cada frame)
+                        let yMin = Infinity, yMax = -Infinity;
+                        for (const pt of dataset.data) {
+                            if (pt.y < yMin) yMin = pt.y;
+                            if (pt.y > yMax) yMax = pt.y;
+                        }
+                        datasetYMin[chartIdx][dsIdx] = yMin;
+                        datasetYMax[chartIdx][dsIdx] = yMax;
                     }
                 }
             }
@@ -4163,14 +4189,18 @@ basic.forever(function () {
 
         // Suavizado exponencial del eje Y (inspirado en Smoothie.js scaleSmoothing)
         // Evita saltos bruscos cuando el rango de datos cambia
+        // OPTIMIZADO: usa min/max pre-calculados incrementalmente en pushNewDataToCharts
         function applySmoothScale(chartIdx, chart) {
             let targetMin = Infinity;
             let targetMax = -Infinity;
 
-            for (const ds of chart.data.datasets) {
-                for (const pt of ds.data) {
-                    if (pt.y < targetMin) targetMin = pt.y;
-                    if (pt.y > targetMax) targetMax = pt.y;
+            // Usar tracking incremental en vez de iterar todos los puntos
+            const mins = datasetYMin[chartIdx];
+            const maxs = datasetYMax[chartIdx];
+            if (mins && maxs) {
+                for (const dsIdx in mins) {
+                    if (mins[dsIdx] < targetMin) targetMin = mins[dsIdx];
+                    if (maxs[dsIdx] > targetMax) targetMax = maxs[dsIdx];
                 }
             }
 
@@ -4205,33 +4235,52 @@ basic.forever(function () {
         function startRenderLoop() {
             if (renderLoopId !== null) return;
 
-            function renderFrame() {
+            function renderFrame(timestamp) {
                 if (!state.isCollecting) {
                     renderLoopId = null;
                     return;
                 }
+
+                // Throttle a ~30fps: saltar frames intermedios para menor carga de CPU
+                if (timestamp - lastRenderTime < RENDER_INTERVAL) {
+                    renderLoopId = requestAnimationFrame(renderFrame);
+                    return;
+                }
+                lastRenderTime = timestamp;
 
                 // 1. Flush datos pendientes a las gráficas
                 if (pendingChartPoints.length > 0) {
                     const points = pendingChartPoints;
                     pendingChartPoints = [];
                     pushNewDataToCharts(points);
+                    chartDirty = true;
                 }
 
-                // 2. Actualizar cada chart con scale smoothing
-                for (let i = 0; i < state.numGraphs; i++) {
-                    const chart = state.charts[i];
-                    if (!chart) continue;
-                    applySmoothScale(i, chart);
-                    chart.update('none');
+                // 2. Actualizar cada chart con scale smoothing (solo si hay datos nuevos)
+                if (chartDirty) {
+                    for (let i = 0; i < state.numGraphs; i++) {
+                        const chart = state.charts[i];
+                        if (!chart) continue;
+                        applySmoothScale(i, chart);
+                        chart.update('none');
+                    }
+                    chartDirty = false;
                 }
 
                 // 3. Limpiar timestamps antiguos para cálculo de Hz
+                // OPTIMIZADO: binary search + splice en vez de filter() que crea nuevo array
                 const now = Date.now();
                 if (now - lastSamplingRateUpdate >= 500) {
                     lastSamplingRateUpdate = now;
                     const cutoff = now - 2000;
-                    sampleTimestamps = sampleTimestamps.filter(t => t > cutoff);
+                    // sampleTimestamps está ordenado cronológicamente, buscar primer índice válido
+                    let lo = 0, hi = sampleTimestamps.length;
+                    while (lo < hi) {
+                        const mid = (lo + hi) >> 1;
+                        if (sampleTimestamps[mid] <= cutoff) lo = mid + 1;
+                        else hi = mid;
+                    }
+                    if (lo > 0) sampleTimestamps.splice(0, lo);
                 }
 
                 // 4. Tabla y botones cada 500ms
@@ -4919,33 +4968,38 @@ basic.forever(function () {
                 return;
             }
 
-            let filteredData = state.rawData.filter((d, idx) => {
+            // Construir índice de posiciones originales para evitar O(n) indexOf por fila
+            let filteredData = [];
+            let filteredOrigIdx = [];
+            for (let idx = 0; idx < state.rawData.length; idx++) {
+                const d = state.rawData[idx];
                 // Filtro de selección
                 if (filter === 'selected' && !state.selectedPoints.has(d.id)) {
-                    return false;
+                    continue;
                 }
-
                 // Filtro de búsqueda
                 if (searchTerm) {
                     const adjustedTime = ((d.time - state.timeZeroOffset) / timeUnitValue).toFixed(3);
                     const rowText = `${idx + 1} ${adjustedTime} ${d.values.join(' ')}`.toLowerCase();
-                    return rowText.includes(searchTerm);
+                    if (!rowText.includes(searchTerm)) continue;
                 }
-
-                return true;
-            });
+                filteredData.push(d);
+                filteredOrigIdx.push(idx);
+            }
 
             // Durante captura en vivo, limitar a los últimos 100 registros para rendimiento
             const MAX_VISIBLE_ROWS = 100;
             let displayData = filteredData;
+            let displayOrigIdx = filteredOrigIdx;
             let truncatedMsg = '';
             if (state.isCollecting && filteredData.length > MAX_VISIBLE_ROWS) {
                 displayData = filteredData.slice(-MAX_VISIBLE_ROWS);
+                displayOrigIdx = filteredOrigIdx.slice(-MAX_VISIBLE_ROWS);
                 truncatedMsg = `<tr><td colspan="10" style="text-align:center; padding:4px; background:#f5f5f5; font-size:0.8rem;">... ${filteredData.length - MAX_VISIBLE_ROWS} filas anteriores ocultas durante captura ...</td></tr>`;
             }
 
             tbody.innerHTML = truncatedMsg + displayData.map((d, displayIdx) => {
-                const originalIdx = state.rawData.indexOf(d);
+                const originalIdx = displayOrigIdx[displayIdx];
                 const adjustedTime = (d.time - state.timeZeroOffset) / timeUnitValue;
 
                 let valuesHtml = '';
@@ -5542,6 +5596,9 @@ basic.forever(function () {
                 currentYMin = {};
                 currentYMax = {};
                 scaleInitialized = {};
+                datasetYMin = {};
+                datasetYMax = {};
+                chartDirty = false;
                 if (state.isCollecting && chartDatasetsInitialized) {
                     initializeChartDatasets();
                 }
