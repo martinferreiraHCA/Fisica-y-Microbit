@@ -693,10 +693,40 @@
         }
 
         /* Camera preview */
+        .camera-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            align-items: center;
+        }
+
+        .camera-select {
+            flex: 1;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border: 2px solid black;
+            background: white;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .camera-switch-btn {
+            width: 42px;
+            height: 42px;
+            padding: 0;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
         .camera-preview {
             background: black;
             border: 2px solid black;
-            margin-top: 12px;
+            margin-top: 8px;
             position: relative;
         }
 
@@ -836,8 +866,16 @@
                     VIDEO <span>▼</span>
                 </div>
                 <div class="section-content">
+                    <div class="camera-controls">
+                        <select id="cameraSelect" class="camera-select">
+                            <option value="">Seleccionar cámara...</option>
+                        </select>
+                        <button class="toolbar-btn camera-switch-btn" id="switchCameraBtn" title="Cambiar cámara">
+                            ⟲
+                        </button>
+                    </div>
                     <div class="camera-preview">
-                        <video id="cameraPreview" autoplay muted></video>
+                        <video id="cameraPreview" autoplay muted playsinline webkit-playsinline></video>
                         <canvas id="overlayCanvas" style="display:none;"></canvas>
                         <div class="recording-indicator" id="recordingIndicator">● REC</div>
                     </div>
@@ -3350,6 +3388,9 @@ basic.forever(function () {
             recordedChunks: [],
             videoBlob: null,
             recordingStartTime: null,
+            currentCameraDeviceId: null,
+            currentFacingMode: 'environment',
+            availableCameras: [],
             // Charts
             charts: [],
             // Curve Fitting
@@ -5811,19 +5852,111 @@ basic.forever(function () {
 
         // ========== CÁMARA Y VIDEO ==========
 
+        // Enumerar cámaras disponibles y poblar el selector
+        async function enumerateCameras() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                state.availableCameras = devices.filter(d => d.kind === 'videoinput');
+                const select = document.getElementById('cameraSelect');
+                select.innerHTML = '';
+                if (state.availableCameras.length === 0) {
+                    select.innerHTML = '<option value="">No se detectaron cámaras</option>';
+                    return;
+                }
+                state.availableCameras.forEach((cam, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = cam.deviceId;
+                    opt.textContent = cam.label || `Cámara ${i + 1}`;
+                    select.appendChild(opt);
+                });
+                // Seleccionar la cámara activa
+                if (state.currentCameraDeviceId) {
+                    select.value = state.currentCameraDeviceId;
+                }
+            } catch (e) {
+                console.warn('[CAM] No se pudieron enumerar dispositivos:', e);
+            }
+        }
+
+        // Iniciar cámara con deviceId o facingMode
+        async function startCameraStream(deviceId, facingMode) {
+            // Detener stream anterior si existe
+            if (state.mediaStream) {
+                state.mediaStream.getTracks().forEach(track => track.stop());
+            }
+            const constraints = { audio: false };
+            if (deviceId) {
+                constraints.video = { deviceId: { exact: deviceId } };
+            } else if (facingMode) {
+                constraints.video = { facingMode: { ideal: facingMode } };
+            } else {
+                constraints.video = true;
+            }
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            state.mediaStream = stream;
+            // Guardar el deviceId real del track activo
+            const track = stream.getVideoTracks()[0];
+            if (track) {
+                const settings = track.getSettings();
+                if (settings.deviceId) {
+                    state.currentCameraDeviceId = settings.deviceId;
+                }
+                // Detectar facingMode real
+                if (settings.facingMode) {
+                    state.currentFacingMode = settings.facingMode;
+                }
+            }
+            const video = document.getElementById('cameraPreview');
+            video.srcObject = stream;
+            // Necesario en iOS Safari
+            video.play().catch(() => {});
+            // Re-enumerar para obtener labels (se necesita permiso activo)
+            await enumerateCameras();
+        }
+
         document.getElementById('cameraBtn').addEventListener('click', async () => {
             if (!state.cameraActive) {
                 try {
-                    state.mediaStream = await navigator.mediaDevices.getUserMedia({
-                        video: true,
-                        audio: false
-                    });
-                    document.getElementById('cameraPreview').srcObject = state.mediaStream;
+                    await startCameraStream(null, state.currentFacingMode);
                     state.cameraActive = true;
                     document.getElementById('videoSection').style.display = 'block';
                     document.getElementById('cameraBtn').classList.add('primary');
                 } catch (err) {
                     alert('No se pudo acceder a la cámara: ' + err.message);
+                }
+            }
+        });
+
+        // Cambiar cámara desde el selector
+        document.getElementById('cameraSelect').addEventListener('change', async (e) => {
+            if (!state.cameraActive) return;
+            const deviceId = e.target.value;
+            if (!deviceId) return;
+            try {
+                await startCameraStream(deviceId, null);
+            } catch (err) {
+                alert('No se pudo cambiar a esa cámara: ' + err.message);
+            }
+        });
+
+        // Botón de cambiar cámara (alterna frontal/trasera en móviles)
+        document.getElementById('switchCameraBtn').addEventListener('click', async () => {
+            if (!state.cameraActive) return;
+            // Si hay solo 2 cámaras o menos, alternar facingMode
+            const newFacing = state.currentFacingMode === 'environment' ? 'user' : 'environment';
+            try {
+                await startCameraStream(null, newFacing);
+                state.currentFacingMode = newFacing;
+            } catch (err) {
+                // Fallback: ciclar por lista de cámaras
+                if (state.availableCameras.length > 1) {
+                    const currentIdx = state.availableCameras.findIndex(c => c.deviceId === state.currentCameraDeviceId);
+                    const nextIdx = (currentIdx + 1) % state.availableCameras.length;
+                    try {
+                        await startCameraStream(state.availableCameras[nextIdx].deviceId, null);
+                    } catch (err2) {
+                        alert('No se pudo cambiar la cámara: ' + err2.message);
+                    }
                 }
             }
         });
@@ -5925,9 +6058,24 @@ basic.forever(function () {
 
             // Grabar desde el canvas en vez del stream directo de cámara
             const canvasStream = canvas.captureStream(30); // 30 fps
-            state.mediaRecorder = new MediaRecorder(canvasStream, {
-                mimeType: 'video/webm;codecs=vp9'
-            });
+
+            // Seleccionar codec compatible (iOS Safari no soporta webm)
+            let recorderOptions = {};
+            const codecs = [
+                'video/webm;codecs=vp9',
+                'video/webm;codecs=vp8',
+                'video/webm',
+                'video/mp4;codecs=h264',
+                'video/mp4'
+            ];
+            for (const codec of codecs) {
+                if (MediaRecorder.isTypeSupported(codec)) {
+                    recorderOptions.mimeType = codec;
+                    console.log('[CAM] Usando codec:', codec);
+                    break;
+                }
+            }
+            state.mediaRecorder = new MediaRecorder(canvasStream, recorderOptions);
 
             state.mediaRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {
@@ -5936,7 +6084,8 @@ basic.forever(function () {
             };
 
             state.mediaRecorder.onstop = () => {
-                state.videoBlob = new Blob(state.recordedChunks, { type: 'video/webm' });
+                const mimeType = state.mediaRecorder.mimeType || 'video/webm';
+                state.videoBlob = new Blob(state.recordedChunks, { type: mimeType });
             };
 
             state.mediaRecorder.start();
