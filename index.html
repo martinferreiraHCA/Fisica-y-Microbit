@@ -3975,7 +3975,42 @@ basic.forever(function () {
 
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService(UART_SERVICE_UUID);
-                const txChar = await service.getCharacteristic(UART_TX_CHAR_UUID);
+
+                // Enumerar todas las características para diagnóstico
+                const allChars = await service.getCharacteristics();
+                console.log('[BT] Características del servicio UART:');
+                let txChar = null;
+                for (const ch of allChars) {
+                    const props = ch.properties;
+                    const propList = [];
+                    if (props.read) propList.push('read');
+                    if (props.write) propList.push('write');
+                    if (props.writeWithoutResponse) propList.push('writeWithoutResponse');
+                    if (props.notify) propList.push('notify');
+                    if (props.indicate) propList.push('indicate');
+                    console.log(`[BT]   UUID: ${ch.uuid}, props: [${propList.join(', ')}]`);
+
+                    // Buscar la característica TX (la que tiene notify o indicate)
+                    if (ch.uuid === UART_TX_CHAR_UUID) {
+                        txChar = ch;
+                        console.log('[BT] → TX characteristic encontrada');
+                    }
+                }
+
+                // Si no encontramos la TX por UUID, buscar cualquiera con notify/indicate
+                if (!txChar) {
+                    for (const ch of allChars) {
+                        if (ch.properties.notify || ch.properties.indicate) {
+                            txChar = ch;
+                            console.log('[BT] → Usando característica alternativa con notify/indicate:', ch.uuid);
+                            break;
+                        }
+                    }
+                }
+
+                if (!txChar) {
+                    throw new Error('No se encontró una característica UART con notify/indicate. Verificá que tu programa MakeCode tenga el servicio Bluetooth UART.');
+                }
 
                 state.btDevice = device;
                 state.btCharTx = txChar;
@@ -3996,7 +4031,14 @@ basic.forever(function () {
                             await new Promise(r => setTimeout(r, 1000 * attempt));
                             const srv = await device.gatt.connect();
                             const svc = await srv.getPrimaryService(UART_SERVICE_UUID);
-                            const tx = await svc.getCharacteristic(UART_TX_CHAR_UUID);
+                            // Buscar TX por UUID o por propiedades notify/indicate
+                            let tx = null;
+                            try { tx = await svc.getCharacteristic(UART_TX_CHAR_UUID); } catch (_) {}
+                            if (!tx) {
+                                const chars = await svc.getCharacteristics();
+                                tx = chars.find(c => c.properties.notify || c.properties.indicate);
+                            }
+                            if (!tx) throw new Error('TX characteristic not found');
                             state.btCharTx = tx;
                             state.isConnected = true;
                             document.getElementById('statusText').textContent = t.connectedBluetooth;
@@ -4049,8 +4091,19 @@ basic.forever(function () {
             btBuffer = '';
 
             try {
+                // Verificar propiedades de la característica
+                const props = txChar.properties;
+                console.log('[BT] TX props — notify:', props.notify, 'indicate:', props.indicate, 'read:', props.read);
+
+                if (!props.notify && !props.indicate) {
+                    console.error('[BT] La característica TX no soporta notify ni indicate');
+                    btLoopRunning = false;
+                    alert('Error: La característica UART TX no soporta notificaciones. Verificá tu programa MakeCode.');
+                    return;
+                }
+
                 await txChar.startNotifications();
-                console.log('[BT] Notificaciones iniciadas correctamente');
+                console.log('[BT] Notificaciones iniciadas correctamente (modo:', props.notify ? 'notify' : 'indicate', ')');
                 txChar.addEventListener('characteristicvaluechanged', (event) => {
                     const decoder = new TextDecoder();
                     const chunk = decoder.decode(event.target.value);
