@@ -3387,8 +3387,7 @@ basic.forever(function () {
             mediaRecorder: null,
             recordedChunks: [],
             videoBlob: null,
-            recordingStartTime: null,       // Date.now() al iniciar grabación
-            recordingStartPointTime: null,  // point.time del último dato al iniciar grabación
+            recordingStartTime: null,
             currentCameraDeviceId: null,
             currentFacingMode: 'environment',
             availableCameras: [],
@@ -4377,6 +4376,7 @@ basic.forever(function () {
 
                         const dataPoint = {
                             time: pointTime,
+                            wallTime: batchTime,
                             values: values,
                             id: 'd' + (++_dataPointCounter)
                         };
@@ -4914,6 +4914,7 @@ basic.forever(function () {
 
                         const dataPoint = {
                             time: pointTime,
+                            wallTime: batchTime,
                             values: values,
                             id: 'd' + (++_dataPointCounter)
                         };
@@ -6185,9 +6186,6 @@ basic.forever(function () {
 
             state.recordedChunks = [];
             state.recordingStartTime = Date.now();
-            // Guardar el point.time del último dato para mapear timestamps de micro:bit a tiempo de video
-            const lastPt = state.rawData.length > 0 ? state.rawData[state.rawData.length - 1] : null;
-            state.recordingStartPointTime = lastPt ? lastPt.time : null;
 
             // Configurar canvas del mismo tamaño que el video
             const video = document.getElementById('cameraPreview');
@@ -6341,16 +6339,10 @@ basic.forever(function () {
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
             const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
 
-            // Calcular posición en el video:
-            // Si tenemos recordingStartPointTime (timestamps del micro:bit), usar esa referencia
-            // Si no, usar Date.now() vs recordingStartTime (timestamps del navegador)
-            let videoTime;
-            if (state.recordingStartPointTime !== null) {
-                // point.time está en la misma escala que recordingStartPointTime (ambos micro:bit ms)
-                videoTime = (point.time - state.recordingStartPointTime) / 1000;
-            } else {
-                videoTime = (point.time - state.recordingStartTime) / 1000;
-            }
+            // Calcular posición en el video usando wallTime (Date.now() real)
+            // wallTime y recordingStartTime están siempre en la misma escala (epoch ms)
+            const pointWall = point.wallTime || point.time;
+            const videoTime = (pointWall - state.recordingStartTime) / 1000;
 
             if (videoTime < 0) {
                 alert('Este punto fue capturado antes de iniciar la grabación');
