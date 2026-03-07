@@ -4044,8 +4044,8 @@ basic.forever(function () {
                     console.log(`[BT] ${label} — GATT connected:`, srv.connected);
 
                     // Esperar para service discovery
-                    console.log(`[BT] ${label} — Esperando 1000ms para service discovery...`);
-                    await new Promise(r => setTimeout(r, 1000));
+                    console.log(`[BT] ${label} — Esperando 1500ms para service discovery...`);
+                    await new Promise(r => setTimeout(r, 1500));
 
                     if (!dev.gatt.connected) {
                         throw new Error('GATT se desconectó durante service discovery');
@@ -4053,20 +4053,22 @@ basic.forever(function () {
 
                     // Enumerar TODOS los servicios disponibles para diagnóstico
                     console.log(`[BT] ${label} — Enumerando todos los servicios disponibles...`);
+                    let allServices = [];
                     try {
-                        const allServices = await srv.getPrimaryServices();
+                        allServices = await srv.getPrimaryServices();
                         console.log(`[BT] ${label} — Servicios encontrados: ${allServices.length}`);
                         for (const svc of allServices) {
                             console.log(`[BT]   Servicio: ${svc.uuid}`);
                         }
-                        // Buscar UART en la lista
-                        const uartSvc = allServices.find(s => s.uuid === UART_SERVICE_UUID);
-                        if (uartSvc) {
-                            console.log(`[BT] ${label} — ✓ Servicio UART encontrado via getPrimaryServices()`);
-                            return { server: srv, service: uartSvc };
-                        }
                     } catch (enumErr) {
                         console.warn(`[BT] ${label} — getPrimaryServices() falló:`, enumErr.message);
+                    }
+
+                    // Buscar UART en la lista de servicios enumerados
+                    const uartSvc = allServices.find(s => s.uuid === UART_SERVICE_UUID);
+                    if (uartSvc) {
+                        console.log(`[BT] ${label} — ✓ Servicio UART encontrado via getPrimaryServices()`);
+                        return { server: srv, service: uartSvc };
                     }
 
                     // Intento directo por UUID
@@ -4076,37 +4078,43 @@ basic.forever(function () {
                     return { server: srv, service: uartService };
                 }
 
-                // Intento 1: conexión directa
+                // Estrategia de conexión en fases
                 let found = false;
-                try {
-                    const result = await tryConnectAndDiscover(device, 'Intento 1');
-                    server = result.server;
-                    service = result.service;
-                    found = true;
-                } catch (e1) {
-                    console.warn('[BT] ✗ Intento 1 falló:', e1.name, e1.message);
+                let lastError = null;
 
-                    // Intento 2: desconectar y reconectar
+                // ── Fase A: 2 intentos directos ──
+                for (let attempt = 1; attempt <= 2 && !found; attempt++) {
                     try {
-                        if (device.gatt.connected) device.gatt.disconnect();
-                        await new Promise(r => setTimeout(r, 1000));
-                        const result = await tryConnectAndDiscover(device, 'Intento 2');
+                        if (attempt > 1) {
+                            if (device.gatt.connected) device.gatt.disconnect();
+                            await new Promise(r => setTimeout(r, 1500));
+                        }
+                        const result = await tryConnectAndDiscover(device, `Intento ${attempt}`);
                         server = result.server;
                         service = result.service;
                         found = true;
-                    } catch (e2) {
-                        console.warn('[BT] ✗ Intento 2 falló:', e2.name, e2.message);
+                    } catch (e) {
+                        lastError = e;
+                        console.warn(`[BT] ✗ Intento ${attempt} falló:`, e.name, e.message);
+                    }
+                }
 
-                        // Intento 3: forget() para limpiar cache de Chrome + re-solicitar dispositivo
-                        if (device.gatt.connected) device.gatt.disconnect();
-                        if (typeof device.forget === 'function') {
-                            console.log('[BT] Limpiando cache BLE con device.forget()...');
+                // ── Fase B: forget() + re-solicitar dispositivo ──
+                if (!found) {
+                    if (device.gatt.connected) device.gatt.disconnect();
+                    console.log('[BT] ── Fase B: limpiando cache BLE ──');
+                    console.log('[BT] device.forget disponible:', typeof device.forget);
+
+                    if (typeof device.forget === 'function') {
+                        try {
                             statusEl.textContent = 'Limpiando cache BLE... seleccioná el micro:bit de nuevo';
+                            console.log('[BT] Ejecutando device.forget()...');
                             await device.forget();
-                            console.log('[BT] Cache limpiada. Re-solicitando dispositivo...');
-                            await new Promise(r => setTimeout(r, 500));
+                            console.log('[BT] ✓ device.forget() completado');
+                            await new Promise(r => setTimeout(r, 1000));
 
-                            // Re-solicitar — abre el picker de nuevo
+                            // Re-solicitar — abre el picker de nuevo automáticamente
+                            console.log('[BT] Re-solicitando dispositivo...');
                             device = await navigator.bluetooth.requestDevice({
                                 filters: [
                                     { namePrefix: 'BBC micro:bit' },
@@ -4117,26 +4125,49 @@ basic.forever(function () {
                             console.log('[BT] Nuevo dispositivo seleccionado:', device.name, '| ID:', device.id);
                             statusEl.textContent = 'Reconectando a ' + (device.name || 'micro:bit') + '...';
 
-                            // Intentar 2 veces con el dispositivo fresco
-                            for (let retry = 1; retry <= 2; retry++) {
+                            // 2 intentos con dispositivo fresco
+                            for (let retry = 1; retry <= 2 && !found; retry++) {
                                 try {
+                                    if (retry > 1) {
+                                        if (device.gatt.connected) device.gatt.disconnect();
+                                        await new Promise(r => setTimeout(r, 2000));
+                                    }
                                     const result = await tryConnectAndDiscover(device, `Post-forget ${retry}`);
                                     server = result.server;
                                     service = result.service;
                                     found = true;
-                                    break;
-                                } catch (e3) {
-                                    console.warn(`[BT] ✗ Post-forget intento ${retry} falló:`, e3.name, e3.message);
-                                    if (device.gatt.connected) device.gatt.disconnect();
-                                    if (retry < 2) await new Promise(r => setTimeout(r, 2000));
+                                } catch (e) {
+                                    lastError = e;
+                                    console.warn(`[BT] ✗ Post-forget intento ${retry} falló:`, e.name, e.message);
                                 }
                             }
+                        } catch (forgetErr) {
+                            console.warn('[BT] ✗ Error en fase forget:', forgetErr.name, forgetErr.message);
+                            lastError = forgetErr;
                         }
+                    } else {
+                        console.warn('[BT] device.forget() NO disponible en este navegador');
                     }
                 }
 
+                // ── Fase C: si todo falló, dar instrucciones claras ──
                 if (!found) {
-                    throw new Error('No se pudo encontrar el servicio UART después de múltiples intentos');
+                    console.error('[BT] ✗ Todos los intentos fallaron. Último error:', lastError?.message);
+                    const isMac = navigator.platform.indexOf('Mac') >= 0;
+                    let msg = 'No se encontraron servicios BLE en el micro:bit.\n\n';
+                    if (isMac) {
+                        msg += 'macOS tiene el micro:bit cacheado. Solución (una sola vez):\n\n';
+                        msg += '1. Abrí Configuración del Sistema → Bluetooth\n';
+                        msg += '2. Buscá "BBC micro:bit" en la lista\n';
+                        msg += '3. Hacé clic en (i) y elegí "Olvidar este dispositivo"\n';
+                        msg += '4. Resetear el micro:bit (botón de atrás)\n';
+                        msg += '5. Volvé a conectar desde esta página\n\n';
+                        msg += 'Después de esto, no vas a tener que hacerlo de nuevo.';
+                    } else {
+                        msg += 'Probá resetear el micro:bit (botón de atrás) y volvé a conectar.';
+                    }
+                    alert(msg);
+                    return;
                 }
 
                 // Descubrir características
