@@ -1469,11 +1469,11 @@
                 allGraphs: 'Todas las gráficas',
                 // Bluetooth pairing guide
                 btPairingTitle: 'CONEXIÓN BLUETOOTH',
-                btPairingStep1: 'En la micro:bit, mantén presionados los botones <b>A + B + RESET</b> al mismo tiempo.',
-                btPairingStep2: 'Suelta el botón <b>RESET</b> (sigue sosteniendo A y B). La pantalla LED se llenará.',
-                btPairingStep3: 'Cuando todas las luces estén encendidas, suelta <b>A y B</b>. Verás <b>"PAIRING MODE!"</b> desplazándose.',
-                btPairingStep4: 'Aparecerá un <b>patrón único</b> en la matriz 5x5. Dibújalo aquí abajo tocando los LEDs.',
-                btPairingStep5: 'Presiona <b>CONECTAR</b> y selecciona tu micro:bit en la ventana del navegador.',
+                btPairingStep1: 'En la micro:bit V2, presiona el botón <b>RESET</b> (en la parte trasera) <b>3 veces seguidas</b> rápidamente.',
+                btPairingStep2: 'Verás <b>"PAIRING MODE!"</b> desplazándose en la pantalla LED y luego aparecerá un <b>patrón único</b> en la matriz 5x5.',
+                btPairingStep3: 'Dibuja ese patrón aquí abajo tocando los LEDs correspondientes.',
+                btPairingStep4: 'Presiona <b>CONECTAR</b> y selecciona tu micro:bit en la ventana del navegador.',
+                btPairingStep5: '',
                 btPairingGridLabel: 'Dibuja el patrón que ves en tu micro:bit:',
                 btPairingClear: 'Limpiar',
                 btPairingDeviceName: 'Nombre del dispositivo:',
@@ -1625,11 +1625,11 @@
                 allGraphs: 'All graphs',
                 // Bluetooth pairing guide
                 btPairingTitle: 'BLUETOOTH CONNECTION',
-                btPairingStep1: 'On the micro:bit, hold down <b>A + B + RESET</b> buttons at the same time.',
-                btPairingStep2: 'Release the <b>RESET</b> button (keep holding A and B). The LED screen will fill up.',
-                btPairingStep3: 'When all LEDs are lit, release <b>A and B</b>. You\'ll see <b>"PAIRING MODE!"</b> scrolling.',
-                btPairingStep4: 'A <b>unique pattern</b> will appear on the 5x5 matrix. Draw it below by tapping the LEDs.',
-                btPairingStep5: 'Press <b>CONNECT</b> and select your micro:bit from the browser popup.',
+                btPairingStep1: 'On the micro:bit V2, press the <b>RESET</b> button (on the back) <b>3 times quickly</b>.',
+                btPairingStep2: 'You\'ll see <b>"PAIRING MODE!"</b> scrolling on the LED screen, then a <b>unique pattern</b> will appear on the 5x5 matrix.',
+                btPairingStep3: 'Draw that pattern below by tapping the corresponding LEDs.',
+                btPairingStep4: 'Press <b>CONNECT</b> and select your micro:bit from the browser popup.',
+                btPairingStep5: '',
                 btPairingGridLabel: 'Draw the pattern you see on your micro:bit:',
                 btPairingClear: 'Clear',
                 btPairingDeviceName: 'Device name:',
@@ -1781,11 +1781,11 @@
                 allGraphs: 'Todos os gráficos',
                 // Bluetooth pairing guide
                 btPairingTitle: 'CONEXÃO BLUETOOTH',
-                btPairingStep1: 'No micro:bit, mantenha pressionados os botões <b>A + B + RESET</b> ao mesmo tempo.',
-                btPairingStep2: 'Solte o botão <b>RESET</b> (continue segurando A e B). A tela LED vai acender.',
-                btPairingStep3: 'Quando todos os LEDs estiverem acesos, solte <b>A e B</b>. Você verá <b>"PAIRING MODE!"</b> rolando.',
-                btPairingStep4: 'Um <b>padrão único</b> aparecerá na matriz 5x5. Desenhe-o abaixo tocando nos LEDs.',
-                btPairingStep5: 'Pressione <b>CONECTAR</b> e selecione seu micro:bit na janela do navegador.',
+                btPairingStep1: 'No micro:bit V2, pressione o botão <b>RESET</b> (na parte traseira) <b>3 vezes rapidamente</b>.',
+                btPairingStep2: 'Você verá <b>"PAIRING MODE!"</b> rolando na tela LED e depois um <b>padrão único</b> aparecerá na matriz 5x5.',
+                btPairingStep3: 'Desenhe esse padrão abaixo tocando nos LEDs correspondentes.',
+                btPairingStep4: 'Pressione <b>CONECTAR</b> e selecione seu micro:bit na janela do navegador.',
+                btPairingStep5: '',
                 btPairingGridLabel: 'Desenhe o padrão que você vê no seu micro:bit:',
                 btPairingClear: 'Limpar',
                 btPairingDeviceName: 'Nome do dispositivo:',
@@ -3970,6 +3970,7 @@ basic.forever(function () {
 
             let html = '';
             for (let i = 0; i < steps.length; i++) {
+                if (!steps[i]) continue;
                 html += `<div class="bt-pairing-step">
                     <div class="bt-pairing-step-num">${i + 1}</div>
                     <div>${steps[i]}</div>
