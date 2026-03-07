@@ -1060,6 +1060,279 @@
             margin-bottom: 8px;
         }
 
+        /* ========== EXPERIMENT MODE: 3-zone vertical layout ========== */
+        /* Mobile experiment view: Video (45%) + Graph (40%) + Controls (15%) */
+        .experiment-mode {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh; /* dynamic viewport for mobile browsers */
+            overflow: hidden;
+            background: #fafafa;
+        }
+
+        .experiment-mode.active {
+            display: flex;
+        }
+
+        /* When experiment mode is active, hide the desktop layout */
+        body.experiment-active .toolbar,
+        body.experiment-active .view-switcher,
+        body.experiment-active .timeline-scrubber,
+        body.experiment-active .main-container,
+        body.experiment-active .toolbar-menu-overlay,
+        body.experiment-active .toolbar-menu-panel,
+        body.experiment-active footer {
+            display: none !important;
+        }
+
+        /* Zone 1: Video - 45% */
+        .exp-video-zone {
+            flex: 0 0 45%;
+            background: black;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .exp-video-zone video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .exp-video-overlay {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            right: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .exp-video-overlay > * {
+            pointer-events: auto;
+        }
+
+        .exp-rec-badge {
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .exp-rec-badge.recording {
+            color: #ff4444;
+            animation: blink 1s infinite;
+        }
+
+        .exp-exit-btn {
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            min-width: 44px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Zone 2: Graph - 40% */
+        .exp-graph-zone {
+            flex: 0 0 40%;
+            background: #fafafa;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .exp-graph-header {
+            display: flex;
+            align-items: center;
+            padding: 4px 10px;
+            gap: 6px;
+            background: #fafafa;
+            flex-shrink: 0;
+        }
+
+        /* Magnitude selector pills */
+        .exp-magnitude-selector {
+            display: flex;
+            gap: 2px;
+            flex: 1;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .exp-mag-btn {
+            padding: 4px 10px;
+            border: 1px solid #ccc;
+            background: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            white-space: nowrap;
+            min-height: 28px;
+            transition: all 0.15s;
+        }
+
+        .exp-mag-btn.active {
+            background: #1976d2;
+            color: white;
+            border-color: #1976d2;
+        }
+
+        .exp-graph-canvas-wrap {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+            padding: 0 6px 2px 2px;
+        }
+
+        .exp-graph-canvas-wrap canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* Temporal marker line (drawn via Chart.js plugin) */
+        /* Color: green per spec Rule 6 */
+
+        /* Zone 3: Controls - 15% */
+        .exp-controls-zone {
+            flex: 0 0 15%;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 4px 10px;
+            gap: 4px;
+        }
+
+        .exp-playback-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .exp-play-btn {
+            min-width: 44px;
+            min-height: 44px;
+            border: none;
+            background: #1976d2;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .exp-play-btn:active {
+            background: #1565c0;
+        }
+
+        .exp-timeline-bar {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            background: #ddd;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .exp-timeline-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            background: #2e7d32; /* green = temporal marker per Rule 6 */
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .exp-timeline-bar::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            background: #2e7d32;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .exp-time-display {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            min-width: 55px;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .exp-controls-row2 {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+        }
+
+        .exp-speed-btn {
+            padding: 4px 10px;
+            border: 1px solid #ccc;
+            background: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            cursor: pointer;
+            min-height: 32px;
+            min-width: 44px;
+            text-align: center;
+        }
+
+        .exp-speed-btn.active {
+            background: black;
+            color: white;
+            border-color: black;
+        }
+
+        .exp-point-info {
+            font-family: 'Courier New', monospace;
+            font-size: 0.72rem;
+            color: #333;
+            flex: 1;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .exp-fullscreen-btn {
+            min-width: 44px;
+            min-height: 32px;
+            border: 1px solid #ccc;
+            background: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* ========== RESPONSIVE - Tablet (max-width: 1024px) ========== */
         @media (max-width: 1024px) {
             .main-container {
@@ -1331,6 +1604,7 @@
     <!-- View Mode Switcher (Wroblewski: progressive disclosure) -->
     <div class="view-switcher" id="viewSwitcher">
         <div class="view-switcher-inner">
+            <button class="view-btn" data-view="experiment" id="viewBtnExperiment" onclick="enterExperimentMode()" style="background: #1976d2; color: white;">LAB</button>
             <button class="view-btn" data-view="split" id="viewBtnSplit" onclick="setViewMode('split')">SPLIT</button>
             <button class="view-btn active" data-view="graph" id="viewBtnGraph" onclick="setViewMode('graph')">GRÁFICA</button>
             <button class="view-btn" data-view="video" id="viewBtnVideo" onclick="setViewMode('video')">VIDEO</button>
@@ -1787,6 +2061,45 @@
         </div>
     </div>
 
+    <!-- ========== EXPERIMENT MODE: Mobile 3-zone layout ========== -->
+    <div class="experiment-mode" id="experimentMode">
+        <!-- Zone 1: Video (45%) -->
+        <div class="exp-video-zone" id="expVideoZone">
+            <video id="expVideo" autoplay muted playsinline webkit-playsinline></video>
+            <div class="exp-video-overlay">
+                <span class="exp-rec-badge" id="expRecBadge">LIVE</span>
+                <button class="exp-exit-btn" id="expExitBtn" onclick="exitExperimentMode()">✕</button>
+            </div>
+        </div>
+
+        <!-- Zone 2: Graph (40%) -->
+        <div class="exp-graph-zone">
+            <div class="exp-graph-header">
+                <div class="exp-magnitude-selector" id="expMagnitudeSelector">
+                    <!-- Dynamically generated buttons per variable -->
+                </div>
+            </div>
+            <div class="exp-graph-canvas-wrap" id="expGraphWrap">
+                <canvas id="expChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Zone 3: Controls (15%) -->
+        <div class="exp-controls-zone">
+            <div class="exp-playback-row">
+                <button class="exp-play-btn" id="expPlayBtn" onclick="toggleExpPlayback()">▶</button>
+                <input type="range" class="exp-timeline-bar" id="expTimelineBar" min="0" max="0" value="0">
+                <span class="exp-time-display" id="expTimeDisplay">0.00 s</span>
+            </div>
+            <div class="exp-controls-row2">
+                <button class="exp-speed-btn active" data-speed="1" onclick="setExpSpeed(1)">1x</button>
+                <button class="exp-speed-btn" data-speed="2" onclick="setExpSpeed(2)">2x</button>
+                <span class="exp-point-info" id="expPointInfo">--</span>
+                <button class="exp-fullscreen-btn" id="expExpandGraphBtn" onclick="expandExpPanel('graph')" title="Ampliar gráfica">⛶</button>
+            </div>
+        </div>
+    </div>
+
     <footer id="footerContent" style="background: #f5f5f5; border-top: 2px solid #333; padding: 20px; text-align: center; font-size: 12px; margin-top: 20px;">
         <div id="footerInner" style="max-width: 800px; margin: 0 auto;">
             <p style="margin: 8px 0; font-weight: bold; font-size: 14px;">
@@ -1993,6 +2306,8 @@
                 viewVideo: 'VIDEO',
                 viewTimeline: 'TIMELINE',
                 viewConfig: 'CONFIG',
+                viewExperiment: 'LAB',
+                expandGraph: 'Ampliar gráfica',
             },
             en: {
                 // Toolbar
@@ -2150,6 +2465,8 @@
                 viewVideo: 'VIDEO',
                 viewTimeline: 'TIMELINE',
                 viewConfig: 'CONFIG',
+                viewExperiment: 'LAB',
+                expandGraph: 'Expand graph',
             },
             pt: {
                 // Toolbar
@@ -2307,6 +2624,8 @@
                 viewVideo: 'VÍDEO',
                 viewTimeline: 'TIMELINE',
                 viewConfig: 'CONFIG',
+                viewExperiment: 'LAB',
+                expandGraph: 'Ampliar gráfico',
             }
         };
 
@@ -2383,6 +2702,7 @@
 
             // View switcher
             const vsBtn = (id, key) => { const el = document.getElementById(id); if (el && t[key]) el.textContent = t[key]; };
+            vsBtn('viewBtnExperiment', 'viewExperiment');
             vsBtn('viewBtnSplit', 'viewSplit');
             vsBtn('viewBtnGraph', 'viewGraph');
             vsBtn('viewBtnVideo', 'viewVideo');
@@ -4403,10 +4723,11 @@ basic.forever(function () {
                             borderJoinStyle: 'round'
                         },
                         // Puntos reales de datos: visibles pero discretos
+                        // hitRadius: 12 for mobile touch (min 44px effective)
                         point: {
                             radius: 2.5,
                             hoverRadius: 6,
-                            hitRadius: 8,
+                            hitRadius: 12,
                             borderWidth: 1.5,
                             hoverBorderWidth: 2.5
                         }
@@ -5919,7 +6240,7 @@ basic.forever(function () {
                 chart.data.datasets.push({
                     label: `Ajuste: ${state.fitResult.equation}`,
                     data: fitData,
-                    borderColor: '#e040fb',
+                    borderColor: '#d32f2f', /* red per design spec Rule 6 */
                     backgroundColor: 'transparent',
                     borderWidth: 2.5,
                     borderDash: [6, 3],
@@ -6069,6 +6390,11 @@ basic.forever(function () {
 
                 if (pointId) {
                     toggleSelect(pointId);
+
+                    // Rule 3: if video available, show it for this point
+                    if (state.videoBlob && state.recordingStartTime && window.innerWidth <= 1024) {
+                        showVideoForPoint(pointId);
+                    }
                 }
             }
         }
@@ -6960,6 +7286,482 @@ basic.forever(function () {
                 arrow.textContent = '▶';
             }
         }
+
+        // ========== EXPERIMENT MODE (3-zone mobile layout) ==========
+        let expChart = null;
+        let expSelectedVar = 0; // which variable is shown
+        let expPlaybackInterval = null;
+        let expPlaybackSpeed = 1;
+        let expTemporalMarkerX = null; // current temporal marker position on graph
+        let expExpandedPanel = null; // 'graph' or 'video' when expanded
+
+        // Chart.js plugin: temporal marker (green vertical line)
+        const temporalMarkerPlugin = {
+            id: 'temporalMarker',
+            afterDraw(chart) {
+                if (expTemporalMarkerX === null) return;
+                const { ctx, chartArea, scales } = chart;
+                if (!chartArea || !scales.x) return;
+
+                const xPixel = scales.x.getPixelForValue(expTemporalMarkerX);
+                if (xPixel < chartArea.left || xPixel > chartArea.right) return;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(xPixel, chartArea.top);
+                ctx.lineTo(xPixel, chartArea.bottom);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#2e7d32'; // green per Rule 6
+                ctx.stroke();
+
+                // Draw circle at intersection with data
+                const datasets = chart.data.datasets;
+                if (datasets.length > 0 && datasets[0].data.length > 0) {
+                    // Find nearest point
+                    let nearest = null;
+                    let minDist = Infinity;
+                    for (const pt of datasets[0].data) {
+                        const dist = Math.abs(pt.x - expTemporalMarkerX);
+                        if (dist < minDist) { minDist = dist; nearest = pt; }
+                    }
+                    if (nearest) {
+                        const yPixel = scales.y.getPixelForValue(nearest.y);
+                        ctx.beginPath();
+                        ctx.arc(xPixel, yPixel, 6, 0, Math.PI * 2);
+                        ctx.fillStyle = '#2e7d32';
+                        ctx.fill();
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = 'white';
+                        ctx.stroke();
+                    }
+                }
+
+                ctx.restore();
+            }
+        };
+
+        function enterExperimentMode() {
+            const expMode = document.getElementById('experimentMode');
+            document.body.classList.add('experiment-active');
+            expMode.classList.add('active');
+
+            // Setup video: reuse the existing camera stream if active
+            const expVideo = document.getElementById('expVideo');
+            if (state.mediaStream) {
+                expVideo.srcObject = state.mediaStream;
+            } else if (state.cameraActive) {
+                const origVideo = document.getElementById('cameraPreview');
+                if (origVideo.srcObject) {
+                    expVideo.srcObject = origVideo.srcObject;
+                }
+            }
+
+            // Update recording badge
+            updateExpRecBadge();
+
+            // Build magnitude selector
+            buildMagnitudeSelector();
+
+            // Create experiment chart
+            createExpChart();
+
+            // Update timeline bar
+            updateExpTimeline();
+        }
+
+        function exitExperimentMode() {
+            document.body.classList.remove('experiment-active');
+            document.getElementById('experimentMode').classList.remove('active');
+
+            // Stop playback
+            if (expPlaybackInterval) {
+                clearInterval(expPlaybackInterval);
+                expPlaybackInterval = null;
+            }
+
+            // Destroy experiment chart
+            if (expChart) {
+                expChart.destroy();
+                expChart = null;
+            }
+
+            // Reset expanded state
+            expExpandedPanel = null;
+            resetExpZoneSizes();
+
+            // Resize main charts
+            setTimeout(() => {
+                state.charts.forEach(c => { if (c) c.resize(); });
+            }, 100);
+        }
+
+        function updateExpRecBadge() {
+            const badge = document.getElementById('expRecBadge');
+            if (state.isCollecting) {
+                badge.textContent = '● REC';
+                badge.classList.add('recording');
+            } else if (state.mediaStream) {
+                badge.textContent = 'LIVE';
+                badge.classList.remove('recording');
+            } else {
+                badge.textContent = '';
+                badge.classList.remove('recording');
+            }
+        }
+
+        function buildMagnitudeSelector() {
+            const container = document.getElementById('expMagnitudeSelector');
+            container.innerHTML = '';
+
+            for (let i = 0; i < state.numVariables; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'exp-mag-btn' + (i === expSelectedVar ? ' active' : '');
+                btn.textContent = state.variables[i].name;
+                btn.onclick = () => {
+                    expSelectedVar = i;
+                    document.querySelectorAll('.exp-mag-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    updateExpChartData();
+                };
+                container.appendChild(btn);
+            }
+        }
+
+        function createExpChart() {
+            if (expChart) expChart.destroy();
+
+            const canvas = document.getElementById('expChart');
+            const ctx = canvas.getContext('2d');
+
+            expChart = new Chart(ctx, {
+                type: 'scatter',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    onClick: (evt) => handleExpChartClick(evt),
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleFont: { size: 10, weight: 'bold' },
+                            bodyFont: { size: 10 },
+                            padding: 8,
+                            callbacks: {
+                                label: (ctx) => {
+                                    return `(${ctx.parsed.x.toFixed(3)}, ${ctx.parsed.y.toFixed(3)})`;
+                                }
+                            }
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                                modifierKey: null
+                            },
+                            zoom: {
+                                pinch: { enabled: true },
+                                wheel: { enabled: true },
+                                mode: 'xy'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: 'TIEMPO (s)',
+                                font: { size: 10, weight: 'bold' },
+                                padding: { top: 2 }
+                            },
+                            grid: { color: 'rgba(0,0,0,0.05)', lineWidth: 0.5 },
+                            border: { color: '#999', width: 1 },
+                            ticks: { font: { size: 9 }, maxRotation: 0 }
+                        },
+                        y: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: state.variables[expSelectedVar].name.toUpperCase(),
+                                font: { size: 10, weight: 'bold' },
+                                padding: { bottom: 2 }
+                            },
+                            grid: { color: 'rgba(0,0,0,0.05)', lineWidth: 0.5 },
+                            border: { color: '#999', width: 1 },
+                            ticks: { font: { size: 9 } }
+                        }
+                    },
+                    elements: {
+                        line: {
+                            tension: 0.3,
+                            cubicInterpolationMode: 'monotone',
+                            borderWidth: 2,
+                            borderCapStyle: 'round'
+                        },
+                        point: {
+                            radius: 2,
+                            hoverRadius: 7,
+                            hitRadius: 12, // larger hit area for touch
+                            borderWidth: 1
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        intersect: false,
+                        axis: 'x'
+                    }
+                },
+                plugins: [temporalMarkerPlugin]
+            });
+
+            updateExpChartData();
+        }
+
+        function updateExpChartData() {
+            if (!expChart) return;
+
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            const varIdx = expSelectedVar;
+            const color = '#1976d2'; // blue per Rule 6
+
+            const data = state.rawData.map(d => ({
+                x: (d.time - state.timeZeroOffset) / timeUnitValue,
+                y: d.values[varIdx],
+                id: d.id
+            }));
+
+            const datasets = [{
+                label: state.variables[varIdx].name,
+                data: data,
+                borderColor: color,
+                backgroundColor: 'transparent',
+                fill: false,
+                borderWidth: 2,
+                showLine: state.showLines,
+                tension: 0.3,
+                cubicInterpolationMode: 'monotone',
+                pointRadius: 2,
+                pointHoverRadius: 7,
+                pointHitRadius: 12,
+                pointBackgroundColor: color,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 1,
+                pointHoverBorderWidth: 2,
+                pointHoverBorderColor: '#fff'
+            }];
+
+            // Add fit curve if exists (red per Rule 6)
+            if (state.fitResult && state.fitResult.varIndex === varIdx) {
+                const xValues = data.map(d => d.x);
+                const xMin = Math.min(...xValues);
+                const xMax = Math.max(...xValues);
+                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs);
+                const fitData = [];
+                for (let i = 0; i <= 200; i++) {
+                    const x = xMin + (xMax - xMin) * i / 200;
+                    fitData.push({ x, y: predict(x) });
+                }
+                datasets.push({
+                    label: 'Modelo',
+                    data: fitData,
+                    borderColor: '#d32f2f', // red per Rule 6
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [6, 3],
+                    pointRadius: 0,
+                    showLine: true,
+                    tension: 0,
+                    fill: false
+                });
+            }
+
+            expChart.data.datasets = datasets;
+            expChart.options.scales.y.title.text = state.variables[varIdx].name.toUpperCase();
+            expChart.update('none');
+        }
+
+        // Rule 3: Inverse interaction - click graph to jump video
+        function handleExpChartClick(evt) {
+            if (!expChart) return;
+            const points = expChart.getElementsAtEventForMode(evt, 'nearest', { intersect: false }, true);
+
+            if (points.length > 0) {
+                const dataIndex = points[0].index;
+                const dataset = expChart.data.datasets[0];
+                if (!dataset || !dataset.data[dataIndex]) return;
+
+                const pointData = dataset.data[dataIndex];
+                const pointId = pointData.id;
+                if (!pointId) return;
+
+                // Find the raw data point
+                const rawPoint = state.rawData.find(d => d.id === pointId);
+                if (!rawPoint) return;
+
+                // Update timeline slider
+                const rawIdx = state.rawData.indexOf(rawPoint);
+                const slider = document.getElementById('expTimelineBar');
+                slider.value = rawIdx;
+                updateExpFromSlider(rawIdx);
+
+                // Jump video to corresponding time
+                if (state.videoBlob && state.recordingStartTime) {
+                    const pointWall = rawPoint.wallTime || rawPoint.time;
+                    const videoTime = (pointWall - state.recordingStartTime) / 1000;
+                    if (videoTime >= 0) {
+                        jumpExpVideoToTime(videoTime);
+                    }
+                }
+            }
+        }
+
+        function jumpExpVideoToTime(videoTime) {
+            const expVideo = document.getElementById('expVideo');
+            // If live stream, we can't seek - show playback video instead
+            if (state.videoBlob) {
+                const url = URL.createObjectURL(state.videoBlob);
+                if (expVideo.src !== url) {
+                    expVideo.srcObject = null;
+                    expVideo.src = url;
+                    expVideo.muted = false;
+                    expVideo.controls = false;
+                }
+                expVideo.currentTime = Math.max(0, videoTime);
+                expVideo.play().catch(() => {});
+            }
+        }
+
+        // Playback controls
+        function toggleExpPlayback() {
+            const btn = document.getElementById('expPlayBtn');
+            if (expPlaybackInterval) {
+                clearInterval(expPlaybackInterval);
+                expPlaybackInterval = null;
+                btn.textContent = '▶';
+            } else {
+                btn.textContent = '⏸';
+                const slider = document.getElementById('expTimelineBar');
+                expPlaybackInterval = setInterval(() => {
+                    let val = parseInt(slider.value) + 1;
+                    if (val > parseInt(slider.max)) {
+                        val = 0; // loop
+                    }
+                    slider.value = val;
+                    updateExpFromSlider(val);
+                }, 200 / expPlaybackSpeed);
+            }
+        }
+
+        function setExpSpeed(speed) {
+            expPlaybackSpeed = speed;
+            document.querySelectorAll('.exp-speed-btn').forEach(b => {
+                b.classList.toggle('active', parseInt(b.dataset.speed) === speed);
+            });
+            // Restart playback at new speed if playing
+            if (expPlaybackInterval) {
+                clearInterval(expPlaybackInterval);
+                const slider = document.getElementById('expTimelineBar');
+                const btn = document.getElementById('expPlayBtn');
+                btn.textContent = '⏸';
+                expPlaybackInterval = setInterval(() => {
+                    let val = parseInt(slider.value) + 1;
+                    if (val > parseInt(slider.max)) val = 0;
+                    slider.value = val;
+                    updateExpFromSlider(val);
+                }, 200 / expPlaybackSpeed);
+            }
+        }
+
+        function updateExpTimeline() {
+            const slider = document.getElementById('expTimelineBar');
+            slider.max = Math.max(0, state.rawData.length - 1);
+        }
+
+        function updateExpFromSlider(idx) {
+            const point = state.rawData[idx];
+            if (!point) return;
+
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
+
+            // Update time display
+            document.getElementById('expTimeDisplay').textContent = adjustedTime.toFixed(2) + ' s';
+
+            // Update point info
+            const val = point.values[expSelectedVar];
+            document.getElementById('expPointInfo').textContent =
+                `#${idx + 1} | ${state.variables[expSelectedVar].name}: ${val !== undefined ? val.toFixed(3) : '--'}`;
+
+            // Update temporal marker on graph (Rule 2)
+            expTemporalMarkerX = adjustedTime;
+            if (expChart) expChart.update('none');
+
+            // Sync video if available (Rule 2 & 3)
+            if (state.videoBlob && state.recordingStartTime) {
+                const pointWall = point.wallTime || point.time;
+                const videoTime = (pointWall - state.recordingStartTime) / 1000;
+                if (videoTime >= 0) {
+                    jumpExpVideoToTime(videoTime);
+                }
+            }
+        }
+
+        // Timeline slider input
+        document.getElementById('expTimelineBar').addEventListener('input', function() {
+            updateExpFromSlider(parseInt(this.value));
+        });
+
+        // Expand/collapse individual panels
+        function expandExpPanel(panel) {
+            const videoZone = document.querySelector('.exp-video-zone');
+            const graphZone = document.querySelector('.exp-graph-zone');
+            const controlsZone = document.querySelector('.exp-controls-zone');
+
+            if (expExpandedPanel === panel) {
+                // Reset to default proportions
+                resetExpZoneSizes();
+                expExpandedPanel = null;
+            } else {
+                expExpandedPanel = panel;
+                if (panel === 'graph') {
+                    videoZone.style.flex = '0 0 0%';
+                    videoZone.style.overflow = 'hidden';
+                    graphZone.style.flex = '1 1 85%';
+                    controlsZone.style.flex = '0 0 15%';
+                } else if (panel === 'video') {
+                    videoZone.style.flex = '1 1 85%';
+                    graphZone.style.flex = '0 0 0%';
+                    graphZone.style.overflow = 'hidden';
+                    controlsZone.style.flex = '0 0 15%';
+                }
+            }
+
+            // Resize chart
+            setTimeout(() => { if (expChart) expChart.resize(); }, 100);
+        }
+
+        function resetExpZoneSizes() {
+            const videoZone = document.querySelector('.exp-video-zone');
+            const graphZone = document.querySelector('.exp-graph-zone');
+            const controlsZone = document.querySelector('.exp-controls-zone');
+            if (videoZone) { videoZone.style.flex = ''; videoZone.style.overflow = ''; }
+            if (graphZone) { graphZone.style.flex = ''; graphZone.style.overflow = ''; }
+            if (controlsZone) { controlsZone.style.flex = ''; }
+        }
+
+        // Auto-update experiment chart when new data arrives during capture
+        const origUpdateAllCharts = updateAllCharts;
+        updateAllCharts = function() {
+            origUpdateAllCharts();
+            if (document.getElementById('experimentMode').classList.contains('active')) {
+                updateExpChartData();
+                updateExpTimeline();
+                updateExpRecBadge();
+            }
+        };
 
         // ========== VIEW MODE SWITCHER ==========
         let currentViewMode = 'default'; // default = desktop 2-column layout
