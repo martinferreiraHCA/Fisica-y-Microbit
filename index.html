@@ -4078,7 +4078,7 @@ basic.forever(function () {
         async function connectBluetooth() {
             try {
                 const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: 'BBC micro:bit' }],
+                    acceptAllDevices: true,
                     optionalServices: [UART_SERVICE_UUID]
                 });
 
