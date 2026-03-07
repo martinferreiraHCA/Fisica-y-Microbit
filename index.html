@@ -840,12 +840,28 @@
         /* ========== SPLIT-SCREEN LAYOUT ========== */
         .main-container.view-split {
             grid-template-columns: 1fr 1fr;
+            height: calc(100vh - 90px);
+            overflow: hidden;
         }
         .main-container.view-split .graph-panel {
             border-right: 2px solid black;
+            overflow: hidden;
+            padding: 8px;
+        }
+        .main-container.view-split .graph-panel .graphs-container {
+            height: 100%;
+        }
+        .main-container.view-split .graph-panel .graph-wrapper {
+            min-height: 0;
+            height: 100%;
+        }
+        .main-container.view-split .graph-panel .chart-container {
+            min-height: 0;
+            height: calc(100% - 40px);
         }
         .main-container.view-split .side-panel {
             display: flex;
+            overflow: hidden;
         }
 
         /* When in split mode, side panel shows ONLY video section */
@@ -853,14 +869,35 @@
             display: none;
         }
         .main-container.view-split .side-panel #videoSection {
-            display: block !important;
+            display: flex !important;
+            flex-direction: column;
             flex: 1;
+            height: 100%;
         }
         .main-container.view-split .side-panel #videoSection .section-content {
-            display: block !important;
+            display: flex !important;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+            padding: 8px;
         }
         .main-container.view-split .side-panel #videoSection .section-header {
             display: none;
+        }
+        .main-container.view-split .side-panel #videoSection .camera-preview {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .main-container.view-split .side-panel #videoSection .camera-preview video {
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+        }
+        .main-container.view-split .side-panel #videoSection .camera-controls {
+            flex-shrink: 0;
         }
 
         /* View: graph only */
@@ -1248,6 +1285,11 @@
             background: #1565c0;
         }
 
+        .exp-play-btn.capturing {
+            background: #d32f2f;
+            animation: blink 1s infinite;
+        }
+
         .exp-timeline-bar {
             flex: 1;
             -webkit-appearance: none;
@@ -1333,6 +1375,52 @@
             justify-content: center;
         }
 
+        /* ========== SPARKLINE MINI-GRAPH (MakeCode-style preview) ========== */
+        .sparkline-container {
+            display: none;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            padding: 4px;
+            position: relative;
+            height: 60px;
+            overflow: hidden;
+        }
+
+        .sparkline-container.active {
+            display: block;
+        }
+
+        .sparkline-container canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .sparkline-label {
+            position: absolute;
+            top: 2px;
+            left: 6px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sparkline-value {
+            position: absolute;
+            top: 2px;
+            right: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #4fc3f7;
+        }
+
+        /* Show sparkline in split mode when graph panel is too small */
+        .main-container.view-split .graph-panel .sparkline-container {
+            display: block;
+        }
+
         /* ========== RESPONSIVE - Tablet (max-width: 1024px) ========== */
         @media (max-width: 1024px) {
             .main-container {
@@ -1365,14 +1453,20 @@
             /* Split mode: stack vertically on mobile */
             .main-container.view-split {
                 grid-template-columns: 1fr;
+                height: calc(100vh - 90px);
+                height: calc(100dvh - 90px);
             }
             .main-container.view-split .graph-panel {
                 border-right: none;
-                border-bottom: 2px solid black;
-                max-height: 40vh;
+                border-bottom: 1px solid #e0e0e0;
+                max-height: 45vh;
+                flex: 0 0 45%;
+                overflow: hidden;
             }
             .main-container.view-split .side-panel {
-                max-height: 40vh;
+                max-height: 45vh;
+                flex: 0 0 45%;
+                overflow: hidden;
             }
 
             /* Toolbar: show hamburger, hide secondary */
@@ -1674,10 +1768,8 @@
                         </select>
                     </div>
 
-                    <div class="input-row" style="align-items: center;">
-                        <label for="microbitTimestamp" style="cursor: pointer;">Micro:bit envía timestamp</label>
-                        <input type="checkbox" id="microbitTimestamp" style="width: auto; cursor: pointer;" title="Marcar si el código del micro:bit envía input.runningTime() como primer valor de cada línea">
-                    </div>
+                    <!-- Timestamp siempre activo: la micro:bit siempre envía input.runningTime() -->
+                    <input type="checkbox" id="microbitTimestamp" checked style="display: none;">
 
                     <div class="input-row" style="align-items: center;">
                         <label for="spikeFilter" style="cursor: pointer;">Filtro de picos</label>
@@ -2087,6 +2179,7 @@
         <!-- Zone 3: Controls (15%) -->
         <div class="exp-controls-zone">
             <div class="exp-playback-row">
+                <button class="exp-play-btn" id="expCaptureBtn" onclick="toggleExpCapture()" style="background:#2e7d32;">●</button>
                 <button class="exp-play-btn" id="expPlayBtn" onclick="toggleExpPlayback()">▶</button>
                 <input type="range" class="exp-timeline-bar" id="expTimelineBar" min="0" max="0" value="0">
                 <span class="exp-time-display" id="expTimeDisplay">0.00 s</span>
@@ -4223,7 +4316,7 @@ basic.forever(function () {
             timeZeroOffset: 0,
             // Configuración de variables
             numVariables: 1,
-            microbitTimestamp: false,  // true si el micro:bit envía input.runningTime() como primer valor
+            microbitTimestamp: true,  // siempre true: la micro:bit envía input.runningTime() como primer valor
             spikeFilter: false,       // true para filtrar picos anómalos de comunicación
             variables: [
                 { name: 'Variable 1', color: '#000000' },
@@ -4282,9 +4375,7 @@ basic.forever(function () {
             document.getElementById('var3Config').classList.toggle('hidden', num < 3);
         });
 
-        document.getElementById('microbitTimestamp').addEventListener('change', function() {
-            state.microbitTimestamp = this.checked;
-        });
+        // microbitTimestamp siempre activo, no necesita event listener
 
         document.getElementById('spikeFilter').addEventListener('change', function() {
             state.spikeFilter = this.checked;
@@ -7294,6 +7385,8 @@ basic.forever(function () {
         let expPlaybackSpeed = 1;
         let expTemporalMarkerX = null; // current temporal marker position on graph
         let expExpandedPanel = null; // 'graph' or 'video' when expanded
+        let expVideoObjectURL = null; // cached object URL for smooth playback
+        let expVideoReady = false; // video element loaded and seekable
 
         // Chart.js plugin: temporal marker (green vertical line)
         const temporalMarkerPlugin = {
@@ -7356,8 +7449,9 @@ basic.forever(function () {
                 }
             }
 
-            // Update recording badge
+            // Update recording badge and capture button
             updateExpRecBadge();
+            syncExpCaptureButton();
 
             // Build magnitude selector
             buildMagnitudeSelector();
@@ -7378,6 +7472,19 @@ basic.forever(function () {
                 clearInterval(expPlaybackInterval);
                 expPlaybackInterval = null;
             }
+
+            // Stop and clean up video
+            const expVideo = document.getElementById('expVideo');
+            if (expVideo) {
+                expVideo.pause();
+                expVideo.src = '';
+                expVideo.srcObject = null;
+            }
+            if (expVideoObjectURL) {
+                URL.revokeObjectURL(expVideoObjectURL);
+                expVideoObjectURL = null;
+            }
+            expVideoReady = false;
 
             // Destroy experiment chart
             if (expChart) {
@@ -7618,41 +7725,191 @@ basic.forever(function () {
             }
         }
 
+        // Prepare video element once for smooth seeking (no flicker)
+        function prepareExpVideoPlayback() {
+            const expVideo = document.getElementById('expVideo');
+            if (!state.videoBlob) return;
+
+            // Revoke previous URL if any
+            if (expVideoObjectURL) {
+                URL.revokeObjectURL(expVideoObjectURL);
+            }
+            expVideoObjectURL = URL.createObjectURL(state.videoBlob);
+            expVideo.srcObject = null;
+            expVideo.src = expVideoObjectURL;
+            expVideo.muted = false;
+            expVideo.controls = false;
+            expVideo.preload = 'auto';
+            expVideoReady = false;
+
+            // Wait for video to be seekable before allowing scrubbing
+            expVideo.addEventListener('loadeddata', () => {
+                expVideoReady = true;
+            }, { once: true });
+            expVideo.load();
+        }
+
         function jumpExpVideoToTime(videoTime) {
             const expVideo = document.getElementById('expVideo');
-            // If live stream, we can't seek - show playback video instead
-            if (state.videoBlob) {
-                const url = URL.createObjectURL(state.videoBlob);
-                if (expVideo.src !== url) {
-                    expVideo.srcObject = null;
-                    expVideo.src = url;
-                    expVideo.muted = false;
-                    expVideo.controls = false;
+            if (!state.videoBlob) return;
+
+            // If video not prepared yet, prepare it first
+            if (!expVideoObjectURL || expVideo.src !== expVideoObjectURL) {
+                prepareExpVideoPlayback();
+                // Retry after load
+                expVideo.addEventListener('loadeddata', () => {
+                    expVideo.currentTime = Math.max(0, videoTime);
+                }, { once: true });
+                return;
+            }
+
+            // Only seek, don't call play() on every tick - that causes flicker
+            const targetTime = Math.max(0, videoTime);
+            if (Math.abs(expVideo.currentTime - targetTime) > 0.05) {
+                expVideo.currentTime = targetTime;
+            }
+        }
+
+        // Play video continuously from a given time (for playback mode)
+        function playExpVideoFrom(videoTime) {
+            const expVideo = document.getElementById('expVideo');
+            if (!state.videoBlob) return;
+
+            if (!expVideoObjectURL || expVideo.src !== expVideoObjectURL) {
+                prepareExpVideoPlayback();
+                expVideo.addEventListener('loadeddata', () => {
+                    expVideo.currentTime = Math.max(0, videoTime);
+                    expVideo.play().catch(() => {});
+                }, { once: true });
+                return;
+            }
+
+            expVideo.currentTime = Math.max(0, videoTime);
+            expVideo.play().catch(() => {});
+        }
+
+        // Start/Stop measurement from LAB mode
+        function toggleExpCapture() {
+            const captureBtn = document.getElementById('expCaptureBtn');
+            if (state.isCollecting) {
+                // Stop: trigger the main stop button
+                document.getElementById('stopBtn').click();
+                captureBtn.textContent = '●';
+                captureBtn.classList.remove('capturing');
+                captureBtn.style.background = '#2e7d32';
+                // Prepare video for review after recording stops
+                setTimeout(() => {
+                    if (state.videoBlob) {
+                        prepareExpVideoPlayback();
+                    }
+                    updateExpTimeline();
+                    updateExpChartData();
+                }, 300);
+            } else {
+                // Need to be connected first
+                if (!state.isConnected && !state.isBluetooth) {
+                    const t = translations[currentLanguage];
+                    document.getElementById('expPointInfo').textContent = t.disconnected || 'DESCONECTADO';
+                    return;
                 }
-                expVideo.currentTime = Math.max(0, videoTime);
-                expVideo.play().catch(() => {});
+                // Start: trigger the main collect button
+                document.getElementById('collectBtn').click();
+                captureBtn.textContent = '■';
+                captureBtn.classList.add('capturing');
+                captureBtn.style.background = '#d32f2f';
+                // Switch video back to live stream
+                const expVideo = document.getElementById('expVideo');
+                if (state.mediaStream) {
+                    if (expVideoObjectURL) {
+                        URL.revokeObjectURL(expVideoObjectURL);
+                        expVideoObjectURL = null;
+                    }
+                    expVideo.src = '';
+                    expVideo.srcObject = state.mediaStream;
+                    expVideo.muted = true;
+                    expVideo.play().catch(() => {});
+                }
+            }
+            updateExpRecBadge();
+        }
+
+        // Sync capture button state when entering experiment mode
+        function syncExpCaptureButton() {
+            const captureBtn = document.getElementById('expCaptureBtn');
+            if (state.isCollecting) {
+                captureBtn.textContent = '■';
+                captureBtn.classList.add('capturing');
+                captureBtn.style.background = '#d32f2f';
+            } else {
+                captureBtn.textContent = '●';
+                captureBtn.classList.remove('capturing');
+                captureBtn.style.background = '#2e7d32';
             }
         }
 
         // Playback controls
         function toggleExpPlayback() {
             const btn = document.getElementById('expPlayBtn');
+            const expVideo = document.getElementById('expVideo');
+
             if (expPlaybackInterval) {
+                // Stop playback
                 clearInterval(expPlaybackInterval);
                 expPlaybackInterval = null;
                 btn.textContent = '▶';
+                // Pause video
+                if (expVideo && !expVideo.paused) expVideo.pause();
             } else {
                 btn.textContent = '⏸';
                 const slider = document.getElementById('expTimelineBar');
+
+                // Start continuous video playback from current point
+                if (state.videoBlob && state.recordingStartTime) {
+                    const idx = parseInt(slider.value);
+                    const point = state.rawData[idx];
+                    if (point) {
+                        const pointWall = point.wallTime || point.time;
+                        const videoTime = (pointWall - state.recordingStartTime) / 1000;
+                        if (videoTime >= 0) {
+                            playExpVideoFrom(videoTime);
+                            if (expVideo) expVideo.playbackRate = expPlaybackSpeed;
+                        }
+                    }
+                }
+
+                // Timeline slider follows data points at matching speed
                 expPlaybackInterval = setInterval(() => {
                     let val = parseInt(slider.value) + 1;
                     if (val > parseInt(slider.max)) {
-                        val = 0; // loop
+                        val = 0;
+                        // Also rewind video
+                        if (expVideo && state.videoBlob) {
+                            expVideo.currentTime = 0;
+                        }
                     }
                     slider.value = val;
-                    updateExpFromSlider(val);
+                    // Update graph marker and info, but don't re-seek video (it's playing continuously)
+                    updateExpFromSliderNoVideo(val);
                 }, 200 / expPlaybackSpeed);
             }
+        }
+
+        // Update graph/info without touching video (used during continuous playback)
+        function updateExpFromSliderNoVideo(idx) {
+            const point = state.rawData[idx];
+            if (!point) return;
+
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
+
+            document.getElementById('expTimeDisplay').textContent = adjustedTime.toFixed(2) + ' s';
+
+            const val = point.values[expSelectedVar];
+            document.getElementById('expPointInfo').textContent =
+                `#${idx + 1} | ${state.variables[expSelectedVar].name}: ${val !== undefined ? val.toFixed(3) : '--'}`;
+
+            expTemporalMarkerX = adjustedTime;
+            if (expChart) expChart.update('none');
         }
 
         function setExpSpeed(speed) {
@@ -7660,17 +7917,20 @@ basic.forever(function () {
             document.querySelectorAll('.exp-speed-btn').forEach(b => {
                 b.classList.toggle('active', parseInt(b.dataset.speed) === speed);
             });
-            // Restart playback at new speed if playing
+            // Update video playback rate if playing
+            const expVideo = document.getElementById('expVideo');
+            if (expVideo && !expVideo.paused) {
+                expVideo.playbackRate = speed;
+            }
+            // Restart timeline interval at new speed if playing
             if (expPlaybackInterval) {
                 clearInterval(expPlaybackInterval);
                 const slider = document.getElementById('expTimelineBar');
-                const btn = document.getElementById('expPlayBtn');
-                btn.textContent = '⏸';
                 expPlaybackInterval = setInterval(() => {
                     let val = parseInt(slider.value) + 1;
                     if (val > parseInt(slider.max)) val = 0;
                     slider.value = val;
-                    updateExpFromSlider(val);
+                    updateExpFromSliderNoVideo(val);
                 }, 200 / expPlaybackSpeed);
             }
         }
@@ -7753,6 +8013,89 @@ basic.forever(function () {
         }
 
         // Auto-update experiment chart when new data arrives during capture
+        // ========== SPARKLINE MINI-GRAPH (MakeCode-style) ==========
+        function drawSparkline(canvasId, data, color) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || data.length < 2) return;
+
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width = canvas.offsetWidth * (window.devicePixelRatio || 1);
+            const h = canvas.height = canvas.offsetHeight * (window.devicePixelRatio || 1);
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Calculate bounds
+            let yMin = Infinity, yMax = -Infinity;
+            for (const d of data) {
+                if (d.y < yMin) yMin = d.y;
+                if (d.y > yMax) yMax = d.y;
+            }
+            const yRange = yMax - yMin || 1;
+            const padding = h * 0.1;
+
+            // Draw grid (very subtle, MakeCode-style)
+            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 4; i++) {
+                const gy = padding + (h - 2 * padding) * i / 4;
+                ctx.beginPath();
+                ctx.moveTo(0, gy);
+                ctx.lineTo(w, gy);
+                ctx.stroke();
+            }
+
+            // Draw line
+            ctx.beginPath();
+            ctx.strokeStyle = color || '#4fc3f7';
+            ctx.lineWidth = 1.5 * (window.devicePixelRatio || 1);
+            ctx.lineJoin = 'round';
+
+            const maxPoints = 200;
+            const step = data.length > maxPoints ? Math.floor(data.length / maxPoints) : 1;
+
+            for (let i = 0; i < data.length; i += step) {
+                const x = (i / (data.length - 1)) * w;
+                const y = padding + (1 - (data[i].y - yMin) / yRange) * (h - 2 * padding);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Draw latest point dot
+            if (data.length > 0) {
+                const last = data[data.length - 1];
+                const lx = w;
+                const ly = padding + (1 - (last.y - yMin) / yRange) * (h - 2 * padding);
+                ctx.beginPath();
+                ctx.arc(lx - 3, ly, 3, 0, Math.PI * 2);
+                ctx.fillStyle = color || '#4fc3f7';
+                ctx.fill();
+            }
+        }
+
+        function updateSparklines() {
+            // Only render sparklines when in split mode
+            if (currentViewMode !== 'split') return;
+
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            for (let i = 0; i < state.numVariables; i++) {
+                const canvasId = `sparkline${i}`;
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) continue;
+
+                const data = state.rawData.map(d => ({
+                    y: d.values[i]
+                }));
+                drawSparkline(canvasId, data, state.variables[i].color === '#000000' ? '#4fc3f7' : state.variables[i].color);
+
+                // Update value label
+                const valLabel = document.getElementById(`sparklineVal${i}`);
+                if (valLabel && data.length > 0) {
+                    valLabel.textContent = data[data.length - 1].y.toFixed(2);
+                }
+            }
+        }
+
         const origUpdateAllCharts = updateAllCharts;
         updateAllCharts = function() {
             origUpdateAllCharts();
@@ -7761,6 +8104,7 @@ basic.forever(function () {
                 updateExpTimeline();
                 updateExpRecBadge();
             }
+            updateSparklines();
         };
 
         // ========== VIEW MODE SWITCHER ==========
@@ -7791,6 +8135,15 @@ basic.forever(function () {
                 scrubber.classList.remove('active');
             }
 
+            // Build/remove sparklines for split mode
+            const sparkContainer = document.getElementById('splitSparklines');
+            if (mode === 'split') {
+                buildSplitSparklines();
+                updateSparklines();
+            } else if (sparkContainer) {
+                sparkContainer.remove();
+            }
+
             currentViewMode = mode;
 
             // Resize charts after layout change
@@ -7799,6 +8152,33 @@ basic.forever(function () {
                     state.charts.forEach(c => { if (c) c.resize(); });
                 }
             }, 100);
+        }
+
+        function buildSplitSparklines() {
+            // Remove existing
+            let existing = document.getElementById('splitSparklines');
+            if (existing) existing.remove();
+
+            const graphPanel = document.querySelector('.graph-panel');
+            if (!graphPanel) return;
+
+            const div = document.createElement('div');
+            div.id = 'splitSparklines';
+            div.style.cssText = 'display: flex; flex-direction: column; gap: 4px; margin-top: 4px;';
+
+            for (let i = 0; i < state.numVariables; i++) {
+                const color = state.variables[i].color === '#000000' ? '#4fc3f7' : state.variables[i].color;
+                const wrap = document.createElement('div');
+                wrap.className = 'sparkline-container active';
+                wrap.innerHTML = `
+                    <span class="sparkline-label">${state.variables[i].name}</span>
+                    <span class="sparkline-value" id="sparklineVal${i}">--</span>
+                    <canvas id="sparkline${i}"></canvas>
+                `;
+                div.appendChild(wrap);
+            }
+
+            graphPanel.appendChild(div);
         }
 
         // ========== TIMELINE SCRUBBER ==========
