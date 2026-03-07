@@ -63,6 +63,14 @@
             background: #333;
         }
 
+        .toolbar-btn.pulse-hint {
+            animation: pulseHint 0.6s ease-in-out 4;
+        }
+        @keyframes pulseHint {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.12); box-shadow: 0 0 8px rgba(0,0,0,0.3); }
+        }
+
         .toolbar-btn.success {
             background: #2e7d32;
             color: white;
@@ -3926,8 +3934,18 @@ basic.forever(function () {
                 document.getElementById('connectBtn').style.display = 'none';
                 document.getElementById('connectBluetoothBtn').style.display = 'none';
                 document.getElementById('collectBtn').style.display = 'inline-block';
-                const t = translations[currentLanguage];
-                document.getElementById('statusText').textContent = t.connected;
+                // Indicar al usuario que presione CAPTURAR
+                const pressCapture = {
+                    es: 'CONECTADO — Presioná CAPTURAR',
+                    en: 'CONNECTED — Press CAPTURE',
+                    pt: 'CONECTADO — Pressione CAPTURAR'
+                };
+                document.getElementById('statusText').textContent = pressCapture[currentLanguage] || pressCapture.es;
+
+                // Parpadear el botón CAPTURAR para llamar la atención
+                const collectBtnEl = document.getElementById('collectBtn');
+                collectBtnEl.classList.add('pulse-hint');
+                setTimeout(() => collectBtnEl.classList.remove('pulse-hint'), 4000);
 
                 // Iniciar loop serial inmediatamente (modo drain: lee y descarta datos)
                 // Esto evita acumulación de datos en el buffer del puerto serial
@@ -4080,10 +4098,13 @@ basic.forever(function () {
 
         async function connectBluetooth() {
             try {
-                // Basado en thegecko/microbit-web-bluetooth:
+                // Basado en microbit-foundation/microbit-connection:
                 // Filtrar por nombre para mostrar solo micro:bits en el selector
                 const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: 'BBC micro:bit' }],
+                    filters: [
+                        { namePrefix: 'BBC micro:bit' },
+                        { namePrefix: 'uBit' }
+                    ],
                     optionalServices: [UART_SERVICE_UUID]
                 });
 
@@ -4135,7 +4156,18 @@ basic.forever(function () {
                 document.getElementById('connectBluetoothBtn').style.display = 'none';
                 document.getElementById('collectBtn').style.display = 'inline-block';
                 const t = translations[currentLanguage];
-                document.getElementById('statusText').textContent = t.connectedBluetooth;
+                // Indicar al usuario que presione CAPTURAR para empezar
+                const pressCapture = {
+                    es: 'BLUETOOTH CONECTADO — Presioná CAPTURAR',
+                    en: 'BLUETOOTH CONNECTED — Press CAPTURE',
+                    pt: 'BLUETOOTH CONECTADO — Pressione CAPTURAR'
+                };
+                document.getElementById('statusText').textContent = pressCapture[currentLanguage] || pressCapture.es;
+
+                // Parpadear el botón CAPTURAR para llamar la atención
+                const collectBtn = document.getElementById('collectBtn');
+                collectBtn.classList.add('pulse-hint');
+                setTimeout(() => collectBtn.classList.remove('pulse-hint'), 4000);
 
                 // Iniciar lectura Bluetooth via notificaciones
                 startBluetoothLoop(txChar);
