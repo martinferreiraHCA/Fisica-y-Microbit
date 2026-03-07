@@ -3976,7 +3976,7 @@ basic.forever(function () {
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService(UART_SERVICE_UUID);
 
-                // Enumerar todas las características para diagnóstico
+                // Enumerar todas las características y buscar la que recibe datos (notify/indicate)
                 const allChars = await service.getCharacteristics();
                 console.log('[BT] Características del servicio UART:');
                 let txChar = null;
@@ -3989,22 +3989,17 @@ basic.forever(function () {
                     if (props.notify) propList.push('notify');
                     if (props.indicate) propList.push('indicate');
                     console.log(`[BT]   UUID: ${ch.uuid}, props: [${propList.join(', ')}]`);
-
-                    // Buscar la característica TX (la que tiene notify o indicate)
-                    if (ch.uuid === UART_TX_CHAR_UUID) {
-                        txChar = ch;
-                        console.log('[BT] → TX characteristic encontrada');
-                    }
                 }
 
-                // Si no encontramos la TX por UUID, buscar cualquiera con notify/indicate
-                if (!txChar) {
-                    for (const ch of allChars) {
-                        if (ch.properties.notify || ch.properties.indicate) {
-                            txChar = ch;
-                            console.log('[BT] → Usando característica alternativa con notify/indicate:', ch.uuid);
-                            break;
-                        }
+                // Buscar la característica que soporte notify o indicate (por donde llegan datos)
+                // En micro:bit V2, los roles pueden estar invertidos respecto al estándar Nordic UART:
+                //   6e400002 (normalmente RX) puede tener indicate
+                //   6e400003 (normalmente TX) puede tener write
+                for (const ch of allChars) {
+                    if (ch.properties.notify || ch.properties.indicate) {
+                        txChar = ch;
+                        console.log('[BT] → Usando característica con notify/indicate:', ch.uuid);
+                        break;
                     }
                 }
 
@@ -4031,13 +4026,9 @@ basic.forever(function () {
                             await new Promise(r => setTimeout(r, 1000 * attempt));
                             const srv = await device.gatt.connect();
                             const svc = await srv.getPrimaryService(UART_SERVICE_UUID);
-                            // Buscar TX por UUID o por propiedades notify/indicate
-                            let tx = null;
-                            try { tx = await svc.getCharacteristic(UART_TX_CHAR_UUID); } catch (_) {}
-                            if (!tx) {
-                                const chars = await svc.getCharacteristics();
-                                tx = chars.find(c => c.properties.notify || c.properties.indicate);
-                            }
+                            // Buscar característica con notify/indicate (donde llegan datos)
+                            const chars = await svc.getCharacteristics();
+                            const tx = chars.find(c => c.properties.notify || c.properties.indicate);
                             if (!tx) throw new Error('TX characteristic not found');
                             state.btCharTx = tx;
                             state.isConnected = true;
