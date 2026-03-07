@@ -37,9 +37,9 @@
         .toolbar-btn {
             background: white;
             border: 2px solid black;
-            padding: 8px 16px;
+            padding: clamp(6px, 1vw, 8px) clamp(8px, 2vw, 16px);
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: clamp(0.72rem, 1.8vw, 0.9rem);
             font-weight: 600;
             transition: all 0.2s;
         }
@@ -122,10 +122,13 @@
 
         .status-text {
             margin-left: auto;
-            font-size: 0.9rem;
+            font-size: clamp(0.7rem, 1.8vw, 0.9rem);
             font-weight: 500;
-            padding: 8px 16px;
+            padding: clamp(4px, 1vw, 8px) clamp(8px, 2vw, 16px);
             border: 2px solid black;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         /* Layout principal */
@@ -141,8 +144,9 @@
             border-right: 2px solid black;
             display: flex;
             flex-direction: column;
-            padding: 20px;
+            padding: clamp(8px, 2vw, 20px);
             overflow-y: auto;
+            min-width: 0;
         }
 
         .graphs-container {
@@ -156,33 +160,37 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            min-height: 300px;
+            min-height: clamp(180px, 30vh, 300px);
         }
 
         .graph-wrapper.single {
-            min-height: 500px;
+            min-height: clamp(200px, 40vh, 500px);
         }
 
         .graph-wrapper.double {
-            min-height: 400px;
+            min-height: clamp(180px, 30vh, 400px);
         }
 
         .graph-wrapper.triple {
-            min-height: 300px;
+            min-height: clamp(150px, 25vh, 300px);
         }
 
         .graph-title {
             font-weight: 700;
-            font-size: 1.1rem;
-            margin-bottom: 16px;
+            font-size: clamp(0.75rem, 2vw, 1.1rem);
+            margin-bottom: clamp(8px, 2vw, 16px);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
         }
 
         .chart-container {
             flex: 1;
             position: relative;
-            min-height: 250px;
+            min-height: clamp(120px, 20vh, 250px);
         }
 
         .chart-container canvas {
@@ -200,10 +208,10 @@
         .graph-controls button {
             background: white;
             border: 1.5px solid #999;
-            width: 28px;
-            height: 28px;
+            width: clamp(24px, 4vw, 28px);
+            height: clamp(24px, 4vw, 28px);
             cursor: pointer;
-            font-size: 14px;
+            font-size: clamp(11px, 2vw, 14px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -235,17 +243,19 @@
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            min-width: 0;
         }
 
         .panel-section {
             border-bottom: 2px solid black;
+            min-width: 0;
         }
 
         .section-header {
             background: white;
-            padding: 12px 16px;
+            padding: 10px 12px;
             font-weight: 700;
-            font-size: 0.9rem;
+            font-size: clamp(0.7rem, 2vw, 0.9rem);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             cursor: pointer;
@@ -253,6 +263,7 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #ccc;
+            flex-shrink: 0;
         }
 
         .section-header:hover {
@@ -260,8 +271,11 @@
         }
 
         .section-content {
-            padding: 16px;
+            padding: clamp(8px, 2vw, 16px);
             background: white;
+            overflow-y: auto;
+            overflow-x: hidden;
+            min-width: 0;
         }
 
         .section-content.collapsed {
@@ -269,28 +283,33 @@
         }
 
         .input-row {
-            margin-bottom: 12px;
+            margin-bottom: clamp(6px, 1.5vw, 12px);
+            min-width: 0;
         }
 
         .input-row label {
             display: block;
-            font-size: 0.85rem;
-            margin-bottom: 6px;
+            font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+            margin-bottom: 4px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .input-row input, .input-row select {
             width: 100%;
-            padding: 8px 12px;
+            padding: clamp(4px, 1vw, 8px) clamp(6px, 1.5vw, 12px);
             border: 2px solid black;
-            font-size: 0.9rem;
+            font-size: clamp(0.75rem, 2vw, 0.9rem);
             background: white;
+            min-width: 0;
         }
 
         .input-row input[type="color"] {
-            height: 40px;
+            height: clamp(28px, 5vw, 40px);
             padding: 4px;
         }
 
@@ -306,27 +325,32 @@
 
         .btn-full {
             width: 100%;
-            margin-top: 8px;
+            margin-top: clamp(4px, 1vw, 8px);
+            font-size: clamp(0.72rem, 1.8vw, 0.9rem) !important;
+            padding: clamp(6px, 1.2vw, 8px) clamp(8px, 2vw, 16px) !important;
         }
 
         .checkbox-row {
             display: flex;
             align-items: center;
-            margin-bottom: 12px;
-            padding: 8px;
+            margin-bottom: clamp(6px, 1.5vw, 12px);
+            padding: clamp(4px, 1vw, 8px);
             border: 2px solid #e0e0e0;
             cursor: pointer;
+            min-width: 0;
         }
 
         .checkbox-row:hover {
             background: #f5f5f5;
         }
 
-        .checkbox-row input[type="checkbox"] {
-            margin-right: 10px;
-            width: 18px;
-            height: 18px;
+        .checkbox-row input[type="checkbox"],
+        .checkbox-row input[type="radio"] {
+            margin-right: 8px;
+            width: 16px;
+            height: 16px;
             cursor: pointer;
+            flex-shrink: 0;
         }
 
         .checkbox-row label {
@@ -334,22 +358,27 @@
             flex: 1;
             font-weight: 600;
             text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
+            font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+            letter-spacing: 0.3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
         }
 
         .variable-config {
             border: 2px solid black;
-            padding: 12px;
-            margin-bottom: 12px;
+            padding: clamp(6px, 1.5vw, 12px);
+            margin-bottom: clamp(6px, 1.5vw, 12px);
             background: #f9f9f9;
+            min-width: 0;
         }
 
         .variable-config h4 {
-            font-size: 0.85rem;
-            margin-bottom: 8px;
+            font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+            margin-bottom: 6px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
 
         .color-preview {
@@ -365,7 +394,8 @@
         .data-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.85rem;
+            font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+            table-layout: auto;
         }
 
         .data-table thead {
@@ -376,17 +406,18 @@
         }
 
         .data-table th {
-            padding: 8px;
+            padding: clamp(4px, 1vw, 8px);
             text-align: left;
             border-bottom: 2px solid black;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-size: 0.75rem;
+            letter-spacing: 0.3px;
+            font-size: clamp(0.6rem, 1.5vw, 0.75rem);
+            white-space: nowrap;
         }
 
         .data-table td {
-            padding: 6px 8px;
+            padding: clamp(3px, 0.8vw, 6px) clamp(4px, 1vw, 8px);
             border-bottom: 1px solid #e0e0e0;
         }
 
@@ -432,55 +463,61 @@
         }
 
         .table-controls {
-            padding: 12px;
+            padding: clamp(6px, 1.5vw, 12px);
             background: #f5f5f5;
             border-bottom: 2px solid black;
             display: flex;
-            gap: 8px;
+            gap: clamp(4px, 1vw, 8px);
             align-items: center;
+            min-width: 0;
         }
 
         .table-search {
             flex: 1;
-            padding: 6px 10px;
+            padding: clamp(4px, 1vw, 6px) clamp(6px, 1.5vw, 10px);
             border: 2px solid black;
-            font-size: 0.85rem;
+            font-size: clamp(0.72rem, 1.8vw, 0.85rem);
+            min-width: 0;
         }
 
         .table-filter {
-            padding: 6px 10px;
+            padding: clamp(4px, 1vw, 6px) clamp(6px, 1.5vw, 10px);
             border: 2px solid black;
-            font-size: 0.85rem;
+            font-size: clamp(0.72rem, 1.8vw, 0.85rem);
             background: white;
+            min-width: 0;
         }
 
         /* Caja de resultados minimalista */
         .fit-box {
             background: white;
             border: 2px solid black;
-            padding: 12px;
-            margin-top: 12px;
+            padding: clamp(6px, 1.5vw, 12px);
+            margin-top: clamp(6px, 1.5vw, 12px);
             font-family: 'Courier New', monospace;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .fit-box .title {
             font-weight: 700;
             text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
+            font-size: clamp(0.6rem, 1.5vw, 0.75rem);
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
         }
 
         .fit-box .equation {
-            font-size: 1.1rem;
-            margin: 8px 0;
+            font-size: clamp(0.8rem, 2vw, 1.1rem);
+            margin: 6px 0;
             font-weight: 600;
+            word-break: break-all;
         }
 
         .fit-box .stats {
-            font-size: 0.85rem;
-            margin-top: 8px;
-            line-height: 1.6;
+            font-size: clamp(0.72rem, 1.8vw, 0.85rem);
+            margin-top: 6px;
+            line-height: 1.5;
         }
 
         /* Stats modal */
@@ -695,28 +732,33 @@
         /* Camera preview */
         .camera-controls {
             display: flex;
-            gap: 8px;
-            margin-top: 12px;
+            gap: clamp(4px, 1vw, 8px);
+            margin-top: clamp(6px, 1.5vw, 12px);
             align-items: center;
+            min-width: 0;
+            flex-shrink: 0;
         }
 
         .camera-select {
             flex: 1;
-            padding: 8px;
+            padding: clamp(4px, 1vw, 8px);
             font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
+            font-size: clamp(0.65rem, 1.6vw, 0.85rem);
             font-weight: 700;
             border: 2px solid black;
             background: white;
             cursor: pointer;
             text-transform: uppercase;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .camera-switch-btn {
-            width: 42px;
-            height: 42px;
+            width: clamp(34px, 6vw, 42px);
+            height: clamp(34px, 6vw, 42px);
             padding: 0;
-            font-size: 1.4rem;
+            font-size: clamp(1rem, 2.5vw, 1.4rem);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -728,11 +770,14 @@
             border: 2px solid black;
             margin-top: 8px;
             position: relative;
+            overflow: hidden;
         }
 
         .camera-preview video {
             width: 100%;
+            height: 100%;
             display: block;
+            object-fit: contain;
         }
 
         .recording-indicator {
@@ -761,25 +806,30 @@
         .info-box {
             background: #e3f2fd;
             border: 2px solid #1976d2;
-            padding: 12px;
-            margin-bottom: 12px;
-            font-size: 0.85rem;
-            line-height: 1.5;
+            padding: clamp(6px, 1.5vw, 12px);
+            margin-bottom: clamp(6px, 1.5vw, 12px);
+            font-size: clamp(0.72rem, 1.8vw, 0.85rem);
+            line-height: 1.4;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .info-box strong {
             display: block;
             margin-bottom: 4px;
             color: #1565c0;
+            font-size: clamp(0.65rem, 1.6vw, 0.8rem);
         }
 
         .warning-box {
             background: #fff3e0;
             border: 2px solid #f57c00;
-            padding: 12px;
-            margin-bottom: 12px;
-            font-size: 0.85rem;
-            line-height: 1.5;
+            padding: clamp(6px, 1.5vw, 12px);
+            margin-bottom: clamp(6px, 1.5vw, 12px);
+            font-size: clamp(0.72rem, 1.8vw, 0.85rem);
+            line-height: 1.4;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .warning-box strong {
