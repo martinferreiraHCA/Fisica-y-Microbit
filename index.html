@@ -3990,6 +3990,9 @@ basic.forever(function () {
         let btLoopRunning = false;
 
         document.getElementById('connectBluetoothBtn').addEventListener('click', () => {
+            console.log('[BT] ── Botón Bluetooth presionado ──');
+            console.log('[BT] navigator.bluetooth disponible:', 'bluetooth' in navigator);
+            console.log('[BT] User Agent:', navigator.userAgent);
             if (!('bluetooth' in navigator)) {
                 alert(currentLanguage === 'es'
                     ? 'Web Bluetooth API no soportada. Usa Chrome o Edge en escritorio/Android.'
@@ -4004,6 +4007,8 @@ basic.forever(function () {
 
         async function connectBluetooth() {
             try {
+                console.log('[BT] ── Iniciando conexión Bluetooth ──');
+                console.log('[BT] Solicitando dispositivo con filtros: BBC micro:bit, uBit');
                 // Basado en microbit-foundation/microbit-connection:
                 // Filtrar por nombre para mostrar solo micro:bits en el selector
                 const device = await navigator.bluetooth.requestDevice({
@@ -4013,13 +4018,20 @@ basic.forever(function () {
                     ],
                     optionalServices: [UART_SERVICE_UUID]
                 });
+                console.log('[BT] Dispositivo seleccionado:', device.name, '| ID:', device.id);
 
+                console.log('[BT] Conectando a GATT server...');
                 const server = await device.gatt.connect();
+                console.log('[BT] GATT server conectado:', server.connected);
+
+                console.log('[BT] Buscando servicio UART:', UART_SERVICE_UUID);
                 const service = await server.getPrimaryService(UART_SERVICE_UUID);
+                console.log('[BT] Servicio UART encontrado');
 
                 // Enumerar todas las características y buscar la que recibe datos (notify/indicate)
+                console.log('[BT] Enumerando características...');
                 const allChars = await service.getCharacteristics();
-                console.log('[BT] Características del servicio UART:');
+                console.log('[BT] Total de características encontradas:', allChars.length);
                 let txChar = null;
                 for (const ch of allChars) {
                     const props = ch.properties;
@@ -4029,7 +4041,7 @@ basic.forever(function () {
                     if (props.writeWithoutResponse) propList.push('writeWithoutResponse');
                     if (props.notify) propList.push('notify');
                     if (props.indicate) propList.push('indicate');
-                    console.log(`[BT]   UUID: ${ch.uuid}, props: [${propList.join(', ')}]`);
+                    console.log(`[BT]   Característica UUID: ${ch.uuid}, propiedades: [${propList.join(', ')}]`);
                 }
 
                 // Buscar la característica que soporte notify o indicate (por donde llegan datos)
@@ -4039,12 +4051,14 @@ basic.forever(function () {
                 for (const ch of allChars) {
                     if (ch.properties.notify || ch.properties.indicate) {
                         txChar = ch;
-                        console.log('[BT] → Usando característica con notify/indicate:', ch.uuid);
+                        const mode = ch.properties.notify ? 'notify' : 'indicate';
+                        console.log(`[BT] ✓ Característica TX seleccionada: ${ch.uuid} (modo: ${mode})`);
                         break;
                     }
                 }
 
                 if (!txChar) {
+                    console.error('[BT] ✗ No se encontró característica con notify/indicate');
                     throw new Error('No se encontró una característica UART con notify/indicate. Verificá que tu programa MakeCode tenga el servicio Bluetooth UART.');
                 }
 
@@ -4052,9 +4066,11 @@ basic.forever(function () {
                 state.btCharTx = txChar;
                 state.isConnected = true;
                 state.isBluetooth = true;
+                console.log('[BT] Estado actualizado: conectado=true, bluetooth=true');
 
                 // Escuchar desconexión e intentar reconexión automática
                 device.addEventListener('gattserverdisconnected', async () => {
+                    console.warn('[BT] ── GATT desconectado ── Iniciando reconexión automática');
                     state.isConnected = false;
                     state.btCharTx = null;
                     btLoopRunning = false;
@@ -4064,8 +4080,11 @@ basic.forever(function () {
                     // Intentar reconexión automática (hasta 3 intentos)
                     for (let attempt = 1; attempt <= 3; attempt++) {
                         try {
+                            console.log(`[BT] Reconexión intento ${attempt}/3 — esperando ${attempt}s...`);
                             await new Promise(r => setTimeout(r, 1000 * attempt));
+                            console.log(`[BT] Reconexión intento ${attempt}/3 — conectando GATT...`);
                             const srv = await device.gatt.connect();
+                            console.log(`[BT] Reconexión intento ${attempt}/3 — GATT conectado, buscando servicio...`);
                             const svc = await srv.getPrimaryService(UART_SERVICE_UUID);
                             // Buscar característica con notify/indicate (donde llegan datos)
                             const chars = await svc.getCharacteristics();
@@ -4073,15 +4092,17 @@ basic.forever(function () {
                             if (!tx) throw new Error('TX characteristic not found');
                             state.btCharTx = tx;
                             state.isConnected = true;
+                            console.log(`[BT] ✓ Reconexión exitosa en intento ${attempt}/3 — TX: ${tx.uuid}`);
                             document.getElementById('statusText').textContent = t.connectedBluetooth;
                             startBluetoothLoop(tx);
                             return; // Reconexión exitosa
                         } catch (e) {
-                            console.warn(`Reconexión intento ${attempt}/3 fallido:`, e.message);
+                            console.warn(`[BT] ✗ Reconexión intento ${attempt}/3 fallido:`, e.name, e.message);
                         }
                     }
 
                     // Si no se pudo reconectar, limpiar estado
+                    console.error('[BT] ✗ Reconexión fallida después de 3 intentos. Limpiando estado.');
                     state.isBluetooth = false;
                     state.btDevice = null;
                     document.getElementById('connectBtn').style.display = 'inline-block';
@@ -4109,37 +4130,57 @@ basic.forever(function () {
                 setTimeout(() => collectBtn.classList.remove('pulse-hint'), 4000);
 
                 // Iniciar lectura Bluetooth via notificaciones
+                console.log('[BT] ── Conexión completa, iniciando loop de lectura ──');
                 startBluetoothLoop(txChar);
             } catch (err) {
                 if (err.name !== 'NotFoundError') { // Usuario canceló selector
+                    console.error('[BT] ✗ Error en conexión:', err.name, err.message, err.stack);
                     alert('Error Bluetooth: ' + err.message);
+                } else {
+                    console.log('[BT] Usuario canceló el selector de dispositivos');
                 }
             }
         }
 
         async function startBluetoothLoop(txChar) {
-            if (btLoopRunning) return;
+            if (btLoopRunning) {
+                console.log('[BT] Loop ya está corriendo, ignorando llamada duplicada');
+                return;
+            }
             btLoopRunning = true;
             btBuffer = '';
+            let _btChunkCount = 0;
+            let _btLineCount = 0;
+            let _btDataPointCount = 0;
+            let _btLastLogTime = Date.now();
 
             try {
                 // Verificar propiedades de la característica
                 const props = txChar.properties;
-                console.log('[BT] TX props — notify:', props.notify, 'indicate:', props.indicate, 'read:', props.read);
+                console.log('[BT] ── startBluetoothLoop ──');
+                console.log('[BT] Característica UUID:', txChar.uuid);
+                console.log('[BT] Propiedades — notify:', props.notify, '| indicate:', props.indicate, '| read:', props.read, '| write:', props.write);
 
                 if (!props.notify && !props.indicate) {
-                    console.error('[BT] La característica TX no soporta notify ni indicate');
+                    console.error('[BT] ✗ La característica NO soporta notify ni indicate. No se pueden recibir datos.');
                     btLoopRunning = false;
                     alert('Error: La característica UART TX no soporta notificaciones. Verificá tu programa MakeCode.');
                     return;
                 }
 
+                const notifyMode = props.notify ? 'notify' : 'indicate';
+                console.log(`[BT] Iniciando notificaciones (modo: ${notifyMode})...`);
                 await txChar.startNotifications();
-                console.log('[BT] Notificaciones iniciadas correctamente (modo:', props.notify ? 'notify' : 'indicate', ')');
+                console.log(`[BT] ✓ Notificaciones ${notifyMode} iniciadas correctamente`);
+                console.log('[BT] Esperando datos del micro:bit...');
                 txChar.addEventListener('characteristicvaluechanged', (event) => {
                     const decoder = new TextDecoder();
                     const chunk = decoder.decode(event.target.value);
-                    console.log('[BT] chunk recibido:', JSON.stringify(chunk));
+                    _btChunkCount++;
+                    // Log detallado los primeros 10 chunks, luego cada 50
+                    if (_btChunkCount <= 10 || _btChunkCount % 50 === 0) {
+                        console.log(`[BT] chunk #${_btChunkCount}:`, JSON.stringify(chunk), `(${chunk.length} bytes)`);
+                    }
                     btBuffer += chunk;
 
                     const lines = btBuffer.split('\n');
@@ -4152,14 +4193,17 @@ basic.forever(function () {
                     const useMbTime = state.microbitTimestamp;
                     const expectedParts = useMbTime ? numVars + 1 : numVars;
 
-                    console.log('[BT] Líneas completas:', lines.length, 'isCollecting:', state.isCollecting, 'expectedParts:', expectedParts);
+                    _btLineCount += lines.length;
+                    if (_btLineCount <= 10 || _btLineCount % 100 === 0) {
+                        console.log(`[BT] Líneas completas: ${lines.length} | total acumulado: ${_btLineCount} | isCollecting: ${state.isCollecting} | expectedParts: ${expectedParts}`);
+                    }
                     for (let li = 0; li < lines.length; li++) {
                         const line = lines[li];
                         if (line.length === 0 || line === '\r') continue;
 
                         const parts = line.split(',');
                         if (parts.length !== expectedParts) {
-                            console.log('[BT] Format mismatch:', JSON.stringify(line), 'parts:', parts.length, 'expected:', expectedParts);
+                            console.warn('[BT] ⚠ Format mismatch:', JSON.stringify(line), '| parts:', parts.length, '| expected:', expectedParts);
                             _formatMismatchCount++;
                             _lastMismatchParts = parts.length;
                             continue;
@@ -4203,11 +4247,28 @@ basic.forever(function () {
                         state.rawData.push(dataPoint);
                         pendingChartPoints.push(dataPoint);
                         sampleTimestamps.push(batchTime);
+                        _btDataPointCount++;
+                        // Log los primeros 5 puntos, luego cada 100
+                        if (_btDataPointCount <= 5 || _btDataPointCount % 100 === 0) {
+                            console.log(`[BT] ✓ Dato #${_btDataPointCount}: t=${pointTime}, valores=[${values.join(', ')}]`);
+                        }
+                        // Resumen periódico cada 10 segundos
+                        const now = Date.now();
+                        if (now - _btLastLogTime > 10000) {
+                            console.log(`[BT] ── Resumen: ${_btChunkCount} chunks | ${_btLineCount} líneas | ${_btDataPointCount} datos válidos | buffer pendiente: ${btBuffer.length} chars ──`);
+                            _btLastLogTime = now;
+                        }
                     }
                 });
             } catch (err) {
-                console.error('Error en lectura Bluetooth:', err);
+                console.error('[BT] ✗ Error en startBluetoothLoop:', err.name, err.message);
+                console.error('[BT] Stack:', err.stack);
                 btLoopRunning = false;
+                // Mostrar en la UI para que el usuario sepa qué pasó
+                const statusEl = document.getElementById('statusText');
+                if (statusEl) {
+                    statusEl.textContent = 'Error BT: ' + err.message;
+                }
             }
         }
 
