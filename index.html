@@ -4029,7 +4029,7 @@ basic.forever(function () {
                 return;
             }
 
-            // Fase 2: Conectar GATT, descubrir servicio y características (con reintentos)
+            // Fase 2: Conectar GATT, descubrir servicio y características
             const statusEl = document.getElementById('statusText');
             statusEl.textContent = 'Conectando a ' + (device.name || 'micro:bit') + '...';
             try {
@@ -4037,71 +4037,134 @@ basic.forever(function () {
                 let service = null;
                 let txChar = null;
 
-                for (let attempt = 1; attempt <= 5; attempt++) {
+                // Función auxiliar: conectar GATT y buscar servicio UART
+                async function tryConnectAndDiscover(dev, label) {
+                    console.log(`[BT] ${label} — Conectando a GATT server...`);
+                    const srv = await dev.gatt.connect();
+                    console.log(`[BT] ${label} — GATT connected:`, srv.connected);
+
+                    // Esperar para service discovery
+                    console.log(`[BT] ${label} — Esperando 1000ms para service discovery...`);
+                    await new Promise(r => setTimeout(r, 1000));
+
+                    if (!dev.gatt.connected) {
+                        throw new Error('GATT se desconectó durante service discovery');
+                    }
+
+                    // Enumerar TODOS los servicios disponibles para diagnóstico
+                    console.log(`[BT] ${label} — Enumerando todos los servicios disponibles...`);
                     try {
-                        // Desconectar si quedó conectado de un intento anterior
-                        if (attempt > 1 && device.gatt.connected) {
-                            console.log(`[BT] Intento ${attempt}/5 — Desconectando GATT previo...`);
-                            device.gatt.disconnect();
+                        const allServices = await srv.getPrimaryServices();
+                        console.log(`[BT] ${label} — Servicios encontrados: ${allServices.length}`);
+                        for (const svc of allServices) {
+                            console.log(`[BT]   Servicio: ${svc.uuid}`);
+                        }
+                        // Buscar UART en la lista
+                        const uartSvc = allServices.find(s => s.uuid === UART_SERVICE_UUID);
+                        if (uartSvc) {
+                            console.log(`[BT] ${label} — ✓ Servicio UART encontrado via getPrimaryServices()`);
+                            return { server: srv, service: uartSvc };
+                        }
+                    } catch (enumErr) {
+                        console.warn(`[BT] ${label} — getPrimaryServices() falló:`, enumErr.message);
+                    }
+
+                    // Intento directo por UUID
+                    console.log(`[BT] ${label} — Buscando servicio UART directo:`, UART_SERVICE_UUID);
+                    const uartService = await srv.getPrimaryService(UART_SERVICE_UUID);
+                    console.log(`[BT] ${label} — ✓ Servicio UART encontrado`);
+                    return { server: srv, service: uartService };
+                }
+
+                // Intento 1: conexión directa
+                let found = false;
+                try {
+                    const result = await tryConnectAndDiscover(device, 'Intento 1');
+                    server = result.server;
+                    service = result.service;
+                    found = true;
+                } catch (e1) {
+                    console.warn('[BT] ✗ Intento 1 falló:', e1.name, e1.message);
+
+                    // Intento 2: desconectar y reconectar
+                    try {
+                        if (device.gatt.connected) device.gatt.disconnect();
+                        await new Promise(r => setTimeout(r, 1000));
+                        const result = await tryConnectAndDiscover(device, 'Intento 2');
+                        server = result.server;
+                        service = result.service;
+                        found = true;
+                    } catch (e2) {
+                        console.warn('[BT] ✗ Intento 2 falló:', e2.name, e2.message);
+
+                        // Intento 3: forget() para limpiar cache de Chrome + re-solicitar dispositivo
+                        if (device.gatt.connected) device.gatt.disconnect();
+                        if (typeof device.forget === 'function') {
+                            console.log('[BT] Limpiando cache BLE con device.forget()...');
+                            statusEl.textContent = 'Limpiando cache BLE... seleccioná el micro:bit de nuevo';
+                            await device.forget();
+                            console.log('[BT] Cache limpiada. Re-solicitando dispositivo...');
                             await new Promise(r => setTimeout(r, 500));
-                        }
 
-                        console.log(`[BT] Intento ${attempt}/5 — Conectando a GATT server...`);
-                        server = await device.gatt.connect();
-                        console.log(`[BT] Intento ${attempt}/5 — GATT connected:`, server.connected);
+                            // Re-solicitar — abre el picker de nuevo
+                            device = await navigator.bluetooth.requestDevice({
+                                filters: [
+                                    { namePrefix: 'BBC micro:bit' },
+                                    { namePrefix: 'uBit' }
+                                ],
+                                optionalServices: [UART_SERVICE_UUID]
+                            });
+                            console.log('[BT] Nuevo dispositivo seleccionado:', device.name, '| ID:', device.id);
+                            statusEl.textContent = 'Reconectando a ' + (device.name || 'micro:bit') + '...';
 
-                        // Esperar a que el micro:bit exponga sus servicios
-                        // (BLE necesita tiempo para service discovery después de connect)
-                        const serviceDelay = attempt === 1 ? 1000 : 1500 + (attempt * 500);
-                        console.log(`[BT] Intento ${attempt}/5 — Esperando ${serviceDelay}ms para service discovery...`);
-                        await new Promise(r => setTimeout(r, serviceDelay));
-
-                        // Verificar que GATT sigue conectado después del delay
-                        if (!device.gatt.connected) {
-                            throw new Error('GATT se desconectó durante service discovery');
-                        }
-
-                        console.log(`[BT] Intento ${attempt}/5 — Buscando servicio UART:`, UART_SERVICE_UUID);
-                        service = await server.getPrimaryService(UART_SERVICE_UUID);
-                        console.log(`[BT] Intento ${attempt}/5 — ✓ Servicio UART encontrado`);
-
-                        console.log('[BT] Enumerando características...');
-                        const allChars = await service.getCharacteristics();
-                        console.log('[BT] Total de características encontradas:', allChars.length);
-                        for (const ch of allChars) {
-                            const props = ch.properties;
-                            const propList = [];
-                            if (props.read) propList.push('read');
-                            if (props.write) propList.push('write');
-                            if (props.writeWithoutResponse) propList.push('writeWithoutResponse');
-                            if (props.notify) propList.push('notify');
-                            if (props.indicate) propList.push('indicate');
-                            console.log(`[BT]   UUID: ${ch.uuid}, props: [${propList.join(', ')}]`);
-                        }
-
-                        // Buscar la que soporte notify o indicate
-                        for (const ch of allChars) {
-                            if (ch.properties.notify || ch.properties.indicate) {
-                                txChar = ch;
-                                const mode = ch.properties.notify ? 'notify' : 'indicate';
-                                console.log(`[BT] ✓ Característica TX seleccionada: ${ch.uuid} (modo: ${mode})`);
-                                break;
+                            // Intentar 2 veces con el dispositivo fresco
+                            for (let retry = 1; retry <= 2; retry++) {
+                                try {
+                                    const result = await tryConnectAndDiscover(device, `Post-forget ${retry}`);
+                                    server = result.server;
+                                    service = result.service;
+                                    found = true;
+                                    break;
+                                } catch (e3) {
+                                    console.warn(`[BT] ✗ Post-forget intento ${retry} falló:`, e3.name, e3.message);
+                                    if (device.gatt.connected) device.gatt.disconnect();
+                                    if (retry < 2) await new Promise(r => setTimeout(r, 2000));
+                                }
                             }
                         }
-
-                        if (!txChar) {
-                            throw new Error('No se encontró característica UART con notify/indicate. Verificá tu programa MakeCode.');
-                        }
-
-                        // Éxito
-                        break;
-                    } catch (e) {
-                        console.warn(`[BT] ✗ Intento ${attempt}/5 falló:`, e.name, e.message);
-                        if (attempt === 5) throw e;
-                        const waitMs = 1500 * attempt;
-                        console.log(`[BT] Esperando ${waitMs}ms antes de reintentar...`);
-                        await new Promise(r => setTimeout(r, waitMs));
                     }
+                }
+
+                if (!found) {
+                    throw new Error('No se pudo encontrar el servicio UART después de múltiples intentos');
+                }
+
+                // Descubrir características
+                console.log('[BT] Enumerando características del servicio UART...');
+                const allChars = await service.getCharacteristics();
+                console.log('[BT] Total de características encontradas:', allChars.length);
+                for (const ch of allChars) {
+                    const props = ch.properties;
+                    const propList = [];
+                    if (props.read) propList.push('read');
+                    if (props.write) propList.push('write');
+                    if (props.writeWithoutResponse) propList.push('writeWithoutResponse');
+                    if (props.notify) propList.push('notify');
+                    if (props.indicate) propList.push('indicate');
+                    console.log(`[BT]   UUID: ${ch.uuid}, props: [${propList.join(', ')}]`);
+                }
+
+                for (const ch of allChars) {
+                    if (ch.properties.notify || ch.properties.indicate) {
+                        txChar = ch;
+                        const mode = ch.properties.notify ? 'notify' : 'indicate';
+                        console.log(`[BT] ✓ Característica TX seleccionada: ${ch.uuid} (modo: ${mode})`);
+                        break;
+                    }
+                }
+
+                if (!txChar) {
+                    throw new Error('No se encontró característica UART con notify/indicate. Verificá tu programa MakeCode.');
                 }
 
                 state.btDevice = device;
@@ -4169,14 +4232,15 @@ basic.forever(function () {
                 console.log('[BT] ── Conexión completa, iniciando loop de lectura ──');
                 startBluetoothLoop(txChar);
             } catch (err) {
-                console.error('[BT] ✗ Error en conexión (después de 5 intentos):', err.name, err.message, err.stack);
+                console.error('[BT] ✗ Error en conexión:', err.name, err.message, err.stack);
                 statusEl.textContent = 'Error de conexión BT';
-                if (err.name === 'NotFoundError' && err.message.includes('Services')) {
+                if (err.name === 'NotFoundError' && err.message === '') {
+                    // Usuario canceló el picker en el re-request
+                    console.log('[BT] Usuario canceló el selector de dispositivos');
+                } else if (err.message && err.message.includes('UART')) {
                     alert('No se encontró el servicio UART en el micro:bit.\n\n' +
-                        'Posibles soluciones:\n' +
-                        '1. Resetear el micro:bit (botón de atrás)\n' +
-                        '2. Desvincularlo de Bluetooth del sistema y volver a emparejar\n' +
-                        '3. Verificar que el programa MakeCode tiene bluetooth.startUartService()');
+                        'Verificá que el programa MakeCode tenga el bloque:\n' +
+                        '"bluetooth uart service"');
                 } else {
                     alert('Error Bluetooth: ' + err.message);
                 }
