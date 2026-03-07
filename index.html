@@ -792,7 +792,275 @@
             display: none !important;
         }
 
-        /* Responsive - Tablet */
+        /* ========== VIEW MODE SWITCHER ========== */
+        .view-switcher {
+            display: none; /* hidden on desktop */
+            background: white;
+            border-bottom: 2px solid black;
+            padding: 0;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .view-switcher-inner {
+            display: flex;
+            min-width: max-content;
+        }
+
+        .view-btn {
+            flex: 1;
+            min-width: 0;
+            padding: 10px 12px;
+            background: white;
+            border: none;
+            border-right: 1px solid #e0e0e0;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            transition: all 0.15s;
+            text-align: center;
+        }
+
+        .view-btn:last-child {
+            border-right: none;
+        }
+
+        .view-btn.active {
+            background: black;
+            color: white;
+        }
+
+        .view-btn:not(.active):hover {
+            background: #f0f0f0;
+        }
+
+        /* ========== SPLIT-SCREEN LAYOUT ========== */
+        .main-container.view-split {
+            grid-template-columns: 1fr 1fr;
+        }
+        .main-container.view-split .graph-panel {
+            border-right: 2px solid black;
+        }
+        .main-container.view-split .side-panel {
+            display: flex;
+        }
+
+        /* When in split mode, side panel shows ONLY video section */
+        .main-container.view-split .side-panel .panel-section:not(#videoSection) {
+            display: none;
+        }
+        .main-container.view-split .side-panel #videoSection {
+            display: block !important;
+            flex: 1;
+        }
+        .main-container.view-split .side-panel #videoSection .section-content {
+            display: block !important;
+        }
+        .main-container.view-split .side-panel #videoSection .section-header {
+            display: none;
+        }
+
+        /* View: graph only */
+        .main-container.view-graph {
+            grid-template-columns: 1fr;
+        }
+        .main-container.view-graph .side-panel {
+            display: none;
+        }
+        .main-container.view-graph .graph-panel {
+            border-right: none;
+        }
+
+        /* View: video only */
+        .main-container.view-video {
+            grid-template-columns: 1fr;
+        }
+        .main-container.view-video .graph-panel {
+            display: none;
+        }
+        .main-container.view-video .side-panel {
+            display: flex;
+        }
+        .main-container.view-video .side-panel .panel-section:not(#videoSection) {
+            display: none;
+        }
+        .main-container.view-video .side-panel #videoSection {
+            display: block !important;
+            flex: 1;
+        }
+        .main-container.view-video .side-panel #videoSection .section-content {
+            display: block !important;
+        }
+
+        /* View: timeline/table */
+        .main-container.view-timeline {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr auto;
+        }
+        .main-container.view-timeline .graph-panel {
+            border-right: none;
+            border-bottom: 2px solid black;
+            max-height: 45vh;
+        }
+        .main-container.view-timeline .side-panel {
+            display: flex;
+            flex-direction: column;
+            height: auto;
+        }
+        .main-container.view-timeline .side-panel .panel-section:not([style*="flex: 1"]):not(:last-child) {
+            display: none;
+        }
+        /* Show only the data table section in timeline mode */
+        .main-container.view-timeline .side-panel .panel-section {
+            display: none;
+        }
+        .main-container.view-timeline .side-panel .panel-section:last-child {
+            display: flex !important;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        /* View: config (shows side panel sections except video/data) */
+        .main-container.view-config {
+            grid-template-columns: 1fr;
+        }
+        .main-container.view-config .graph-panel {
+            display: none;
+        }
+        .main-container.view-config .side-panel {
+            display: flex;
+        }
+        .main-container.view-config .side-panel #videoSection {
+            display: none !important;
+        }
+        .main-container.view-config .side-panel .panel-section:last-child {
+            display: none;
+        }
+
+        /* ========== TIMELINE SCRUBBER ========== */
+        .timeline-scrubber {
+            display: none;
+            background: #f5f5f5;
+            border-bottom: 2px solid black;
+            padding: 8px 16px;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .timeline-scrubber.active {
+            display: flex;
+        }
+
+        .timeline-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            min-width: 30px;
+        }
+
+        .timeline-slider {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            background: #ddd;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .timeline-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: black;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .timeline-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: black;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .timeline-value {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            min-width: 70px;
+            text-align: right;
+        }
+
+        /* ========== MOBILE TOOLBAR: Hamburger for secondary actions ========== */
+        .toolbar-primary {
+            display: contents;
+        }
+        .toolbar-secondary {
+            display: contents;
+        }
+        .toolbar-menu-btn {
+            display: none;
+        }
+        .toolbar-menu-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        .toolbar-menu-overlay.active {
+            display: block;
+        }
+        .toolbar-menu-panel {
+            display: none;
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 280px;
+            max-width: 80vw;
+            height: 100%;
+            background: white;
+            border-left: 2px solid black;
+            z-index: 1000;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 16px;
+            gap: 8px;
+            transform: translateX(100%);
+            transition: transform 0.25s ease;
+        }
+        .toolbar-menu-panel.active {
+            display: flex;
+            transform: translateX(0);
+        }
+        .toolbar-menu-panel .toolbar-btn {
+            width: 100%;
+            text-align: left;
+        }
+        .toolbar-menu-close {
+            align-self: flex-end;
+            background: none;
+            border: 2px solid black;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 6px 12px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        /* ========== RESPONSIVE - Tablet (max-width: 1024px) ========== */
         @media (max-width: 1024px) {
             .main-container {
                 grid-template-columns: 1fr;
@@ -801,9 +1069,14 @@
                 border-right: none;
                 border-bottom: 2px solid black;
             }
+
+            /* Show view switcher on tablets */
+            .view-switcher {
+                display: block;
+            }
         }
 
-        /* Responsive - Mobile */
+        /* ========== RESPONSIVE - Mobile (max-width: 600px) ========== */
         @media (max-width: 600px) {
             .main-container {
                 grid-template-columns: 1fr;
@@ -811,7 +1084,25 @@
                 min-height: calc(100vh - 50px);
             }
 
-            /* Toolbar: horizontal scroll, más compacto */
+            /* View switcher visible */
+            .view-switcher {
+                display: block;
+            }
+
+            /* Split mode: stack vertically on mobile */
+            .main-container.view-split {
+                grid-template-columns: 1fr;
+            }
+            .main-container.view-split .graph-panel {
+                border-right: none;
+                border-bottom: 2px solid black;
+                max-height: 40vh;
+            }
+            .main-container.view-split .side-panel {
+                max-height: 40vh;
+            }
+
+            /* Toolbar: show hamburger, hide secondary */
             .toolbar {
                 padding: 8px;
                 gap: 6px;
@@ -819,6 +1110,24 @@
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
             }
+            .toolbar-menu-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: white;
+                border: 2px solid black;
+                padding: 8px 10px;
+                cursor: pointer;
+                font-size: 1.1rem;
+                font-weight: 700;
+                flex-shrink: 0;
+                min-width: 44px;
+                min-height: 44px;
+            }
+            .toolbar-secondary {
+                display: none;
+            }
+
             .toolbar-btn {
                 padding: 8px 10px;
                 font-size: 0.78rem;
@@ -832,6 +1141,12 @@
             .status-text {
                 font-size: 0.75rem;
                 padding: 6px 10px;
+            }
+
+            /* View buttons: slightly smaller */
+            .view-btn {
+                padding: 8px 8px;
+                font-size: 0.72rem;
             }
 
             /* Gráficas: más espacio vertical */
@@ -924,7 +1239,7 @@
                 font-size: 0.85rem;
             }
 
-            /* Botones touch-friendly */
+            /* Botones touch-friendly (min 44px - Hoober) */
             .btn-full,
             #downloadVideoBtn {
                 padding: 12px !important;
@@ -938,52 +1253,97 @@
                 min-height: 38px;
                 font-size: 0.9rem;
             }
+
+            /* Timeline scrubber larger thumb on mobile */
+            .timeline-slider::-webkit-slider-thumb {
+                width: 28px;
+                height: 28px;
+            }
+            .timeline-slider::-moz-range-thumb {
+                width: 28px;
+                height: 28px;
+            }
         }
     </style>
 </head>
 <body>
     <!-- Toolbar -->
     <div class="toolbar">
-        <button id="connectBtn" class="toolbar-btn primary">CONECTAR</button>
-        <button id="connectBluetoothBtn" class="toolbar-btn bluetooth">BLUETOOTH</button>
-        <button id="collectBtn" class="toolbar-btn primary" style="display:none;">CAPTURAR</button>
-        <button id="stopBtn" class="toolbar-btn" style="display:none;">DETENER</button>
+        <!-- Primary actions: always visible (Tidwell: "prominent actions first") -->
+        <span class="toolbar-primary">
+            <button id="connectBtn" class="toolbar-btn primary">CONECTAR</button>
+            <button id="connectBluetoothBtn" class="toolbar-btn bluetooth">BLUETOOTH</button>
+            <button id="collectBtn" class="toolbar-btn primary" style="display:none;">CAPTURAR</button>
+            <button id="stopBtn" class="toolbar-btn" style="display:none;">DETENER</button>
+            <div class="toolbar-separator"></div>
+            <button id="cameraBtn" class="toolbar-btn">CÁMARA</button>
+        </span>
 
-        <div class="toolbar-separator"></div>
+        <!-- Secondary actions: hidden in hamburger on mobile -->
+        <span class="toolbar-secondary">
+            <button id="statsBtn" class="toolbar-btn">ESTADÍSTICAS</button>
+            <div class="toolbar-separator"></div>
+            <button id="exportBtn" class="toolbar-btn" disabled>EXPORTAR CSV</button>
+            <button id="saveGraphBtn" class="toolbar-btn" disabled>GUARDAR GRÁFICO</button>
+            <button id="importBtn" class="toolbar-btn">IMPORTAR CSV</button>
+            <input type="file" id="importFile" accept=".csv" style="display: none;">
+            <button id="clearBtn" class="toolbar-btn">LIMPIAR</button>
+            <div class="toolbar-separator"></div>
+            <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: inline-flex; align-items: center;">
+                MAKECODE ↗
+            </a>
+            <div class="toolbar-separator"></div>
+            <button id="helpBtn" class="toolbar-btn">AYUDA</button>
+            <div class="toolbar-separator"></div>
+            <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
+                <option value="es">ES</option>
+                <option value="en">EN</option>
+                <option value="pt">PT</option>
+            </select>
+        </span>
 
-        <button id="cameraBtn" class="toolbar-btn">CÁMARA</button>
-        <button id="statsBtn" class="toolbar-btn">ESTADÍSTICAS</button>
-
-        <div class="toolbar-separator"></div>
-
-        <button id="exportBtn" class="toolbar-btn" disabled>EXPORTAR CSV</button>
-        <button id="saveGraphBtn" class="toolbar-btn" disabled>GUARDAR GRÁFICO</button>
-        <button id="importBtn" class="toolbar-btn">IMPORTAR CSV</button>
-        <input type="file" id="importFile" accept=".csv" style="display: none;">
-        <button id="clearBtn" class="toolbar-btn">LIMPIAR</button>
-
-        <div class="toolbar-separator"></div>
-
-        <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: inline-flex; align-items: center;">
-            MAKECODE ↗
-        </a>
-
-        <div class="toolbar-separator"></div>
-
-        <button id="helpBtn" class="toolbar-btn">AYUDA</button>
-
-        <div class="toolbar-separator"></div>
-
-        <!-- Selector de Idioma -->
-        <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
-            <option value="es">ES</option>
-            <option value="en">EN</option>
-            <option value="pt">PT</option>
-        </select>
+        <!-- Hamburger button (mobile only) -->
+        <button class="toolbar-menu-btn" id="toolbarMenuBtn" onclick="toggleToolbarMenu()">☰</button>
 
         <span class="status-text" id="pointInfo" style="display: none; background: #ffebee; border-color: #ff0000; color: #d32f2f;"></span>
         <span class="status-text" id="formatWarning" style="display: none; background: #fff3e0; border-color: #ff9800; color: #e65100; font-size: 0.85em; cursor: pointer;" title="Click para más info"></span>
         <span class="status-text" id="statusText">DESCONECTADO</span>
+    </div>
+
+    <!-- Mobile menu overlay -->
+    <div class="toolbar-menu-overlay" id="toolbarMenuOverlay" onclick="closeToolbarMenu()"></div>
+    <div class="toolbar-menu-panel" id="toolbarMenuPanel">
+        <button class="toolbar-menu-close" onclick="closeToolbarMenu()">✕</button>
+        <button id="statsBtn2" class="toolbar-btn" onclick="document.getElementById('statsBtn').click(); closeToolbarMenu();">ESTADÍSTICAS</button>
+        <button id="exportBtn2" class="toolbar-btn" onclick="document.getElementById('exportBtn').click(); closeToolbarMenu();">EXPORTAR CSV</button>
+        <button id="saveGraphBtn2" class="toolbar-btn" onclick="document.getElementById('saveGraphBtn').click(); closeToolbarMenu();">GUARDAR GRÁFICO</button>
+        <button id="importBtn2" class="toolbar-btn" onclick="document.getElementById('importBtn').click(); closeToolbarMenu();">IMPORTAR CSV</button>
+        <button id="clearBtn2" class="toolbar-btn" onclick="document.getElementById('clearBtn').click(); closeToolbarMenu();">LIMPIAR</button>
+        <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: flex; align-items: center;">MAKECODE ↗</a>
+        <button id="helpBtn2" class="toolbar-btn" onclick="document.getElementById('helpBtn').click(); closeToolbarMenu();">AYUDA</button>
+        <select id="languageSelector2" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
+            <option value="es">ES</option>
+            <option value="en">EN</option>
+            <option value="pt">PT</option>
+        </select>
+    </div>
+
+    <!-- View Mode Switcher (Wroblewski: progressive disclosure) -->
+    <div class="view-switcher" id="viewSwitcher">
+        <div class="view-switcher-inner">
+            <button class="view-btn" data-view="split" id="viewBtnSplit" onclick="setViewMode('split')">SPLIT</button>
+            <button class="view-btn active" data-view="graph" id="viewBtnGraph" onclick="setViewMode('graph')">GRÁFICA</button>
+            <button class="view-btn" data-view="video" id="viewBtnVideo" onclick="setViewMode('video')">VIDEO</button>
+            <button class="view-btn" data-view="timeline" id="viewBtnTimeline" onclick="setViewMode('timeline')">TIMELINE</button>
+            <button class="view-btn" data-view="config" id="viewBtnConfig" onclick="setViewMode('config')">CONFIG</button>
+        </div>
+    </div>
+
+    <!-- Timeline Scrubber (Hoober: direct manipulation) -->
+    <div class="timeline-scrubber" id="timelineScrubber">
+        <span class="timeline-label" id="timelineLabelPt">#0</span>
+        <input type="range" class="timeline-slider" id="timelineSlider" min="0" max="0" value="0">
+        <span class="timeline-value" id="timelineValue">0.000 s</span>
     </div>
 
     <!-- Main -->
@@ -1627,6 +1987,12 @@
                 btPairingStep3: 'Presioná <b>CONECTAR</b> y seleccioná tu micro:bit (<b>"BBC micro:bit"</b>) en la ventana del navegador.',
                 btPairingCancel: 'CANCELAR',
                 btPairingConnect: 'CONECTAR',
+                // View switcher
+                viewSplit: 'SPLIT',
+                viewGraph: 'GRÁFICA',
+                viewVideo: 'VIDEO',
+                viewTimeline: 'TIMELINE',
+                viewConfig: 'CONFIG',
             },
             en: {
                 // Toolbar
@@ -1778,6 +2144,12 @@
                 btPairingStep3: 'Press <b>CONNECT</b> and select your micro:bit (<b>"BBC micro:bit"</b>) from the browser popup.',
                 btPairingCancel: 'CANCEL',
                 btPairingConnect: 'CONNECT',
+                // View switcher
+                viewSplit: 'SPLIT',
+                viewGraph: 'GRAPH',
+                viewVideo: 'VIDEO',
+                viewTimeline: 'TIMELINE',
+                viewConfig: 'CONFIG',
             },
             pt: {
                 // Toolbar
@@ -1929,6 +2301,12 @@
                 btPairingStep3: 'Pressione <b>CONECTAR</b> e selecione seu micro:bit (<b>"BBC micro:bit"</b>) na janela do navegador.',
                 btPairingCancel: 'CANCELAR',
                 btPairingConnect: 'CONECTAR',
+                // View switcher
+                viewSplit: 'SPLIT',
+                viewGraph: 'GRÁFICO',
+                viewVideo: 'VÍDEO',
+                viewTimeline: 'TIMELINE',
+                viewConfig: 'CONFIG',
             }
         };
 
@@ -2002,6 +2380,24 @@
             document.getElementById('importBtn').textContent = t.importCSV;
             document.getElementById('clearBtn').textContent = t.clear;
             document.getElementById('helpBtn').textContent = t.help;
+
+            // View switcher
+            const vsBtn = (id, key) => { const el = document.getElementById(id); if (el && t[key]) el.textContent = t[key]; };
+            vsBtn('viewBtnSplit', 'viewSplit');
+            vsBtn('viewBtnGraph', 'viewGraph');
+            vsBtn('viewBtnVideo', 'viewVideo');
+            vsBtn('viewBtnTimeline', 'viewTimeline');
+            vsBtn('viewBtnConfig', 'viewConfig');
+
+            // Mobile menu panel buttons
+            const menuMap = { statsBtn2: 'statistics', exportBtn2: 'exportCSV', saveGraphBtn2: 'saveGraph', importBtn2: 'importCSV', clearBtn2: 'clear', helpBtn2: 'help' };
+            for (const [id, key] of Object.entries(menuMap)) {
+                const el = document.getElementById(id);
+                if (el && t[key]) el.textContent = t[key];
+            }
+            // Sync mobile language selector
+            const ls2 = document.getElementById('languageSelector2');
+            if (ls2) ls2.value = lang;
 
             // Actualizar status según estado actual
             const statusText = document.getElementById('statusText').textContent;
@@ -5546,6 +5942,11 @@ basic.forever(function () {
             const searchTerm = document.getElementById('tableSearch').value.toLowerCase();
             const filter = document.getElementById('tableFilter').value;
 
+            // Update timeline scrubber whenever data changes
+            if (typeof updateTimelineScrubber === 'function') {
+                updateTimelineScrubber();
+            }
+
             if (state.rawData.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px;">${t.noData}</td></tr>`;
                 return;
@@ -5597,7 +5998,7 @@ basic.forever(function () {
                 }
 
                 return `
-                    <tr class="${state.selectedPoints.has(d.id) ? 'selected' : ''}" onclick="toggleSelect('${d.id}')">
+                    <tr class="${state.selectedPoints.has(d.id) ? 'selected' : ''}" data-id="${d.id}" onclick="toggleSelect('${d.id}')">
                         <td>${originalIdx + 1}</td>
                         <td>${adjustedTime.toFixed(3)}</td>
                         ${valuesHtml}
@@ -6559,6 +6960,115 @@ basic.forever(function () {
                 arrow.textContent = '▶';
             }
         }
+
+        // ========== VIEW MODE SWITCHER ==========
+        let currentViewMode = 'default'; // default = desktop 2-column layout
+
+        function setViewMode(mode) {
+            const container = document.querySelector('.main-container');
+            const scrubber = document.getElementById('timelineScrubber');
+
+            // Remove all view classes
+            container.classList.remove('view-split', 'view-graph', 'view-video', 'view-timeline', 'view-config');
+
+            // Update active button
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.querySelector(`.view-btn[data-view="${mode}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            // Apply new mode
+            if (mode !== 'default') {
+                container.classList.add('view-' + mode);
+            }
+
+            // Show/hide timeline scrubber
+            if (mode === 'timeline') {
+                scrubber.classList.add('active');
+                updateTimelineScrubber();
+            } else {
+                scrubber.classList.remove('active');
+            }
+
+            currentViewMode = mode;
+
+            // Resize charts after layout change
+            setTimeout(() => {
+                if (state.charts) {
+                    state.charts.forEach(c => { if (c) c.resize(); });
+                }
+            }, 100);
+        }
+
+        // ========== TIMELINE SCRUBBER ==========
+        function updateTimelineScrubber() {
+            const slider = document.getElementById('timelineSlider');
+            const count = state.rawData.length;
+            slider.max = Math.max(0, count - 1);
+            if (count === 0) {
+                document.getElementById('timelineLabelPt').textContent = '#0';
+                document.getElementById('timelineValue').textContent = '0.000 s';
+            }
+        }
+
+        document.getElementById('timelineSlider').addEventListener('input', function() {
+            const idx = parseInt(this.value);
+            const point = state.rawData[idx];
+            if (!point) return;
+
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
+
+            document.getElementById('timelineLabelPt').textContent = '#' + (idx + 1);
+            document.getElementById('timelineValue').textContent = adjustedTime.toFixed(3) + ' s';
+
+            // Highlight corresponding row in data table
+            document.querySelectorAll('.data-table tbody tr').forEach(tr => {
+                tr.style.outline = '';
+            });
+            const rows = document.querySelectorAll('.data-table tbody tr');
+            for (const row of rows) {
+                if (row.dataset && row.dataset.id == point.id) {
+                    row.style.outline = '2px solid black';
+                    row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    break;
+                }
+            }
+
+            // If video is available, show synced video timestamp in timeline
+            if (state.videoBlob && state.recordingStartTime) {
+                const pointWall = point.wallTime || point.time;
+                const videoTime = (pointWall - state.recordingStartTime) / 1000;
+                if (videoTime >= 0) {
+                    document.getElementById('timelineValue').textContent =
+                        adjustedTime.toFixed(3) + ' s | ' + videoTime.toFixed(1) + 's vid';
+                }
+            }
+        });
+
+        // ========== HAMBURGER MENU ==========
+        function toggleToolbarMenu() {
+            const overlay = document.getElementById('toolbarMenuOverlay');
+            const panel = document.getElementById('toolbarMenuPanel');
+            const isOpen = panel.classList.contains('active');
+            if (isOpen) {
+                closeToolbarMenu();
+            } else {
+                overlay.classList.add('active');
+                panel.classList.add('active');
+            }
+        }
+
+        function closeToolbarMenu() {
+            document.getElementById('toolbarMenuOverlay').classList.remove('active');
+            document.getElementById('toolbarMenuPanel').classList.remove('active');
+        }
+
+        // Sync mobile language selector with main one
+        document.getElementById('languageSelector2').addEventListener('change', function() {
+            document.getElementById('languageSelector').value = this.value;
+            document.getElementById('languageSelector').dispatchEvent(new Event('change'));
+            closeToolbarMenu();
+        });
 
         // Cerrar modales con ESC o click fuera
         document.addEventListener('keydown', (e) => {
