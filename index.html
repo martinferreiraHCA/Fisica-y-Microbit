@@ -83,6 +83,63 @@
             background: #0d47a1;
         }
 
+        /* Bluetooth pairing grid */
+        .bt-pairing-grid {
+            display: inline-grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+            background: #1a1a1a;
+            padding: 12px;
+            border-radius: 8px;
+            border: 3px solid #333;
+        }
+        .bt-pairing-cell {
+            width: 36px;
+            height: 36px;
+            background: #2a2a2a;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.1s;
+            border: 1px solid #444;
+        }
+        .bt-pairing-cell:hover {
+            background: #553333;
+        }
+        .bt-pairing-cell.active {
+            background: #ff3333;
+            box-shadow: 0 0 8px rgba(255, 50, 50, 0.6);
+            border-color: #ff6666;
+        }
+        .bt-pairing-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin: 10px 0;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        .bt-pairing-step-num {
+            background: #1565c0;
+            color: white;
+            border-radius: 50%;
+            min-width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+        .bt-pairing-device-name {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 1rem;
+            color: #1565c0;
+            margin-top: 4px;
+            min-height: 1.2em;
+        }
+
         .toolbar-separator {
             width: 2px;
             height: 24px;
@@ -1195,6 +1252,20 @@
         </div>
     </div>
 
+    <!-- Modal de guía Bluetooth pairing -->
+    <div class="modal" id="btPairingModal">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header" id="btPairingTitle">CONEXIÓN BLUETOOTH</div>
+            <div id="btPairingContent">
+                <!-- Steps rendered by JS based on language -->
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button class="toolbar-btn" onclick="closeBtPairingModal()" style="flex:1;" id="btPairingCancelBtn">CANCELAR</button>
+                <button class="toolbar-btn primary bluetooth" onclick="proceedBluetoothConnect()" style="flex:1;" id="btPairingConnectBtn">CONECTAR</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de ayuda básica -->
     <div class="modal" id="helpModal">
         <div class="modal-content help-modal">
@@ -1395,7 +1466,20 @@
                 resetZoom: 'Restablecer zoom',
                 saveGraphAs: 'Guardar como imagen',
                 selectGraphToSave: 'Selecciona la gráfica a guardar:',
-                allGraphs: 'Todas las gráficas'
+                allGraphs: 'Todas las gráficas',
+                // Bluetooth pairing guide
+                btPairingTitle: 'CONEXIÓN BLUETOOTH',
+                btPairingStep1: 'En la micro:bit, mantén presionados los botones <b>A + B + RESET</b> al mismo tiempo.',
+                btPairingStep2: 'Suelta el botón <b>RESET</b> (sigue sosteniendo A y B). La pantalla LED se llenará.',
+                btPairingStep3: 'Cuando todas las luces estén encendidas, suelta <b>A y B</b>. Verás <b>"PAIRING MODE!"</b> desplazándose.',
+                btPairingStep4: 'Aparecerá un <b>patrón único</b> en la matriz 5x5. Dibújalo aquí abajo tocando los LEDs.',
+                btPairingStep5: 'Presiona <b>CONECTAR</b> y selecciona tu micro:bit en la ventana del navegador.',
+                btPairingGridLabel: 'Dibuja el patrón que ves en tu micro:bit:',
+                btPairingClear: 'Limpiar',
+                btPairingDeviceName: 'Nombre del dispositivo:',
+                btPairingCancel: 'CANCELAR',
+                btPairingConnect: 'CONECTAR',
+                btPairingNote: 'El patrón identifica tu micro:bit. Útil cuando hay varias en el aula.'
             },
             en: {
                 // Toolbar
@@ -1538,7 +1622,20 @@
                 resetZoom: 'Reset zoom',
                 saveGraphAs: 'Save as image',
                 selectGraphToSave: 'Select graph to save:',
-                allGraphs: 'All graphs'
+                allGraphs: 'All graphs',
+                // Bluetooth pairing guide
+                btPairingTitle: 'BLUETOOTH CONNECTION',
+                btPairingStep1: 'On the micro:bit, hold down <b>A + B + RESET</b> buttons at the same time.',
+                btPairingStep2: 'Release the <b>RESET</b> button (keep holding A and B). The LED screen will fill up.',
+                btPairingStep3: 'When all LEDs are lit, release <b>A and B</b>. You\'ll see <b>"PAIRING MODE!"</b> scrolling.',
+                btPairingStep4: 'A <b>unique pattern</b> will appear on the 5x5 matrix. Draw it below by tapping the LEDs.',
+                btPairingStep5: 'Press <b>CONNECT</b> and select your micro:bit from the browser popup.',
+                btPairingGridLabel: 'Draw the pattern you see on your micro:bit:',
+                btPairingClear: 'Clear',
+                btPairingDeviceName: 'Device name:',
+                btPairingCancel: 'CANCEL',
+                btPairingConnect: 'CONNECT',
+                btPairingNote: 'The pattern identifies your micro:bit. Useful when there are several in the classroom.'
             },
             pt: {
                 // Toolbar
@@ -1681,7 +1778,20 @@
                 resetZoom: 'Redefinir zoom',
                 saveGraphAs: 'Salvar como imagem',
                 selectGraphToSave: 'Selecione o gráfico para salvar:',
-                allGraphs: 'Todos os gráficos'
+                allGraphs: 'Todos os gráficos',
+                // Bluetooth pairing guide
+                btPairingTitle: 'CONEXÃO BLUETOOTH',
+                btPairingStep1: 'No micro:bit, mantenha pressionados os botões <b>A + B + RESET</b> ao mesmo tempo.',
+                btPairingStep2: 'Solte o botão <b>RESET</b> (continue segurando A e B). A tela LED vai acender.',
+                btPairingStep3: 'Quando todos os LEDs estiverem acesos, solte <b>A e B</b>. Você verá <b>"PAIRING MODE!"</b> rolando.',
+                btPairingStep4: 'Um <b>padrão único</b> aparecerá na matriz 5x5. Desenhe-o abaixo tocando nos LEDs.',
+                btPairingStep5: 'Pressione <b>CONECTAR</b> e selecione seu micro:bit na janela do navegador.',
+                btPairingGridLabel: 'Desenhe o padrão que você vê no seu micro:bit:',
+                btPairingClear: 'Limpar',
+                btPairingDeviceName: 'Nome do dispositivo:',
+                btPairingCancel: 'CANCELAR',
+                btPairingConnect: 'CONECTAR',
+                btPairingNote: 'O padrão identifica seu micro:bit. Útil quando há vários na sala de aula.'
             }
         };
 
@@ -3824,6 +3934,124 @@ basic.forever(function () {
             }
         });
 
+        // ========== GUÍA DE PAIRING BLUETOOTH ==========
+        // Codebook del micro:bit para decodificar el patrón LED → nombre amigable
+        // Posiciones impares (0,2,4): consonantes; pares (1,3): vocales
+        const BT_CODEBOOK = [
+            ['z', 'v', 'g', 'p', 't'],  // columna 0 (consonante)
+            ['u', 'o', 'i', 'e', 'a'],  // columna 1 (vocal)
+            ['z', 'v', 'g', 'p', 't'],  // columna 2 (consonante)
+            ['u', 'o', 'i', 'e', 'a'],  // columna 3 (vocal)
+            ['z', 'v', 'g', 'p', 't']   // columna 4 (consonante)
+        ];
+
+        // Estado del grid 5x5 (row-major: grid[row][col])
+        let btPairingGrid = Array.from({length: 5}, () => Array(5).fill(false));
+
+        function renderBtPairingModal() {
+            const t = translations[currentLanguage];
+            const modal = document.getElementById('btPairingModal');
+            const content = document.getElementById('btPairingContent');
+
+            document.getElementById('btPairingTitle').textContent = t.btPairingTitle;
+            document.getElementById('btPairingCancelBtn').textContent = t.btPairingCancel;
+            document.getElementById('btPairingConnectBtn').textContent = t.btPairingConnect;
+
+            // Reset grid
+            btPairingGrid = Array.from({length: 5}, () => Array(5).fill(false));
+
+            const steps = [
+                t.btPairingStep1,
+                t.btPairingStep2,
+                t.btPairingStep3,
+                t.btPairingStep4,
+                t.btPairingStep5
+            ];
+
+            let html = '';
+            for (let i = 0; i < steps.length; i++) {
+                html += `<div class="bt-pairing-step">
+                    <div class="bt-pairing-step-num">${i + 1}</div>
+                    <div>${steps[i]}</div>
+                </div>`;
+            }
+
+            // 5x5 grid interactivo
+            html += `<div style="margin-top: 14px;">
+                <div style="font-size: 0.8rem; font-weight: bold; margin-bottom: 6px;">${t.btPairingGridLabel}</div>
+                <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+                    <div class="bt-pairing-grid" id="btGrid">`;
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    html += `<div class="bt-pairing-cell" data-r="${r}" data-c="${c}" onclick="toggleBtCell(${r},${c})"></div>`;
+                }
+            }
+            html += `</div>
+                    <div style="flex: 1; min-width: 120px;">
+                        <div style="font-size: 0.75rem; color: #666;">${t.btPairingDeviceName}</div>
+                        <div class="bt-pairing-device-name" id="btDeviceNamePreview">---</div>
+                        <button class="toolbar-btn" onclick="clearBtGrid()" style="margin-top: 8px; font-size: 0.75rem; padding: 4px 10px;">${t.btPairingClear}</button>
+                    </div>
+                </div>
+                <div style="font-size: 0.7rem; color: #888; margin-top: 8px; font-style: italic;">${t.btPairingNote}</div>
+            </div>`;
+
+            content.innerHTML = html;
+            modal.classList.add('active');
+        }
+
+        function toggleBtCell(r, c) {
+            btPairingGrid[r][c] = !btPairingGrid[r][c];
+            const cell = document.querySelector(`#btGrid .bt-pairing-cell[data-r="${r}"][data-c="${c}"]`);
+            if (cell) cell.classList.toggle('active', btPairingGrid[r][c]);
+            updateBtDeviceName();
+        }
+
+        function clearBtGrid() {
+            btPairingGrid = Array.from({length: 5}, () => Array(5).fill(false));
+            document.querySelectorAll('#btGrid .bt-pairing-cell').forEach(c => c.classList.remove('active'));
+            document.getElementById('btDeviceNamePreview').textContent = '---';
+        }
+
+        // Decodificar el patrón del grid al nombre amigable del micro:bit
+        // Cada columna del grid tiene un LED encendido que indica el índice del carácter
+        function updateBtDeviceName() {
+            let name = '';
+            let hasPattern = false;
+            for (let c = 0; c < 5; c++) {
+                // Buscar qué fila está encendida en esta columna
+                let activeRow = -1;
+                let activeCount = 0;
+                for (let r = 0; r < 5; r++) {
+                    if (btPairingGrid[r][c]) {
+                        activeRow = r;
+                        activeCount++;
+                    }
+                }
+                if (activeCount === 1) {
+                    name += BT_CODEBOOK[c][activeRow];
+                    hasPattern = true;
+                } else if (activeCount > 1) {
+                    name += '?';
+                    hasPattern = true;
+                } else {
+                    name += '_';
+                }
+            }
+            const preview = document.getElementById('btDeviceNamePreview');
+            preview.textContent = hasPattern ? `micro:bit [${name}]` : '---';
+        }
+
+        function closeBtPairingModal() {
+            document.getElementById('btPairingModal').classList.remove('active');
+        }
+
+        // Conectar Bluetooth después de mostrar la guía
+        async function proceedBluetoothConnect() {
+            closeBtPairingModal();
+            await connectBluetooth();
+        }
+
         // ========== CONEXIÓN BLUETOOTH ==========
         // micro:bit UART Service UUIDs (Nordic UART Service)
         const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
@@ -3833,9 +4061,8 @@ basic.forever(function () {
         let btBuffer = '';
         let btLoopRunning = false;
 
-        document.getElementById('connectBluetoothBtn').addEventListener('click', async () => {
+        document.getElementById('connectBluetoothBtn').addEventListener('click', () => {
             if (!('bluetooth' in navigator)) {
-                const t = translations[currentLanguage];
                 alert(currentLanguage === 'es'
                     ? 'Web Bluetooth API no soportada. Usa Chrome o Edge en escritorio/Android.'
                     : currentLanguage === 'pt'
@@ -3843,7 +4070,11 @@ basic.forever(function () {
                     : 'Web Bluetooth API not supported. Use Chrome or Edge on desktop/Android.');
                 return;
             }
+            // Mostrar guía de pairing en vez de conectar directamente
+            renderBtPairingModal();
+        });
 
+        async function connectBluetooth() {
             try {
                 const device = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'BBC micro:bit' }],
@@ -3887,7 +4118,7 @@ basic.forever(function () {
                     alert('Error Bluetooth: ' + err.message);
                 }
             }
-        });
+        }
 
         async function startBluetoothLoop(txChar) {
             if (btLoopRunning) return;
