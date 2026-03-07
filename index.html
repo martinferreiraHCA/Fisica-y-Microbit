@@ -1335,6 +1335,31 @@
             background: #1565c0;
         }
 
+        .exp-bt-btn {
+            min-width: 44px;
+            min-height: 44px;
+            border: none;
+            background: #1565c0;
+            color: white;
+            font-size: clamp(0.7rem, 2vw, 0.85rem);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            gap: 4px;
+            padding: 0 8px;
+            border-radius: 4px;
+        }
+
+        .exp-bt-btn.connected {
+            background: #2e7d32;
+        }
+
+        .exp-bt-btn:active {
+            opacity: 0.8;
+        }
+
         .exp-play-btn.capturing {
             background: #d32f2f;
             animation: blink 1s infinite;
@@ -2229,6 +2254,7 @@
         <!-- Zone 3: Controls (15%) -->
         <div class="exp-controls-zone">
             <div class="exp-playback-row">
+                <button class="exp-bt-btn" id="expBtBtn" onclick="expConnectBluetooth()">BT</button>
                 <button class="exp-play-btn" id="expCaptureBtn" onclick="toggleExpCapture()" style="background:#2e7d32;">●</button>
                 <button class="exp-play-btn" id="expPlayBtn" onclick="toggleExpPlayback()">▶</button>
                 <input type="range" class="exp-timeline-bar" id="expTimelineBar" min="0" max="0" value="0">
@@ -4988,6 +5014,9 @@ basic.forever(function () {
         let btBuffer = '';
         let btLoopRunning = false;
 
+        // Detectar mobile para ajustar tiempos BT
+        const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
         document.getElementById('connectBluetoothBtn').addEventListener('click', () => {
             console.log('[BT] ── Botón Bluetooth presionado ──');
             console.log('[BT] navigator.bluetooth disponible:', 'bluetooth' in navigator);
@@ -5009,14 +5038,28 @@ basic.forever(function () {
             let device;
             try {
                 console.log('[BT] ── Iniciando conexión Bluetooth ──');
+                console.log('[BT] Mobile:', isMobileBrowser);
                 console.log('[BT] Solicitando dispositivo con filtros: BBC micro:bit, uBit');
-                device = await navigator.bluetooth.requestDevice({
-                    filters: [
-                        { namePrefix: 'BBC micro:bit' },
-                        { namePrefix: 'uBit' }
-                    ],
-                    optionalServices: [UART_SERVICE_UUID]
-                });
+                try {
+                    device = await navigator.bluetooth.requestDevice({
+                        filters: [
+                            { namePrefix: 'BBC micro:bit' },
+                            { namePrefix: 'uBit' }
+                        ],
+                        optionalServices: [UART_SERVICE_UUID]
+                    });
+                } catch (filterErr) {
+                    // Si los filtros fallan en mobile, intentar con acceptAllDevices
+                    if (filterErr.name !== 'NotFoundError' && isMobileBrowser) {
+                        console.log('[BT] Filtros fallaron en mobile, reintentando con acceptAllDevices...');
+                        device = await navigator.bluetooth.requestDevice({
+                            acceptAllDevices: true,
+                            optionalServices: [UART_SERVICE_UUID]
+                        });
+                    } else {
+                        throw filterErr;
+                    }
+                }
                 console.log('[BT] Dispositivo seleccionado:', device.name, '| ID:', device.id);
             } catch (err) {
                 if (err.name === 'NotFoundError') {
@@ -5042,9 +5085,10 @@ basic.forever(function () {
                     const srv = await dev.gatt.connect();
                     console.log(`[BT] ${label} — GATT connected:`, srv.connected);
 
-                    // Esperar para service discovery
-                    console.log(`[BT] ${label} — Esperando 1500ms para service discovery...`);
-                    await new Promise(r => setTimeout(r, 1500));
+                    // Esperar para service discovery (más tiempo en mobile)
+                    const sdWait = isMobileBrowser ? 3000 : 1500;
+                    console.log(`[BT] ${label} — Esperando ${sdWait}ms para service discovery (mobile: ${isMobileBrowser})...`);
+                    await new Promise(r => setTimeout(r, sdWait));
 
                     if (!dev.gatt.connected) {
                         throw new Error('GATT se desconectó durante service discovery');
@@ -5081,12 +5125,15 @@ basic.forever(function () {
                 let found = false;
                 let lastError = null;
 
-                // ── Fase A: 2 intentos directos ──
-                for (let attempt = 1; attempt <= 2 && !found; attempt++) {
+                // ── Fase A: intentos directos (3 en mobile, 2 en desktop) ──
+                const maxAttempts = isMobileBrowser ? 3 : 2;
+                for (let attempt = 1; attempt <= maxAttempts && !found; attempt++) {
                     try {
+                        statusEl.textContent = `Conectando... intento ${attempt}/${maxAttempts}`;
                         if (attempt > 1) {
                             if (device.gatt.connected) device.gatt.disconnect();
-                            await new Promise(r => setTimeout(r, 1500));
+                            const retryWait = isMobileBrowser ? 2500 : 1500;
+                            await new Promise(r => setTimeout(r, retryWait));
                         }
                         const result = await tryConnectAndDiscover(device, `Intento ${attempt}`);
                         server = result.server;
@@ -5129,7 +5176,8 @@ basic.forever(function () {
                                 try {
                                     if (retry > 1) {
                                         if (device.gatt.connected) device.gatt.disconnect();
-                                        await new Promise(r => setTimeout(r, 2000));
+                                        const retryWait = isMobileBrowser ? 3000 : 2000;
+                                        await new Promise(r => setTimeout(r, retryWait));
                                     }
                                     const result = await tryConnectAndDiscover(device, `Post-forget ${retry}`);
                                     server = result.server;
@@ -5153,8 +5201,16 @@ basic.forever(function () {
                 if (!found) {
                     console.error('[BT] ✗ Todos los intentos fallaron. Último error:', lastError?.message);
                     const isMac = navigator.platform.indexOf('Mac') >= 0;
+                    const isAndroid = /Android/i.test(navigator.userAgent);
                     let msg = 'No se encontraron servicios BLE en el micro:bit.\n\n';
-                    if (isMac) {
+                    if (isAndroid) {
+                        msg += 'En Android, verificá lo siguiente:\n\n';
+                        msg += '1. Bluetooth y Ubicación activados en tu teléfono\n';
+                        msg += '2. En Ajustes → Apps → Chrome → Permisos: activá "Ubicación" y "Dispositivos cercanos"\n';
+                        msg += '3. Desvinculá el micro:bit de Ajustes → Bluetooth si aparece vinculado\n';
+                        msg += '4. Reseteá el micro:bit (botón de atrás)\n';
+                        msg += '5. Volvé a conectar desde esta página\n';
+                    } else if (isMac) {
                         msg += 'macOS tiene el micro:bit cacheado. Solución (una sola vez):\n\n';
                         msg += '1. Abrí Configuración del Sistema → Bluetooth\n';
                         msg += '2. Buscá "BBC micro:bit" en la lista\n';
@@ -5162,6 +5218,13 @@ basic.forever(function () {
                         msg += '4. Resetear el micro:bit (botón de atrás)\n';
                         msg += '5. Volvé a conectar desde esta página\n\n';
                         msg += 'Después de esto, no vas a tener que hacerlo de nuevo.';
+                    } else if (isMobileBrowser) {
+                        msg += 'En tu celular, verificá:\n\n';
+                        msg += '1. Bluetooth activado\n';
+                        msg += '2. Permisos de Bluetooth otorgados al navegador\n';
+                        msg += '3. El micro:bit esté encendido y cerca\n';
+                        msg += '4. Reseteá el micro:bit (botón de atrás)\n';
+                        msg += '5. Si está vinculado al sistema, desvinculalo primero\n';
                     } else {
                         msg += 'Probá resetear el micro:bit (botón de atrás) y volvé a conectar.';
                     }
@@ -5209,34 +5272,39 @@ basic.forever(function () {
                     state.isConnected = false;
                     state.btCharTx = null;
                     btLoopRunning = false;
+                    syncExpBtButton();
                     const t = translations[currentLanguage];
                     document.getElementById('statusText').textContent = t.reconnecting || 'Reconectando...';
 
-                    for (let attempt = 1; attempt <= 3; attempt++) {
+                    const maxReconnect = isMobileBrowser ? 5 : 3;
+                    for (let attempt = 1; attempt <= maxReconnect; attempt++) {
                         try {
-                            console.log(`[BT] Reconexión intento ${attempt}/3 — esperando ${attempt}s...`);
-                            await new Promise(r => setTimeout(r, 1000 * attempt));
-                            console.log(`[BT] Reconexión intento ${attempt}/3 — conectando GATT...`);
+                            const waitMs = isMobileBrowser ? 2000 * attempt : 1000 * attempt;
+                            console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — esperando ${waitMs}ms...`);
+                            await new Promise(r => setTimeout(r, waitMs));
+                            console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — conectando GATT...`);
                             const srv = await device.gatt.connect();
-                            console.log(`[BT] Reconexión intento ${attempt}/3 — GATT conectado, buscando servicio...`);
+                            console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — GATT conectado, buscando servicio...`);
                             const svc = await srv.getPrimaryService(UART_SERVICE_UUID);
                             const chars = await svc.getCharacteristics();
                             const tx = chars.find(c => c.properties.notify || c.properties.indicate);
                             if (!tx) throw new Error('TX characteristic not found');
                             state.btCharTx = tx;
                             state.isConnected = true;
-                            console.log(`[BT] ✓ Reconexión exitosa en intento ${attempt}/3 — TX: ${tx.uuid}`);
+                            console.log(`[BT] ✓ Reconexión exitosa en intento ${attempt}/${maxReconnect} — TX: ${tx.uuid}`);
                             document.getElementById('statusText').textContent = t.connectedBluetooth;
+                            syncExpBtButton();
                             startBluetoothLoop(tx);
                             return;
                         } catch (e) {
-                            console.warn(`[BT] ✗ Reconexión intento ${attempt}/3 fallido:`, e.name, e.message);
+                            console.warn(`[BT] ✗ Reconexión intento ${attempt}/${maxReconnect} fallido:`, e.name, e.message);
                         }
                     }
 
-                    console.error('[BT] ✗ Reconexión fallida después de 3 intentos. Limpiando estado.');
+                    console.error(`[BT] ✗ Reconexión fallida después de ${maxReconnect} intentos. Limpiando estado.`);
                     state.isBluetooth = false;
                     state.btDevice = null;
+                    syncExpBtButton();
                     document.getElementById('connectBtn').style.display = 'inline-block';
                     document.getElementById('connectBluetoothBtn').style.display = 'inline-block';
                     document.getElementById('collectBtn').style.display = 'none';
@@ -5259,6 +5327,7 @@ basic.forever(function () {
                 collectBtn.classList.add('pulse-hint');
                 setTimeout(() => collectBtn.classList.remove('pulse-hint'), 4000);
 
+                syncExpBtButton();
                 console.log('[BT] ── Conexión completa, iniciando loop de lectura ──');
                 startBluetoothLoop(txChar);
             } catch (err) {
@@ -5305,7 +5374,21 @@ basic.forever(function () {
 
                 const notifyMode = props.notify ? 'notify' : 'indicate';
                 console.log(`[BT] Iniciando notificaciones (modo: ${notifyMode})...`);
-                await txChar.startNotifications();
+                // startNotifications puede fallar en mobile — reintentar
+                let notifyStarted = false;
+                for (let nAttempt = 1; nAttempt <= 3 && !notifyStarted; nAttempt++) {
+                    try {
+                        if (nAttempt > 1) {
+                            console.log(`[BT] Reintentando startNotifications (${nAttempt}/3)...`);
+                            await new Promise(r => setTimeout(r, 1000));
+                        }
+                        await txChar.startNotifications();
+                        notifyStarted = true;
+                    } catch (nErr) {
+                        console.warn(`[BT] startNotifications intento ${nAttempt}/3 falló:`, nErr.message);
+                        if (nAttempt === 3) throw nErr;
+                    }
+                }
                 console.log(`[BT] ✓ Notificaciones ${notifyMode} iniciadas correctamente`);
                 console.log('[BT] Esperando datos del micro:bit...');
                 txChar.addEventListener('characteristicvaluechanged', (event) => {
@@ -7499,9 +7582,10 @@ basic.forever(function () {
                 }
             }
 
-            // Update recording badge and capture button
+            // Update recording badge, capture button, and BT status
             updateExpRecBadge();
             syncExpCaptureButton();
+            syncExpBtButton();
 
             // Build magnitude selector
             buildMagnitudeSelector();
@@ -7881,6 +7965,30 @@ basic.forever(function () {
                 }
             }
             updateExpRecBadge();
+        }
+
+        // BT connection button inside LAB mode
+        function expConnectBluetooth() {
+            if (state.isConnected && state.isBluetooth) {
+                // Already connected — show status
+                const expInfo = document.getElementById('expPointInfo');
+                if (expInfo) expInfo.textContent = 'BT OK';
+                return;
+            }
+            // Trigger the main BT button click
+            renderBtPairingModal();
+        }
+
+        function syncExpBtButton() {
+            const btn = document.getElementById('expBtBtn');
+            if (!btn) return;
+            if (state.isConnected && state.isBluetooth) {
+                btn.textContent = 'BT ✓';
+                btn.classList.add('connected');
+            } else {
+                btn.textContent = 'BT';
+                btn.classList.remove('connected');
+            }
         }
 
         // Sync capture button state when entering experiment mode
