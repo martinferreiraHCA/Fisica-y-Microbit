@@ -7440,7 +7440,8 @@ basic.forever(function () {
             }
         }
 
-        let overlayAnimId = null; // ID del requestAnimationFrame del overlay
+        let overlayAnimId = null; // ID del setInterval del overlay
+        let _overlayFrameCount = 0; // Contador de frames del overlay (sincronizado con captureStream)
 
         function startVideoRecording() {
             if (!state.cameraActive || !state.mediaStream) return;
@@ -7464,13 +7465,14 @@ basic.forever(function () {
             canvas.height = vh;
 
             // Loop de composición: video + datos superpuestos
-            // Throttle del frame log a ~30fps para coincidir con captureStream(30)
-            let _lastFrameLogTime = 0;
-            const FRAME_LOG_INTERVAL = 1000 / 30; // ~33ms
+            // Se ejecuta a 30fps via setInterval para coincidir EXACTAMENTE con
+            // captureStream(30). Cada ejecución = 1 fotograma del video grabado.
+            _overlayFrameCount = 0;
+            const VIDEO_FPS = 30;
 
             function drawOverlayFrame() {
                 if (!state.isCollecting || !state.cameraActive) {
-                    overlayAnimId = null;
+                    if (overlayAnimId) { clearInterval(overlayAnimId); overlayAnimId = null; }
                     return;
                 }
 
@@ -7481,21 +7483,22 @@ basic.forever(function () {
                 const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
                 const lastPoint = state.rawData.length > 0 ? state.rawData[state.rawData.length - 1] : null;
 
-                // Registrar qué dato se muestra en este fotograma (~30fps)
-                const frameNow = Date.now();
-                if (lastPoint && (frameNow - _lastFrameLogTime >= FRAME_LOG_INTERVAL)) {
-                    _lastFrameLogTime = frameNow;
+                // Registrar qué dato se muestra en ESTE fotograma exacto.
+                // frameNumber coincide con el frame del video (ambos a 30fps).
+                // Guardamos los valores reales dibujados para garantizar 100% coincidencia.
+                if (lastPoint) {
                     const lastIdx = state.rawData.length - 1;
-                    // Solo agregar si cambió el punto (evitar duplicados consecutivos)
-                    const prevEntry = state.videoFrameLog[state.videoFrameLog.length - 1];
-                    if (!prevEntry || prevEntry.pointIndex !== lastIdx) {
-                        state.videoFrameLog.push({
-                            wallTime: frameNow,
-                            pointIndex: lastIdx,
-                            pointId: lastPoint.id
-                        });
-                    }
+                    const elapsed = (lastPoint.time - state.timeZeroOffset) / timeUnitValue;
+                    state.videoFrameLog.push({
+                        frameNumber: _overlayFrameCount,
+                        pointIndex: lastIdx,
+                        pointId: lastPoint.id,
+                        // Valores exactos dibujados en este fotograma
+                        displayTime: elapsed,
+                        displayValues: lastPoint.values.slice() // copia para que no mute
+                    });
                 }
+                _overlayFrameCount++;
 
                 // Fondo semitransparente para legibilidad
                 const fontSize = Math.max(14, Math.round(vh * 0.03));
@@ -7559,11 +7562,10 @@ basic.forever(function () {
                     overlayText('Esperando datos...', pad, yPos);
                 }
 
-                overlayAnimId = requestAnimationFrame(drawOverlayFrame);
             }
 
-            // Iniciar loop de overlay
-            overlayAnimId = requestAnimationFrame(drawOverlayFrame);
+            // Iniciar loop de overlay a 30fps (sincronizado con captureStream)
+            overlayAnimId = setInterval(drawOverlayFrame, 1000 / VIDEO_FPS);
 
             // Grabar desde el canvas en vez del stream directo de cámara
             // captureStream: Safari usa mozCaptureStream o webkitCaptureStream según versión
@@ -7634,9 +7636,9 @@ basic.forever(function () {
         }
 
         function stopVideoRecording() {
-            // Detener loop de overlay
+            // Detener loop de overlay (ahora es setInterval, no rAF)
             if (overlayAnimId !== null) {
-                cancelAnimationFrame(overlayAnimId);
+                clearInterval(overlayAnimId);
                 overlayAnimId = null;
             }
 
@@ -7743,6 +7745,7 @@ basic.forever(function () {
         let expExpandedPanel = null; // 'graph' or 'video' when expanded
         let expVideoObjectURL = null; // cached object URL for smooth playback
         let expVideoReady = false; // video element loaded and seekable
+        let _videoTimeOffset = 0; // calibración: offset entre frameNumber/fps y el tiempo real del video
 
         // Chart.js plugin: temporal marker (green vertical line)
         const temporalMarkerPlugin = {
@@ -8117,8 +8120,22 @@ basic.forever(function () {
             expVideo.controls = false;
             expVideo.preload = 'auto';
             expVideoReady = false;
+            _videoTimeOffset = 0;
 
-            // Wait for video to be seekable before allowing scrubbing
+            // Wait for video to be seekable, then calibrate offset
+            expVideo.addEventListener('loadedmetadata', () => {
+                // Calibrar: comparar duración real del video con duración teórica (frames/fps)
+                const log = state.videoFrameLog;
+                if (log.length > 0 && expVideo.duration && isFinite(expVideo.duration)) {
+                    const lastFrame = log[log.length - 1].frameNumber;
+                    const theoreticalDuration = lastFrame / 30; // duración si fuera perfecto
+                    const realDuration = expVideo.duration;
+                    // El offset compensa el delay de inicialización del MediaRecorder
+                    // Si el video dura menos que lo teórico, hay un offset positivo al inicio
+                    _videoTimeOffset = realDuration - theoreticalDuration;
+                    console.log(`[VIDEO] Calibración: duración real=${realDuration.toFixed(3)}s, teórica=${theoreticalDuration.toFixed(3)}s, offset=${_videoTimeOffset.toFixed(3)}s`);
+                }
+            }, { once: true });
             expVideo.addEventListener('loadeddata', () => {
                 expVideoReady = true;
             }, { once: true });
@@ -8267,22 +8284,21 @@ basic.forever(function () {
             return lo;
         }
 
-        // Búsqueda binaria en videoFrameLog por wallTime
-        function findNearestFrameLogIndex(targetWallTime) {
+        // Búsqueda binaria en videoFrameLog: dado un wallTime, encontrar el frame más cercano
+        function findNearestFrameLogByWall(targetWallTime) {
             const log = state.videoFrameLog;
             if (log.length === 0) return 0;
-            let lo = 0, hi = log.length - 1;
-            while (lo < hi) {
-                const mid = (lo + hi) >> 1;
-                if (log[mid].wallTime < targetWallTime) lo = mid + 1;
-                else hi = mid;
+            // Usar pointIndex → rawData.wallTime para buscar por tiempo
+            let best = 0;
+            let bestDist = Infinity;
+            for (let i = 0; i < log.length; i++) {
+                const pt = state.rawData[log[i].pointIndex];
+                if (!pt) continue;
+                const wall = pt.wallTime || pt.time;
+                const dist = Math.abs(wall - targetWallTime);
+                if (dist < bestDist) { bestDist = dist; best = i; }
             }
-            if (lo > 0) {
-                const dLo = Math.abs(log[lo].wallTime - targetWallTime);
-                const dPrev = Math.abs(log[lo - 1].wallTime - targetWallTime);
-                if (dPrev < dLo) return lo - 1;
-            }
-            return lo;
+            return best;
         }
 
         // Playback controls — sincronización basada en tiempo real
@@ -8324,7 +8340,7 @@ basic.forever(function () {
 
                     if (expHasFrameLog()) {
                         // Navegar por fotogramas del video
-                        sliderIdx = findNearestFrameLogIndex(currentWall);
+                        sliderIdx = findNearestFrameLogByWall(currentWall);
                         maxIdx = state.videoFrameLog.length - 1;
                     } else {
                         sliderIdx = findNearestDataIndex(currentWall);
@@ -8349,18 +8365,25 @@ basic.forever(function () {
         function updateExpFromSliderNoVideo(idx) {
             const resolved = resolveSliderIndex(idx);
             if (!resolved) return;
-            const { point, rawIdx } = resolved;
+            const { point, rawIdx, displayTime, displayValues } = resolved;
 
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
-            const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
 
-            document.getElementById('expTimeDisplay').textContent = adjustedTime.toFixed(2) + ' s';
+            if (displayTime !== null && displayValues) {
+                document.getElementById('expTimeDisplay').textContent = displayTime.toFixed(2) + ' s';
+                const val = displayValues[expSelectedVar];
+                document.getElementById('expPointInfo').textContent =
+                    `#${rawIdx + 1} | ${state.variables[expSelectedVar].name}: ${val !== undefined ? val.toFixed(3) : '--'}`;
+                expTemporalMarkerX = displayTime;
+            } else {
+                const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
+                document.getElementById('expTimeDisplay').textContent = adjustedTime.toFixed(2) + ' s';
+                const val = point.values[expSelectedVar];
+                document.getElementById('expPointInfo').textContent =
+                    `#${rawIdx + 1} | ${state.variables[expSelectedVar].name}: ${val !== undefined ? val.toFixed(3) : '--'}`;
+                expTemporalMarkerX = adjustedTime;
+            }
 
-            const val = point.values[expSelectedVar];
-            document.getElementById('expPointInfo').textContent =
-                `#${rawIdx + 1} | ${state.variables[expSelectedVar].name}: ${val !== undefined ? val.toFixed(3) : '--'}`;
-
-            expTemporalMarkerX = adjustedTime;
             if (expChart) expChart.update('none');
         }
 
@@ -8404,17 +8427,24 @@ basic.forever(function () {
             }
         }
 
-        // Resuelve un índice de slider a un punto de rawData y un videoTime.
-        // Si hay frameLog → idx es índice de frameLog, y de ahí obtenemos el punto real.
-        // Si no hay frameLog → idx es índice de rawData directo.
+        // Resuelve un índice de slider a datos para mostrar y tiempo de video.
+        // Si hay frameLog → usa los valores EXACTOS que se dibujaron en ese fotograma.
+        // Si no hay frameLog → usa rawData directo.
         function resolveSliderIndex(idx) {
             if (expHasFrameLog()) {
                 const entry = state.videoFrameLog[idx];
                 if (!entry) return null;
                 const point = state.rawData[entry.pointIndex];
                 if (!point) return null;
-                const videoTime = (entry.wallTime - state.recordingStartTime) / 1000;
-                return { point, rawIdx: entry.pointIndex, videoTime, frameIdx: idx };
+                // Tiempo de video = frame_number / fps, calibrado con el offset del video
+                // _videoTimeOffset se calcula al preparar el video (ver prepareExpVideoPlayback)
+                const videoTime = (entry.frameNumber / 30) + (_videoTimeOffset || 0);
+                return {
+                    point, rawIdx: entry.pointIndex, videoTime, frameIdx: idx,
+                    // Valores exactos que se dibujaron en este fotograma
+                    displayTime: entry.displayTime,
+                    displayValues: entry.displayValues
+                };
             } else {
                 const point = state.rawData[idx];
                 if (!point) return null;
@@ -8423,28 +8453,33 @@ basic.forever(function () {
                     const pointWall = point.wallTime || point.time;
                     videoTime = (pointWall - state.recordingStartTime) / 1000;
                 }
-                return { point, rawIdx: idx, videoTime, frameIdx: null };
+                return { point, rawIdx: idx, videoTime, frameIdx: null, displayTime: null, displayValues: null };
             }
         }
 
         function updateExpFromSlider(idx) {
             const resolved = resolveSliderIndex(idx);
             if (!resolved) return;
-            const { point, rawIdx, videoTime } = resolved;
+            const { point, rawIdx, videoTime, displayTime, displayValues } = resolved;
 
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
-            const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
 
-            // Update time display
-            document.getElementById('expTimeDisplay').textContent = adjustedTime.toFixed(2) + ' s';
+            // Si tenemos los valores exactos del fotograma, mostrar esos (100% match con video)
+            if (displayTime !== null && displayValues) {
+                document.getElementById('expTimeDisplay').textContent = displayTime.toFixed(2) + ' s';
+                const val = displayValues[expSelectedVar];
+                document.getElementById('expPointInfo').textContent =
+                    `#${rawIdx + 1} | ${state.variables[expSelectedVar].name}: ${val !== undefined ? val.toFixed(3) : '--'}`;
+                expTemporalMarkerX = displayTime;
+            } else {
+                const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
+                document.getElementById('expTimeDisplay').textContent = adjustedTime.toFixed(2) + ' s';
+                const val = point.values[expSelectedVar];
+                document.getElementById('expPointInfo').textContent =
+                    `#${rawIdx + 1} | ${state.variables[expSelectedVar].name}: ${val !== undefined ? val.toFixed(3) : '--'}`;
+                expTemporalMarkerX = adjustedTime;
+            }
 
-            // Update point info
-            const val = point.values[expSelectedVar];
-            document.getElementById('expPointInfo').textContent =
-                `#${rawIdx + 1} | ${state.variables[expSelectedVar].name}: ${val !== undefined ? val.toFixed(3) : '--'}`;
-
-            // Update temporal marker on graph
-            expTemporalMarkerX = adjustedTime;
             if (expChart) expChart.update('none');
 
             // Sync video
