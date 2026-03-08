@@ -4515,28 +4515,46 @@ basic.forever(function () {
             document.getElementById('connectBtn').title = 'Web Serial API no soportada en este navegador';
         }
 
-        // ========== DETECCIÓN DE SAFARI Y COMPATIBILIDAD ==========
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        // ========== DETECCIÓN DE NAVEGADOR Y COMPATIBILIDAD ==========
+        // En iOS/iPadOS TODOS los navegadores usan WebKit (motor de Safari) por
+        // imposición de Apple, así que Chrome/Edge/Firefox en iPhone/iPad NO tienen
+        // Web Bluetooth ni Web Serial aunque parezcan Chrome.
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        const hasSerial = 'serial' in navigator;
+        const hasBluetooth = 'bluetooth' in navigator;
 
-        if (isSafari || isIOSSafari) {
-            // Mostrar banner informativo
+        // Mostrar banner si faltan las APIs de conexión
+        if (!hasSerial && !hasBluetooth) {
             const banner = document.getElementById('safariBanner');
             const bannerText = document.getElementById('safariBannerText');
-            const safariMessages = {
-                es: 'Estás usando Safari. La conexión USB y Bluetooth con micro:bit no está disponible en este navegador. Podés cargar datos manualmente vía CSV o usar Chrome/Edge para conexión directa.',
-                pt: 'Você está usando Safari. A conexão USB e Bluetooth com micro:bit não está disponível neste navegador. Carregue dados manualmente via CSV ou use Chrome/Edge para conexão direta.',
-                en: 'You are using Safari. USB and Bluetooth connections to micro:bit are not available in this browser. Load data manually via CSV or use Chrome/Edge for direct connection.'
-            };
-            bannerText.textContent = safariMessages[currentLanguage] || safariMessages['en'];
+            let messages;
+            if (isIOS) {
+                // iOS: ningún navegador sirve, hay que usar una PC con Chrome/Edge
+                messages = {
+                    es: 'Estás en un dispositivo iOS/iPadOS. Apple no permite Web Bluetooth ni Web Serial en ningún navegador (ni Chrome ni Safari). Para conectar el micro:bit directamente, usá Chrome o Edge en una computadora. Acá podés cargar datos vía CSV.',
+                    pt: 'Você está em um dispositivo iOS/iPadOS. A Apple não permite Web Bluetooth nem Web Serial em nenhum navegador (nem Chrome nem Safari). Para conectar o micro:bit diretamente, use Chrome ou Edge em um computador. Aqui você pode carregar dados via CSV.',
+                    en: 'You are on an iOS/iPadOS device. Apple does not allow Web Bluetooth or Web Serial in any browser (not even Chrome). To connect the micro:bit directly, use Chrome or Edge on a computer. You can load data via CSV here.'
+                };
+            } else {
+                // Desktop/Android sin las APIs (Safari de Mac, Firefox, etc.)
+                messages = {
+                    es: 'Tu navegador no soporta conexión USB ni Bluetooth con micro:bit. Usá Chrome o Edge para conexión directa, o cargá datos manualmente vía CSV.',
+                    pt: 'Seu navegador não suporta conexão USB nem Bluetooth com micro:bit. Use Chrome ou Edge para conexão direta, ou carregue dados manualmente via CSV.',
+                    en: 'Your browser does not support USB or Bluetooth connection to micro:bit. Use Chrome or Edge for direct connection, or load data manually via CSV.'
+                };
+            }
+            bannerText.textContent = messages[currentLanguage] || messages['en'];
             banner.classList.add('active');
 
-            // Deshabilitar botones que no funcionan en Safari
+            // Deshabilitar botones que no funcionan
             const btBtn = document.getElementById('connectBluetoothBtn');
             if (btBtn) {
                 btBtn.disabled = true;
-                btBtn.title = 'Web Bluetooth API no disponible en Safari';
+                btBtn.title = isIOS
+                    ? 'No disponible en iOS — Apple bloquea Web Bluetooth en todos los navegadores'
+                    : 'Web Bluetooth API no disponible en este navegador';
             }
         }
 
@@ -7528,7 +7546,7 @@ basic.forever(function () {
             };
 
             state.mediaRecorder.onstop = () => {
-                const mimeType = state.mediaRecorder.mimeType || (isSafari ? 'video/mp4' : 'video/webm');
+                const mimeType = state.mediaRecorder.mimeType || ((isSafari || isIOS) ? 'video/mp4' : 'video/webm');
                 state.videoBlob = new Blob(state.recordedChunks, { type: mimeType });
                 const dlBtn = document.getElementById('downloadVideoBtn');
                 if (dlBtn) dlBtn.style.display = 'block';
