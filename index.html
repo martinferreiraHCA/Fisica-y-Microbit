@@ -1851,6 +1851,18 @@
                         <input type="checkbox" id="spikeFilter" style="width: auto; cursor: pointer;" title="Descarta lecturas anómalas causadas por errores de comunicación serial/Bluetooth">
                     </div>
 
+                    <div class="input-row" style="align-items: center;">
+                        <label id="overlayOpacityLabel">Overlay: opacidad</label>
+                        <input type="range" id="overlayOpacity" min="0" max="100" value="85" style="flex:1; min-width: 60px;">
+                        <span id="overlayOpacityVal" style="min-width: 2.5em; text-align:right; font-size:0.8rem;">85%</span>
+                    </div>
+
+                    <div class="input-row" style="align-items: center;">
+                        <label id="overlayFontLabel">Overlay: tamaño</label>
+                        <input type="range" id="overlayFontScale" min="50" max="200" value="100" style="flex:1; min-width: 60px;">
+                        <span id="overlayFontVal" style="min-width: 2.5em; text-align:right; font-size:0.8rem;">100%</span>
+                    </div>
+
                     <!-- Variable 1 -->
                     <div class="variable-config" id="var1Config">
                         <h4>Variable 1</h4>
@@ -2346,6 +2358,8 @@
                 microbitTimestamp: 'Micro:bit envía timestamp',
                 spikeFilter: 'Filtro de picos',
                 spikeFilterTitle: 'Descarta lecturas anómalas causadas por errores de comunicación serial/Bluetooth',
+                overlayOpacity: 'Overlay: opacidad',
+                overlayFontSize: 'Overlay: tamaño',
                 varName: 'Nombre Variable',
                 varColor: 'Color',
                 applyVarConfig: 'APLICAR CONFIGURACIÓN',
@@ -2505,6 +2519,8 @@
                 microbitTimestamp: 'Micro:bit sends timestamp',
                 spikeFilter: 'Spike filter',
                 spikeFilterTitle: 'Discard anomalous readings caused by serial/Bluetooth communication errors',
+                overlayOpacity: 'Overlay: opacity',
+                overlayFontSize: 'Overlay: size',
                 varName: 'Variable Name',
                 varColor: 'Color',
                 applyVarConfig: 'APPLY CONFIGURATION',
@@ -2664,6 +2680,8 @@
                 microbitTimestamp: 'Micro:bit envia timestamp',
                 spikeFilter: 'Filtro de picos',
                 spikeFilterTitle: 'Descarta leituras anômalas causadas por erros de comunicação serial/Bluetooth',
+                overlayOpacity: 'Overlay: opacidade',
+                overlayFontSize: 'Overlay: tamanho',
                 varName: 'Nome da Variável',
                 varColor: 'Cor',
                 applyVarConfig: 'APLICAR CONFIGURAÇÃO',
@@ -2977,6 +2995,12 @@
                     label.textContent = t.toPoint;
                 }
             });
+
+            // Overlay config labels
+            const olLabel = document.getElementById('overlayOpacityLabel');
+            if (olLabel) olLabel.textContent = t.overlayOpacity || 'Overlay: opacidad';
+            const ofLabel = document.getElementById('overlayFontLabel');
+            if (ofLabel) ofLabel.textContent = t.overlayFontSize || 'Overlay: tamaño';
 
             // Panel lateral - Opciones de select
             const numVarsSelect = document.getElementById('numVariables');
@@ -4394,6 +4418,8 @@ basic.forever(function () {
             numVariables: 1,
             microbitTimestamp: true,  // siempre true: la micro:bit envía input.runningTime() como primer valor
             spikeFilter: false,       // true para filtrar picos anómalos de comunicación
+            overlayOpacity: 0.85,     // opacidad del fondo del overlay en el video (0-1)
+            overlayFontScale: 1.0,    // escala de fuente del overlay (0.5-2.0)
             variables: [
                 { name: 'Variable 1', color: '#000000' },
                 { name: 'Variable 2', color: '#ff0000' },
@@ -4455,8 +4481,17 @@ basic.forever(function () {
 
         document.getElementById('spikeFilter').addEventListener('change', function() {
             state.spikeFilter = this.checked;
-            // Limpiar historial del filtro al cambiar
             _spikeFilterHistory = {};
+        });
+
+        document.getElementById('overlayOpacity').addEventListener('input', function() {
+            state.overlayOpacity = this.value / 100;
+            document.getElementById('overlayOpacityVal').textContent = this.value + '%';
+        });
+
+        document.getElementById('overlayFontScale').addEventListener('input', function() {
+            state.overlayFontScale = this.value / 100;
+            document.getElementById('overlayFontVal').textContent = this.value + '%';
         });
 
         // Click en la advertencia de formato → corregir automáticamente el checkbox
@@ -7279,7 +7314,8 @@ basic.forever(function () {
             if (!state.cameraActive || !state.mediaStream) return;
 
             state.recordedChunks = [];
-            state.recordingStartTime = Date.now();
+            // Usar el mismo instante que timeZeroOffset para sincronización precisa
+            state.recordingStartTime = state.timeZeroOffset;
 
             // Configurar canvas del mismo tamaño que el video
             const video = document.getElementById('cameraPreview');
@@ -7309,38 +7345,63 @@ basic.forever(function () {
                 // Fondo semitransparente para legibilidad
                 const fontSize = Math.max(14, Math.round(vh * 0.03));
                 const lineHeight = fontSize * 1.4;
-                const numLines = 1 + state.numVariables; // tiempo + variables
-                const boxHeight = lineHeight * numLines + fontSize * 0.6;
+                const numLines = 2 + state.numVariables; // tiempo + rate + variables
                 const boxWidth = Math.min(vw * 0.5, 320);
-
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                ctx.fillRect(0, 0, boxWidth, boxHeight);
 
                 ctx.font = `bold ${fontSize}px monospace`;
                 ctx.textBaseline = 'top';
-                const pad = fontSize * 0.3;
+                // Contorno negro para máximo contraste sobre cualquier fondo
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = Math.max(2, fontSize * 0.15);
+                ctx.lineJoin = 'round';
+                const overlayOpacity = state.overlayOpacity !== undefined ? state.overlayOpacity : 0.85;
+                const overlayFontScale = state.overlayFontScale !== undefined ? state.overlayFontScale : 1.0;
+                const actualFontSize = Math.round(fontSize * overlayFontScale);
+                ctx.font = `bold ${actualFontSize}px monospace`;
+                const actualLineHeight = actualFontSize * 1.4;
+                const pad = actualFontSize * 0.3;
                 let yPos = pad;
+
+                // Recalcular fondo con opacidad configurable
+                const boxHeightActual = actualLineHeight * numLines + actualFontSize * 0.6;
+                ctx.fillStyle = `rgba(0, 0, 0, ${overlayOpacity})`;
+                ctx.fillRect(0, 0, boxWidth, boxHeightActual);
+
+                // Helper para texto con contorno (máximo contraste)
+                function overlayText(text, x, y) {
+                    ctx.strokeText(text, x, y);
+                    ctx.fillText(text, x, y);
+                }
 
                 // Línea de tiempo
                 if (lastPoint) {
                     const elapsed = (lastPoint.time - state.timeZeroOffset) / timeUnitValue;
                     ctx.fillStyle = '#00ff00';
-                    ctx.fillText(`T: ${elapsed.toFixed(3)} s`, pad, yPos);
-                    yPos += lineHeight;
+                    overlayText(`T: ${elapsed.toFixed(3)} s`, pad, yPos);
+                    yPos += actualLineHeight;
+
+                    // Mostrar rate de muestreo vs FPS del video
+                    if (sampleTimestamps.length > 10) {
+                        const recentSamples = sampleTimestamps.slice(-50);
+                        const dtAvg = (recentSamples[recentSamples.length - 1] - recentSamples[0]) / (recentSamples.length - 1);
+                        const sampleHz = Math.round(1000 / dtAvg);
+                        ctx.fillStyle = '#aaaaaa';
+                        overlayText(`${sampleHz} Hz | 30 FPS`, pad, yPos);
+                        yPos += actualLineHeight;
+                    }
 
                     // Variables
                     for (let i = 0; i < state.numVariables; i++) {
                         const color = state.variables[i].color;
-                        // Convertir color hex a formato legible en video (más brillante)
                         ctx.fillStyle = brightenColor(color);
                         const name = state.variables[i].name;
                         const val = lastPoint.values[i] !== undefined ? lastPoint.values[i].toFixed(2) : '---';
-                        ctx.fillText(`${name}: ${val}`, pad, yPos);
-                        yPos += lineHeight;
+                        overlayText(`${name}: ${val}`, pad, yPos);
+                        yPos += actualLineHeight;
                     }
                 } else {
                     ctx.fillStyle = '#ffff00';
-                    ctx.fillText('Esperando datos...', pad, yPos);
+                    overlayText('Esperando datos...', pad, yPos);
                 }
 
                 overlayAnimId = requestAnimationFrame(drawOverlayFrame);
@@ -8005,7 +8066,27 @@ basic.forever(function () {
             }
         }
 
-        // Playback controls
+        // Búsqueda binaria: dado un wallTime, encontrar el índice del dato más cercano
+        function findNearestDataIndex(targetWallTime) {
+            const data = state.rawData;
+            if (data.length === 0) return 0;
+            let lo = 0, hi = data.length - 1;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                const midWall = data[mid].wallTime || data[mid].time;
+                if (midWall < targetWallTime) lo = mid + 1;
+                else hi = mid;
+            }
+            // Comparar lo vs lo-1 para encontrar el más cercano
+            if (lo > 0) {
+                const dLo = Math.abs((data[lo].wallTime || data[lo].time) - targetWallTime);
+                const dPrev = Math.abs((data[lo - 1].wallTime || data[lo - 1].time) - targetWallTime);
+                if (dPrev < dLo) return lo - 1;
+            }
+            return lo;
+        }
+
+        // Playback controls — sincronización basada en tiempo real
         function toggleExpPlayback() {
             const btn = document.getElementById('expPlayBtn');
             const expVideo = document.getElementById('expVideo');
@@ -8015,40 +8096,49 @@ basic.forever(function () {
                 clearInterval(expPlaybackInterval);
                 expPlaybackInterval = null;
                 btn.textContent = '▶';
-                // Pause video
                 if (expVideo && !expVideo.paused) expVideo.pause();
             } else {
                 btn.textContent = '⏸';
                 const slider = document.getElementById('expTimelineBar');
 
-                // Start continuous video playback from current point
+                // Calcular el wallTime del punto de inicio actual
+                const startIdx = parseInt(slider.value);
+                const startPoint = state.rawData[startIdx];
+                if (!startPoint) return;
+
+                const startWall = startPoint.wallTime || startPoint.time;
+                const playbackStartReal = Date.now(); // instante real en que se presiona play
+
+                // Iniciar video desde la posición correspondiente
                 if (state.videoBlob && state.recordingStartTime) {
-                    const idx = parseInt(slider.value);
-                    const point = state.rawData[idx];
-                    if (point) {
-                        const pointWall = point.wallTime || point.time;
-                        const videoTime = (pointWall - state.recordingStartTime) / 1000;
-                        if (videoTime >= 0) {
-                            playExpVideoFrom(videoTime);
-                            if (expVideo) expVideo.playbackRate = expPlaybackSpeed;
-                        }
+                    const videoTime = (startWall - state.recordingStartTime) / 1000;
+                    if (videoTime >= 0) {
+                        playExpVideoFrom(videoTime);
+                        if (expVideo) expVideo.playbackRate = expPlaybackSpeed;
                     }
                 }
 
-                // Timeline slider follows data points at matching speed
+                // Sincronización basada en tiempo real: cada tick calcula qué dato
+                // corresponde al tiempo transcurrido desde que se presionó play
                 expPlaybackInterval = setInterval(() => {
-                    let val = parseInt(slider.value) + 1;
-                    if (val > parseInt(slider.max)) {
-                        val = 0;
-                        // Also rewind video
-                        if (expVideo && state.videoBlob) {
-                            expVideo.currentTime = 0;
-                        }
+                    const elapsedMs = (Date.now() - playbackStartReal) * expPlaybackSpeed;
+                    const currentWall = startWall + elapsedMs;
+
+                    // Buscar el dato más cercano al tiempo actual
+                    const idx = findNearestDataIndex(currentWall);
+
+                    if (idx >= state.rawData.length - 1) {
+                        // Fin de los datos — detener
+                        clearInterval(expPlaybackInterval);
+                        expPlaybackInterval = null;
+                        btn.textContent = '▶';
+                        if (expVideo && !expVideo.paused) expVideo.pause();
+                        return;
                     }
-                    slider.value = val;
-                    // Update graph marker and info, but don't re-seek video (it's playing continuously)
-                    updateExpFromSliderNoVideo(val);
-                }, 200 / expPlaybackSpeed);
+
+                    slider.value = idx;
+                    updateExpFromSliderNoVideo(idx);
+                }, 50); // 20 Hz de actualización para seguimiento preciso
             }
         }
 
@@ -8080,16 +8170,12 @@ basic.forever(function () {
             if (expVideo && !expVideo.paused) {
                 expVideo.playbackRate = speed;
             }
-            // Restart timeline interval at new speed if playing
+            // Si está en playback, reiniciar con nueva velocidad usando sync basado en tiempo
             if (expPlaybackInterval) {
                 clearInterval(expPlaybackInterval);
-                const slider = document.getElementById('expTimelineBar');
-                expPlaybackInterval = setInterval(() => {
-                    let val = parseInt(slider.value) + 1;
-                    if (val > parseInt(slider.max)) val = 0;
-                    slider.value = val;
-                    updateExpFromSliderNoVideo(val);
-                }, 200 / expPlaybackSpeed);
+                expPlaybackInterval = null;
+                // Re-trigger playback con la nueva velocidad
+                toggleExpPlayback();
             }
         }
 
