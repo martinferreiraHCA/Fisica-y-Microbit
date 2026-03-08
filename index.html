@@ -2068,6 +2068,7 @@
             position: relative;
             min-height: 0;
             padding: 8px 16px 8px 8px;
+            overflow: visible;
         }
 
         .dlab-graph-wrap canvas {
@@ -6588,6 +6589,17 @@ basic.forever(function () {
             document.getElementById('collectBtn').style.display = 'inline-block';
             document.getElementById('stopBtn').style.display = 'none';
             document.getElementById('statusText').textContent = 'PAUSADO';
+
+            // If desktop LAB mode is active, update UI after stop
+            if (document.getElementById('desktopLabMode').classList.contains('active')) {
+                setTimeout(() => {
+                    dlabSyncCaptureButton();
+                    dlabSyncStatus();
+                    dlabUpdateTimeline();
+                    dlabUpdateChartData();
+                    dlabUpdateTable();
+                }, 100);
+            }
         });
 
         // Crea la configuración de dataset optimizada para streaming
@@ -8531,6 +8543,12 @@ basic.forever(function () {
                 state.videoBlob = new Blob(state.recordedChunks, { type: mimeType });
                 const dlBtn = document.getElementById('downloadVideoBtn');
                 if (dlBtn) dlBtn.style.display = 'block';
+
+                // If desktop LAB mode is active, load recorded video into PIP
+                if (document.getElementById('desktopLabMode').classList.contains('active')) {
+                    dlabPreparePipVideo();
+                    document.getElementById('dlabVideoPip').style.display = 'block';
+                }
             };
 
             state.mediaRecorder.start();
@@ -9710,21 +9728,27 @@ basic.forever(function () {
             const dlabVideo = document.getElementById('dlabVideo');
             const pip = document.getElementById('dlabVideoPip');
 
+            const badge = document.getElementById('dlabPipBadge');
             if (state.isCollecting && state.mediaStream) {
+                // Live capture in progress - show live stream
                 dlabVideo.srcObject = state.mediaStream;
                 dlabVideo.muted = true;
                 dlabVideo.play().catch(() => {});
                 pip.style.display = 'block';
+                if (badge) { badge.textContent = 'LIVE'; badge.classList.add('recording'); }
             } else if (state.videoBlob) {
+                // Recorded video available - load it for playback
                 dlabPreparePipVideo();
                 pip.style.display = 'block';
             } else if (state.mediaStream || state.cameraActive) {
+                // Camera preview active (not recording)
                 const origVideo = document.getElementById('cameraPreview');
                 if (origVideo && origVideo.srcObject) {
                     dlabVideo.srcObject = origVideo.srcObject;
                     dlabVideo.muted = true;
                     dlabVideo.play().catch(() => {});
                     pip.style.display = 'block';
+                    if (badge) { badge.textContent = 'LIVE'; badge.classList.remove('recording'); }
                 }
             } else {
                 pip.style.display = 'none';
@@ -9765,8 +9789,13 @@ basic.forever(function () {
             const dlabVideo = document.getElementById('dlabVideo');
             if (dlabVideo) {
                 dlabVideo.pause();
-                dlabVideo.src = '';
                 dlabVideo.srcObject = null;
+                dlabVideo.removeAttribute('src');
+                dlabVideo.load(); // reset video element
+            }
+            if (dlabVideoObjectURL) {
+                URL.revokeObjectURL(dlabVideoObjectURL);
+                dlabVideoObjectURL = null;
             }
 
             if (dlabChart) {
@@ -9784,13 +9813,38 @@ basic.forever(function () {
             }, 100);
         }
 
+        var dlabVideoObjectURL = null;
+
         function dlabPreparePipVideo() {
             const dlabVideo = document.getElementById('dlabVideo');
             if (!state.videoBlob) return;
-            const url = URL.createObjectURL(state.videoBlob);
-            dlabVideo.src = url;
+
+            // Revoke previous URL to prevent memory leak
+            if (dlabVideoObjectURL) {
+                URL.revokeObjectURL(dlabVideoObjectURL);
+            }
+            dlabVideoObjectURL = URL.createObjectURL(state.videoBlob);
+
+            // Clear any live stream first
+            dlabVideo.srcObject = null;
+            dlabVideo.src = dlabVideoObjectURL;
             dlabVideo.muted = true;
+            dlabVideo.preload = 'auto';
+            dlabVideo.controls = false;
             dlabVideo.load();
+
+            // Update badge to show REC (recorded) instead of LIVE
+            const badge = document.getElementById('dlabPipBadge');
+            if (badge) {
+                badge.textContent = 'REC';
+                badge.classList.remove('recording');
+            }
+
+            // Once metadata is loaded, pause and seek to start
+            dlabVideo.addEventListener('loadeddata', () => {
+                dlabVideo.pause();
+                dlabVideo.currentTime = 0;
+            }, { once: true });
         }
 
         function dlabToggleVideoPip() {
