@@ -5912,6 +5912,9 @@ basic.forever(function () {
 
                 const discarded = originalCount - state.rawData.length;
                 console.log(`[VIDEO-SYNC] Submuestreo: ${originalCount} → ${state.rawData.length} puntos (${discarded} descartados, ${state.videoFrameLog.length} fotogramas)`);
+
+                // Invalidar mapa de video para que se recalcule con los nuevos índices
+                _videoWallTimeMap = null;
             }
 
             // Restaurar escala automática de Chart.js (quitar min/max forzados)
@@ -6726,6 +6729,11 @@ basic.forever(function () {
                 }
                 updateDataTable();
 
+                // Sincronizar slider del modo experimento con los datos actuales
+                if (typeof updateExpTimeline === 'function') {
+                    updateExpTimeline();
+                }
+
                 document.getElementById('exportBtn').disabled = state.rawData.length === 0;
                 document.getElementById('saveGraphBtn').disabled = state.rawData.length === 0;
                 document.getElementById('setZeroBtn').disabled = state.selectedPoints.size !== 1;
@@ -6978,7 +6986,50 @@ basic.forever(function () {
         function deletePoint(id) {
             state.rawData = state.rawData.filter(d => d.id !== id);
             state.selectedPoints.delete(id);
+            _rebuildVideoFrameLogIndices();
             updateDisplay();
+        }
+
+        // Recalcula videoFrameLog.pointIndex después de modificar rawData.
+        // Los pointId son estables (no cambian), así que buscamos su nueva posición.
+        // Si un punto fue eliminado, el frame apunta al punto válido más cercano.
+        function _rebuildVideoFrameLogIndices() {
+            if (!state.videoFrameLog || state.videoFrameLog.length === 0) return;
+            if (state.rawData.length === 0) {
+                state.videoFrameLog = [];
+                return;
+            }
+
+            // Construir mapa id → nuevo índice
+            const idToIdx = new Map();
+            for (let i = 0; i < state.rawData.length; i++) {
+                idToIdx.set(state.rawData[i].id, i);
+            }
+
+            // Actualizar cada entrada del frameLog
+            const toRemove = [];
+            for (let f = 0; f < state.videoFrameLog.length; f++) {
+                const entry = state.videoFrameLog[f];
+                const newIdx = idToIdx.get(entry.pointId);
+                if (newIdx !== undefined) {
+                    entry.pointIndex = newIdx;
+                } else {
+                    // El punto fue eliminado: buscar el más cercano por wallTime
+                    const targetWall = entry.wallTime;
+                    let bestIdx = 0;
+                    let bestDist = Infinity;
+                    for (let i = 0; i < state.rawData.length; i++) {
+                        const d = Math.abs((state.rawData[i].wallTime || state.rawData[i].time) - targetWall);
+                        if (d < bestDist) { bestDist = d; bestIdx = i; }
+                    }
+                    entry.pointIndex = bestIdx;
+                    entry.pointId = state.rawData[bestIdx].id;
+                    entry.displayValues = state.rawData[bestIdx].values.slice();
+                }
+            }
+
+            // Invalidar mapa de video para que se recalcule
+            _videoWallTimeMap = null;
         }
 
         function handleChartClick(evt, chartIndex) {
@@ -7054,6 +7105,7 @@ basic.forever(function () {
                     const pointsToRemove = state.rawData.slice(fromIdx, toIdx + 1);
                     pointsToRemove.forEach(p => state.selectedPoints.delete(p.id));
                     state.rawData.splice(fromIdx, toIdx - fromIdx + 1);
+                    _rebuildVideoFrameLogIndices();
 
                     document.getElementById('deleteRangeFrom').value = '';
                     document.getElementById('deleteRangeTo').value = '';
@@ -7070,6 +7122,7 @@ basic.forever(function () {
                 const idsToDelete = Array.from(state.selectedPoints);
                 state.rawData = state.rawData.filter(d => !idsToDelete.includes(d.id));
                 state.selectedPoints.clear();
+                _rebuildVideoFrameLogIndices();
                 document.getElementById('pointInfo').style.display = 'none';
 
                 updateDisplay();
@@ -7873,10 +7926,25 @@ basic.forever(function () {
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
             const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
 
-            // Calcular posición en el video usando wallTime (Date.now() real)
-            // wallTime y recordingStartTime están siempre en la misma escala (epoch ms)
-            const pointWall = point.wallTime || point.time;
-            const videoTime = (pointWall - state.recordingStartTime) / 1000;
+            // Intentar encontrar el fotograma exacto en videoFrameLog para este punto
+            // Esto es más preciso que calcular desde wallTime porque usa el mapeo
+            // calibrado que compensa las variaciones del MediaRecorder.
+            let videoTime = null;
+            let displayValues = null;
+            if (state.videoFrameLog && state.videoFrameLog.length > 0) {
+                // Buscar el frame que muestra este punto (por ID)
+                const frameIdx = state.videoFrameLog.findIndex(f => f.pointId === id);
+                if (frameIdx >= 0) {
+                    videoTime = _getVideoTimeForFrame(frameIdx);
+                    displayValues = state.videoFrameLog[frameIdx].displayValues;
+                }
+            }
+
+            // Fallback: calcular desde wallTime si no hay frameLog match
+            if (videoTime === null) {
+                const pointWall = point.wallTime || point.time;
+                videoTime = (pointWall - state.recordingStartTime) / 1000;
+            }
 
             if (videoTime < 0) {
                 alert('Este punto fue capturado antes de iniciar la grabación');
@@ -7888,9 +7956,11 @@ basic.forever(function () {
             playbackVideo.src = videoURL;
             playbackVideo.currentTime = videoTime;
 
+            // Mostrar los valores del frameLog si disponibles (100% match con video)
             let valuesText = '';
+            const vals = displayValues || point.values;
             for (let i = 0; i < state.numVariables; i++) {
-                valuesText += `${state.variables[i].name}: ${point.values[i].toFixed(4)}<br>`;
+                valuesText += `${state.variables[i].name}: ${vals[i] !== undefined ? vals[i].toFixed(4) : '---'}<br>`;
             }
 
             document.getElementById('videoInfo').innerHTML = `
@@ -8769,6 +8839,10 @@ basic.forever(function () {
                 slider.max = Math.max(0, state.videoFrameLog.length - 1);
             } else {
                 slider.max = Math.max(0, state.rawData.length - 1);
+            }
+            // Clamp: si el valor actual excede el nuevo máximo, ajustarlo
+            if (parseInt(slider.value) > parseInt(slider.max)) {
+                slider.value = slider.max;
             }
         }
 
