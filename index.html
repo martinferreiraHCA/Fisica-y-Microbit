@@ -7924,23 +7924,37 @@ basic.forever(function () {
             }
 
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
-            const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
+            const rawIdx = state.rawData.indexOf(point);
 
-            // Intentar encontrar el fotograma exacto en videoFrameLog para este punto
-            // Esto es más preciso que calcular desde wallTime porque usa el mapeo
-            // calibrado que compensa las variaciones del MediaRecorder.
+            // ── Buscar fotograma en videoFrameLog ──
+            // Primero por ID exacto, luego por pointIndex más cercano.
+            // Esto garantiza que TIEMPO y VIDEO EN sean consistentes:
+            // ambos salen del mismo fotograma del video.
+            let frameIdx = -1;
+            let frameEntry = null;
             let videoTime = null;
-            let displayValues = null;
+
             if (state.videoFrameLog && state.videoFrameLog.length > 0) {
-                // Buscar el frame que muestra este punto (por ID)
-                const frameIdx = state.videoFrameLog.findIndex(f => f.pointId === id);
+                // 1) Buscar frame exacto por ID del punto
+                frameIdx = state.videoFrameLog.findIndex(f => f.pointId === id);
+
+                // 2) Si no hay match exacto, buscar el frame cuyo pointIndex
+                //    sea el más cercano al rawIdx de este punto
+                if (frameIdx < 0) {
+                    let bestDist = Infinity;
+                    for (let i = 0; i < state.videoFrameLog.length; i++) {
+                        const dist = Math.abs(state.videoFrameLog[i].pointIndex - rawIdx);
+                        if (dist < bestDist) { bestDist = dist; frameIdx = i; }
+                    }
+                }
+
                 if (frameIdx >= 0) {
+                    frameEntry = state.videoFrameLog[frameIdx];
                     videoTime = _getVideoTimeForFrame(frameIdx);
-                    displayValues = state.videoFrameLog[frameIdx].displayValues;
                 }
             }
 
-            // Fallback: calcular desde wallTime si no hay frameLog match
+            // Fallback último recurso: wallTime (solo si no hay frameLog)
             if (videoTime === null) {
                 const pointWall = point.wallTime || point.time;
                 videoTime = (pointWall - state.recordingStartTime) / 1000;
@@ -7956,15 +7970,21 @@ basic.forever(function () {
             playbackVideo.src = videoURL;
             playbackVideo.currentTime = videoTime;
 
-            // Mostrar los valores del frameLog si disponibles (100% match con video)
+            // Usar displayTime y displayValues del frame (100% match con overlay del video)
+            const displayTime = frameEntry && frameEntry.displayTime !== undefined
+                ? frameEntry.displayTime
+                : (point.time - state.timeZeroOffset) / timeUnitValue;
+            const vals = frameEntry && frameEntry.displayValues
+                ? frameEntry.displayValues
+                : point.values;
+
             let valuesText = '';
-            const vals = displayValues || point.values;
             for (let i = 0; i < state.numVariables; i++) {
                 valuesText += `${state.variables[i].name}: ${vals[i] !== undefined ? vals[i].toFixed(4) : '---'}<br>`;
             }
 
             document.getElementById('videoInfo').innerHTML = `
-                TIEMPO: ${adjustedTime.toFixed(3)} s<br>
+                TIEMPO: ${displayTime.toFixed(3)} s<br>
                 ${valuesText}
                 VIDEO EN: ${videoTime.toFixed(2)} segundos
             `;
