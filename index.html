@@ -1889,6 +1889,522 @@
                 padding-bottom: max(4px, env(safe-area-inset-bottom));
             }
         }
+
+        /* ========== DESKTOP LAB MODE ========== */
+        .desktop-lab-mode {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            background: #fafafa;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .desktop-lab-mode.active {
+            display: flex;
+        }
+
+        body.desktop-lab-active .toolbar,
+        body.desktop-lab-active .view-switcher,
+        body.desktop-lab-active .timeline-scrubber,
+        body.desktop-lab-active .main-container,
+        body.desktop-lab-active .toolbar-menu-overlay,
+        body.desktop-lab-active .toolbar-menu-panel,
+        body.desktop-lab-active footer {
+            display: none !important;
+        }
+
+        /* Desktop LAB Toolbar */
+        .dlab-toolbar {
+            background: white;
+            border-bottom: 2px solid black;
+            padding: 8px 16px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .dlab-toolbar-title {
+            font-weight: 800;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-right: 8px;
+        }
+
+        .dlab-btn {
+            background: white;
+            border: 2px solid black;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+
+        .dlab-btn:hover:not(:disabled) {
+            background: black;
+            color: white;
+        }
+
+        .dlab-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .dlab-btn.primary {
+            background: black;
+            color: white;
+        }
+
+        .dlab-btn.primary:hover:not(:disabled) {
+            background: #333;
+        }
+
+        .dlab-btn.success {
+            background: #2e7d32;
+            color: white;
+            border-color: #2e7d32;
+        }
+
+        .dlab-btn.danger {
+            background: #d32f2f;
+            color: white;
+            border-color: #d32f2f;
+            animation: blink 1s infinite;
+        }
+
+        .dlab-btn.bluetooth {
+            background: #1565c0;
+            color: white;
+            border-color: #1565c0;
+        }
+
+        .dlab-btn.bluetooth:hover:not(:disabled) {
+            background: #0d47a1;
+        }
+
+        .dlab-btn.bluetooth.connected {
+            background: #2e7d32;
+            border-color: #2e7d32;
+        }
+
+        .dlab-separator {
+            width: 2px;
+            height: 24px;
+            background: black;
+            margin: 0 4px;
+        }
+
+        .dlab-status {
+            margin-left: auto;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 6px 14px;
+            border: 2px solid black;
+        }
+
+        /* Desktop LAB Main Area */
+        .dlab-main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            overflow: hidden;
+        }
+
+        /* Left: Graph area */
+        .dlab-graph-area {
+            display: flex;
+            flex-direction: column;
+            border-right: 2px solid black;
+            overflow: hidden;
+        }
+
+        .dlab-graph-header {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            gap: 8px;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+
+        .dlab-mag-selector {
+            display: flex;
+            gap: 4px;
+            flex: 1;
+        }
+
+        .dlab-mag-btn {
+            padding: 5px 14px;
+            border: 2px solid #ccc;
+            background: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .dlab-mag-btn.active {
+            background: #1976d2;
+            color: white;
+            border-color: #1976d2;
+        }
+
+        .dlab-mag-btn:hover:not(.active) {
+            background: #f0f0f0;
+        }
+
+        .dlab-graph-wrap {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+            padding: 8px 16px 8px 8px;
+        }
+
+        .dlab-graph-wrap canvas {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: calc(100% - 24px) !important;
+            height: calc(100% - 16px) !important;
+        }
+
+        /* Video preview in desktop LAB (small, bottom-left corner) */
+        .dlab-video-pip {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            width: 240px;
+            height: 160px;
+            border: 2px solid black;
+            background: black;
+            z-index: 5;
+            cursor: move;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .dlab-video-pip video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .dlab-video-pip .dlab-pip-badge {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 6px;
+            font-size: 0.6rem;
+            font-weight: 700;
+        }
+
+        .dlab-video-pip .dlab-pip-badge.recording {
+            color: #ff4444;
+            animation: blink 1s infinite;
+        }
+
+        .dlab-video-pip .dlab-pip-close {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Bottom bar: playback + info */
+        .dlab-bottom-bar {
+            display: flex;
+            align-items: center;
+            padding: 6px 16px;
+            gap: 8px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+
+        .dlab-point-info {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            min-width: 200px;
+        }
+
+        .dlab-timeline-bar {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            background: #ddd;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .dlab-timeline-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #2e7d32;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .dlab-timeline-bar::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: #2e7d32;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .dlab-time-display {
+            font-family: 'Courier New', monospace;
+            font-size: 0.82rem;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .dlab-speed-btns {
+            display: flex;
+            gap: 4px;
+        }
+
+        .dlab-speed-btn {
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            background: white;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            min-width: 32px;
+            text-align: center;
+        }
+
+        .dlab-speed-btn.active {
+            background: black;
+            color: white;
+            border-color: black;
+        }
+
+        /* Right: Data panel */
+        .dlab-data-panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: white;
+        }
+
+        .dlab-data-header {
+            padding: 8px 12px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid black;
+            background: white;
+            flex-shrink: 0;
+        }
+
+        .dlab-data-controls {
+            padding: 8px 12px;
+            background: #f5f5f5;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .dlab-data-search {
+            flex: 1;
+            padding: 5px 10px;
+            border: 2px solid black;
+            font-size: 0.82rem;
+        }
+
+        .dlab-data-filter {
+            padding: 5px 10px;
+            border: 2px solid black;
+            font-size: 0.82rem;
+            background: white;
+        }
+
+        .dlab-table-wrap {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .dlab-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        .dlab-table thead {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+
+        .dlab-table th {
+            padding: 6px 8px;
+            text-align: left;
+            border-bottom: 2px solid black;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            font-size: 0.72rem;
+        }
+
+        .dlab-table td {
+            padding: 4px 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .dlab-table tr {
+            cursor: pointer;
+        }
+
+        .dlab-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .dlab-table tr.selected {
+            background: #e3f2fd;
+            border-left: 3px solid #1976d2;
+        }
+
+        .dlab-table tr.selected td {
+            font-weight: 600;
+        }
+
+        .dlab-table tr.diff-point-a {
+            background: #e8f5e9;
+            border-left: 3px solid #2e7d32;
+        }
+
+        .dlab-table tr.diff-point-b {
+            background: #fff3e0;
+            border-left: 3px solid #ff9800;
+        }
+
+        .dlab-table input[type="number"] {
+            width: 100%;
+            border: none;
+            background: transparent;
+            padding: 3px;
+            font-size: 0.82rem;
+        }
+
+        .dlab-table input[type="number"]:focus {
+            background: white;
+            border: 1px solid black;
+            outline: none;
+        }
+
+        .dlab-table .delete-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            padding: 0 4px;
+        }
+
+        /* Difference calculator panel */
+        .dlab-diff-panel {
+            padding: 10px 12px;
+            background: #e8f5e9;
+            border-top: 2px solid #2e7d32;
+            flex-shrink: 0;
+        }
+
+        .dlab-diff-panel.hidden {
+            display: none;
+        }
+
+        .dlab-diff-title {
+            font-weight: 700;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 6px;
+            color: #2e7d32;
+        }
+
+        .dlab-diff-row {
+            display: flex;
+            justify-content: space-between;
+            font-family: 'Courier New', monospace;
+            font-size: 0.82rem;
+            padding: 2px 0;
+        }
+
+        .dlab-diff-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .dlab-diff-value {
+            font-weight: 700;
+        }
+
+        .dlab-diff-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .dlab-diff-btn {
+            padding: 4px 10px;
+            border: 1px solid #2e7d32;
+            background: white;
+            color: #2e7d32;
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .dlab-diff-btn:hover {
+            background: #2e7d32;
+            color: white;
+        }
+
+        .dlab-diff-btn.active {
+            background: #2e7d32;
+            color: white;
+        }
+
+        /* Desktop LAB button: hide on mobile/tablet (they use view-switcher) */
+        @media (max-width: 1024px) {
+            #desktopLabBtn {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1908,6 +2424,9 @@
             <div class="toolbar-separator"></div>
             <button id="cameraBtn" class="toolbar-btn">CÁMARA</button>
         </span>
+
+        <!-- LAB button for desktop -->
+        <button id="desktopLabBtn" class="toolbar-btn" style="background: #1976d2; color: white; border-color: #1976d2;" onclick="enterExperimentMode()">LAB</button>
 
         <!-- Secondary actions: hidden in hamburger on mobile -->
         <span class="toolbar-secondary">
@@ -2492,6 +3011,89 @@
         </div>
     </div>
 
+    <!-- Desktop LAB Mode -->
+    <div class="desktop-lab-mode" id="desktopLabMode">
+        <!-- Desktop LAB Toolbar -->
+        <div class="dlab-toolbar">
+            <span class="dlab-toolbar-title">LAB</span>
+            <div class="dlab-separator"></div>
+            <button class="dlab-btn bluetooth" id="dlabBtBtn" onclick="dlabConnectBluetooth()">BT</button>
+            <button class="dlab-btn success" id="dlabCaptureBtn" onclick="dlabToggleCapture()">CAPTURAR</button>
+            <div class="dlab-separator"></div>
+            <button class="dlab-btn" id="dlabDiffBtn" onclick="dlabToggleDiffMode()">DIFERENCIA</button>
+            <button class="dlab-btn" id="dlabResetZoomBtn" onclick="dlabResetZoom()">RESET ZOOM</button>
+            <span class="dlab-status" id="dlabStatus">DESCONECTADO</span>
+            <div class="dlab-separator"></div>
+            <button class="dlab-btn" onclick="exitDesktopLabMode()">INICIO</button>
+        </div>
+
+        <!-- Main content area -->
+        <div class="dlab-main">
+            <!-- Left: Graph -->
+            <div class="dlab-graph-area">
+                <div class="dlab-graph-header">
+                    <div class="dlab-mag-selector" id="dlabMagSelector"></div>
+                </div>
+                <div class="dlab-graph-wrap" id="dlabGraphWrap">
+                    <canvas id="dlabChart"></canvas>
+                    <!-- Video PIP -->
+                    <div class="dlab-video-pip" id="dlabVideoPip" style="display:none;">
+                        <video id="dlabVideo" muted playsinline webkit-playsinline></video>
+                        <span class="dlab-pip-badge" id="dlabPipBadge">LIVE</span>
+                        <button class="dlab-pip-close" onclick="dlabToggleVideoPip()">&times;</button>
+                    </div>
+                </div>
+                <div class="dlab-bottom-bar">
+                    <span class="dlab-point-info" id="dlabPointInfo">--</span>
+                    <button class="dlab-btn" onclick="dlabNavPoint(-1)" style="padding:4px 8px;">◀</button>
+                    <input type="range" class="dlab-timeline-bar" id="dlabTimelineBar" min="0" max="0" value="0">
+                    <button class="dlab-btn" onclick="dlabNavPoint(1)" style="padding:4px 8px;">▶</button>
+                    <span class="dlab-time-display" id="dlabTimeDisplay">0.00 s</span>
+                    <div class="dlab-separator"></div>
+                    <div class="dlab-speed-btns">
+                        <button class="dlab-speed-btn" data-speed="0.25" onclick="dlabSetSpeed(0.25)">¼x</button>
+                        <button class="dlab-speed-btn" data-speed="0.5" onclick="dlabSetSpeed(0.5)">½x</button>
+                        <button class="dlab-speed-btn active" data-speed="1" onclick="dlabSetSpeed(1)">1x</button>
+                        <button class="dlab-speed-btn" data-speed="2" onclick="dlabSetSpeed(2)">2x</button>
+                    </div>
+                    <button class="dlab-btn" id="dlabPlayBtn" onclick="dlabTogglePlayback()" style="padding:4px 10px;">▶</button>
+                </div>
+            </div>
+
+            <!-- Right: Data panel -->
+            <div class="dlab-data-panel">
+                <div class="dlab-data-header" id="dlabDataHeader">DATOS</div>
+                <div class="dlab-data-controls">
+                    <input type="text" class="dlab-data-search" id="dlabSearch" placeholder="Buscar...">
+                    <select class="dlab-data-filter" id="dlabFilter">
+                        <option value="all">Todos</option>
+                        <option value="selected">Seleccionados</option>
+                    </select>
+                </div>
+                <!-- Difference calculator -->
+                <div class="dlab-diff-panel hidden" id="dlabDiffPanel">
+                    <div class="dlab-diff-title" id="dlabDiffTitle">DIFERENCIA ENTRE PUNTOS</div>
+                    <div id="dlabDiffContent">
+                        <p style="font-size: 0.78rem; color: #555;">Selecciona 2 puntos (A y B) haciendo clic en la tabla.</p>
+                    </div>
+                    <div class="dlab-diff-actions">
+                        <button class="dlab-diff-btn" id="dlabDiffClearBtn" onclick="dlabClearDiffPoints()">LIMPIAR</button>
+                    </div>
+                </div>
+                <div class="dlab-table-wrap" id="dlabTableWrap">
+                    <table class="dlab-table">
+                        <thead>
+                            <tr id="dlabTableHeader"></tr>
+                        </thead>
+                        <tbody id="dlabTableBody">
+                            <tr><td colspan="10" style="text-align:center; padding:20px;">SIN DATOS</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer id="footerContent" style="background: #f5f5f5; border-top: 2px solid #333; padding: 20px; text-align: center; font-size: 12px; margin-top: 20px;">
         <div id="footerInner" style="max-width: 800px; margin: 0 auto;">
             <p style="margin: 8px 0; font-weight: bold; font-size: 14px;">
@@ -2704,6 +3306,17 @@
                 viewConfig: 'CONFIG',
                 viewExperiment: 'LAB',
                 expandGraph: 'Ampliar gráfica',
+                // Desktop LAB
+                dlabDifference: 'DIFERENCIA',
+                dlabResetZoom: 'RESET ZOOM',
+                dlabHome: 'INICIO',
+                dlabData: 'DATOS',
+                dlabDiffTitle: 'DIFERENCIA ENTRE PUNTOS',
+                dlabDiffSelectHint: 'Selecciona el punto A haciendo clic en la tabla o gráfica.',
+                dlabDiffSelectB: 'Ahora selecciona el punto B.',
+                dlabDiffClear: 'LIMPIAR',
+                dlabAll: 'Todos',
+                dlabSelected: 'Seleccionados',
             },
             en: {
                 // Toolbar
@@ -2867,6 +3480,17 @@
                 viewConfig: 'CONFIG',
                 viewExperiment: 'LAB',
                 expandGraph: 'Expand graph',
+                // Desktop LAB
+                dlabDifference: 'DIFFERENCE',
+                dlabResetZoom: 'RESET ZOOM',
+                dlabHome: 'HOME',
+                dlabData: 'DATA',
+                dlabDiffTitle: 'DIFFERENCE BETWEEN POINTS',
+                dlabDiffSelectHint: 'Select point A by clicking on the table or graph.',
+                dlabDiffSelectB: 'Now select point B.',
+                dlabDiffClear: 'CLEAR',
+                dlabAll: 'All',
+                dlabSelected: 'Selected',
             },
             pt: {
                 // Toolbar
@@ -3030,6 +3654,17 @@
                 viewConfig: 'CONFIG',
                 viewExperiment: 'LAB',
                 expandGraph: 'Ampliar gráfico',
+                // Desktop LAB
+                dlabDifference: 'DIFERENÇA',
+                dlabResetZoom: 'RESET ZOOM',
+                dlabHome: 'INÍCIO',
+                dlabData: 'DADOS',
+                dlabDiffTitle: 'DIFERENÇA ENTRE PONTOS',
+                dlabDiffSelectHint: 'Selecione o ponto A clicando na tabela ou gráfico.',
+                dlabDiffSelectB: 'Agora selecione o ponto B.',
+                dlabDiffClear: 'LIMPAR',
+                dlabAll: 'Todos',
+                dlabSelected: 'Selecionados',
             }
         };
 
@@ -3112,6 +3747,26 @@
             vsBtn('viewBtnVideo', 'viewVideo');
             vsBtn('viewBtnTimeline', 'viewTimeline');
             vsBtn('viewBtnConfig', 'viewConfig');
+
+            // Desktop LAB mode labels
+            const dlabEl = (id, key) => { const el = document.getElementById(id); if (el && t[key]) el.textContent = t[key]; };
+            dlabEl('dlabDiffBtn', 'dlabDifference');
+            dlabEl('dlabResetZoomBtn', 'dlabResetZoom');
+            dlabEl('dlabDataHeader', 'dlabData');
+            dlabEl('dlabDiffTitle', 'dlabDiffTitle');
+            dlabEl('dlabDiffClearBtn', 'dlabDiffClear');
+            // Desktop LAB filter options
+            const dlabFilterEl = document.getElementById('dlabFilter');
+            if (dlabFilterEl) {
+                dlabFilterEl.options[0].textContent = t.dlabAll || 'Todos';
+                dlabFilterEl.options[1].textContent = t.dlabSelected || 'Seleccionados';
+            }
+            // Desktop LAB home button text
+            const dlabHomeBtn = document.querySelector('#desktopLabMode .dlab-toolbar .dlab-btn:last-child');
+            if (dlabHomeBtn) dlabHomeBtn.textContent = t.dlabHome || 'INICIO';
+            // Desktop LAB toolbar button
+            const desktopLabBtn = document.getElementById('desktopLabBtn');
+            if (desktopLabBtn) desktopLabBtn.textContent = t.viewExperiment || 'LAB';
 
             // Mobile menu panel buttons
             const menuMap = { statsBtn2: 'statistics', exportBtn2: 'exportCSV', saveGraphBtn2: 'saveGraph', importBtn2: 'importCSV', clearBtn2: 'clear', helpBtn2: 'help' };
@@ -6734,6 +7389,11 @@ basic.forever(function () {
                     updateExpTimeline();
                 }
 
+                // Sincronizar desktop LAB mode
+                if (typeof dlabAutoUpdate === 'function') {
+                    dlabAutoUpdate();
+                }
+
                 document.getElementById('exportBtn').disabled = state.rawData.length === 0;
                 document.getElementById('saveGraphBtn').disabled = state.rawData.length === 0;
                 document.getElementById('setZeroBtn').disabled = state.selectedPoints.size !== 1;
@@ -8096,6 +8756,11 @@ basic.forever(function () {
         };
 
         function enterExperimentMode() {
+            // Desktop: use desktop LAB mode with larger layout
+            if (isDesktopView()) {
+                enterDesktopLabMode();
+                return;
+            }
             const expMode = document.getElementById('experimentMode');
             document.body.classList.add('experiment-active');
             expMode.classList.add('active');
@@ -8979,6 +9644,704 @@ basic.forever(function () {
             if (videoZone) { videoZone.style.flex = ''; videoZone.style.overflow = ''; }
             if (graphZone) { graphZone.style.flex = ''; graphZone.style.overflow = ''; }
             if (controlsZone) { controlsZone.style.flex = ''; }
+        }
+
+        // ========== DESKTOP LAB MODE ==========
+        let dlabChart = null;
+        let dlabSelectedVar = 0;
+        let dlabPlaybackInterval = null;
+        let dlabPlaybackSpeed = 1;
+        let dlabTemporalMarkerX = null;
+        let dlabDiffMode = false;
+        let dlabDiffPointA = null; // rawData index
+        let dlabDiffPointB = null; // rawData index
+
+        const dlabTemporalMarkerPlugin = {
+            id: 'dlabTemporalMarker',
+            afterDraw(chart) {
+                if (dlabTemporalMarkerX === null) return;
+                const { ctx, chartArea, scales } = chart;
+                if (!chartArea || !scales.x) return;
+
+                const xPixel = scales.x.getPixelForValue(dlabTemporalMarkerX);
+                if (xPixel < chartArea.left || xPixel > chartArea.right) return;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(xPixel, chartArea.top);
+                ctx.lineTo(xPixel, chartArea.bottom);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#2e7d32';
+                ctx.stroke();
+
+                const datasets = chart.data.datasets;
+                if (datasets.length > 0 && datasets[0].data.length > 0) {
+                    let nearest = null;
+                    let minDist = Infinity;
+                    for (const pt of datasets[0].data) {
+                        const dist = Math.abs(pt.x - dlabTemporalMarkerX);
+                        if (dist < minDist) { minDist = dist; nearest = pt; }
+                    }
+                    if (nearest) {
+                        const yPixel = scales.y.getPixelForValue(nearest.y);
+                        ctx.beginPath();
+                        ctx.arc(xPixel, yPixel, 6, 0, Math.PI * 2);
+                        ctx.fillStyle = '#2e7d32';
+                        ctx.fill();
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = 'white';
+                        ctx.stroke();
+                    }
+                }
+                ctx.restore();
+            }
+        };
+
+        function isDesktopView() {
+            return window.innerWidth > 1024;
+        }
+
+        function enterDesktopLabMode() {
+            const dlabMode = document.getElementById('desktopLabMode');
+            document.body.classList.add('desktop-lab-active');
+            dlabMode.classList.add('active');
+
+            // Setup video PIP
+            const dlabVideo = document.getElementById('dlabVideo');
+            const pip = document.getElementById('dlabVideoPip');
+
+            if (state.isCollecting && state.mediaStream) {
+                dlabVideo.srcObject = state.mediaStream;
+                dlabVideo.muted = true;
+                dlabVideo.play().catch(() => {});
+                pip.style.display = 'block';
+            } else if (state.videoBlob) {
+                dlabPreparePipVideo();
+                pip.style.display = 'block';
+            } else if (state.mediaStream || state.cameraActive) {
+                const origVideo = document.getElementById('cameraPreview');
+                if (origVideo && origVideo.srcObject) {
+                    dlabVideo.srcObject = origVideo.srcObject;
+                    dlabVideo.muted = true;
+                    dlabVideo.play().catch(() => {});
+                    pip.style.display = 'block';
+                }
+            } else {
+                pip.style.display = 'none';
+            }
+
+            dlabSyncBtButton();
+            dlabSyncCaptureButton();
+            dlabSyncStatus();
+            dlabBuildMagSelector();
+            dlabCreateChart();
+            dlabUpdateTimeline();
+            dlabUpdateTableHeader();
+            dlabUpdateTable();
+
+            // Bind search/filter
+            document.getElementById('dlabSearch').oninput = dlabUpdateTable;
+            document.getElementById('dlabFilter').onchange = dlabUpdateTable;
+
+            // Bind timeline
+            const slider = document.getElementById('dlabTimelineBar');
+            slider.oninput = function() { dlabUpdateFromSlider(parseInt(this.value)); };
+
+            if (state.rawData.length > 0 && !state.isCollecting) {
+                slider.value = 0;
+                dlabUpdateFromSlider(0);
+            }
+        }
+
+        function exitDesktopLabMode() {
+            document.body.classList.remove('desktop-lab-active');
+            document.getElementById('desktopLabMode').classList.remove('active');
+
+            if (dlabPlaybackInterval) {
+                clearInterval(dlabPlaybackInterval);
+                dlabPlaybackInterval = null;
+            }
+
+            const dlabVideo = document.getElementById('dlabVideo');
+            if (dlabVideo) {
+                dlabVideo.pause();
+                dlabVideo.src = '';
+                dlabVideo.srcObject = null;
+            }
+
+            if (dlabChart) {
+                dlabChart.destroy();
+                dlabChart = null;
+            }
+
+            // Reset diff mode
+            dlabDiffMode = false;
+            dlabDiffPointA = null;
+            dlabDiffPointB = null;
+
+            setTimeout(() => {
+                state.charts.forEach(c => { if (c) c.resize(); });
+            }, 100);
+        }
+
+        function dlabPreparePipVideo() {
+            const dlabVideo = document.getElementById('dlabVideo');
+            if (!state.videoBlob) return;
+            const url = URL.createObjectURL(state.videoBlob);
+            dlabVideo.src = url;
+            dlabVideo.muted = true;
+            dlabVideo.load();
+        }
+
+        function dlabToggleVideoPip() {
+            const pip = document.getElementById('dlabVideoPip');
+            pip.style.display = pip.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function dlabBuildMagSelector() {
+            const container = document.getElementById('dlabMagSelector');
+            container.innerHTML = '';
+            for (let i = 0; i < state.numVariables; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'dlab-mag-btn' + (i === dlabSelectedVar ? ' active' : '');
+                btn.textContent = state.variables[i].name;
+                btn.onclick = () => {
+                    dlabSelectedVar = i;
+                    document.querySelectorAll('.dlab-mag-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    dlabUpdateChartData();
+                };
+                container.appendChild(btn);
+            }
+        }
+
+        function dlabCreateChart() {
+            if (dlabChart) dlabChart.destroy();
+            const canvas = document.getElementById('dlabChart');
+            const ctx = canvas.getContext('2d');
+
+            dlabChart = new Chart(ctx, {
+                type: 'scatter',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    onClick: (evt) => dlabHandleChartClick(evt),
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleFont: { size: 11, weight: 'bold' },
+                            bodyFont: { size: 11 },
+                            padding: 10,
+                            callbacks: {
+                                label: (ctx) => `(${ctx.parsed.x.toFixed(4)}, ${ctx.parsed.y.toFixed(4)})`
+                            }
+                        },
+                        zoom: {
+                            pan: { enabled: true, mode: 'xy' },
+                            zoom: {
+                                pinch: { enabled: true },
+                                wheel: { enabled: true },
+                                mode: 'xy'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: 'TIEMPO (s)',
+                                font: { size: 12, weight: 'bold' },
+                                padding: { top: 4 }
+                            },
+                            grid: { color: 'rgba(0,0,0,0.06)', lineWidth: 0.5 },
+                            border: { color: '#999', width: 1 },
+                            ticks: { font: { size: 10 }, maxRotation: 0 }
+                        },
+                        y: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: state.variables[dlabSelectedVar].name.toUpperCase(),
+                                font: { size: 12, weight: 'bold' },
+                                padding: { bottom: 4 }
+                            },
+                            grid: { color: 'rgba(0,0,0,0.06)', lineWidth: 0.5 },
+                            border: { color: '#999', width: 1 },
+                            ticks: { font: { size: 10 } }
+                        }
+                    },
+                    elements: {
+                        line: { tension: 0.3, cubicInterpolationMode: 'monotone', borderWidth: 2 },
+                        point: { radius: 3, hoverRadius: 8, hitRadius: 10, borderWidth: 1 }
+                    },
+                    interaction: { mode: 'nearest', intersect: false, axis: 'x' }
+                },
+                plugins: [dlabTemporalMarkerPlugin]
+            });
+
+            dlabUpdateChartData();
+        }
+
+        function dlabUpdateChartData() {
+            if (!dlabChart) return;
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            const varIdx = dlabSelectedVar;
+            const color = '#1976d2';
+
+            const data = state.rawData.map(d => ({
+                x: (d.time - state.timeZeroOffset) / timeUnitValue,
+                y: d.values[varIdx],
+                id: d.id
+            }));
+
+            // Color points differently for diff selection
+            const bgColors = data.map((d, i) => {
+                if (dlabDiffPointA !== null && i === dlabDiffPointA) return '#2e7d32';
+                if (dlabDiffPointB !== null && i === dlabDiffPointB) return '#ff9800';
+                return color;
+            });
+            const radii = data.map((d, i) => {
+                if ((dlabDiffPointA !== null && i === dlabDiffPointA) ||
+                    (dlabDiffPointB !== null && i === dlabDiffPointB)) return 7;
+                return 3;
+            });
+
+            const datasets = [{
+                label: state.variables[varIdx].name,
+                data: data,
+                borderColor: color,
+                backgroundColor: 'transparent',
+                fill: false,
+                borderWidth: 2,
+                showLine: state.showLines,
+                tension: 0.3,
+                cubicInterpolationMode: 'monotone',
+                pointRadius: radii,
+                pointHoverRadius: 8,
+                pointHitRadius: 10,
+                pointBackgroundColor: bgColors,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 1,
+                pointHoverBorderWidth: 2,
+                pointHoverBorderColor: '#fff'
+            }];
+
+            if (state.fitResult && state.fitResult.varIndex === varIdx) {
+                const xValues = data.map(d => d.x);
+                const xMin = Math.min(...xValues);
+                const xMax = Math.max(...xValues);
+                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs);
+                const fitData = [];
+                for (let i = 0; i <= 200; i++) {
+                    const x = xMin + (xMax - xMin) * i / 200;
+                    fitData.push({ x, y: predict(x) });
+                }
+                datasets.push({
+                    label: 'Modelo',
+                    data: fitData,
+                    borderColor: '#d32f2f',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [6, 3],
+                    pointRadius: 0,
+                    showLine: true,
+                    tension: 0,
+                    fill: false
+                });
+            }
+
+            dlabChart.data.datasets = datasets;
+            dlabChart.options.scales.y.title.text = state.variables[varIdx].name.toUpperCase();
+            dlabChart.update('none');
+        }
+
+        function dlabHandleChartClick(evt) {
+            if (!dlabChart) return;
+            const points = dlabChart.getElementsAtEventForMode(evt, 'nearest', { intersect: false }, true);
+            if (points.length > 0) {
+                const dataIndex = points[0].index;
+                if (dlabDiffMode) {
+                    dlabSelectDiffPoint(dataIndex);
+                } else {
+                    const slider = document.getElementById('dlabTimelineBar');
+                    slider.value = dataIndex;
+                    dlabUpdateFromSlider(dataIndex);
+                }
+            }
+        }
+
+        function dlabUpdateTimeline() {
+            const slider = document.getElementById('dlabTimelineBar');
+            const count = state.rawData.length;
+            slider.max = Math.max(0, count - 1);
+        }
+
+        function dlabUpdateFromSlider(idx) {
+            if (idx < 0 || idx >= state.rawData.length) return;
+            const d = state.rawData[idx];
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            const t = (d.time - state.timeZeroOffset) / timeUnitValue;
+
+            let infoText = `#${idx + 1} | t=${t.toFixed(3)}`;
+            for (let v = 0; v < state.numVariables; v++) {
+                infoText += ` | ${state.variables[v].name}=${d.values[v].toFixed(3)}`;
+            }
+            document.getElementById('dlabPointInfo').textContent = infoText;
+            document.getElementById('dlabTimeDisplay').textContent = t.toFixed(2) + ' s';
+
+            dlabTemporalMarkerX = t;
+            if (dlabChart) dlabChart.update('none');
+
+            // Sync video if available
+            const dlabVideo = document.getElementById('dlabVideo');
+            if (state.videoBlob && state.videoFrameLog && state.videoFrameLog.length > 0) {
+                const frameIdx = findFrameLogForDataIndex(idx);
+                if (frameIdx >= 0) {
+                    const entry = state.videoFrameLog[frameIdx];
+                    const videoTime = (entry.wallTime - state.videoFrameLog[0].wallTime) / 1000;
+                    if (dlabVideo.readyState >= 1) {
+                        dlabVideo.currentTime = Math.max(0, videoTime);
+                    }
+                }
+            }
+        }
+
+        function dlabNavPoint(direction) {
+            const slider = document.getElementById('dlabTimelineBar');
+            let newVal = parseInt(slider.value) + direction;
+            newVal = Math.max(0, Math.min(newVal, state.rawData.length - 1));
+            slider.value = newVal;
+            dlabUpdateFromSlider(newVal);
+        }
+
+        function dlabSetSpeed(speed) {
+            dlabPlaybackSpeed = speed;
+            document.querySelectorAll('.dlab-speed-btn').forEach(btn => {
+                btn.classList.toggle('active', parseFloat(btn.dataset.speed) === speed);
+            });
+        }
+
+        function dlabTogglePlayback() {
+            const btn = document.getElementById('dlabPlayBtn');
+            if (dlabPlaybackInterval) {
+                clearInterval(dlabPlaybackInterval);
+                dlabPlaybackInterval = null;
+                btn.textContent = '▶';
+            } else {
+                btn.textContent = '⏸';
+                const slider = document.getElementById('dlabTimelineBar');
+                const interval = Math.max(16, Math.round(50 / dlabPlaybackSpeed));
+                dlabPlaybackInterval = setInterval(() => {
+                    let val = parseInt(slider.value) + 1;
+                    if (val >= state.rawData.length) {
+                        val = 0; // loop
+                    }
+                    slider.value = val;
+                    dlabUpdateFromSlider(val);
+                }, interval);
+            }
+        }
+
+        function dlabResetZoom() {
+            if (dlabChart) dlabChart.resetZoom();
+        }
+
+        // Desktop LAB table
+        function dlabUpdateTableHeader() {
+            const header = document.getElementById('dlabTableHeader');
+            let html = '<th>#</th><th>T</th>';
+            for (let i = 0; i < state.numVariables; i++) {
+                html += `<th>${state.variables[i].name}</th>`;
+            }
+            html += '<th></th>';
+            header.innerHTML = html;
+        }
+
+        function dlabUpdateTable() {
+            const t = translations[currentLanguage];
+            const tbody = document.getElementById('dlabTableBody');
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            const searchTerm = document.getElementById('dlabSearch').value.toLowerCase();
+            const filter = document.getElementById('dlabFilter').value;
+
+            if (state.rawData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px;">${t.noData}</td></tr>`;
+                return;
+            }
+
+            let filteredData = [];
+            let filteredOrigIdx = [];
+            for (let idx = 0; idx < state.rawData.length; idx++) {
+                const d = state.rawData[idx];
+                if (filter === 'selected' && !state.selectedPoints.has(d.id)) continue;
+                if (searchTerm) {
+                    const adjustedTime = ((d.time - state.timeZeroOffset) / timeUnitValue).toFixed(3);
+                    const rowText = `${idx + 1} ${adjustedTime} ${d.values.join(' ')}`.toLowerCase();
+                    if (!rowText.includes(searchTerm)) continue;
+                }
+                filteredData.push(d);
+                filteredOrigIdx.push(idx);
+            }
+
+            tbody.innerHTML = filteredData.map((d, displayIdx) => {
+                const originalIdx = filteredOrigIdx[displayIdx];
+                const adjustedTime = (d.time - state.timeZeroOffset) / timeUnitValue;
+
+                let valuesHtml = '';
+                for (let i = 0; i < state.numVariables; i++) {
+                    valuesHtml += `<td><input type="number" value="${d.values[i]}" onchange="dlabEditValue('${d.id}', ${i}, this.value)" onclick="event.stopPropagation()" step="0.01"></td>`;
+                }
+
+                let rowClass = '';
+                if (dlabDiffPointA !== null && originalIdx === dlabDiffPointA) rowClass = 'diff-point-a';
+                else if (dlabDiffPointB !== null && originalIdx === dlabDiffPointB) rowClass = 'diff-point-b';
+                else if (state.selectedPoints.has(d.id)) rowClass = 'selected';
+
+                return `
+                    <tr class="${rowClass}" data-idx="${originalIdx}" onclick="dlabRowClick(${originalIdx}, event)">
+                        <td>${originalIdx + 1}</td>
+                        <td>${adjustedTime.toFixed(3)}</td>
+                        ${valuesHtml}
+                        <td><button class="delete-btn" onclick="dlabDeletePoint('${d.id}'); event.stopPropagation()">×</button></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function dlabRowClick(rawIdx, event) {
+            if (dlabDiffMode) {
+                dlabSelectDiffPoint(rawIdx);
+            } else {
+                const d = state.rawData[rawIdx];
+                if (d) toggleSelect(d.id);
+                dlabUpdateTable();
+                // Navigate timeline to this point
+                const slider = document.getElementById('dlabTimelineBar');
+                slider.value = rawIdx;
+                dlabUpdateFromSlider(rawIdx);
+            }
+        }
+
+        function dlabEditValue(id, varIndex, newValue) {
+            const point = state.rawData.find(d => d.id === id);
+            if (point) {
+                point.values[varIndex] = parseFloat(newValue) || point.values[varIndex];
+                dlabUpdateChartData();
+                updateDisplay();
+            }
+        }
+
+        function dlabDeletePoint(id) {
+            deletePoint(id);
+            dlabUpdateTable();
+            dlabUpdateChartData();
+            dlabUpdateTimeline();
+        }
+
+        // Desktop LAB: BT connect
+        function dlabConnectBluetooth() {
+            if (state.isConnected && state.isBluetooth) {
+                document.getElementById('dlabStatus').textContent = 'BT OK';
+                return;
+            }
+            connectBluetooth();
+        }
+
+        function dlabSyncBtButton() {
+            const btn = document.getElementById('dlabBtBtn');
+            if (state.isConnected && state.isBluetooth) {
+                btn.textContent = 'BT ✓';
+                btn.classList.add('connected');
+            } else {
+                btn.textContent = 'BT';
+                btn.classList.remove('connected');
+            }
+        }
+
+        function dlabSyncCaptureButton() {
+            const btn = document.getElementById('dlabCaptureBtn');
+            const t = translations[currentLanguage];
+            if (state.isCollecting) {
+                btn.textContent = t.stop || 'DETENER';
+                btn.className = 'dlab-btn danger';
+            } else {
+                btn.textContent = t.capture || 'CAPTURAR';
+                btn.className = 'dlab-btn success';
+            }
+        }
+
+        function dlabSyncStatus() {
+            const t = translations[currentLanguage];
+            const el = document.getElementById('dlabStatus');
+            if (state.isCollecting) {
+                el.textContent = `${t.capturing || 'CAPTURANDO'} (${state.rawData.length})`;
+            } else if (state.isConnected) {
+                el.textContent = state.isBluetooth ? (t.connectedBluetooth || 'BT CONECTADO') : (t.connected || 'CONECTADO');
+            } else {
+                el.textContent = t.disconnected || 'DESCONECTADO';
+            }
+        }
+
+        function dlabToggleCapture() {
+            if (state.isCollecting) {
+                document.getElementById('stopBtn').click();
+            } else {
+                if (!state.isConnected && !state.isBluetooth) {
+                    const t = translations[currentLanguage];
+                    document.getElementById('dlabStatus').textContent = t.disconnected || 'DESCONECTADO';
+                    return;
+                }
+                document.getElementById('collectBtn').click();
+            }
+            setTimeout(() => {
+                dlabSyncCaptureButton();
+                dlabSyncStatus();
+                dlabUpdateTimeline();
+                dlabUpdateChartData();
+                dlabUpdateTable();
+
+                // Handle video PIP
+                const dlabVideo = document.getElementById('dlabVideo');
+                const pip = document.getElementById('dlabVideoPip');
+                if (state.isCollecting && state.mediaStream) {
+                    dlabVideo.srcObject = state.mediaStream;
+                    dlabVideo.muted = true;
+                    dlabVideo.play().catch(() => {});
+                    pip.style.display = 'block';
+                    const badge = document.getElementById('dlabPipBadge');
+                    badge.textContent = '● REC';
+                    badge.classList.add('recording');
+                }
+            }, 100);
+        }
+
+        // ========== DIFFERENCE CALCULATOR ==========
+        function dlabToggleDiffMode() {
+            dlabDiffMode = !dlabDiffMode;
+            const btn = document.getElementById('dlabDiffBtn');
+            const panel = document.getElementById('dlabDiffPanel');
+            const t = translations[currentLanguage];
+
+            if (dlabDiffMode) {
+                btn.style.background = '#2e7d32';
+                btn.style.color = 'white';
+                btn.style.borderColor = '#2e7d32';
+                panel.classList.remove('hidden');
+                dlabDiffPointA = null;
+                dlabDiffPointB = null;
+                dlabUpdateDiffContent();
+            } else {
+                btn.style.background = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
+                panel.classList.add('hidden');
+                dlabDiffPointA = null;
+                dlabDiffPointB = null;
+                dlabUpdateChartData();
+                dlabUpdateTable();
+            }
+        }
+
+        function dlabSelectDiffPoint(rawIdx) {
+            if (dlabDiffPointA === null) {
+                dlabDiffPointA = rawIdx;
+            } else if (dlabDiffPointB === null) {
+                dlabDiffPointB = rawIdx;
+            } else {
+                // Reset: start new selection
+                dlabDiffPointA = rawIdx;
+                dlabDiffPointB = null;
+            }
+            dlabUpdateDiffContent();
+            dlabUpdateChartData();
+            dlabUpdateTable();
+        }
+
+        function dlabClearDiffPoints() {
+            dlabDiffPointA = null;
+            dlabDiffPointB = null;
+            dlabUpdateDiffContent();
+            dlabUpdateChartData();
+            dlabUpdateTable();
+        }
+
+        function dlabUpdateDiffContent() {
+            const container = document.getElementById('dlabDiffContent');
+            const t = translations[currentLanguage];
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+
+            if (dlabDiffPointA === null) {
+                container.innerHTML = `<p style="font-size: 0.78rem; color: #555;">${t.dlabDiffSelectHint || 'Selecciona el punto A haciendo clic en la tabla o gráfica.'}</p>`;
+                return;
+            }
+
+            const dA = state.rawData[dlabDiffPointA];
+            const tA = (dA.time - state.timeZeroOffset) / timeUnitValue;
+
+            if (dlabDiffPointB === null) {
+                let html = `<div class="dlab-diff-row"><span class="dlab-diff-label">Punto A (#${dlabDiffPointA + 1}):</span> <span class="dlab-diff-value">t=${tA.toFixed(4)}`;
+                for (let v = 0; v < state.numVariables; v++) {
+                    html += `, ${state.variables[v].name}=${dA.values[v].toFixed(4)}`;
+                }
+                html += `</span></div>`;
+                html += `<p style="font-size: 0.78rem; color: #555; margin-top:4px;">${t.dlabDiffSelectB || 'Ahora selecciona el punto B.'}</p>`;
+                container.innerHTML = html;
+                return;
+            }
+
+            const dB = state.rawData[dlabDiffPointB];
+            const tB = (dB.time - state.timeZeroOffset) / timeUnitValue;
+
+            let html = '';
+            // Point A
+            html += `<div class="dlab-diff-row"><span class="dlab-diff-label" style="color:#2e7d32;">A (#${dlabDiffPointA + 1}):</span> <span class="dlab-diff-value">t=${tA.toFixed(4)}`;
+            for (let v = 0; v < state.numVariables; v++) {
+                html += `, ${state.variables[v].name}=${dA.values[v].toFixed(4)}`;
+            }
+            html += `</span></div>`;
+            // Point B
+            html += `<div class="dlab-diff-row"><span class="dlab-diff-label" style="color:#ff9800;">B (#${dlabDiffPointB + 1}):</span> <span class="dlab-diff-value">t=${tB.toFixed(4)}`;
+            for (let v = 0; v < state.numVariables; v++) {
+                html += `, ${state.variables[v].name}=${dB.values[v].toFixed(4)}`;
+            }
+            html += `</span></div>`;
+            // Difference
+            html += `<div style="border-top:1px solid #2e7d32; margin-top:4px; padding-top:4px;">`;
+            html += `<div class="dlab-diff-row"><span class="dlab-diff-label">Δt (B−A):</span> <span class="dlab-diff-value">${(tB - tA).toFixed(4)}</span></div>`;
+            for (let v = 0; v < state.numVariables; v++) {
+                const delta = dB.values[v] - dA.values[v];
+                html += `<div class="dlab-diff-row"><span class="dlab-diff-label">Δ${state.variables[v].name} (B−A):</span> <span class="dlab-diff-value">${delta.toFixed(4)}</span></div>`;
+            }
+            // Also show absolute value and ratio if nonzero
+            if (tB - tA !== 0) {
+                for (let v = 0; v < state.numVariables; v++) {
+                    const delta = dB.values[v] - dA.values[v];
+                    const deltaT = tB - tA;
+                    const rate = delta / deltaT;
+                    html += `<div class="dlab-diff-row"><span class="dlab-diff-label">Δ${state.variables[v].name}/Δt:</span> <span class="dlab-diff-value">${rate.toFixed(4)}</span></div>`;
+                }
+            }
+            html += `</div>`;
+
+            container.innerHTML = html;
+        }
+
+        // Auto-update desktop LAB when data changes during capture
+        function dlabAutoUpdate() {
+            if (!document.getElementById('desktopLabMode').classList.contains('active')) return;
+            dlabSyncCaptureButton();
+            dlabSyncBtButton();
+            dlabSyncStatus();
+            dlabUpdateTimeline();
+            dlabUpdateChartData();
+            if (!state.isCollecting || state.rawData.length % 10 === 0) {
+                dlabUpdateTable();
+            }
         }
 
         // Auto-update experiment chart when new data arrives during capture
