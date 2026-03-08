@@ -7603,7 +7603,7 @@ basic.forever(function () {
 
                 // Registrar qué dato se muestra en ESTE fotograma exacto.
                 // frameNumber coincide con el frame del video (ambos a 30fps).
-                // Guardamos los valores reales dibujados para garantizar 100% coincidencia.
+                // Guardamos wallTime absoluto para mapeo directo videoTime↔wallTime.
                 if (lastPoint) {
                     const lastIdx = state.rawData.length - 1;
                     const elapsed = (lastPoint.time - state.timeZeroOffset) / timeUnitValue;
@@ -7611,6 +7611,7 @@ basic.forever(function () {
                         frameNumber: _overlayFrameCount,
                         pointIndex: lastIdx,
                         pointId: lastPoint.id,
+                        wallTime: Date.now(), // timestamp absoluto de este frame
                         // Valores exactos dibujados en este fotograma
                         displayTime: elapsed,
                         displayValues: lastPoint.values.slice() // copia para que no mute
@@ -7979,10 +7980,14 @@ basic.forever(function () {
             document.body.classList.remove('experiment-active');
             document.getElementById('experimentMode').classList.remove('active');
 
-            // Stop playback
+            // Stop playback (both modes)
             if (expPlaybackInterval) {
                 clearInterval(expPlaybackInterval);
                 expPlaybackInterval = null;
+            }
+            if (_playbackRAF) {
+                cancelAnimationFrame(_playbackRAF);
+                _playbackRAF = null;
             }
 
             // Stop and clean up video
@@ -7997,6 +8002,7 @@ basic.forever(function () {
                 expVideoObjectURL = null;
             }
             expVideoReady = false;
+            _videoWallTimeMap = null;
 
             // Destroy experiment chart
             if (expChart) {
@@ -8274,25 +8280,83 @@ basic.forever(function () {
             expVideoReady = false;
             _videoTimeOffset = 0;
 
-            // Wait for video to be seekable, then calibrate offset
+            // Wait for video to be seekable, then calibrate
             expVideo.addEventListener('loadedmetadata', () => {
-                // Calibrar: comparar duración real del video con duración teórica (frames/fps)
                 const log = state.videoFrameLog;
                 if (log.length > 0 && expVideo.duration && isFinite(expVideo.duration)) {
                     const lastFrame = log[log.length - 1].frameNumber;
                     const theoreticalDuration = lastFrame / 30;
                     const realDuration = expVideo.duration;
                     _videoTimeOffset = realDuration - theoreticalDuration;
-                    console.log(`[VIDEO] Calibración: duración real=${realDuration.toFixed(3)}s, teórica=${theoreticalDuration.toFixed(3)}s, offset=${_videoTimeOffset.toFixed(3)}s`);
+
+                    // Construir tabla de mapeo videoTime↔wallTime para sync preciso
+                    _buildVideoWallTimeMap(realDuration);
+
+                    console.log(`[VIDEO-SYNC] Calibración: real=${realDuration.toFixed(3)}s, teórica=${theoreticalDuration.toFixed(3)}s, offset=${_videoTimeOffset.toFixed(3)}s, frames=${log.length}`);
                 }
             }, { once: true });
             expVideo.addEventListener('loadeddata', () => {
                 expVideoReady = true;
-                // NO auto-play: pausar el video y posicionar al inicio
                 expVideo.pause();
                 expVideo.currentTime = 0;
             }, { once: true });
             expVideo.load();
+        }
+
+        // Tabla de mapeo videoTime↔wallTime (calculada una sola vez al cargar video)
+        let _videoWallTimeMap = null; // [{videoTime, wallTime, frameIdx}]
+
+        function _buildVideoWallTimeMap(realDuration) {
+            const log = state.videoFrameLog;
+            if (!log.length) { _videoWallTimeMap = null; return; }
+
+            const lastFrame = log[log.length - 1].frameNumber;
+            if (lastFrame === 0) { _videoWallTimeMap = null; return; }
+
+            // Escala lineal: videoTime = (frameNumber / lastFrame) * realDuration
+            // Esto es más robusto que frameNumber/30 + offset porque compensa
+            // TODA la variación de timing del MediaRecorder/captureStream.
+            _videoWallTimeMap = log.map((entry, i) => ({
+                videoTime: (entry.frameNumber / lastFrame) * realDuration,
+                wallTime: entry.wallTime || (state.rawData[entry.pointIndex] ? (state.rawData[entry.pointIndex].wallTime || state.rawData[entry.pointIndex].time) : 0),
+                frameIdx: i
+            }));
+
+            console.log(`[VIDEO-SYNC] Mapa construido: ${_videoWallTimeMap.length} puntos, ` +
+                `primer videoTime=${_videoWallTimeMap[0].videoTime.toFixed(3)}s, ` +
+                `último videoTime=${_videoWallTimeMap[_videoWallTimeMap.length-1].videoTime.toFixed(3)}s`);
+        }
+
+        // Dado un videoTime (de video.currentTime), encontrar el frameIdx más cercano
+        function _findFrameByVideoTime(videoTime) {
+            if (!_videoWallTimeMap || !_videoWallTimeMap.length) return 0;
+            // Búsqueda binaria
+            let lo = 0, hi = _videoWallTimeMap.length - 1;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                if (_videoWallTimeMap[mid].videoTime < videoTime) lo = mid + 1;
+                else hi = mid;
+            }
+            // Comparar con vecino para encontrar el más cercano
+            if (lo > 0) {
+                const dLo = Math.abs(_videoWallTimeMap[lo].videoTime - videoTime);
+                const dPrev = Math.abs(_videoWallTimeMap[lo - 1].videoTime - videoTime);
+                if (dPrev < dLo) return lo - 1;
+            }
+            return lo;
+        }
+
+        // Dado un frameIdx, obtener el videoTime calibrado
+        function _getVideoTimeForFrame(frameIdx) {
+            if (_videoWallTimeMap && _videoWallTimeMap[frameIdx]) {
+                return _videoWallTimeMap[frameIdx].videoTime;
+            }
+            // Fallback al cálculo antiguo
+            const log = state.videoFrameLog;
+            if (log[frameIdx]) {
+                return (log[frameIdx].frameNumber / 30) + (_videoTimeOffset || 0);
+            }
+            return 0;
         }
 
         function jumpExpVideoToTime(videoTime) {
@@ -8464,15 +8528,21 @@ basic.forever(function () {
             return best;
         }
 
-        // Playback controls — sincronización basada en tiempo real
+        // Playback: VIDEO es el reloj maestro.
+        // En vez de setInterval + Date.now(), usamos requestAnimationFrame
+        // y leemos video.currentTime para saber qué frame/dato mostrar.
+        // Esto garantiza sync perfecta: lo que se ve en el video ES lo que
+        // muestra el slider y los datos.
+        let _playbackRAF = null;
+
         function toggleExpPlayback() {
             const btn = document.getElementById('expPlayBtn');
             const expVideo = document.getElementById('expVideo');
 
-            if (expPlaybackInterval) {
+            if (expPlaybackInterval || _playbackRAF) {
                 // Stop playback
-                clearInterval(expPlaybackInterval);
-                expPlaybackInterval = null;
+                if (expPlaybackInterval) { clearInterval(expPlaybackInterval); expPlaybackInterval = null; }
+                if (_playbackRAF) { cancelAnimationFrame(_playbackRAF); _playbackRAF = null; }
                 btn.textContent = '▶';
                 if (expVideo && !expVideo.paused) expVideo.pause();
             } else {
@@ -8480,47 +8550,73 @@ basic.forever(function () {
                 const slider = document.getElementById('expTimelineBar');
                 const startSliderIdx = parseInt(slider.value);
 
-                // Resolver el punto de inicio
                 const resolved = resolveSliderIndex(startSliderIdx);
                 if (!resolved) return;
 
-                const startWall = resolved.point.wallTime || resolved.point.time;
-                const playbackStartReal = Date.now();
+                const hasVideo = expHasFrameLog() && _videoWallTimeMap && state.videoBlob;
 
-                // Iniciar video desde la posición correspondiente
-                if (resolved.videoTime !== null && resolved.videoTime >= 0) {
-                    playExpVideoFrom(resolved.videoTime);
+                if (hasVideo) {
+                    // === MODO VIDEO-MASTER: el video manda ===
+                    const startVideoTime = resolved.videoTime !== null ? resolved.videoTime : 0;
+                    playExpVideoFrom(startVideoTime);
                     if (expVideo) expVideo.playbackRate = expPlaybackSpeed;
+
+                    let lastFrameIdx = -1;
+                    function videoSyncLoop() {
+                        if (!expVideo || expVideo.paused || expVideo.ended) {
+                            _playbackRAF = null;
+                            btn.textContent = '▶';
+                            return;
+                        }
+
+                        // Leer posición actual del video (fuente de verdad)
+                        const currentVideoTime = expVideo.currentTime;
+                        const frameIdx = _findFrameByVideoTime(currentVideoTime);
+                        const maxIdx = state.videoFrameLog.length - 1;
+
+                        if (frameIdx >= maxIdx) {
+                            expVideo.pause();
+                            _playbackRAF = null;
+                            btn.textContent = '▶';
+                            slider.value = maxIdx;
+                            updateExpFromSliderNoVideo(maxIdx);
+                            return;
+                        }
+
+                        // Solo actualizar si cambió el frame (evitar trabajo redundante)
+                        if (frameIdx !== lastFrameIdx) {
+                            lastFrameIdx = frameIdx;
+                            slider.value = frameIdx;
+                            updateExpFromSliderNoVideo(frameIdx);
+                        }
+
+                        _playbackRAF = requestAnimationFrame(videoSyncLoop);
+                    }
+
+                    _playbackRAF = requestAnimationFrame(videoSyncLoop);
+
+                } else {
+                    // === MODO SIN VIDEO: usar Date.now() como antes ===
+                    const startWall = resolved.point.wallTime || resolved.point.time;
+                    const playbackStartReal = Date.now();
+
+                    expPlaybackInterval = setInterval(() => {
+                        const elapsedMs = (Date.now() - playbackStartReal) * expPlaybackSpeed;
+                        const currentWall = startWall + elapsedMs;
+                        const sliderIdx = findNearestDataIndex(currentWall);
+                        const maxIdx = state.rawData.length - 1;
+
+                        if (sliderIdx >= maxIdx) {
+                            clearInterval(expPlaybackInterval);
+                            expPlaybackInterval = null;
+                            btn.textContent = '▶';
+                            return;
+                        }
+
+                        slider.value = sliderIdx;
+                        updateExpFromSliderNoVideo(sliderIdx);
+                    }, 50);
                 }
-
-                // Sincronización basada en tiempo real
-                expPlaybackInterval = setInterval(() => {
-                    const elapsedMs = (Date.now() - playbackStartReal) * expPlaybackSpeed;
-                    const currentWall = startWall + elapsedMs;
-
-                    let sliderIdx;
-                    let maxIdx;
-
-                    if (expHasFrameLog()) {
-                        // Navegar por fotogramas del video
-                        sliderIdx = findNearestFrameLogByWall(currentWall);
-                        maxIdx = state.videoFrameLog.length - 1;
-                    } else {
-                        sliderIdx = findNearestDataIndex(currentWall);
-                        maxIdx = state.rawData.length - 1;
-                    }
-
-                    if (sliderIdx >= maxIdx) {
-                        clearInterval(expPlaybackInterval);
-                        expPlaybackInterval = null;
-                        btn.textContent = '▶';
-                        if (expVideo && !expVideo.paused) expVideo.pause();
-                        return;
-                    }
-
-                    slider.value = sliderIdx;
-                    updateExpFromSliderNoVideo(sliderIdx);
-                }, 50);
             }
         }
 
@@ -8555,18 +8651,19 @@ basic.forever(function () {
             document.querySelectorAll('.exp-speed-btn').forEach(b => {
                 b.classList.toggle('active', parseFloat(b.dataset.speed) === speed);
             });
-            // Update video playback rate if playing
+            // Cambiar velocidad del video en tiempo real (sin reiniciar)
             const expVideo = document.getElementById('expVideo');
             if (expVideo && !expVideo.paused) {
                 expVideo.playbackRate = speed;
             }
-            // Si está en playback, reiniciar con nueva velocidad usando sync basado en tiempo
-            if (expPlaybackInterval) {
+            // Si está en modo sin-video, reiniciar el interval con la nueva velocidad
+            if (expPlaybackInterval && !_playbackRAF) {
                 clearInterval(expPlaybackInterval);
                 expPlaybackInterval = null;
-                // Re-trigger playback con la nueva velocidad
                 toggleExpPlayback();
             }
+            // En modo video-master, el rAF loop ya lee la velocidad del video
+            // así que no necesita reiniciarse
         }
 
         function updateExpTimeline() {
@@ -8599,9 +8696,8 @@ basic.forever(function () {
                 if (!entry) return null;
                 const point = state.rawData[entry.pointIndex];
                 if (!point) return null;
-                // Tiempo de video = frame_number / fps, calibrado con el offset del video
-                // _videoTimeOffset se calcula al preparar el video (ver prepareExpVideoPlayback)
-                const videoTime = (entry.frameNumber / 30) + (_videoTimeOffset || 0);
+                // Usar mapeo calibrado videoTime (escala lineal sobre duración real)
+                const videoTime = _getVideoTimeForFrame(idx);
                 return {
                     point, rawIdx: entry.pointIndex, videoTime, frameIdx: idx,
                     // Valores exactos que se dibujaron en este fotograma
