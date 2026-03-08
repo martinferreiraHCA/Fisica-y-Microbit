@@ -5305,8 +5305,13 @@ basic.forever(function () {
                     : 'Web Bluetooth API not supported. Use Chrome or Edge on desktop/Android.');
                 return;
             }
-            // Mostrar guía de pairing en vez de conectar directamente
-            renderBtPairingModal();
+            // En desktop: conectar directo (el picker del navegador ya es suficiente guía)
+            // En mobile: mostrar modal con instrucciones de pairing
+            if (isMobileBrowser) {
+                renderBtPairingModal();
+            } else {
+                connectBluetooth();
+            }
         });
 
         async function connectBluetooth() {
@@ -5325,9 +5330,10 @@ basic.forever(function () {
                         optionalServices: [UART_SERVICE_UUID]
                     });
                 } catch (filterErr) {
-                    // Si los filtros fallan en mobile, intentar con acceptAllDevices
-                    if (filterErr.name !== 'NotFoundError' && isMobileBrowser) {
-                        console.log('[BT] Filtros fallaron en mobile, reintentando con acceptAllDevices...');
+                    // Si los filtros fallan, intentar con acceptAllDevices (mobile y Windows)
+                    const isWindows = /Windows/i.test(navigator.userAgent);
+                    if (filterErr.name !== 'NotFoundError' && (isMobileBrowser || isWindows)) {
+                        console.log('[BT] Filtros fallaron, reintentando con acceptAllDevices...');
                         device = await navigator.bluetooth.requestDevice({
                             acceptAllDevices: true,
                             optionalServices: [UART_SERVICE_UUID]
@@ -5355,15 +5361,17 @@ basic.forever(function () {
                 let service = null;
                 let txChar = null;
 
+                const isWindows = /Windows/i.test(navigator.userAgent);
+
                 // Función auxiliar: conectar GATT y buscar servicio UART
                 async function tryConnectAndDiscover(dev, label) {
                     console.log(`[BT] ${label} — Conectando a GATT server...`);
                     const srv = await dev.gatt.connect();
                     console.log(`[BT] ${label} — GATT connected:`, srv.connected);
 
-                    // Esperar para service discovery (más tiempo en mobile)
-                    const sdWait = isMobileBrowser ? 3000 : 1500;
-                    console.log(`[BT] ${label} — Esperando ${sdWait}ms para service discovery (mobile: ${isMobileBrowser})...`);
+                    // Windows BLE stack necesita más tiempo para service discovery
+                    const sdWait = isMobileBrowser ? 3000 : isWindows ? 3000 : 1500;
+                    console.log(`[BT] ${label} — Esperando ${sdWait}ms para service discovery (mobile: ${isMobileBrowser}, windows: ${isWindows})...`);
                     await new Promise(r => setTimeout(r, sdWait));
 
                     if (!dev.gatt.connected) {
@@ -5401,14 +5409,14 @@ basic.forever(function () {
                 let found = false;
                 let lastError = null;
 
-                // ── Fase A: intentos directos (3 en mobile, 2 en desktop) ──
-                const maxAttempts = isMobileBrowser ? 3 : 2;
+                // ── Fase A: intentos directos (3 en mobile/Windows, 2 en otros desktop) ──
+                const maxAttempts = (isMobileBrowser || isWindows) ? 3 : 2;
                 for (let attempt = 1; attempt <= maxAttempts && !found; attempt++) {
                     try {
                         statusEl.textContent = `Conectando... intento ${attempt}/${maxAttempts}`;
                         if (attempt > 1) {
                             if (device.gatt.connected) device.gatt.disconnect();
-                            const retryWait = isMobileBrowser ? 2500 : 1500;
+                            const retryWait = isMobileBrowser ? 2500 : isWindows ? 2500 : 1500;
                             await new Promise(r => setTimeout(r, retryWait));
                         }
                         const result = await tryConnectAndDiscover(device, `Intento ${attempt}`);
@@ -5501,8 +5509,23 @@ basic.forever(function () {
                         msg += '3. El micro:bit esté encendido y cerca\n';
                         msg += '4. Reseteá el micro:bit (botón de atrás)\n';
                         msg += '5. Si está vinculado al sistema, desvinculalo primero\n';
+                    } else if (isWindows) {
+                        msg += 'En Windows, seguí estos pasos:\n\n';
+                        msg += '1. Abrí Configuración de Windows → Bluetooth y dispositivos\n';
+                        msg += '2. Si "BBC micro:bit" aparece vinculado, hacé clic en "Quitar dispositivo"\n';
+                        msg += '3. En Chrome, andá a chrome://bluetooth-internals → Devices → Inspect\n';
+                        msg += '   y si ves el micro:bit, hacé clic en "Forget"\n';
+                        msg += '4. Reseteá el micro:bit (botón de atrás)\n';
+                        msg += '5. Verificá que tu programa MakeCode tenga "bluetooth uart service"\n';
+                        msg += '6. Volvé a conectar desde esta página\n\n';
+                        msg += 'IMPORTANTE: El micro:bit NO debe estar vinculado en Windows.\n';
+                        msg += 'Web Bluetooth necesita que esté SIN vincular.';
                     } else {
-                        msg += 'Probá resetear el micro:bit (botón de atrás) y volvé a conectar.';
+                        msg += 'Probá resetear el micro:bit (botón de atrás) y volvé a conectar.\n\n';
+                        msg += 'Si el problema persiste:\n';
+                        msg += '1. Desvinculá el micro:bit de la configuración Bluetooth del sistema\n';
+                        msg += '2. Verificá que tu programa MakeCode tenga "bluetooth uart service"\n';
+                        msg += '3. Reiniciá el navegador';
                     }
                     alert(msg);
                     return;
@@ -5552,14 +5575,17 @@ basic.forever(function () {
                     const t = translations[currentLanguage];
                     document.getElementById('statusText').textContent = t.reconnecting || 'Reconectando...';
 
-                    const maxReconnect = isMobileBrowser ? 5 : 3;
+                    const maxReconnect = (isMobileBrowser || isWindows) ? 5 : 3;
                     for (let attempt = 1; attempt <= maxReconnect; attempt++) {
                         try {
-                            const waitMs = isMobileBrowser ? 2000 * attempt : 1000 * attempt;
+                            const waitMs = (isMobileBrowser || isWindows) ? 2000 * attempt : 1000 * attempt;
                             console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — esperando ${waitMs}ms...`);
                             await new Promise(r => setTimeout(r, waitMs));
                             console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — conectando GATT...`);
                             const srv = await device.gatt.connect();
+                            // Esperar service discovery (Windows necesita más tiempo)
+                            const sdWait = isWindows ? 2500 : 1000;
+                            await new Promise(r => setTimeout(r, sdWait));
                             console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — GATT conectado, buscando servicio...`);
                             const svc = await srv.getPrimaryService(UART_SERVICE_UUID);
                             const chars = await svc.getCharacteristics();
@@ -8456,13 +8482,16 @@ basic.forever(function () {
         // BT connection button inside LAB mode
         function expConnectBluetooth() {
             if (state.isConnected && state.isBluetooth) {
-                // Already connected — show status
                 const expInfo = document.getElementById('expPointInfo');
                 if (expInfo) expInfo.textContent = 'BT OK';
                 return;
             }
-            // Trigger the main BT button click
-            renderBtPairingModal();
+            // Desktop: directo. Mobile: modal con instrucciones.
+            if (isMobileBrowser) {
+                renderBtPairingModal();
+            } else {
+                connectBluetooth();
+            }
         }
 
         function syncExpBtButton() {
