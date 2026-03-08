@@ -2051,6 +2051,20 @@
                         <span id="overlayFontVal" style="min-width: 2.5em; text-align:right; font-size:0.8rem;">100%</span>
                     </div>
 
+                    <div class="input-row" style="align-items: center;">
+                        <label for="videoSyncMode" id="videoSyncModeLabel" style="cursor: pointer;">Sync video (30 FPS)</label>
+                        <input type="checkbox" id="videoSyncMode" style="width: auto; cursor: pointer;">
+                    </div>
+                    <div id="videoSyncInfo" style="display:none; background: #e3f2fd; border-left: 3px solid #1976d2; padding: 8px 10px; margin: 4px 0 8px 0; font-size: 0.78rem; line-height: 1.4; border-radius: 4px; color: #333;">
+                        <strong style="color:#1565c0;">&#9432; Submuestreo por video</strong><br>
+                        <span id="videoSyncInfoText">
+                        Al activar este modo, cuando detengas la captura se conservarán <b>solo los datos que coinciden con cada fotograma del video</b> (1 dato por frame, ~30 por segundo).<br><br>
+                        <b>¿Por qué?</b> La micro:bit puede enviar datos a 50-100 Hz o más, pero el video graba a 30 FPS. Los datos intermedios no tienen un fotograma asociado, así que al reproducir el video cuadro a cuadro, esos datos "extras" no se pueden visualizar.<br><br>
+                        <b>Ventaja:</b> Cada punto de tu tabla y gráfica corresponde exactamente a un cuadro del video. Ideal para análisis de video.<br>
+                        <b>Compromiso:</b> Se descartan los datos recibidos entre fotogramas. Si necesitás máxima resolución temporal, dejá este modo desactivado.
+                        </span>
+                    </div>
+
                     <!-- Variable 1 -->
                     <div class="variable-config" id="var1Config">
                         <h4>Variable 1</h4>
@@ -2557,6 +2571,8 @@
                 spikeFilterTitle: 'Descarta lecturas anómalas causadas por errores de comunicación serial/Bluetooth',
                 overlayOpacity: 'Overlay: opacidad',
                 overlayFontSize: 'Overlay: tamaño',
+                videoSyncMode: 'Sync video (30 FPS)',
+                videoSyncInfo: 'Al activar este modo, cuando detengas la captura se conservarán <b>solo los datos que coinciden con cada fotograma del video</b> (1 dato por frame, ~30 por segundo).<br><br><b>¿Por qué?</b> La micro:bit puede enviar datos a 50-100 Hz o más, pero el video graba a 30 FPS. Los datos intermedios no tienen un fotograma asociado, así que al reproducir el video cuadro a cuadro, esos datos "extras" no se pueden visualizar.<br><br><b>Ventaja:</b> Cada punto de tu tabla y gráfica corresponde exactamente a un cuadro del video. Ideal para análisis de video.<br><b>Compromiso:</b> Se descartan los datos recibidos entre fotogramas. Si necesitás máxima resolución temporal, dejá este modo desactivado.',
                 varName: 'Nombre Variable',
                 varColor: 'Color',
                 applyVarConfig: 'APLICAR CONFIGURACIÓN',
@@ -2718,6 +2734,8 @@
                 spikeFilterTitle: 'Discard anomalous readings caused by serial/Bluetooth communication errors',
                 overlayOpacity: 'Overlay: opacity',
                 overlayFontSize: 'Overlay: size',
+                videoSyncMode: 'Video sync (30 FPS)',
+                videoSyncInfo: 'When enabled, upon stopping capture only data points matching a video frame will be kept (1 data point per frame, ~30 per second).<br><br><b>Why?</b> The micro:bit can send data at 50-100 Hz or more, but video records at 30 FPS. In-between data points have no associated frame, so when scrubbing frame by frame, those "extra" readings cannot be visualized.<br><br><b>Advantage:</b> Every point in your table and chart corresponds exactly to one video frame. Ideal for video analysis.<br><b>Trade-off:</b> Data received between frames is discarded. If you need maximum temporal resolution, leave this mode off.',
                 varName: 'Variable Name',
                 varColor: 'Color',
                 applyVarConfig: 'APPLY CONFIGURATION',
@@ -2879,6 +2897,8 @@
                 spikeFilterTitle: 'Descarta leituras anômalas causadas por erros de comunicação serial/Bluetooth',
                 overlayOpacity: 'Overlay: opacidade',
                 overlayFontSize: 'Overlay: tamanho',
+                videoSyncMode: 'Sync vídeo (30 FPS)',
+                videoSyncInfo: 'Ao ativar este modo, quando parar a captura serão mantidos <b>apenas os dados que coincidem com cada quadro do vídeo</b> (1 dado por frame, ~30 por segundo).<br><br><b>Por quê?</b> A micro:bit pode enviar dados a 50-100 Hz ou mais, mas o vídeo grava a 30 FPS. Os dados intermediários não têm um quadro associado, então ao reproduzir o vídeo quadro a quadro, esses dados "extras" não podem ser visualizados.<br><br><b>Vantagem:</b> Cada ponto da sua tabela e gráfico corresponde exatamente a um quadro do vídeo. Ideal para análise de vídeo.<br><b>Compromisso:</b> Os dados recebidos entre quadros são descartados. Se precisar de máxima resolução temporal, deixe este modo desativado.',
                 varName: 'Nome da Variável',
                 varColor: 'Cor',
                 applyVarConfig: 'APLICAR CONFIGURAÇÃO',
@@ -3198,6 +3218,10 @@
             if (olLabel) olLabel.textContent = t.overlayOpacity || 'Overlay: opacidad';
             const ofLabel = document.getElementById('overlayFontLabel');
             if (ofLabel) ofLabel.textContent = t.overlayFontSize || 'Overlay: tamaño';
+            const vsLabel = document.getElementById('videoSyncModeLabel');
+            if (vsLabel) vsLabel.textContent = t.videoSyncMode || 'Sync video (30 FPS)';
+            const vsInfo = document.getElementById('videoSyncInfoText');
+            if (vsInfo && t.videoSyncInfo) vsInfo.innerHTML = t.videoSyncInfo;
 
             // Panel lateral - Opciones de select
             const numVarsSelect = document.getElementById('numVariables');
@@ -4617,6 +4641,7 @@ basic.forever(function () {
             spikeFilter: false,       // true para filtrar picos anómalos de comunicación
             overlayOpacity: 0.85,     // opacidad del fondo del overlay en el video (0-1)
             overlayFontScale: 1.0,    // escala de fuente del overlay (0.5-2.0)
+            videoSyncMode: false,     // true = al detener, conservar solo datos que coincidan con fotogramas de video (30fps)
             variables: [
                 { name: 'Variable 1', color: '#000000' },
                 { name: 'Variable 2', color: '#ff0000' },
@@ -4733,6 +4758,11 @@ basic.forever(function () {
         document.getElementById('overlayFontScale').addEventListener('input', function() {
             state.overlayFontScale = this.value / 100;
             document.getElementById('overlayFontVal').textContent = this.value + '%';
+        });
+
+        document.getElementById('videoSyncMode').addEventListener('change', function() {
+            state.videoSyncMode = this.checked;
+            document.getElementById('videoSyncInfo').style.display = this.checked ? 'block' : 'none';
         });
 
         // Click en la advertencia de formato → corregir automáticamente el checkbox
@@ -5844,6 +5874,44 @@ basic.forever(function () {
             if (pendingChartPoints.length > 0) {
                 pushNewDataToCharts(pendingChartPoints);
                 pendingChartPoints = [];
+            }
+
+            // ── Video Sync Mode: submuestreo a 30 FPS ──
+            // Si está activo y hay frameLog, conservar SOLO los datos que coinciden
+            // con un fotograma del video. Los datos intermedios se descartan.
+            if (state.videoSyncMode && state.videoFrameLog && state.videoFrameLog.length > 0) {
+                const originalCount = state.rawData.length;
+                // Extraer los índices únicos de datos que se mostraron en algún fotograma
+                const keepIndices = new Set();
+                for (const entry of state.videoFrameLog) {
+                    keepIndices.add(entry.pointIndex);
+                }
+                // Reconstruir rawData solo con esos puntos
+                const syncedData = [];
+                for (const idx of keepIndices) {
+                    if (state.rawData[idx]) {
+                        syncedData.push(state.rawData[idx]);
+                    }
+                }
+                // Ordenar por tiempo (los índices del Set no garantizan orden)
+                syncedData.sort((a, b) => a.time - b.time);
+                state.rawData = syncedData;
+
+                // Actualizar los pointIndex en videoFrameLog para que apunten
+                // a las nuevas posiciones en el rawData filtrado
+                const idToNewIdx = new Map();
+                for (let i = 0; i < state.rawData.length; i++) {
+                    idToNewIdx.set(state.rawData[i].id, i);
+                }
+                for (const entry of state.videoFrameLog) {
+                    const newIdx = idToNewIdx.get(entry.pointId);
+                    if (newIdx !== undefined) {
+                        entry.pointIndex = newIdx;
+                    }
+                }
+
+                const discarded = originalCount - state.rawData.length;
+                console.log(`[VIDEO-SYNC] Submuestreo: ${originalCount} → ${state.rawData.length} puntos (${discarded} descartados, ${state.videoFrameLog.length} fotogramas)`);
             }
 
             // Restaurar escala automática de Chart.js (quitar min/max forzados)
