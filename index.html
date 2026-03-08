@@ -1440,6 +1440,24 @@
             white-space: nowrap;
         }
 
+        .exp-nav-btn {
+            min-width: 32px;
+            min-height: 32px;
+            border: 1px solid #ccc;
+            background: white;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            padding: 0;
+        }
+
+        .exp-nav-btn:active {
+            background: #e0e0e0;
+        }
+
         .exp-fullscreen-btn {
             min-width: 44px;
             min-height: 32px;
@@ -2328,7 +2346,9 @@
                 <button class="exp-bt-btn" id="expBtBtn" onclick="expConnectBluetooth()">BT</button>
                 <button class="exp-play-btn" id="expCaptureBtn" onclick="toggleExpCapture()" style="background:#2e7d32;">●</button>
                 <button class="exp-play-btn" id="expPlayBtn" onclick="toggleExpPlayback()">▶</button>
+                <button class="exp-nav-btn" id="expPrevBtn" onclick="expNavPoint(-1)" title="Punto anterior">◀</button>
                 <input type="range" class="exp-timeline-bar" id="expTimelineBar" min="0" max="0" value="0">
+                <button class="exp-nav-btn" id="expNextBtn" onclick="expNavPoint(1)" title="Punto siguiente">▶</button>
                 <span class="exp-time-display" id="expTimeDisplay">0.00 s</span>
             </div>
             <div class="exp-controls-row2">
@@ -5925,6 +5945,15 @@ basic.forever(function () {
                         chart.update('none');
                     }
                     chartDirty = false;
+
+                    // Actualizar gráfica del modo experimento en tiempo real
+                    if (expChart && document.getElementById('experimentMode').classList.contains('active')) {
+                        updateExpChartData();
+                        updateExpTimeline();
+                        // Mover el slider al último punto para que se vea la gráfica construyéndose
+                        const slider = document.getElementById('expTimelineBar');
+                        slider.value = slider.max;
+                    }
                 }
 
                 // 3. Limpiar timestamps antiguos para cálculo de Hz
@@ -7416,8 +7445,10 @@ basic.forever(function () {
             if (!state.cameraActive || !state.mediaStream) return;
 
             state.recordedChunks = [];
-            // Usar el mismo instante que timeZeroOffset para sincronización precisa
-            state.recordingStartTime = state.timeZeroOffset;
+            // Usar Date.now() para sincronización precisa con wallTime de los datos.
+            // wallTime de cada punto es siempre Date.now(), así que recordingStartTime
+            // debe ser también Date.now() para que la resta dé el offset real en el video.
+            state.recordingStartTime = Date.now();
 
             // Configurar canvas del mismo tamaño que el video
             const video = document.getElementById('cameraPreview');
@@ -8291,6 +8322,18 @@ basic.forever(function () {
         function updateExpTimeline() {
             const slider = document.getElementById('expTimelineBar');
             slider.max = Math.max(0, state.rawData.length - 1);
+        }
+
+        // Navegación punto a punto con flechas
+        function expNavPoint(direction) {
+            const slider = document.getElementById('expTimelineBar');
+            const current = parseInt(slider.value);
+            const maxVal = parseInt(slider.max);
+            const newIdx = Math.max(0, Math.min(maxVal, current + direction));
+            if (newIdx !== current) {
+                slider.value = newIdx;
+                updateExpFromSlider(newIdx);
+            }
         }
 
         function updateExpFromSlider(idx) {
