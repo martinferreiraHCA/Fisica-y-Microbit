@@ -2,7 +2,9 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>micro:bit DataLab Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
@@ -1706,9 +1708,66 @@
                 height: 28px;
             }
         }
+
+        /* ========== SAFARI COMPATIBILITY ========== */
+
+        /* Safari banner */
+        .safari-banner {
+            display: none;
+            background: #fff3e0;
+            border-bottom: 2px solid #f57c00;
+            padding: 8px 16px;
+            font-size: 0.82rem;
+            line-height: 1.4;
+            color: #333;
+            align-items: center;
+            gap: 8px;
+        }
+        .safari-banner.active {
+            display: flex;
+        }
+        .safari-banner-text {
+            flex: 1;
+        }
+        .safari-banner-close {
+            background: none;
+            border: 1px solid #f57c00;
+            padding: 2px 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #e65100;
+            flex-shrink: 0;
+        }
+
+        /* -webkit- flexbox gap fallback for Safari < 14.1 */
+        @supports not (gap: 1px) {
+            .toolbar > * + * { margin-left: 8px; }
+            .graphs-container > * + * { margin-top: 20px; }
+            .graph-controls > * + * { margin-left: 4px; }
+            .video-controls > * + * { margin-left: 8px; }
+            .camera-controls > * + * { margin-left: 8px; }
+            .view-switcher-inner > * + * { margin-left: 0; }
+        }
+
+        /* Safe area insets for iPhone notch */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            .toolbar {
+                padding-left: max(16px, env(safe-area-inset-left));
+                padding-right: max(16px, env(safe-area-inset-right));
+            }
+            .exp-controls-zone {
+                padding-bottom: max(4px, env(safe-area-inset-bottom));
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Safari compatibility banner -->
+    <div class="safari-banner" id="safariBanner">
+        <span class="safari-banner-text" id="safariBannerText"></span>
+        <button class="safari-banner-close" onclick="document.getElementById('safariBanner').classList.remove('active')">X</button>
+    </div>
     <!-- Toolbar -->
     <div class="toolbar">
         <!-- Primary actions: always visible (Tidwell: "prominent actions first") -->
@@ -2207,7 +2266,7 @@
         <div class="modal-content video-modal">
             <div class="modal-header">REPRODUCCIÓN DE VIDEO</div>
             <div class="video-container">
-                <video id="playbackVideo" controls></video>
+                <video id="playbackVideo" controls playsinline webkit-playsinline></video>
             </div>
             <div class="video-info" id="videoInfo"></div>
             <div class="video-controls">
@@ -4454,6 +4513,31 @@ basic.forever(function () {
         if (!('serial' in navigator)) {
             document.getElementById('connectBtn').disabled = true;
             document.getElementById('connectBtn').title = 'Web Serial API no soportada en este navegador';
+        }
+
+        // ========== DETECCIÓN DE SAFARI Y COMPATIBILIDAD ==========
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        if (isSafari || isIOSSafari) {
+            // Mostrar banner informativo
+            const banner = document.getElementById('safariBanner');
+            const bannerText = document.getElementById('safariBannerText');
+            const safariMessages = {
+                es: 'Estás usando Safari. La conexión USB y Bluetooth con micro:bit no está disponible en este navegador. Podés cargar datos manualmente vía CSV o usar Chrome/Edge para conexión directa.',
+                pt: 'Você está usando Safari. A conexão USB e Bluetooth com micro:bit não está disponível neste navegador. Carregue dados manualmente via CSV ou use Chrome/Edge para conexão direta.',
+                en: 'You are using Safari. USB and Bluetooth connections to micro:bit are not available in this browser. Load data manually via CSV or use Chrome/Edge for direct connection.'
+            };
+            bannerText.textContent = safariMessages[currentLanguage] || safariMessages['en'];
+            banner.classList.add('active');
+
+            // Deshabilitar botones que no funcionan en Safari
+            const btBtn = document.getElementById('connectBluetoothBtn');
+            if (btBtn) {
+                btBtn.disabled = true;
+                btBtn.title = 'Web Bluetooth API no disponible en Safari';
+            }
         }
 
         // Inicializar configuración
@@ -7411,19 +7495,25 @@ basic.forever(function () {
             overlayAnimId = requestAnimationFrame(drawOverlayFrame);
 
             // Grabar desde el canvas en vez del stream directo de cámara
-            const canvasStream = canvas.captureStream(30); // 30 fps
+            // captureStream: Safari usa mozCaptureStream o webkitCaptureStream según versión
+            const captureMethod = canvas.captureStream || canvas.mozCaptureStream || canvas.webkitCaptureStream;
+            if (!captureMethod || typeof MediaRecorder === 'undefined') {
+                console.warn('[CAM] captureStream o MediaRecorder no disponible en este navegador');
+                // Seguimos con la cámara visible pero sin grabar
+            } else {
+            const canvasStream = captureMethod.call(canvas, 30); // 30 fps
 
-            // Seleccionar codec compatible (iOS Safari no soporta webm)
+            // Seleccionar codec compatible (Safari no soporta webm, priorizar mp4)
             let recorderOptions = {};
             const codecs = [
+                'video/mp4;codecs=h264',
+                'video/mp4',
                 'video/webm;codecs=vp9',
                 'video/webm;codecs=vp8',
-                'video/webm',
-                'video/mp4;codecs=h264',
-                'video/mp4'
+                'video/webm'
             ];
             for (const codec of codecs) {
-                if (MediaRecorder.isTypeSupported(codec)) {
+                if (typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(codec)) {
                     recorderOptions.mimeType = codec;
                     console.log('[CAM] Usando codec:', codec);
                     break;
@@ -7438,7 +7528,7 @@ basic.forever(function () {
             };
 
             state.mediaRecorder.onstop = () => {
-                const mimeType = state.mediaRecorder.mimeType || 'video/webm';
+                const mimeType = state.mediaRecorder.mimeType || (isSafari ? 'video/mp4' : 'video/webm');
                 state.videoBlob = new Blob(state.recordedChunks, { type: mimeType });
                 const dlBtn = document.getElementById('downloadVideoBtn');
                 if (dlBtn) dlBtn.style.display = 'block';
@@ -7446,6 +7536,7 @@ basic.forever(function () {
 
             state.mediaRecorder.start();
             document.getElementById('recordingIndicator').classList.add('active');
+            } // end of MediaRecorder/captureStream availability check
         }
 
         // Convierte un color hex a versión más brillante para overlay de video
