@@ -4519,6 +4519,7 @@ basic.forever(function () {
             recordedChunks: [],
             videoBlob: null,
             recordingStartTime: null,
+            videoFrameLog: [],  // [{wallTime, pointIndex, pointId}] - mapa de fotograma→dato
             currentCameraDeviceId: null,
             currentFacingMode: 'environment',
             availableCameras: [],
@@ -7445,6 +7446,7 @@ basic.forever(function () {
             if (!state.cameraActive || !state.mediaStream) return;
 
             state.recordedChunks = [];
+            state.videoFrameLog = [];
             // Usar Date.now() para sincronización precisa con wallTime de los datos.
             // wallTime de cada punto es siempre Date.now(), así que recordingStartTime
             // debe ser también Date.now() para que la resta dé el offset real en el video.
@@ -7462,6 +7464,10 @@ basic.forever(function () {
             canvas.height = vh;
 
             // Loop de composición: video + datos superpuestos
+            // Throttle del frame log a ~30fps para coincidir con captureStream(30)
+            let _lastFrameLogTime = 0;
+            const FRAME_LOG_INTERVAL = 1000 / 30; // ~33ms
+
             function drawOverlayFrame() {
                 if (!state.isCollecting || !state.cameraActive) {
                     overlayAnimId = null;
@@ -7474,6 +7480,22 @@ basic.forever(function () {
                 // 2. Superponer datos actuales
                 const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
                 const lastPoint = state.rawData.length > 0 ? state.rawData[state.rawData.length - 1] : null;
+
+                // Registrar qué dato se muestra en este fotograma (~30fps)
+                const frameNow = Date.now();
+                if (lastPoint && (frameNow - _lastFrameLogTime >= FRAME_LOG_INTERVAL)) {
+                    _lastFrameLogTime = frameNow;
+                    const lastIdx = state.rawData.length - 1;
+                    // Solo agregar si cambió el punto (evitar duplicados consecutivos)
+                    const prevEntry = state.videoFrameLog[state.videoFrameLog.length - 1];
+                    if (!prevEntry || prevEntry.pointIndex !== lastIdx) {
+                        state.videoFrameLog.push({
+                            wallTime: frameNow,
+                            pointIndex: lastIdx,
+                            pointId: lastPoint.id
+                        });
+                    }
+                }
 
                 // Fondo semitransparente para legibilidad
                 const fontSize = Math.max(14, Math.round(vh * 0.03));
@@ -8025,6 +8047,25 @@ basic.forever(function () {
             expChart.update('none');
         }
 
+        // ¿Hay video con frame log? → navegar por fotogramas
+        function expHasFrameLog() {
+            return state.videoBlob && state.videoFrameLog && state.videoFrameLog.length > 0;
+        }
+
+        // Buscar el frame log entry más cercano a un rawData index
+        function findFrameLogForDataIndex(rawIdx) {
+            const log = state.videoFrameLog;
+            if (!log || log.length === 0) return -1;
+            // Buscar el entry cuyo pointIndex sea más cercano a rawIdx
+            let best = 0;
+            let bestDist = Math.abs(log[0].pointIndex - rawIdx);
+            for (let i = 1; i < log.length; i++) {
+                const dist = Math.abs(log[i].pointIndex - rawIdx);
+                if (dist < bestDist) { bestDist = dist; best = i; }
+            }
+            return best;
+        }
+
         // Rule 3: Inverse interaction - click graph to jump video
         function handleExpChartClick(evt) {
             if (!expChart) return;
@@ -8042,20 +8083,20 @@ basic.forever(function () {
                 // Find the raw data point
                 const rawPoint = state.rawData.find(d => d.id === pointId);
                 if (!rawPoint) return;
-
-                // Update timeline slider
                 const rawIdx = state.rawData.indexOf(rawPoint);
-                const slider = document.getElementById('expTimelineBar');
-                slider.value = rawIdx;
-                updateExpFromSlider(rawIdx);
 
-                // Jump video to corresponding time
-                if (state.videoBlob && state.recordingStartTime) {
-                    const pointWall = rawPoint.wallTime || rawPoint.time;
-                    const videoTime = (pointWall - state.recordingStartTime) / 1000;
-                    if (videoTime >= 0) {
-                        jumpExpVideoToTime(videoTime);
+                const slider = document.getElementById('expTimelineBar');
+
+                if (expHasFrameLog()) {
+                    // Buscar el fotograma más cercano a este punto
+                    const frameIdx = findFrameLogForDataIndex(rawIdx);
+                    if (frameIdx >= 0) {
+                        slider.value = frameIdx;
+                        updateExpFromSlider(frameIdx);
                     }
+                } else {
+                    slider.value = rawIdx;
+                    updateExpFromSlider(rawIdx);
                 }
             }
         }
@@ -8226,6 +8267,24 @@ basic.forever(function () {
             return lo;
         }
 
+        // Búsqueda binaria en videoFrameLog por wallTime
+        function findNearestFrameLogIndex(targetWallTime) {
+            const log = state.videoFrameLog;
+            if (log.length === 0) return 0;
+            let lo = 0, hi = log.length - 1;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                if (log[mid].wallTime < targetWallTime) lo = mid + 1;
+                else hi = mid;
+            }
+            if (lo > 0) {
+                const dLo = Math.abs(log[lo].wallTime - targetWallTime);
+                const dPrev = Math.abs(log[lo - 1].wallTime - targetWallTime);
+                if (dPrev < dLo) return lo - 1;
+            }
+            return lo;
+        }
+
         // Playback controls — sincronización basada en tiempo real
         function toggleExpPlayback() {
             const btn = document.getElementById('expPlayBtn');
@@ -8240,35 +8299,39 @@ basic.forever(function () {
             } else {
                 btn.textContent = '⏸';
                 const slider = document.getElementById('expTimelineBar');
+                const startSliderIdx = parseInt(slider.value);
 
-                // Calcular el wallTime del punto de inicio actual
-                const startIdx = parseInt(slider.value);
-                const startPoint = state.rawData[startIdx];
-                if (!startPoint) return;
+                // Resolver el punto de inicio
+                const resolved = resolveSliderIndex(startSliderIdx);
+                if (!resolved) return;
 
-                const startWall = startPoint.wallTime || startPoint.time;
-                const playbackStartReal = Date.now(); // instante real en que se presiona play
+                const startWall = resolved.point.wallTime || resolved.point.time;
+                const playbackStartReal = Date.now();
 
                 // Iniciar video desde la posición correspondiente
-                if (state.videoBlob && state.recordingStartTime) {
-                    const videoTime = (startWall - state.recordingStartTime) / 1000;
-                    if (videoTime >= 0) {
-                        playExpVideoFrom(videoTime);
-                        if (expVideo) expVideo.playbackRate = expPlaybackSpeed;
-                    }
+                if (resolved.videoTime !== null && resolved.videoTime >= 0) {
+                    playExpVideoFrom(resolved.videoTime);
+                    if (expVideo) expVideo.playbackRate = expPlaybackSpeed;
                 }
 
-                // Sincronización basada en tiempo real: cada tick calcula qué dato
-                // corresponde al tiempo transcurrido desde que se presionó play
+                // Sincronización basada en tiempo real
                 expPlaybackInterval = setInterval(() => {
                     const elapsedMs = (Date.now() - playbackStartReal) * expPlaybackSpeed;
                     const currentWall = startWall + elapsedMs;
 
-                    // Buscar el dato más cercano al tiempo actual
-                    const idx = findNearestDataIndex(currentWall);
+                    let sliderIdx;
+                    let maxIdx;
 
-                    if (idx >= state.rawData.length - 1) {
-                        // Fin de los datos — detener
+                    if (expHasFrameLog()) {
+                        // Navegar por fotogramas del video
+                        sliderIdx = findNearestFrameLogIndex(currentWall);
+                        maxIdx = state.videoFrameLog.length - 1;
+                    } else {
+                        sliderIdx = findNearestDataIndex(currentWall);
+                        maxIdx = state.rawData.length - 1;
+                    }
+
+                    if (sliderIdx >= maxIdx) {
                         clearInterval(expPlaybackInterval);
                         expPlaybackInterval = null;
                         btn.textContent = '▶';
@@ -8276,16 +8339,17 @@ basic.forever(function () {
                         return;
                     }
 
-                    slider.value = idx;
-                    updateExpFromSliderNoVideo(idx);
-                }, 50); // 20 Hz de actualización para seguimiento preciso
+                    slider.value = sliderIdx;
+                    updateExpFromSliderNoVideo(sliderIdx);
+                }, 50);
             }
         }
 
         // Update graph/info without touching video (used during continuous playback)
         function updateExpFromSliderNoVideo(idx) {
-            const point = state.rawData[idx];
-            if (!point) return;
+            const resolved = resolveSliderIndex(idx);
+            if (!resolved) return;
+            const { point, rawIdx } = resolved;
 
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
             const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
@@ -8294,7 +8358,7 @@ basic.forever(function () {
 
             const val = point.values[expSelectedVar];
             document.getElementById('expPointInfo').textContent =
-                `#${idx + 1} | ${state.variables[expSelectedVar].name}: ${val !== undefined ? val.toFixed(3) : '--'}`;
+                `#${rawIdx + 1} | ${state.variables[expSelectedVar].name}: ${val !== undefined ? val.toFixed(3) : '--'}`;
 
             expTemporalMarkerX = adjustedTime;
             if (expChart) expChart.update('none');
@@ -8321,10 +8385,14 @@ basic.forever(function () {
 
         function updateExpTimeline() {
             const slider = document.getElementById('expTimelineBar');
-            slider.max = Math.max(0, state.rawData.length - 1);
+            if (expHasFrameLog()) {
+                slider.max = Math.max(0, state.videoFrameLog.length - 1);
+            } else {
+                slider.max = Math.max(0, state.rawData.length - 1);
+            }
         }
 
-        // Navegación punto a punto con flechas
+        // Navegación punto a punto con flechas (navega fotogramas si hay video)
         function expNavPoint(direction) {
             const slider = document.getElementById('expTimelineBar');
             const current = parseInt(slider.value);
@@ -8336,9 +8404,33 @@ basic.forever(function () {
             }
         }
 
+        // Resuelve un índice de slider a un punto de rawData y un videoTime.
+        // Si hay frameLog → idx es índice de frameLog, y de ahí obtenemos el punto real.
+        // Si no hay frameLog → idx es índice de rawData directo.
+        function resolveSliderIndex(idx) {
+            if (expHasFrameLog()) {
+                const entry = state.videoFrameLog[idx];
+                if (!entry) return null;
+                const point = state.rawData[entry.pointIndex];
+                if (!point) return null;
+                const videoTime = (entry.wallTime - state.recordingStartTime) / 1000;
+                return { point, rawIdx: entry.pointIndex, videoTime, frameIdx: idx };
+            } else {
+                const point = state.rawData[idx];
+                if (!point) return null;
+                let videoTime = null;
+                if (state.videoBlob && state.recordingStartTime) {
+                    const pointWall = point.wallTime || point.time;
+                    videoTime = (pointWall - state.recordingStartTime) / 1000;
+                }
+                return { point, rawIdx: idx, videoTime, frameIdx: null };
+            }
+        }
+
         function updateExpFromSlider(idx) {
-            const point = state.rawData[idx];
-            if (!point) return;
+            const resolved = resolveSliderIndex(idx);
+            if (!resolved) return;
+            const { point, rawIdx, videoTime } = resolved;
 
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
             const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
@@ -8349,19 +8441,15 @@ basic.forever(function () {
             // Update point info
             const val = point.values[expSelectedVar];
             document.getElementById('expPointInfo').textContent =
-                `#${idx + 1} | ${state.variables[expSelectedVar].name}: ${val !== undefined ? val.toFixed(3) : '--'}`;
+                `#${rawIdx + 1} | ${state.variables[expSelectedVar].name}: ${val !== undefined ? val.toFixed(3) : '--'}`;
 
-            // Update temporal marker on graph (Rule 2)
+            // Update temporal marker on graph
             expTemporalMarkerX = adjustedTime;
             if (expChart) expChart.update('none');
 
-            // Sync video if available (Rule 2 & 3)
-            if (state.videoBlob && state.recordingStartTime) {
-                const pointWall = point.wallTime || point.time;
-                const videoTime = (pointWall - state.recordingStartTime) / 1000;
-                if (videoTime >= 0) {
-                    jumpExpVideoToTime(videoTime);
-                }
+            // Sync video
+            if (videoTime !== null && videoTime >= 0) {
+                jumpExpVideoToTime(videoTime);
             }
         }
 
