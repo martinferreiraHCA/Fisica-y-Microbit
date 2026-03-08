@@ -5289,6 +5289,8 @@ basic.forever(function () {
 
         let btBuffer = '';
         let btLoopRunning = false;
+        let btValueChangedHandler = null;
+        let btDisconnectHandler = null;
 
         // Detectar mobile para ajustar tiempos BT
         const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -5308,6 +5310,18 @@ basic.forever(function () {
             // Mostrar guía de pairing en vez de conectar directamente
             renderBtPairingModal();
         });
+
+        function detachBluetoothDataHandler() {
+            if (state.btCharTx && btValueChangedHandler) {
+                try {
+                    state.btCharTx.removeEventListener('characteristicvaluechanged', btValueChangedHandler);
+                } catch (e) {
+                    console.warn('[BT] No se pudo remover listener de datos:', e.message);
+                }
+            }
+            btValueChangedHandler = null;
+            btLoopRunning = false;
+        }
 
         async function connectBluetooth() {
             // Fase 1: Seleccionar dispositivo (NotFoundError aquí = usuario canceló)
@@ -5543,11 +5557,19 @@ basic.forever(function () {
                 console.log('[BT] Estado actualizado: conectado=true, bluetooth=true');
 
                 // Escuchar desconexión e intentar reconexión automática
-                device.addEventListener('gattserverdisconnected', async () => {
+                if (btDisconnectHandler) {
+                    try {
+                        device.removeEventListener('gattserverdisconnected', btDisconnectHandler);
+                    } catch (e) {
+                        console.warn('[BT] No se pudo remover listener de desconexión previo:', e.message);
+                    }
+                }
+
+                btDisconnectHandler = async () => {
                     console.warn('[BT] ── GATT desconectado ── Iniciando reconexión automática');
                     state.isConnected = false;
                     state.btCharTx = null;
-                    btLoopRunning = false;
+                    detachBluetoothDataHandler();
                     syncExpBtButton();
                     const t = translations[currentLanguage];
                     document.getElementById('statusText').textContent = t.reconnecting || 'Reconectando...';
@@ -5586,7 +5608,9 @@ basic.forever(function () {
                     document.getElementById('collectBtn').style.display = 'none';
                     document.getElementById('stopBtn').style.display = 'none';
                     document.getElementById('statusText').textContent = t.disconnected;
-                });
+                };
+
+                device.addEventListener('gattserverdisconnected', btDisconnectHandler);
 
                 document.getElementById('connectBtn').style.display = 'none';
                 document.getElementById('connectBluetoothBtn').style.display = 'none';
@@ -5628,6 +5652,13 @@ basic.forever(function () {
                 return;
             }
             btLoopRunning = true;
+            if (btValueChangedHandler) {
+                try {
+                    txChar.removeEventListener('characteristicvaluechanged', btValueChangedHandler);
+                } catch (e) {
+                    console.warn('[BT] No se pudo remover listener previo de characteristicvaluechanged:', e.message);
+                }
+            }
             btBuffer = '';
             let _btChunkCount = 0;
             let _btLineCount = 0;
@@ -5667,7 +5698,7 @@ basic.forever(function () {
                 }
                 console.log(`[BT] ✓ Notificaciones ${notifyMode} iniciadas correctamente`);
                 console.log('[BT] Esperando datos del micro:bit...');
-                txChar.addEventListener('characteristicvaluechanged', (event) => {
+                btValueChangedHandler = (event) => {
                     const decoder = new TextDecoder();
                     const chunk = decoder.decode(event.target.value);
                     _btChunkCount++;
@@ -5754,11 +5785,13 @@ basic.forever(function () {
                             _btLastLogTime = now;
                         }
                     }
-                });
+                };
+
+                txChar.addEventListener('characteristicvaluechanged', btValueChangedHandler);
             } catch (err) {
                 console.error('[BT] ✗ Error en startBluetoothLoop:', err.name, err.message);
                 console.error('[BT] Stack:', err.stack);
-                btLoopRunning = false;
+                detachBluetoothDataHandler();
                 // Mostrar en la UI para que el usuario sepa qué pasó
                 const statusEl = document.getElementById('statusText');
                 if (statusEl) {
