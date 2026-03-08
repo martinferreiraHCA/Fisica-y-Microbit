@@ -137,7 +137,7 @@
         .main-container {
             display: grid;
             grid-template-columns: 1fr 340px;
-            height: calc(100vh - 58px);
+            height: calc(100vh - 95px); /* toolbar + view-switcher */
         }
 
         /* Panel de gráficas */
@@ -846,7 +846,7 @@
 
         /* ========== VIEW MODE SWITCHER ========== */
         .view-switcher {
-            display: none; /* hidden on desktop */
+            display: block; /* visible on all screen sizes including desktop */
             background: white;
             border-bottom: 2px solid black;
             padding: 0;
@@ -1526,10 +1526,6 @@
                 border-bottom: 2px solid black;
             }
 
-            /* Show view switcher on tablets */
-            .view-switcher {
-                display: block;
-            }
         }
 
         /* ========== RESPONSIVE - Mobile (max-width: 600px) ========== */
@@ -1538,11 +1534,6 @@
                 grid-template-columns: 1fr;
                 height: auto;
                 min-height: calc(100vh - 50px);
-            }
-
-            /* View switcher visible */
-            .view-switcher {
-                display: block;
             }
 
             /* Split mode: stack vertically on mobile */
@@ -2321,7 +2312,7 @@
     <div class="experiment-mode" id="experimentMode">
         <!-- Zone 1: Video (45%) -->
         <div class="exp-video-zone" id="expVideoZone">
-            <video id="expVideo" autoplay muted playsinline webkit-playsinline></video>
+            <video id="expVideo" muted playsinline webkit-playsinline></video>
             <div class="exp-video-overlay">
                 <span class="exp-rec-badge" id="expRecBadge">LIVE</span>
                 <button class="exp-exit-btn" id="expExitBtn" onclick="exitExperimentMode()">✕</button>
@@ -7797,14 +7788,28 @@ basic.forever(function () {
             document.body.classList.add('experiment-active');
             expMode.classList.add('active');
 
-            // Setup video: reuse the existing camera stream if active
+            // Setup video
             const expVideo = document.getElementById('expVideo');
-            if (state.mediaStream) {
+
+            if (state.isCollecting && state.mediaStream) {
+                // Grabando en vivo: mostrar stream de cámara
                 expVideo.srcObject = state.mediaStream;
+                expVideo.muted = true;
+                expVideo.play().catch(() => {});
+            } else if (state.videoBlob) {
+                // Hay video grabado: preparar para reproducción (sin auto-play)
+                prepareExpVideoPlayback();
+            } else if (state.mediaStream) {
+                // Cámara activa pero no grabando: mostrar preview
+                expVideo.srcObject = state.mediaStream;
+                expVideo.muted = true;
+                expVideo.play().catch(() => {});
             } else if (state.cameraActive) {
                 const origVideo = document.getElementById('cameraPreview');
                 if (origVideo.srcObject) {
                     expVideo.srcObject = origVideo.srcObject;
+                    expVideo.muted = true;
+                    expVideo.play().catch(() => {});
                 }
             }
 
@@ -7819,8 +7824,13 @@ basic.forever(function () {
             // Create experiment chart
             createExpChart();
 
-            // Update timeline bar
+            // Update timeline bar and posicionar al inicio
             updateExpTimeline();
+            if (state.rawData.length > 0 && !state.isCollecting) {
+                const slider = document.getElementById('expTimelineBar');
+                slider.value = 0;
+                updateExpFromSlider(0);
+            }
         }
 
         function exitExperimentMode() {
@@ -8128,16 +8138,17 @@ basic.forever(function () {
                 const log = state.videoFrameLog;
                 if (log.length > 0 && expVideo.duration && isFinite(expVideo.duration)) {
                     const lastFrame = log[log.length - 1].frameNumber;
-                    const theoreticalDuration = lastFrame / 30; // duración si fuera perfecto
+                    const theoreticalDuration = lastFrame / 30;
                     const realDuration = expVideo.duration;
-                    // El offset compensa el delay de inicialización del MediaRecorder
-                    // Si el video dura menos que lo teórico, hay un offset positivo al inicio
                     _videoTimeOffset = realDuration - theoreticalDuration;
                     console.log(`[VIDEO] Calibración: duración real=${realDuration.toFixed(3)}s, teórica=${theoreticalDuration.toFixed(3)}s, offset=${_videoTimeOffset.toFixed(3)}s`);
                 }
             }, { once: true });
             expVideo.addEventListener('loadeddata', () => {
                 expVideoReady = true;
+                // NO auto-play: pausar el video y posicionar al inicio
+                expVideo.pause();
+                expVideo.currentTime = 0;
             }, { once: true });
             expVideo.load();
         }
@@ -8191,13 +8202,23 @@ basic.forever(function () {
                 captureBtn.classList.remove('capturing');
                 captureBtn.style.background = '#2e7d32';
                 // Prepare video for review after recording stops
-                setTimeout(() => {
-                    if (state.videoBlob) {
-                        prepareExpVideoPlayback();
+                // Esperar a que MediaRecorder termine de procesar (onstop es asíncrono)
+                function waitForVideoBlob(attempts) {
+                    if (state.videoBlob || attempts <= 0) {
+                        if (state.videoBlob) {
+                            prepareExpVideoPlayback();
+                        }
+                        updateExpTimeline();
+                        updateExpChartData();
+                        // Posicionar en el primer frame
+                        const slider = document.getElementById('expTimelineBar');
+                        slider.value = 0;
+                        updateExpFromSlider(0);
+                    } else {
+                        setTimeout(() => waitForVideoBlob(attempts - 1), 200);
                     }
-                    updateExpTimeline();
-                    updateExpChartData();
-                }, 300);
+                }
+                setTimeout(() => waitForVideoBlob(10), 200); // hasta 2.2s de espera
             } else {
                 // Need to be connected first
                 if (!state.isConnected && !state.isBluetooth) {
