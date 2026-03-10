@@ -5404,6 +5404,7 @@ basic.forever(function () {
         document.getElementById('spikeFilter').addEventListener('change', function() {
             state.spikeFilter = this.checked;
             _spikeFilterHistory = {};
+            _spikeLastValue = {};
         });
 
         document.getElementById('overlayOpacity').addEventListener('input', function() {
@@ -6493,6 +6494,7 @@ basic.forever(function () {
             _formatMismatchCount = 0;
             _lastMismatchParts = 0;
             _spikeFilterHistory = {};
+            _spikeLastValue = {};
             document.getElementById('formatWarning').style.display = 'none';
             // Reset scale smoothing y tracking incremental
             currentYMin = {};
@@ -6900,10 +6902,15 @@ basic.forever(function () {
         // Usa una ventana de valores recientes por variable para detectar outliers
         // mediante la desviación mediana absoluta (MAD).
         let _spikeFilterHistory = {}; // {varIndex: [últimos valores]}
-        const SPIKE_WINDOW = 5;       // Tamaño de ventana de historial
-        const SPIKE_THRESHOLD = 4;    // Factor de sensibilidad (más alto = menos filtrado)
+        let _spikeLastValue = {};    // {varIndex: último valor aceptado}
+        const SPIKE_WINDOW = 8;       // Ventana más grande para mejor estadística
+        const SPIKE_THRESHOLD = 3;    // Factor MAD (más bajo = filtra más picos)
+        const SPIKE_ROC_FACTOR = 2.5; // Factor de tasa de cambio vs rango reciente
 
         // Chequea si un valor es un pico anómalo para una variable dada.
+        // Usa dos criterios:
+        //   1) MAD: distancia a la mediana vs desviación mediana absoluta
+        //   2) Tasa de cambio: salto brusco vs el rango reciente de la señal
         // Solo verifica, NO modifica el historial.
         function isSpikeValue(varIndex, value) {
             if (!_spikeFilterHistory[varIndex]) {
@@ -6912,7 +6919,7 @@ basic.forever(function () {
             const history = _spikeFilterHistory[varIndex];
 
             // Si no hay suficiente historial, aceptar el valor
-            if (history.length < SPIKE_WINDOW) {
+            if (history.length < 3) {
                 return false;
             }
 
@@ -6931,12 +6938,28 @@ basic.forever(function () {
                 ? (deviations[madMid - 1] + deviations[madMid]) / 2
                 : deviations[madMid];
 
-            // Umbral adaptativo: si MAD es muy pequeño (señal estable), usar
-            // un mínimo basado en la magnitud de la mediana
-            const minDeviation = Math.max(mad * 1.4826, Math.abs(median) * 0.1, 10);
+            // Umbral adaptativo: piso basado en magnitud de la mediana
+            // Piso mínimo de 5 (en vez de 10) para señales suaves
+            const minDeviation = Math.max(mad * 1.4826, Math.abs(median) * 0.05, 5);
             const distance = Math.abs(value - median);
 
-            return distance > minDeviation * SPIKE_THRESHOLD;
+            // Criterio 1: MAD — valor muy lejos de la mediana
+            if (distance > minDeviation * SPIKE_THRESHOLD) {
+                return true;
+            }
+
+            // Criterio 2: Tasa de cambio — salto brusco respecto al último valor
+            // Compara el salto con el rango reciente de la señal
+            if (history.length >= SPIKE_WINDOW && _spikeLastValue[varIndex] !== undefined) {
+                const range = sorted[sorted.length - 1] - sorted[0];
+                const jump = Math.abs(value - _spikeLastValue[varIndex]);
+                // Si el rango es significativo y el salto supera el factor * rango
+                if (range > 1 && jump > range * SPIKE_ROC_FACTOR) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // Verifica si un conjunto de valores contiene picos.
@@ -6946,13 +6969,14 @@ basic.forever(function () {
             for (let vi = 0; vi < values.length; vi++) {
                 if (isSpikeValue(vi, values[vi])) return true;
             }
-            // Todas las variables pasaron → actualizar historial
+            // Todas las variables pasaron → actualizar historial y último valor
             for (let vi = 0; vi < values.length; vi++) {
                 if (!_spikeFilterHistory[vi]) _spikeFilterHistory[vi] = [];
                 _spikeFilterHistory[vi].push(values[vi]);
                 if (_spikeFilterHistory[vi].length > SPIKE_WINDOW) {
                     _spikeFilterHistory[vi].shift();
                 }
+                _spikeLastValue[vi] = values[vi];
             }
             return false;
         }
