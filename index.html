@@ -2782,6 +2782,7 @@
                             <option value="power">Potencia (y = a·x^b)</option>
                             <option value="logarithmic">Logarítmico (y = a·ln(x) + b)</option>
                             <option value="inverse">Inverso (y = a/x + b)</option>
+                            <option value="sinusoidal">Sinusoidal (y = A·sin(ωx + φ) + C)</option>
                         </select>
                     </div>
 
@@ -3202,6 +3203,7 @@
                 fitPower: 'Potencia (y = a·x^b)',
                 fitLogarithmic: 'Logarítmico (y = a·ln(x) + b)',
                 fitInverse: 'Inverso (y = a/x + b)',
+                fitSinusoidal: 'Sinusoidal (y = A·sin(ωx + φ) + C)',
                 fitVariable: 'Variable a Ajustar',
                 fitGraph: 'Gráfica de Referencia',
                 dataToFit: 'DATOS A AJUSTAR:',
@@ -3376,6 +3378,7 @@
                 fitPower: 'Power (y = a·x^b)',
                 fitLogarithmic: 'Logarithmic (y = a·ln(x) + b)',
                 fitInverse: 'Inverse (y = a/x + b)',
+                fitSinusoidal: 'Sinusoidal (y = A·sin(ωx + φ) + C)',
                 fitVariable: 'Variable to Fit',
                 fitGraph: 'Reference Graph',
                 dataToFit: 'DATA TO FIT:',
@@ -3550,6 +3553,7 @@
                 fitPower: 'Potência (y = a·x^b)',
                 fitLogarithmic: 'Logarítmico (y = a·ln(x) + b)',
                 fitInverse: 'Inverso (y = a/x + b)',
+                fitSinusoidal: 'Sinusoidal (y = A·sin(ωx + φ) + C)',
                 fitVariable: 'Variável a Ajustar',
                 fitGraph: 'Gráfico de Referência',
                 dataToFit: 'DADOS A AJUSTAR:',
@@ -3920,6 +3924,7 @@
                 fitTypeSelect.options[4].textContent = t.fitPower;
                 fitTypeSelect.options[5].textContent = t.fitLogarithmic;
                 fitTypeSelect.options[6].textContent = t.fitInverse;
+                fitTypeSelect.options[7].textContent = t.fitSinusoidal;
             }
 
             // Info boxes
@@ -7172,6 +7177,9 @@ basic.forever(function () {
                 case 'inverse':
                     // y = a/x + b
                     return (x) => coeffs[0] / x + coeffs[1];
+                case 'sinusoidal':
+                    // y = A·sin(ωx + φ) + C
+                    return (x) => coeffs[0] * Math.sin(coeffs[1] * x + coeffs[2]) + coeffs[3];
                 default:
                     return (x) => 0;
             }
@@ -7360,6 +7368,145 @@ basic.forever(function () {
             return { coeffs: [a, b], equation, r2, predict };
         }
 
+        function fitSinusoidal(xData, yData) {
+            // y = A·sin(ωx + φ) + C
+            // Estrategia: para ω fijo, el modelo se linealiza como
+            // y = α·sin(ωx) + β·cos(ωx) + C  donde A = sqrt(α²+β²), φ = atan2(β,α)
+            // Se hace una búsqueda en grilla logarítmica sobre ω y se refina con golden section.
+            console.log('=== AJUSTE SINUSOIDAL ===');
+
+            if (xData.length < 4) {
+                throw new Error('Se necesitan al menos 4 puntos para el ajuste sinusoidal');
+            }
+
+            const n = xData.length;
+            const xMin = Math.min(...xData);
+            const xMax = Math.max(...xData);
+            const xRange = xMax - xMin;
+
+            // Para ω dado, resuelve por mínimos cuadrados el sistema lineal
+            // [sin(ωx), cos(ωx), 1] * [α, β, C]^T = y
+            // Devuelve { A, omega, phi, C, r2 } o null si el sistema es singular.
+            function linearFitForOmega(omega) {
+                let s11 = 0, s12 = 0, s13 = 0, s22 = 0, s23 = 0;
+                let r1 = 0, r2 = 0, r3 = 0;
+
+                for (let i = 0; i < n; i++) {
+                    const si = Math.sin(omega * xData[i]);
+                    const ci = Math.cos(omega * xData[i]);
+                    const yi = yData[i];
+                    s11 += si * si;
+                    s12 += si * ci;
+                    s13 += si;
+                    s22 += ci * ci;
+                    s23 += ci;
+                    r1 += si * yi;
+                    r2 += ci * yi;
+                    r3 += yi;
+                }
+
+                // Sistema 3×3 con eliminación gaussiana con pivoteo parcial
+                const M = [
+                    [s11, s12, s13, r1],
+                    [s12, s22, s23, r2],
+                    [s13, s23,   n, r3]
+                ];
+
+                for (let col = 0; col < 3; col++) {
+                    let maxRow = col;
+                    for (let row = col + 1; row < 3; row++) {
+                        if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
+                    }
+                    [M[col], M[maxRow]] = [M[maxRow], M[col]];
+                    if (Math.abs(M[col][col]) < 1e-12) return null;
+                    for (let row = col + 1; row < 3; row++) {
+                        const f = M[row][col] / M[col][col];
+                        for (let k = col; k <= 3; k++) M[row][k] -= f * M[col][k];
+                    }
+                }
+
+                const sol = [0, 0, 0];
+                for (let i = 2; i >= 0; i--) {
+                    sol[i] = M[i][3];
+                    for (let j = i + 1; j < 3; j++) sol[i] -= M[i][j] * sol[j];
+                    sol[i] /= M[i][i];
+                }
+
+                const alpha = sol[0];
+                const beta  = sol[1];
+                const C     = sol[2];
+                const A     = Math.sqrt(alpha * alpha + beta * beta);
+                const phi   = Math.atan2(beta, alpha);
+
+                // Calcular R²
+                const yMean = r3 / n;
+                let ssRes = 0, ssTot = 0;
+                for (let i = 0; i < n; i++) {
+                    const pred = A * Math.sin(omega * xData[i] + phi) + C;
+                    ssRes += Math.pow(yData[i] - pred, 2);
+                    ssTot += Math.pow(yData[i] - yMean, 2);
+                }
+                const r2val = ssTot > 0 ? 1 - ssRes / ssTot : 0;
+
+                return { A, omega, phi, C, r2: r2val };
+            }
+
+            // Búsqueda en grilla logarítmica: de 0.5 a n/2 ciclos en el rango de datos
+            const omegaMin = xRange > 0 ? 2 * Math.PI * 0.5 / xRange : 0.1;
+            const omegaMax = xRange > 0 ? 2 * Math.PI * (n / 2) / xRange : Math.PI * n;
+            const steps = 300;
+            let bestResult = null;
+            let bestR2 = -Infinity;
+
+            for (let i = 0; i <= steps; i++) {
+                const omega = omegaMin * Math.pow(omegaMax / omegaMin, i / steps);
+                const res = linearFitForOmega(omega);
+                if (res && res.r2 > bestR2) { bestR2 = res.r2; bestResult = res; }
+            }
+
+            if (!bestResult) {
+                throw new Error('No se pudo realizar el ajuste sinusoidal');
+            }
+
+            // Refinamiento con golden section search alrededor del mejor ω
+            const gr = (Math.sqrt(5) - 1) / 2;
+            let lo = bestResult.omega * 0.85;
+            let hi = bestResult.omega * 1.15;
+            for (let iter = 0; iter < 80; iter++) {
+                const w1 = hi - gr * (hi - lo);
+                const w2 = lo + gr * (hi - lo);
+                const r1 = linearFitForOmega(w1);
+                const r2 = linearFitForOmega(w2);
+                if (!r1 || !r2) break;
+                if (r1.r2 >= r2.r2) {
+                    hi = w2;
+                    if (r1.r2 > bestR2) { bestR2 = r1.r2; bestResult = r1; }
+                } else {
+                    lo = w1;
+                    if (r2.r2 > bestR2) { bestR2 = r2.r2; bestResult = r2; }
+                }
+                if (hi - lo < 1e-10) break;
+            }
+
+            let { A, omega: omegaFinal, phi, C } = bestResult;
+
+            // Asegurar A positivo y normalizar φ al rango [-π, π]
+            if (A < 0) { A = -A; phi += Math.PI; }
+            phi = ((phi % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+
+            const predict = (x) => A * Math.sin(omegaFinal * x + phi) + C;
+            const r2 = calculateR2(xData, yData, predict);
+
+            const phiSign = phi >= 0 ? '+' : '';
+            const CSign   = C   >= 0 ? '+' : '';
+            const equation = `y = ${A.toFixed(4)}·sin(${omegaFinal.toFixed(4)}x ${phiSign} ${phi.toFixed(4)}) ${CSign} ${C.toFixed(4)}`;
+
+            console.log('Coeficientes: A =', A, 'ω =', omegaFinal, 'φ =', phi, 'C =', C);
+            console.log('R² =', r2);
+
+            return { coeffs: [A, omegaFinal, phi, C], equation, r2, predict };
+        }
+
         // Función principal para realizar ajuste
         function performCurveFit(fitType, xData, yData) {
             if (xData.length < 2 || yData.length < 2 || xData.length !== yData.length) {
@@ -7388,6 +7535,9 @@ basic.forever(function () {
                     break;
                 case 'inverse':
                     result = fitInverse(xData, yData);
+                    break;
+                case 'sinusoidal':
+                    result = fitSinusoidal(xData, yData);
                     break;
                 default:
                     throw new Error('Tipo de ajuste no reconocido');
