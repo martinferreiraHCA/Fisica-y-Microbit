@@ -2954,6 +2954,23 @@
         </div>
     </div>
 
+    <!-- Modal de guía Bluetooth para Windows -->
+    <div class="modal" id="btWindowsModal">
+        <div class="modal-content" style="max-width: 540px;">
+            <div class="modal-header" id="btWindowsTitle">BLUETOOTH EN WINDOWS</div>
+            <div style="margin-bottom:12px; font-size:13px; color:#c62828; font-weight:bold;" id="btWindowsWarning">
+                ⚠ IMPORTANTE: el micro:bit NO debe estar vinculado en Windows
+            </div>
+            <div id="btWindowsContent">
+                <!-- Steps rendered by JS -->
+            </div>
+            <div style="margin-top:14px; display:flex; gap:8px;">
+                <button class="toolbar-btn" onclick="closeBtWindowsModal()" style="flex:1;" id="btWindowsCancelBtn">CANCELAR</button>
+                <button class="toolbar-btn primary bluetooth" onclick="proceedBtWindowsConnect()" style="flex:1;" id="btWindowsConnectBtn">CONECTAR</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de ayuda básica -->
     <div class="modal" id="helpModal">
         <div class="modal-content help-modal">
@@ -3301,6 +3318,15 @@
                 btPairingStep3: 'Presioná <b>CONECTAR</b> y seleccioná tu micro:bit (<b>"BBC micro:bit"</b>) en la ventana del navegador.',
                 btPairingCancel: 'CANCELAR',
                 btPairingConnect: 'CONECTAR',
+                // Windows Bluetooth guide
+                btWindowsTitle: 'BLUETOOTH EN WINDOWS',
+                btWindowsWarning: '⚠ IMPORTANTE: el micro:bit NO debe estar vinculado en Windows',
+                btWindowsStep1: 'Abrí <b>Configuración → Bluetooth y dispositivos</b>. Si ves <b>"BBC micro:bit"</b> en la lista, hacé clic en los tres puntos (···) y elegí <b>"Quitar dispositivo"</b>.',
+                btWindowsStep2: 'En tu programa MakeCode verificá que <b>Project Settings → "No Pairing Required"</b> esté activado.',
+                btWindowsStep3: 'Presioná el botón <b>RESET</b> en la parte de atrás del micro:bit para reiniciarlo.',
+                btWindowsStep4: 'Presioná <b>CONECTAR</b> abajo y seleccioná tu micro:bit en la ventana del navegador.',
+                btWindowsCancel: 'CANCELAR',
+                btWindowsConnect: 'YA ESTÁ LISTO — CONECTAR',
                 // View switcher
                 viewSplit: 'SPLIT',
                 viewGraph: 'GRÁFICA',
@@ -3476,6 +3502,15 @@
                 btPairingStep3: 'Press <b>CONNECT</b> and select your micro:bit (<b>"BBC micro:bit"</b>) from the browser popup.',
                 btPairingCancel: 'CANCEL',
                 btPairingConnect: 'CONNECT',
+                // Windows Bluetooth guide
+                btWindowsTitle: 'BLUETOOTH ON WINDOWS',
+                btWindowsWarning: '⚠ IMPORTANT: the micro:bit must NOT be paired in Windows',
+                btWindowsStep1: 'Open <b>Settings → Bluetooth & devices</b>. If you see <b>"BBC micro:bit"</b> in the list, click the three dots (···) and choose <b>"Remove device"</b>.',
+                btWindowsStep2: 'In your MakeCode program, check that <b>Project Settings → "No Pairing Required"</b> is enabled.',
+                btWindowsStep3: 'Press the <b>RESET</b> button on the back of the micro:bit to restart it.',
+                btWindowsStep4: 'Press <b>CONNECT</b> below and select your micro:bit from the browser popup.',
+                btWindowsCancel: 'CANCEL',
+                btWindowsConnect: 'ALL SET — CONNECT',
                 // View switcher
                 viewSplit: 'SPLIT',
                 viewGraph: 'GRAPH',
@@ -3651,6 +3686,15 @@
                 btPairingStep3: 'Pressione <b>CONECTAR</b> e selecione seu micro:bit (<b>"BBC micro:bit"</b>) na janela do navegador.',
                 btPairingCancel: 'CANCELAR',
                 btPairingConnect: 'CONECTAR',
+                // Windows Bluetooth guide
+                btWindowsTitle: 'BLUETOOTH NO WINDOWS',
+                btWindowsWarning: '⚠ IMPORTANTE: o micro:bit NÃO deve estar vinculado no Windows',
+                btWindowsStep1: 'Abra <b>Configurações → Bluetooth e dispositivos</b>. Se ver <b>"BBC micro:bit"</b> na lista, clique nos três pontos (···) e escolha <b>"Remover dispositivo"</b>.',
+                btWindowsStep2: 'No seu programa MakeCode, verifique que <b>Project Settings → "No Pairing Required"</b> esteja ativado.',
+                btWindowsStep3: 'Pressione o botão <b>RESET</b> na parte de trás do micro:bit para reiniciá-lo.',
+                btWindowsStep4: 'Pressione <b>CONECTAR</b> abaixo e selecione seu micro:bit na janela do navegador.',
+                btWindowsCancel: 'CANCELAR',
+                btWindowsConnect: 'TUDO PRONTO — CONECTAR',
                 // View switcher
                 viewSplit: 'SPLIT',
                 viewGraph: 'GRÁFICO',
@@ -5973,6 +6017,35 @@ basic.forever(function () {
             await connectBluetooth();
         }
 
+        // ========== GUÍA BLUETOOTH WINDOWS ==========
+        function renderBtWindowsModal() {
+            const t = translations[currentLanguage];
+            document.getElementById('btWindowsTitle').textContent   = t.btWindowsTitle;
+            document.getElementById('btWindowsWarning').textContent = t.btWindowsWarning;
+            document.getElementById('btWindowsCancelBtn').textContent  = t.btWindowsCancel;
+            document.getElementById('btWindowsConnectBtn').textContent = t.btWindowsConnect;
+
+            const steps = [t.btWindowsStep1, t.btWindowsStep2, t.btWindowsStep3, t.btWindowsStep4];
+            let html = '';
+            for (let i = 0; i < steps.length; i++) {
+                html += `<div class="bt-pairing-step">
+                    <div class="bt-pairing-step-num">${i + 1}</div>
+                    <div>${steps[i]}</div>
+                </div>`;
+            }
+            document.getElementById('btWindowsContent').innerHTML = html;
+            document.getElementById('btWindowsModal').classList.add('active');
+        }
+
+        function closeBtWindowsModal() {
+            document.getElementById('btWindowsModal').classList.remove('active');
+        }
+
+        async function proceedBtWindowsConnect() {
+            closeBtWindowsModal();
+            await connectBluetooth();
+        }
+
         // ========== CONEXIÓN BLUETOOTH ==========
         // micro:bit UART Service UUIDs (Nordic UART Service)
         const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
@@ -5997,41 +6070,68 @@ basic.forever(function () {
                     : 'Web Bluetooth API not supported. Use Chrome or Edge on desktop/Android.');
                 return;
             }
-            // En desktop: conectar directo (el picker del navegador ya es suficiente guía)
-            // En mobile: mostrar modal con instrucciones de pairing
+            // Mobile: modal con pasos de pairing
+            // Windows: modal específico (advertencia de desvinculación)
+            // Otros desktop: conexión directa
             if (isMobileBrowser) {
                 renderBtPairingModal();
+            } else if (/Windows/i.test(navigator.userAgent)) {
+                renderBtWindowsModal();
             } else {
                 connectBluetooth();
             }
         });
 
         async function connectBluetooth() {
-            // Fase 1: Seleccionar dispositivo (NotFoundError aquí = usuario canceló)
+            const isWindows = /Windows/i.test(navigator.userAgent);
+
+            // Fase 1: Seleccionar dispositivo
+            // En Windows usamos acceptAllDevices directamente: evita que el OS intercepte
+            // el filtro por nombre cuando el dispositivo estuvo vinculado previamente.
             let device;
             try {
                 console.log('[BT] ── Iniciando conexión Bluetooth ──');
-                console.log('[BT] Mobile:', isMobileBrowser);
-                console.log('[BT] Solicitando dispositivo con filtros: BBC micro:bit, uBit');
-                try {
-                    device = await navigator.bluetooth.requestDevice({
-                        filters: [
-                            { namePrefix: 'BBC micro:bit' },
-                            { namePrefix: 'uBit' }
-                        ],
-                        optionalServices: [UART_SERVICE_UUID]
-                    });
-                } catch (filterErr) {
-                    // Si los filtros fallan, intentar con acceptAllDevices (mobile y Windows)
-                    const isWindows = /Windows/i.test(navigator.userAgent);
-                    if (filterErr.name !== 'NotFoundError' && (isMobileBrowser || isWindows)) {
-                        console.log('[BT] Filtros fallaron, reintentando con acceptAllDevices...');
+                console.log('[BT] Mobile:', isMobileBrowser, '| Windows:', isWindows);
+
+                if (isWindows) {
+                    // Windows: acceptAllDevices evita problemas de caché OS con filtros de nombre
+                    console.log('[BT] Windows detectado — usando acceptAllDevices para evitar caché OS');
+                    try {
+                        device = await navigator.bluetooth.requestDevice({
+                            filters: [
+                                { namePrefix: 'BBC micro:bit' },
+                                { namePrefix: 'uBit' }
+                            ],
+                            optionalServices: [UART_SERVICE_UUID]
+                        });
+                    } catch (filterErr) {
+                        if (filterErr.name === 'NotFoundError') throw filterErr;
+                        console.log('[BT] Windows: filtros fallaron, usando acceptAllDevices...');
                         device = await navigator.bluetooth.requestDevice({
                             acceptAllDevices: true,
                             optionalServices: [UART_SERVICE_UUID]
                         });
-                    } else {
-                        throw filterErr;
+                    }
+                } else {
+                    console.log('[BT] Solicitando dispositivo con filtros: BBC micro:bit, uBit');
+                    try {
+                        device = await navigator.bluetooth.requestDevice({
+                            filters: [
+                                { namePrefix: 'BBC micro:bit' },
+                                { namePrefix: 'uBit' }
+                            ],
+                            optionalServices: [UART_SERVICE_UUID]
+                        });
+                    } catch (filterErr) {
+                        if (filterErr.name !== 'NotFoundError' && isMobileBrowser) {
+                            console.log('[BT] Filtros fallaron, reintentando con acceptAllDevices...');
+                            device = await navigator.bluetooth.requestDevice({
+                                acceptAllDevices: true,
+                                optionalServices: [UART_SERVICE_UUID]
+                            });
+                        } else {
+                            throw filterErr;
+                        }
                     }
                 }
                 console.log('[BT] Dispositivo seleccionado:', device.name, '| ID:', device.id);
@@ -6053,44 +6153,52 @@ basic.forever(function () {
                 let service = null;
                 let txChar = null;
 
-                const isWindows = /Windows/i.test(navigator.userAgent);
-
-                // Función auxiliar: conectar GATT y buscar servicio UART
+                // En Windows el BLE stack necesita más tiempo para service discovery
+                // y a veces getPrimaryServices() devuelve vacío en el primer intento.
                 async function tryConnectAndDiscover(dev, label) {
                     console.log(`[BT] ${label} — Conectando a GATT server...`);
                     const srv = await dev.gatt.connect();
                     console.log(`[BT] ${label} — GATT connected:`, srv.connected);
 
-                    // Windows BLE stack necesita más tiempo para service discovery
-                    const sdWait = isMobileBrowser ? 3000 : isWindows ? 3000 : 1500;
-                    console.log(`[BT] ${label} — Esperando ${sdWait}ms para service discovery (mobile: ${isMobileBrowser}, windows: ${isWindows})...`);
+                    // Tiempos ajustados por plataforma
+                    const sdWait = isMobileBrowser ? 3000 : isWindows ? 5000 : 1500;
+                    console.log(`[BT] ${label} — Esperando ${sdWait}ms para service discovery...`);
                     await new Promise(r => setTimeout(r, sdWait));
 
                     if (!dev.gatt.connected) {
                         throw new Error('GATT se desconectó durante service discovery');
                     }
 
-                    // Enumerar TODOS los servicios disponibles para diagnóstico
-                    console.log(`[BT] ${label} — Enumerando todos los servicios disponibles...`);
+                    // En Windows: reintentar getPrimaryServices() hasta 3 veces
+                    // (el stack BLE devuelve lista vacía en el primer intento con frecuencia)
+                    const getPrimaryServicesMaxTries = isWindows ? 3 : 1;
                     let allServices = [];
-                    try {
-                        allServices = await srv.getPrimaryServices();
-                        console.log(`[BT] ${label} — Servicios encontrados: ${allServices.length}`);
-                        for (const svc of allServices) {
-                            console.log(`[BT]   Servicio: ${svc.uuid}`);
+                    for (let t = 1; t <= getPrimaryServicesMaxTries; t++) {
+                        try {
+                            allServices = await srv.getPrimaryServices();
+                            console.log(`[BT] ${label} — getPrimaryServices intento ${t}: ${allServices.length} servicios`);
+                            if (allServices.length > 0) break;
+                            if (t < getPrimaryServicesMaxTries) {
+                                console.log(`[BT] ${label} — Lista vacía, reintentando en 2000ms...`);
+                                await new Promise(r => setTimeout(r, 2000));
+                            }
+                        } catch (enumErr) {
+                            console.warn(`[BT] ${label} — getPrimaryServices() intento ${t} falló:`, enumErr.message);
+                            if (t < getPrimaryServicesMaxTries) await new Promise(r => setTimeout(r, 2000));
                         }
-                    } catch (enumErr) {
-                        console.warn(`[BT] ${label} — getPrimaryServices() falló:`, enumErr.message);
+                    }
+                    for (const svc of allServices) {
+                        console.log(`[BT]   Servicio: ${svc.uuid}`);
                     }
 
-                    // Buscar UART en la lista de servicios enumerados
+                    // Buscar UART en lista enumerada
                     const uartSvc = allServices.find(s => s.uuid === UART_SERVICE_UUID);
                     if (uartSvc) {
                         console.log(`[BT] ${label} — ✓ Servicio UART encontrado via getPrimaryServices()`);
                         return { server: srv, service: uartSvc };
                     }
 
-                    // Intento directo por UUID
+                    // Intento directo por UUID como fallback
                     console.log(`[BT] ${label} — Buscando servicio UART directo:`, UART_SERVICE_UUID);
                     const uartService = await srv.getPrimaryService(UART_SERVICE_UUID);
                     console.log(`[BT] ${label} — ✓ Servicio UART encontrado`);
@@ -6101,14 +6209,18 @@ basic.forever(function () {
                 let found = false;
                 let lastError = null;
 
-                // ── Fase A: intentos directos (3 en mobile/Windows, 2 en otros desktop) ──
-                const maxAttempts = (isMobileBrowser || isWindows) ? 3 : 2;
+                // ── Fase A: intentos directos ──
+                // Windows: 4 intentos con esperas largas
+                // Mobile: 3 intentos
+                // Otros: 2 intentos
+                const maxAttempts = isWindows ? 4 : isMobileBrowser ? 3 : 2;
                 for (let attempt = 1; attempt <= maxAttempts && !found; attempt++) {
                     try {
                         statusEl.textContent = `Conectando... intento ${attempt}/${maxAttempts}`;
                         if (attempt > 1) {
                             if (device.gatt.connected) device.gatt.disconnect();
-                            const retryWait = isMobileBrowser ? 2500 : isWindows ? 2500 : 1500;
+                            const retryWait = isWindows ? 4000 : isMobileBrowser ? 2500 : 1500;
+                            console.log(`[BT] ── Reintentando en ${retryWait}ms ──`);
                             await new Promise(r => setTimeout(r, retryWait));
                         }
                         const result = await tryConnectAndDiscover(device, `Intento ${attempt}`);
@@ -6125,34 +6237,29 @@ basic.forever(function () {
                 if (!found) {
                     if (device.gatt.connected) device.gatt.disconnect();
                     console.log('[BT] ── Fase B: limpiando cache BLE ──');
-                    console.log('[BT] device.forget disponible:', typeof device.forget);
 
                     if (typeof device.forget === 'function') {
                         try {
                             statusEl.textContent = 'Limpiando cache BLE... seleccioná el micro:bit de nuevo';
-                            console.log('[BT] Ejecutando device.forget()...');
                             await device.forget();
                             console.log('[BT] ✓ device.forget() completado');
-                            await new Promise(r => setTimeout(r, 1000));
+                            await new Promise(r => setTimeout(r, isWindows ? 2000 : 1000));
 
-                            // Re-solicitar — abre el picker de nuevo automáticamente
-                            console.log('[BT] Re-solicitando dispositivo...');
-                            device = await navigator.bluetooth.requestDevice({
-                                filters: [
-                                    { namePrefix: 'BBC micro:bit' },
-                                    { namePrefix: 'uBit' }
-                                ],
-                                optionalServices: [UART_SERVICE_UUID]
-                            });
-                            console.log('[BT] Nuevo dispositivo seleccionado:', device.name, '| ID:', device.id);
+                            // Re-solicitar dispositivo
+                            device = await navigator.bluetooth.requestDevice(
+                                isWindows
+                                    ? { acceptAllDevices: true, optionalServices: [UART_SERVICE_UUID] }
+                                    : { filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }], optionalServices: [UART_SERVICE_UUID] }
+                            );
+                            console.log('[BT] Nuevo dispositivo:', device.name, '| ID:', device.id);
                             statusEl.textContent = 'Reconectando a ' + (device.name || 'micro:bit') + '...';
 
-                            // 2 intentos con dispositivo fresco
-                            for (let retry = 1; retry <= 2 && !found; retry++) {
+                            const postForgetAttempts = isWindows ? 3 : 2;
+                            for (let retry = 1; retry <= postForgetAttempts && !found; retry++) {
                                 try {
                                     if (retry > 1) {
                                         if (device.gatt.connected) device.gatt.disconnect();
-                                        const retryWait = isMobileBrowser ? 3000 : 2000;
+                                        const retryWait = isWindows ? 4000 : isMobileBrowser ? 3000 : 2000;
                                         await new Promise(r => setTimeout(r, retryWait));
                                     }
                                     const result = await tryConnectAndDiscover(device, `Post-forget ${retry}`);
@@ -6165,6 +6272,10 @@ basic.forever(function () {
                                 }
                             }
                         } catch (forgetErr) {
+                            if (forgetErr.name === 'NotFoundError') {
+                                console.log('[BT] Usuario canceló el re-selector');
+                                return;
+                            }
                             console.warn('[BT] ✗ Error en fase forget:', forgetErr.name, forgetErr.message);
                             lastError = forgetErr;
                         }
@@ -6173,53 +6284,39 @@ basic.forever(function () {
                     }
                 }
 
-                // ── Fase C: si todo falló, dar instrucciones claras ──
+                // ── Fase C: si todo falló, mostrar modal de ayuda ──
                 if (!found) {
                     console.error('[BT] ✗ Todos los intentos fallaron. Último error:', lastError?.message);
-                    const isMac = navigator.platform.indexOf('Mac') >= 0;
-                    const isAndroid = /Android/i.test(navigator.userAgent);
-                    let msg = 'No se encontraron servicios BLE en el micro:bit.\n\n';
-                    if (isAndroid) {
-                        msg += 'En Android, verificá lo siguiente:\n\n';
-                        msg += '1. Bluetooth y Ubicación activados en tu teléfono\n';
-                        msg += '2. En Ajustes → Apps → Chrome → Permisos: activá "Ubicación" y "Dispositivos cercanos"\n';
-                        msg += '3. Desvinculá el micro:bit de Ajustes → Bluetooth si aparece vinculado\n';
-                        msg += '4. Reseteá el micro:bit (botón de atrás)\n';
-                        msg += '5. Volvé a conectar desde esta página\n';
-                    } else if (isMac) {
-                        msg += 'macOS tiene el micro:bit cacheado. Solución (una sola vez):\n\n';
-                        msg += '1. Abrí Configuración del Sistema → Bluetooth\n';
-                        msg += '2. Buscá "BBC micro:bit" en la lista\n';
-                        msg += '3. Hacé clic en (i) y elegí "Olvidar este dispositivo"\n';
-                        msg += '4. Resetear el micro:bit (botón de atrás)\n';
-                        msg += '5. Volvé a conectar desde esta página\n\n';
-                        msg += 'Después de esto, no vas a tener que hacerlo de nuevo.';
-                    } else if (isMobileBrowser) {
-                        msg += 'En tu celular, verificá:\n\n';
-                        msg += '1. Bluetooth activado\n';
-                        msg += '2. Permisos de Bluetooth otorgados al navegador\n';
-                        msg += '3. El micro:bit esté encendido y cerca\n';
-                        msg += '4. Reseteá el micro:bit (botón de atrás)\n';
-                        msg += '5. Si está vinculado al sistema, desvinculalo primero\n';
-                    } else if (isWindows) {
-                        msg += 'En Windows, seguí estos pasos:\n\n';
-                        msg += '1. Abrí Configuración de Windows → Bluetooth y dispositivos\n';
-                        msg += '2. Si "BBC micro:bit" aparece vinculado, hacé clic en "Quitar dispositivo"\n';
-                        msg += '3. En Chrome, andá a chrome://bluetooth-internals → Devices → Inspect\n';
-                        msg += '   y si ves el micro:bit, hacé clic en "Forget"\n';
-                        msg += '4. Reseteá el micro:bit (botón de atrás)\n';
-                        msg += '5. Verificá que tu programa MakeCode tenga "bluetooth uart service"\n';
-                        msg += '6. Volvé a conectar desde esta página\n\n';
-                        msg += 'IMPORTANTE: El micro:bit NO debe estar vinculado en Windows.\n';
-                        msg += 'Web Bluetooth necesita que esté SIN vincular.';
+                    if (isWindows) {
+                        // Mostrar de nuevo el modal de Windows con instrucciones claras
+                        renderBtWindowsModal();
                     } else {
-                        msg += 'Probá resetear el micro:bit (botón de atrás) y volvé a conectar.\n\n';
-                        msg += 'Si el problema persiste:\n';
-                        msg += '1. Desvinculá el micro:bit de la configuración Bluetooth del sistema\n';
-                        msg += '2. Verificá que tu programa MakeCode tenga "bluetooth uart service"\n';
-                        msg += '3. Reiniciá el navegador';
+                        const isMac = navigator.platform.indexOf('Mac') >= 0;
+                        const isAndroid = /Android/i.test(navigator.userAgent);
+                        let msg = 'No se encontraron servicios BLE en el micro:bit.\n\n';
+                        if (isAndroid) {
+                            msg += '1. Bluetooth y Ubicación activados\n';
+                            msg += '2. Permisos de Bluetooth otorgados al navegador\n';
+                            msg += '3. Desvinculá el micro:bit del sistema si aparece vinculado\n';
+                            msg += '4. Reseteá el micro:bit (botón de atrás)\n';
+                        } else if (isMac) {
+                            msg += 'macOS tiene el micro:bit cacheado:\n\n';
+                            msg += '1. Configuración del Sistema → Bluetooth\n';
+                            msg += '2. Clic en (i) junto a "BBC micro:bit" → Olvidar dispositivo\n';
+                            msg += '3. Resetear el micro:bit\n';
+                            msg += '4. Volvé a conectar desde esta página\n';
+                        } else if (isMobileBrowser) {
+                            msg += '1. Bluetooth activado\n';
+                            msg += '2. Permisos de Bluetooth otorgados al navegador\n';
+                            msg += '3. Desvinculá el micro:bit del sistema\n';
+                            msg += '4. Reseteá el micro:bit (botón de atrás)\n';
+                        } else {
+                            msg += '1. Desvinculá el micro:bit de la configuración Bluetooth del sistema\n';
+                            msg += '2. Verificá que tu programa MakeCode tenga "bluetooth uart service"\n';
+                            msg += '3. Reseteá el micro:bit y volvé a intentar\n';
+                        }
+                        alert(msg);
                     }
-                    alert(msg);
                     return;
                 }
 
@@ -6267,19 +6364,36 @@ basic.forever(function () {
                     const t = translations[currentLanguage];
                     document.getElementById('statusText').textContent = t.reconnecting || 'Reconectando...';
 
-                    const maxReconnect = (isMobileBrowser || isWindows) ? 5 : 3;
+                    const maxReconnect = isWindows ? 6 : isMobileBrowser ? 5 : 3;
                     for (let attempt = 1; attempt <= maxReconnect; attempt++) {
                         try {
-                            const waitMs = (isMobileBrowser || isWindows) ? 2000 * attempt : 1000 * attempt;
+                            const waitMs = isWindows ? 3000 * attempt : isMobileBrowser ? 2000 * attempt : 1000 * attempt;
                             console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — esperando ${waitMs}ms...`);
                             await new Promise(r => setTimeout(r, waitMs));
                             console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — conectando GATT...`);
                             const srv = await device.gatt.connect();
-                            // Esperar service discovery (Windows necesita más tiempo)
-                            const sdWait = isWindows ? 2500 : 1000;
+                            // Windows necesita más tiempo para re-descubrir servicios
+                            const sdWait = isWindows ? 5000 : isMobileBrowser ? 3000 : 1000;
+                            console.log(`[BT] Reconexión — esperando ${sdWait}ms para service discovery...`);
                             await new Promise(r => setTimeout(r, sdWait));
-                            console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — GATT conectado, buscando servicio...`);
-                            const svc = await srv.getPrimaryService(UART_SERVICE_UUID);
+                            console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — buscando servicio UART...`);
+
+                            // En Windows: intentar getPrimaryServices() con retry antes de getPrimaryService()
+                            let svc = null;
+                            if (isWindows) {
+                                const tries = 3;
+                                for (let t2 = 1; t2 <= tries && !svc; t2++) {
+                                    try {
+                                        const svcs = await srv.getPrimaryServices();
+                                        svc = svcs.find(s => s.uuid === UART_SERVICE_UUID) || null;
+                                        if (!svc && t2 < tries) await new Promise(r => setTimeout(r, 2000));
+                                    } catch (e2) {
+                                        if (t2 < tries) await new Promise(r => setTimeout(r, 2000));
+                                    }
+                                }
+                            }
+                            if (!svc) svc = await srv.getPrimaryService(UART_SERVICE_UUID);
+
                             const chars = await svc.getCharacteristics();
                             const tx = chars.find(c => c.properties.notify || c.properties.indicate);
                             if (!tx) throw new Error('TX characteristic not found');
@@ -9501,9 +9615,11 @@ basic.forever(function () {
                 if (expInfo) expInfo.textContent = 'BT OK';
                 return;
             }
-            // Desktop: directo. Mobile: modal con instrucciones.
+            // Mobile: modal. Windows: modal. Otros desktop: directo.
             if (isMobileBrowser) {
                 renderBtPairingModal();
+            } else if (/Windows/i.test(navigator.userAgent)) {
+                renderBtWindowsModal();
             } else {
                 connectBluetooth();
             }
