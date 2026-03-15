@@ -6046,471 +6046,429 @@ basic.forever(function () {
             await connectBluetooth();
         }
 
-        // ========== CONEXIÓN BLUETOOTH ==========
-        // micro:bit UART Service UUIDs (Nordic UART Service)
-        const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-        const UART_TX_CHAR_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // micro:bit TX (nosotros leemos)
-        const UART_RX_CHAR_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // micro:bit RX (nosotros escribimos)
+        // ========== CONEXIÓN BLUETOOTH ROBUSTA ==========
+        // Basado en microbit-web-bluetooth (thegecko) + mejoras de robustez
+        // Soporta: UART (CSV desde MakeCode) + lectura directa de sensores BLE
 
-        let btBuffer = '';
-        let btLoopRunning = false;
+        // ── UUIDs de servicios BLE del micro:bit ──
+        const BLE_UUIDS = {
+            // Nordic UART Service
+            UART_SERVICE:  '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+            UART_TX:       '6e400002-b5a3-f393-e0a9-e50e24dcca9e', // micro:bit RX (nosotros escribimos)
+            UART_RX:       '6e400003-b5a3-f393-e0a9-e50e24dcca9e', // micro:bit TX (nosotros leemos)
+            // Acelerómetro
+            ACCEL_SERVICE: 'e95d0753-251d-470a-a062-fa1922dfa9a8',
+            ACCEL_DATA:    'e95dca4b-251d-470a-a062-fa1922dfa9a8',
+            ACCEL_PERIOD:  'e95dfb24-251d-470a-a062-fa1922dfa9a8',
+            // Temperatura
+            TEMP_SERVICE:  'e95d6100-251d-470a-a062-fa1922dfa9a8',
+            TEMP_DATA:     'e95d9250-251d-470a-a062-fa1922dfa9a8',
+            TEMP_PERIOD:   'e95d1b25-251d-470a-a062-fa1922dfa9a8',
+            // Magnetómetro
+            MAG_SERVICE:   'e95df2d8-251d-470a-a062-fa1922dfa9a8',
+            MAG_DATA:      'e95dfb11-251d-470a-a062-fa1922dfa9a8',
+            MAG_PERIOD:    'e95d386c-251d-470a-a062-fa1922dfa9a8',
+            MAG_BEARING:   'e95d9715-251d-470a-a062-fa1922dfa9a8',
+            // Botones
+            BTN_SERVICE:   'e95d9882-251d-470a-a062-fa1922dfa9a8',
+            BTN_A_STATE:   'e95dda90-251d-470a-a062-fa1922dfa9a8',
+            BTN_B_STATE:   'e95dda91-251d-470a-a062-fa1922dfa9a8',
+            // LED
+            LED_SERVICE:   'e95dd91d-251d-470a-a062-fa1922dfa9a8',
+            LED_STATE:     'e95d7b77-251d-470a-a062-fa1922dfa9a8',
+            LED_TEXT:      'e95d93ee-251d-470a-a062-fa1922dfa9a8',
+            LED_SCROLL:    'e95d0d2d-251d-470a-a062-fa1922dfa9a8',
+            // IO Pins
+            IO_PIN_SERVICE:'e95d127b-251d-470a-a062-fa1922dfa9a8',
+            IO_PIN_DATA:   'e95d8d00-251d-470a-a062-fa1922dfa9a8',
+            IO_AD_CONFIG:  'e95d5899-251d-470a-a062-fa1922dfa9a8',
+            IO_PIN_CONFIG: 'e95db9fe-251d-470a-a062-fa1922dfa9a8',
+            // Device Information
+            DEVICE_INFO:   '0000180a-0000-1000-8000-00805f9b34fb'
+        };
 
-        // Detectar mobile para ajustar tiempos BT
+        // Todos los servicios opcionales para requestDevice
+        const ALL_OPTIONAL_SERVICES = [
+            BLE_UUIDS.UART_SERVICE, BLE_UUIDS.ACCEL_SERVICE, BLE_UUIDS.TEMP_SERVICE,
+            BLE_UUIDS.MAG_SERVICE, BLE_UUIDS.BTN_SERVICE, BLE_UUIDS.LED_SERVICE,
+            BLE_UUIDS.IO_PIN_SERVICE, BLE_UUIDS.DEVICE_INFO
+        ];
+
+        // Detección de plataforma
         const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const _isWindows = /Windows/i.test(navigator.userAgent);
+        const _isMac = navigator.platform.indexOf('Mac') >= 0;
+        const _isAndroid = /Android/i.test(navigator.userAgent);
+        const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-        document.getElementById('connectBluetoothBtn').addEventListener('click', () => {
-            console.log('[BT] ── Botón Bluetooth presionado ──');
-            console.log('[BT] navigator.bluetooth disponible:', 'bluetooth' in navigator);
-            console.log('[BT] User Agent:', navigator.userAgent);
-            if (!('bluetooth' in navigator)) {
-                alert(currentLanguage === 'es'
-                    ? 'Web Bluetooth API no soportada. Usa Chrome o Edge en escritorio/Android.'
-                    : currentLanguage === 'pt'
-                    ? 'Web Bluetooth API não suportada. Use Chrome ou Edge no desktop/Android.'
-                    : 'Web Bluetooth API not supported. Use Chrome or Edge on desktop/Android.');
-                return;
-            }
-            // Mobile: modal con pasos de pairing
-            // Windows: modal específico (advertencia de desvinculación)
-            // Otros desktop: conexión directa
-            if (isMobileBrowser) {
-                renderBtPairingModal();
-            } else if (/Windows/i.test(navigator.userAgent)) {
-                renderBtWindowsModal();
-            } else {
-                connectBluetooth();
-            }
-        });
+        // Configuración por plataforma
+        const BT_CONFIG = {
+            get platform() {
+                if (_isWindows) return 'windows';
+                if (isMobileBrowser) return 'mobile';
+                return 'desktop';
+            },
+            // Tiempos de espera para service discovery (ms)
+            get serviceDiscoveryWait() { return _isWindows ? 5000 : isMobileBrowser ? 3000 : 1500; },
+            // Intentos de conexión inicial
+            get maxConnectAttempts() { return _isWindows ? 4 : isMobileBrowser ? 3 : 2; },
+            // Espera entre reintentos de conexión (ms)
+            get connectRetryWait() { return _isWindows ? 4000 : isMobileBrowser ? 2500 : 1500; },
+            // Intentos de getPrimaryServices en Windows
+            get maxServiceEnumRetries() { return _isWindows ? 3 : 1; },
+            // Reconexión automática
+            get maxReconnectAttempts() { return _isWindows ? 8 : isMobileBrowser ? 6 : 4; },
+            get reconnectBaseWait() { return _isWindows ? 2500 : isMobileBrowser ? 2000 : 1000; },
+            get reconnectMaxWait() { return 15000; },
+            // Intentos post-forget
+            get maxPostForgetAttempts() { return _isWindows ? 3 : 2; },
+            get postForgetRetryWait() { return _isWindows ? 4000 : isMobileBrowser ? 3000 : 2000; },
+            // Health monitoring
+            healthCheckInterval: 5000,      // Intervalo de verificación de salud (ms)
+            connectionTimeout: 30000,       // Timeout para conexión completa (ms)
+            notifyStartRetries: 3,          // Reintentos para startNotifications
+        };
 
-        async function connectBluetooth() {
-            const isWindows = /Windows/i.test(navigator.userAgent);
+        // ── Clase principal de conexión BLE robusta ──
+        class MicrobitBluetooth {
+            constructor() {
+                this.device = null;
+                this.server = null;
+                this.services = {};          // {uuid: BluetoothRemoteGATTService}
+                this.characteristics = {};   // {name: BluetoothRemoteGATTCharacteristic}
+                this.connected = false;
+                this.connecting = false;
+                this.reconnecting = false;
+                this.btBuffer = '';
+                this.btLoopRunning = false;
+                this._destroyed = false;
+                this._healthCheckTimer = null;
+                this._lastDataTime = 0;
+                this._reconnectAbort = null;
+                this._disconnectListenerBound = null;
+                this._notificationHandlers = [];  // Para limpiar event listeners
 
-            // Fase 1: Seleccionar dispositivo
-            // En Windows usamos acceptAllDevices directamente: evita que el OS intercepte
-            // el filtro por nombre cuando el dispositivo estuvo vinculado previamente.
-            let device;
-            try {
-                console.log('[BT] ── Iniciando conexión Bluetooth ──');
-                console.log('[BT] Mobile:', isMobileBrowser, '| Windows:', isWindows);
+                // Estadísticas
+                this.stats = { chunks: 0, lines: 0, dataPoints: 0, errors: 0, reconnects: 0, lastLogTime: 0 };
 
-                if (isWindows) {
-                    // Windows: acceptAllDevices evita problemas de caché OS con filtros de nombre
-                    console.log('[BT] Windows detectado — usando acceptAllDevices para evitar caché OS');
-                    try {
-                        device = await navigator.bluetooth.requestDevice({
-                            filters: [
-                                { namePrefix: 'BBC micro:bit' },
-                                { namePrefix: 'uBit' }
-                            ],
-                            optionalServices: [UART_SERVICE_UUID]
-                        });
-                    } catch (filterErr) {
-                        if (filterErr.name === 'NotFoundError') throw filterErr;
-                        console.log('[BT] Windows: filtros fallaron, usando acceptAllDevices...');
-                        device = await navigator.bluetooth.requestDevice({
-                            acceptAllDevices: true,
-                            optionalServices: [UART_SERVICE_UUID]
-                        });
-                    }
-                } else {
-                    console.log('[BT] Solicitando dispositivo con filtros: BBC micro:bit, uBit');
-                    try {
-                        device = await navigator.bluetooth.requestDevice({
-                            filters: [
-                                { namePrefix: 'BBC micro:bit' },
-                                { namePrefix: 'uBit' }
-                            ],
-                            optionalServices: [UART_SERVICE_UUID]
-                        });
-                    } catch (filterErr) {
-                        if (filterErr.name !== 'NotFoundError' && isMobileBrowser) {
-                            console.log('[BT] Filtros fallaron, reintentando con acceptAllDevices...');
-                            device = await navigator.bluetooth.requestDevice({
-                                acceptAllDevices: true,
-                                optionalServices: [UART_SERVICE_UUID]
-                            });
-                        } else {
-                            throw filterErr;
-                        }
-                    }
-                }
-                console.log('[BT] Dispositivo seleccionado:', device.name, '| ID:', device.id);
-            } catch (err) {
-                if (err.name === 'NotFoundError') {
-                    console.log('[BT] Usuario canceló el selector de dispositivos');
-                } else {
-                    console.error('[BT] ✗ Error al solicitar dispositivo:', err.name, err.message);
-                    alert('Error Bluetooth: ' + err.message);
-                }
-                return;
+                // Servicios BLE descubiertos
+                this.availableServices = new Set();
+                // Datos de sensores directos (BLE nativo, no UART)
+                this.sensorData = {
+                    accelerometer: { x: 0, y: 0, z: 0 },
+                    temperature: 0,
+                    magnetometer: { x: 0, y: 0, z: 0, bearing: 0 },
+                    buttonA: 0,
+                    buttonB: 0
+                };
             }
 
-            // Fase 2: Conectar GATT, descubrir servicio y características
-            const statusEl = document.getElementById('statusText');
-            statusEl.textContent = 'Conectando a ' + (device.name || 'micro:bit') + '...';
-            try {
-                let server = null;
-                let service = null;
-                let txChar = null;
+            log(msg, ...args) { console.log('[BT]', msg, ...args); }
+            warn(msg, ...args) { console.warn('[BT]', msg, ...args); }
+            error(msg, ...args) { console.error('[BT]', msg, ...args); }
 
-                // En Windows el BLE stack necesita más tiempo para service discovery
-                // y a veces getPrimaryServices() devuelve vacío en el primer intento.
-                async function tryConnectAndDiscover(dev, label) {
-                    console.log(`[BT] ${label} — Conectando a GATT server...`);
-                    const srv = await dev.gatt.connect();
-                    console.log(`[BT] ${label} — GATT connected:`, srv.connected);
+            // ── Solicitar dispositivo BLE ──
+            async requestDevice() {
+                this.log('Solicitando dispositivo BLE...');
+                this.log('Plataforma:', BT_CONFIG.platform);
 
-                    // Tiempos ajustados por plataforma
-                    const sdWait = isMobileBrowser ? 3000 : isWindows ? 5000 : 1500;
-                    console.log(`[BT] ${label} — Esperando ${sdWait}ms para service discovery...`);
-                    await new Promise(r => setTimeout(r, sdWait));
+                // Estrategia: filtros con nombre primero, fallback a acceptAllDevices
+                const filters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
+                const optionalServices = ALL_OPTIONAL_SERVICES;
 
-                    if (!dev.gatt.connected) {
-                        throw new Error('GATT se desconectó durante service discovery');
+                try {
+                    // Intento con filtros de nombre
+                    this.device = await navigator.bluetooth.requestDevice({ filters, optionalServices });
+                } catch (filterErr) {
+                    if (filterErr.name === 'NotFoundError') throw filterErr;
+                    // Fallback: acceptAllDevices (necesario en Windows con caché BLE y en algunos móviles)
+                    if (_isWindows || isMobileBrowser) {
+                        this.log('Filtros fallaron, usando acceptAllDevices...');
+                        this.device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices });
+                    } else {
+                        throw filterErr;
                     }
-
-                    // En Windows: reintentar getPrimaryServices() hasta 3 veces
-                    // (el stack BLE devuelve lista vacía en el primer intento con frecuencia)
-                    const getPrimaryServicesMaxTries = isWindows ? 3 : 1;
-                    let allServices = [];
-                    for (let t = 1; t <= getPrimaryServicesMaxTries; t++) {
-                        try {
-                            allServices = await srv.getPrimaryServices();
-                            console.log(`[BT] ${label} — getPrimaryServices intento ${t}: ${allServices.length} servicios`);
-                            if (allServices.length > 0) break;
-                            if (t < getPrimaryServicesMaxTries) {
-                                console.log(`[BT] ${label} — Lista vacía, reintentando en 2000ms...`);
-                                await new Promise(r => setTimeout(r, 2000));
-                            }
-                        } catch (enumErr) {
-                            console.warn(`[BT] ${label} — getPrimaryServices() intento ${t} falló:`, enumErr.message);
-                            if (t < getPrimaryServicesMaxTries) await new Promise(r => setTimeout(r, 2000));
-                        }
-                    }
-                    for (const svc of allServices) {
-                        console.log(`[BT]   Servicio: ${svc.uuid}`);
-                    }
-
-                    // Buscar UART en lista enumerada
-                    const uartSvc = allServices.find(s => s.uuid === UART_SERVICE_UUID);
-                    if (uartSvc) {
-                        console.log(`[BT] ${label} — ✓ Servicio UART encontrado via getPrimaryServices()`);
-                        return { server: srv, service: uartSvc };
-                    }
-
-                    // Intento directo por UUID como fallback
-                    console.log(`[BT] ${label} — Buscando servicio UART directo:`, UART_SERVICE_UUID);
-                    const uartService = await srv.getPrimaryService(UART_SERVICE_UUID);
-                    console.log(`[BT] ${label} — ✓ Servicio UART encontrado`);
-                    return { server: srv, service: uartService };
                 }
 
-                // Estrategia de conexión en fases
-                let found = false;
-                let lastError = null;
+                this.log('Dispositivo seleccionado:', this.device.name, '| ID:', this.device.id);
+                return this.device;
+            }
 
-                // ── Fase A: intentos directos ──
-                // Windows: 4 intentos con esperas largas
-                // Mobile: 3 intentos
-                // Otros: 2 intentos
-                const maxAttempts = isWindows ? 4 : isMobileBrowser ? 3 : 2;
-                for (let attempt = 1; attempt <= maxAttempts && !found; attempt++) {
+            // ── Conectar al GATT server y descubrir servicios ──
+            async connectGATT(device, label = 'Conexión') {
+                this.log(`${label} — Conectando a GATT server...`);
+                const srv = await device.gatt.connect();
+                this.log(`${label} — GATT connected:`, srv.connected);
+
+                // Esperar service discovery (el BLE stack necesita tiempo)
+                const sdWait = BT_CONFIG.serviceDiscoveryWait;
+                this.log(`${label} — Esperando ${sdWait}ms para service discovery...`);
+                await this._delay(sdWait);
+
+                if (!device.gatt.connected) {
+                    throw new Error('GATT se desconectó durante service discovery');
+                }
+
+                // Obtener todos los servicios con reintentos
+                let allServices = [];
+                for (let t = 1; t <= BT_CONFIG.maxServiceEnumRetries; t++) {
                     try {
-                        statusEl.textContent = `Conectando... intento ${attempt}/${maxAttempts}`;
-                        if (attempt > 1) {
-                            if (device.gatt.connected) device.gatt.disconnect();
-                            const retryWait = isWindows ? 4000 : isMobileBrowser ? 2500 : 1500;
-                            console.log(`[BT] ── Reintentando en ${retryWait}ms ──`);
-                            await new Promise(r => setTimeout(r, retryWait));
+                        allServices = await srv.getPrimaryServices();
+                        this.log(`${label} — getPrimaryServices intento ${t}: ${allServices.length} servicios`);
+                        if (allServices.length > 0) break;
+                        if (t < BT_CONFIG.maxServiceEnumRetries) {
+                            this.log(`${label} — Lista vacía, reintentando en 2000ms...`);
+                            await this._delay(2000);
                         }
-                        const result = await tryConnectAndDiscover(device, `Intento ${attempt}`);
-                        server = result.server;
-                        service = result.service;
-                        found = true;
+                    } catch (enumErr) {
+                        this.warn(`${label} — getPrimaryServices() intento ${t} falló:`, enumErr.message);
+                        if (t < BT_CONFIG.maxServiceEnumRetries) await this._delay(2000);
+                    }
+                }
+
+                // Indexar servicios descubiertos
+                this.services = {};
+                this.availableServices.clear();
+                for (const svc of allServices) {
+                    this.services[svc.uuid] = svc;
+                    this.availableServices.add(svc.uuid);
+                    this.log(`  Servicio: ${svc.uuid}`);
+                }
+
+                this.server = srv;
+                return { server: srv, services: allServices };
+            }
+
+            // ── Inicializar UART ──
+            async initUART() {
+                const uartSvc = this.services[BLE_UUIDS.UART_SERVICE];
+                if (!uartSvc) {
+                    // Fallback: intentar getPrimaryService directo
+                    try {
+                        const svc = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
+                        this.services[BLE_UUIDS.UART_SERVICE] = svc;
+                        this.availableServices.add(BLE_UUIDS.UART_SERVICE);
+                        return await this._setupUARTCharacteristics(svc);
                     } catch (e) {
-                        lastError = e;
-                        console.warn(`[BT] ✗ Intento ${attempt} falló:`, e.name, e.message);
+                        this.warn('Servicio UART no disponible:', e.message);
+                        return false;
                     }
                 }
+                return await this._setupUARTCharacteristics(uartSvc);
+            }
 
-                // ── Fase B: forget() + re-solicitar dispositivo ──
-                if (!found) {
-                    if (device.gatt.connected) device.gatt.disconnect();
-                    console.log('[BT] ── Fase B: limpiando cache BLE ──');
-
-                    if (typeof device.forget === 'function') {
-                        try {
-                            statusEl.textContent = 'Limpiando cache BLE... seleccioná el micro:bit de nuevo';
-                            await device.forget();
-                            console.log('[BT] ✓ device.forget() completado');
-                            await new Promise(r => setTimeout(r, isWindows ? 2000 : 1000));
-
-                            // Re-solicitar dispositivo
-                            device = await navigator.bluetooth.requestDevice(
-                                isWindows
-                                    ? { acceptAllDevices: true, optionalServices: [UART_SERVICE_UUID] }
-                                    : { filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }], optionalServices: [UART_SERVICE_UUID] }
-                            );
-                            console.log('[BT] Nuevo dispositivo:', device.name, '| ID:', device.id);
-                            statusEl.textContent = 'Reconectando a ' + (device.name || 'micro:bit') + '...';
-
-                            const postForgetAttempts = isWindows ? 3 : 2;
-                            for (let retry = 1; retry <= postForgetAttempts && !found; retry++) {
-                                try {
-                                    if (retry > 1) {
-                                        if (device.gatt.connected) device.gatt.disconnect();
-                                        const retryWait = isWindows ? 4000 : isMobileBrowser ? 3000 : 2000;
-                                        await new Promise(r => setTimeout(r, retryWait));
-                                    }
-                                    const result = await tryConnectAndDiscover(device, `Post-forget ${retry}`);
-                                    server = result.server;
-                                    service = result.service;
-                                    found = true;
-                                } catch (e) {
-                                    lastError = e;
-                                    console.warn(`[BT] ✗ Post-forget intento ${retry} falló:`, e.name, e.message);
-                                }
-                            }
-                        } catch (forgetErr) {
-                            if (forgetErr.name === 'NotFoundError') {
-                                console.log('[BT] Usuario canceló el re-selector');
-                                return;
-                            }
-                            console.warn('[BT] ✗ Error en fase forget:', forgetErr.name, forgetErr.message);
-                            lastError = forgetErr;
-                        }
-                    } else {
-                        console.warn('[BT] device.forget() NO disponible en este navegador');
-                    }
-                }
-
-                // ── Fase C: si todo falló, mostrar modal de ayuda ──
-                if (!found) {
-                    console.error('[BT] ✗ Todos los intentos fallaron. Último error:', lastError?.message);
-                    if (isWindows) {
-                        // Mostrar de nuevo el modal de Windows con instrucciones claras
-                        renderBtWindowsModal();
-                    } else {
-                        const isMac = navigator.platform.indexOf('Mac') >= 0;
-                        const isAndroid = /Android/i.test(navigator.userAgent);
-                        let msg = 'No se encontraron servicios BLE en el micro:bit.\n\n';
-                        if (isAndroid) {
-                            msg += '1. Bluetooth y Ubicación activados\n';
-                            msg += '2. Permisos de Bluetooth otorgados al navegador\n';
-                            msg += '3. Desvinculá el micro:bit del sistema si aparece vinculado\n';
-                            msg += '4. Reseteá el micro:bit (botón de atrás)\n';
-                        } else if (isMac) {
-                            msg += 'macOS tiene el micro:bit cacheado:\n\n';
-                            msg += '1. Configuración del Sistema → Bluetooth\n';
-                            msg += '2. Clic en (i) junto a "BBC micro:bit" → Olvidar dispositivo\n';
-                            msg += '3. Resetear el micro:bit\n';
-                            msg += '4. Volvé a conectar desde esta página\n';
-                        } else if (isMobileBrowser) {
-                            msg += '1. Bluetooth activado\n';
-                            msg += '2. Permisos de Bluetooth otorgados al navegador\n';
-                            msg += '3. Desvinculá el micro:bit del sistema\n';
-                            msg += '4. Reseteá el micro:bit (botón de atrás)\n';
-                        } else {
-                            msg += '1. Desvinculá el micro:bit de la configuración Bluetooth del sistema\n';
-                            msg += '2. Verificá que tu programa MakeCode tenga "bluetooth uart service"\n';
-                            msg += '3. Reseteá el micro:bit y volvé a intentar\n';
-                        }
-                        alert(msg);
-                    }
-                    return;
-                }
-
-                // Descubrir características
-                console.log('[BT] Enumerando características del servicio UART...');
+            async _setupUARTCharacteristics(service) {
                 const allChars = await service.getCharacteristics();
-                console.log('[BT] Total de características encontradas:', allChars.length);
+                this.log('UART: Características encontradas:', allChars.length);
+
                 for (const ch of allChars) {
                     const props = ch.properties;
                     const propList = [];
                     if (props.read) propList.push('read');
                     if (props.write) propList.push('write');
-                    if (props.writeWithoutResponse) propList.push('writeWithoutResponse');
+                    if (props.writeWithoutResponse) propList.push('writeNoResp');
                     if (props.notify) propList.push('notify');
                     if (props.indicate) propList.push('indicate');
-                    console.log(`[BT]   UUID: ${ch.uuid}, props: [${propList.join(', ')}]`);
-                }
+                    this.log(`  UART char: ${ch.uuid}, props: [${propList.join(', ')}]`);
 
-                for (const ch of allChars) {
-                    if (ch.properties.notify || ch.properties.indicate) {
-                        txChar = ch;
-                        const mode = ch.properties.notify ? 'notify' : 'indicate';
-                        console.log(`[BT] ✓ Característica TX seleccionada: ${ch.uuid} (modo: ${mode})`);
-                        break;
+                    if (ch.uuid === BLE_UUIDS.UART_RX && (props.notify || props.indicate)) {
+                        this.characteristics.UART_RX = ch;
+                    }
+                    if (ch.uuid === BLE_UUIDS.UART_TX && (props.write || props.writeWithoutResponse)) {
+                        this.characteristics.UART_TX = ch;
+                    }
+                    // Fallback: si no matchea por UUID, usar propiedades
+                    if (!this.characteristics.UART_RX && (props.notify || props.indicate)) {
+                        this.characteristics.UART_RX = ch;
                     }
                 }
 
-                if (!txChar) {
-                    throw new Error('No se encontró característica UART con notify/indicate. Verificá tu programa MakeCode.');
+                if (!this.characteristics.UART_RX) {
+                    throw new Error('No se encontró característica UART con notify/indicate');
                 }
+                this.log('UART RX (lectura):', this.characteristics.UART_RX.uuid);
+                return true;
+            }
 
-                state.btDevice = device;
-                state.btCharTx = txChar;
-                state.isConnected = true;
-                state.isBluetooth = true;
-                console.log('[BT] Estado actualizado: conectado=true, bluetooth=true');
+            // ── Inicializar sensores BLE directos ──
+            async initDirectSensors() {
+                const inited = [];
 
-                // Escuchar desconexión e intentar reconexión automática
-                device.addEventListener('gattserverdisconnected', async () => {
-                    console.warn('[BT] ── GATT desconectado ── Iniciando reconexión automática');
-                    state.isConnected = false;
-                    state.btCharTx = null;
-                    btLoopRunning = false;
-                    syncExpBtButton();
-                    const t = translations[currentLanguage];
-                    document.getElementById('statusText').textContent = t.reconnecting || 'Reconectando...';
-
-                    const maxReconnect = isWindows ? 6 : isMobileBrowser ? 5 : 3;
-                    for (let attempt = 1; attempt <= maxReconnect; attempt++) {
-                        try {
-                            const waitMs = isWindows ? 3000 * attempt : isMobileBrowser ? 2000 * attempt : 1000 * attempt;
-                            console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — esperando ${waitMs}ms...`);
-                            await new Promise(r => setTimeout(r, waitMs));
-                            console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — conectando GATT...`);
-                            const srv = await device.gatt.connect();
-                            // Windows necesita más tiempo para re-descubrir servicios
-                            const sdWait = isWindows ? 5000 : isMobileBrowser ? 3000 : 1000;
-                            console.log(`[BT] Reconexión — esperando ${sdWait}ms para service discovery...`);
-                            await new Promise(r => setTimeout(r, sdWait));
-                            console.log(`[BT] Reconexión intento ${attempt}/${maxReconnect} — buscando servicio UART...`);
-
-                            // En Windows: intentar getPrimaryServices() con retry antes de getPrimaryService()
-                            let svc = null;
-                            if (isWindows) {
-                                const tries = 3;
-                                for (let t2 = 1; t2 <= tries && !svc; t2++) {
-                                    try {
-                                        const svcs = await srv.getPrimaryServices();
-                                        svc = svcs.find(s => s.uuid === UART_SERVICE_UUID) || null;
-                                        if (!svc && t2 < tries) await new Promise(r => setTimeout(r, 2000));
-                                    } catch (e2) {
-                                        if (t2 < tries) await new Promise(r => setTimeout(r, 2000));
-                                    }
+                // Acelerómetro
+                if (this.availableServices.has(BLE_UUIDS.ACCEL_SERVICE)) {
+                    try {
+                        const svc = this.services[BLE_UUIDS.ACCEL_SERVICE];
+                        const dataChar = await this._getChar(svc, BLE_UUIDS.ACCEL_DATA);
+                        if (dataChar) {
+                            this.characteristics.ACCEL_DATA = dataChar;
+                            // Configurar período a 20ms si es posible
+                            try {
+                                const periodChar = await this._getChar(svc, BLE_UUIDS.ACCEL_PERIOD);
+                                if (periodChar) {
+                                    const buf = new Uint8Array([20, 0]); // 20ms como uint16 LE
+                                    await periodChar.writeValue(buf);
+                                    this.log('Acelerómetro: período configurado a 20ms');
                                 }
-                            }
-                            if (!svc) svc = await srv.getPrimaryService(UART_SERVICE_UUID);
-
-                            const chars = await svc.getCharacteristics();
-                            const tx = chars.find(c => c.properties.notify || c.properties.indicate);
-                            if (!tx) throw new Error('TX characteristic not found');
-                            state.btCharTx = tx;
-                            state.isConnected = true;
-                            console.log(`[BT] ✓ Reconexión exitosa en intento ${attempt}/${maxReconnect} — TX: ${tx.uuid}`);
-                            document.getElementById('statusText').textContent = t.connectedBluetooth;
-                            syncExpBtButton();
-                            startBluetoothLoop(tx);
-                            return;
-                        } catch (e) {
-                            console.warn(`[BT] ✗ Reconexión intento ${attempt}/${maxReconnect} fallido:`, e.name, e.message);
+                            } catch (e) { /* período es opcional */ }
+                            await this._startNotify(dataChar, (event) => {
+                                const v = event.target.value;
+                                this.sensorData.accelerometer.x = v.getInt16(0, true) / 1000.0;
+                                this.sensorData.accelerometer.y = v.getInt16(2, true) / 1000.0;
+                                this.sensorData.accelerometer.z = v.getInt16(4, true) / 1000.0;
+                            });
+                            inited.push('acelerómetro');
                         }
+                    } catch (e) { this.warn('Error init acelerómetro:', e.message); }
+                }
+
+                // Temperatura
+                if (this.availableServices.has(BLE_UUIDS.TEMP_SERVICE)) {
+                    try {
+                        const svc = this.services[BLE_UUIDS.TEMP_SERVICE];
+                        const dataChar = await this._getChar(svc, BLE_UUIDS.TEMP_DATA);
+                        if (dataChar) {
+                            this.characteristics.TEMP_DATA = dataChar;
+                            await this._startNotify(dataChar, (event) => {
+                                this.sensorData.temperature = event.target.value.getInt8(0);
+                            });
+                            inited.push('temperatura');
+                        }
+                    } catch (e) { this.warn('Error init temperatura:', e.message); }
+                }
+
+                // Magnetómetro
+                if (this.availableServices.has(BLE_UUIDS.MAG_SERVICE)) {
+                    try {
+                        const svc = this.services[BLE_UUIDS.MAG_SERVICE];
+                        const dataChar = await this._getChar(svc, BLE_UUIDS.MAG_DATA);
+                        if (dataChar) {
+                            this.characteristics.MAG_DATA = dataChar;
+                            await this._startNotify(dataChar, (event) => {
+                                const v = event.target.value;
+                                this.sensorData.magnetometer.x = v.getInt16(0, true) / 1000.0;
+                                this.sensorData.magnetometer.y = v.getInt16(2, true) / 1000.0;
+                                this.sensorData.magnetometer.z = v.getInt16(4, true) / 1000.0;
+                            });
+                            inited.push('magnetómetro');
+                        }
+                        // Bearing
+                        const bearingChar = await this._getChar(svc, BLE_UUIDS.MAG_BEARING);
+                        if (bearingChar) {
+                            await this._startNotify(bearingChar, (event) => {
+                                this.sensorData.magnetometer.bearing = event.target.value.getUint16(0, true);
+                            });
+                        }
+                    } catch (e) { this.warn('Error init magnetómetro:', e.message); }
+                }
+
+                // Botones
+                if (this.availableServices.has(BLE_UUIDS.BTN_SERVICE)) {
+                    try {
+                        const svc = this.services[BLE_UUIDS.BTN_SERVICE];
+                        const btnA = await this._getChar(svc, BLE_UUIDS.BTN_A_STATE);
+                        if (btnA) {
+                            await this._startNotify(btnA, (event) => {
+                                this.sensorData.buttonA = event.target.value.getUint8(0);
+                            });
+                        }
+                        const btnB = await this._getChar(svc, BLE_UUIDS.BTN_B_STATE);
+                        if (btnB) {
+                            await this._startNotify(btnB, (event) => {
+                                this.sensorData.buttonB = event.target.value.getUint8(0);
+                            });
+                        }
+                        if (btnA || btnB) inited.push('botones');
+                    } catch (e) { this.warn('Error init botones:', e.message); }
+                }
+
+                if (inited.length > 0) {
+                    this.log('Sensores BLE directos inicializados:', inited.join(', '));
+                }
+                return inited;
+            }
+
+            // ── Enviar texto al LED ──
+            async writeLEDText(text) {
+                if (!this.availableServices.has(BLE_UUIDS.LED_SERVICE)) return false;
+                try {
+                    const svc = this.services[BLE_UUIDS.LED_SERVICE];
+                    const textChar = await this._getChar(svc, BLE_UUIDS.LED_TEXT);
+                    if (!textChar) return false;
+                    const encoder = new TextEncoder();
+                    const encoded = encoder.encode(text);
+                    const maxLen = 20;
+                    for (let i = 0; i < encoded.length; i += maxLen) {
+                        await textChar.writeValue(encoded.slice(i, i + maxLen));
                     }
-
-                    console.error(`[BT] ✗ Reconexión fallida después de ${maxReconnect} intentos. Limpiando estado.`);
-                    state.isBluetooth = false;
-                    state.btDevice = null;
-                    syncExpBtButton();
-                    document.getElementById('connectBtn').style.display = 'inline-block';
-                    document.getElementById('connectBluetoothBtn').style.display = 'inline-block';
-                    document.getElementById('collectBtn').style.display = 'none';
-                    document.getElementById('stopBtn').style.display = 'none';
-                    document.getElementById('statusText').textContent = t.disconnected;
-                });
-
-                document.getElementById('connectBtn').style.display = 'none';
-                document.getElementById('connectBluetoothBtn').style.display = 'none';
-                document.getElementById('collectBtn').style.display = 'inline-block';
-                const t = translations[currentLanguage];
-                const pressCapture = {
-                    es: 'BLUETOOTH CONECTADO — Presioná CAPTURAR',
-                    en: 'BLUETOOTH CONNECTED — Press CAPTURE',
-                    pt: 'BLUETOOTH CONECTADO — Pressione CAPTURAR'
-                };
-                document.getElementById('statusText').textContent = pressCapture[currentLanguage] || pressCapture.es;
-
-                const collectBtn = document.getElementById('collectBtn');
-                collectBtn.classList.add('pulse-hint');
-                setTimeout(() => collectBtn.classList.remove('pulse-hint'), 4000);
-
-                syncExpBtButton();
-                console.log('[BT] ── Conexión completa, iniciando loop de lectura ──');
-                startBluetoothLoop(txChar);
-            } catch (err) {
-                console.error('[BT] ✗ Error en conexión:', err.name, err.message, err.stack);
-                statusEl.textContent = 'Error de conexión BT';
-                if (err.name === 'NotFoundError' && err.message === '') {
-                    // Usuario canceló el picker en el re-request
-                    console.log('[BT] Usuario canceló el selector de dispositivos');
-                } else if (err.message && err.message.includes('UART')) {
-                    alert('No se encontró el servicio UART en el micro:bit.\n\n' +
-                        'Verificá que el programa MakeCode tenga el bloque:\n' +
-                        '"bluetooth uart service"');
-                } else {
-                    alert('Error Bluetooth: ' + err.message);
+                    return true;
+                } catch (e) {
+                    this.warn('Error escribiendo LED:', e.message);
+                    return false;
                 }
             }
-        }
 
-        async function startBluetoothLoop(txChar) {
-            if (btLoopRunning) {
-                console.log('[BT] Loop ya está corriendo, ignorando llamada duplicada');
-                return;
+            // ── Enviar datos por UART ──
+            async sendUART(data) {
+                if (!this.characteristics.UART_TX) return false;
+                try {
+                    const encoder = new TextEncoder();
+                    const encoded = encoder.encode(data);
+                    await this.characteristics.UART_TX.writeValue(encoded);
+                    this.log('UART enviado:', data);
+                    return true;
+                } catch (e) {
+                    this.warn('Error enviando UART:', e.message);
+                    return false;
+                }
             }
-            btLoopRunning = true;
-            btBuffer = '';
-            let _btChunkCount = 0;
-            let _btLineCount = 0;
-            let _btDataPointCount = 0;
-            let _btLastLogTime = Date.now();
 
-            try {
-                // Verificar propiedades de la característica
+            // ── Iniciar escucha de datos UART ──
+            async startUARTLoop(onDataPoint) {
+                if (this.btLoopRunning) {
+                    this.log('Loop UART ya está corriendo');
+                    return;
+                }
+                this.btLoopRunning = true;
+                this.btBuffer = '';
+                this.stats = { chunks: 0, lines: 0, dataPoints: 0, errors: 0, reconnects: this.stats.reconnects, lastLogTime: Date.now() };
+
+                const txChar = this.characteristics.UART_RX;
+                if (!txChar) {
+                    this.error('No hay característica UART RX disponible');
+                    this.btLoopRunning = false;
+                    return;
+                }
+
                 const props = txChar.properties;
-                console.log('[BT] ── startBluetoothLoop ──');
-                console.log('[BT] Característica UUID:', txChar.uuid);
-                console.log('[BT] Propiedades — notify:', props.notify, '| indicate:', props.indicate, '| read:', props.read, '| write:', props.write);
+                this.log('── startUARTLoop ──');
+                this.log('Característica UUID:', txChar.uuid);
+                this.log('Propiedades — notify:', props.notify, '| indicate:', props.indicate);
 
                 if (!props.notify && !props.indicate) {
-                    console.error('[BT] ✗ La característica NO soporta notify ni indicate. No se pueden recibir datos.');
-                    btLoopRunning = false;
+                    this.error('La característica NO soporta notify ni indicate');
+                    this.btLoopRunning = false;
                     alert('Error: La característica UART TX no soporta notificaciones. Verificá tu programa MakeCode.');
                     return;
                 }
 
-                const notifyMode = props.notify ? 'notify' : 'indicate';
-                console.log(`[BT] Iniciando notificaciones (modo: ${notifyMode})...`);
-                // startNotifications puede fallar en mobile — reintentar
-                let notifyStarted = false;
-                for (let nAttempt = 1; nAttempt <= 3 && !notifyStarted; nAttempt++) {
-                    try {
-                        if (nAttempt > 1) {
-                            console.log(`[BT] Reintentando startNotifications (${nAttempt}/3)...`);
-                            await new Promise(r => setTimeout(r, 1000));
-                        }
-                        await txChar.startNotifications();
-                        notifyStarted = true;
-                    } catch (nErr) {
-                        console.warn(`[BT] startNotifications intento ${nAttempt}/3 falló:`, nErr.message);
-                        if (nAttempt === 3) throw nErr;
-                    }
-                }
-                console.log(`[BT] ✓ Notificaciones ${notifyMode} iniciadas correctamente`);
-                console.log('[BT] Esperando datos del micro:bit...');
-                txChar.addEventListener('characteristicvaluechanged', (event) => {
+                // startNotifications con reintentos
+                await this._startNotifyWithRetry(txChar);
+
+                this.log('Esperando datos del micro:bit...');
+
+                const handler = (event) => {
+                    this._lastDataTime = Date.now();
                     const decoder = new TextDecoder();
                     const chunk = decoder.decode(event.target.value);
-                    _btChunkCount++;
-                    // Log detallado los primeros 10 chunks, luego cada 50
-                    if (_btChunkCount <= 10 || _btChunkCount % 50 === 0) {
-                        console.log(`[BT] chunk #${_btChunkCount}:`, JSON.stringify(chunk), `(${chunk.length} bytes)`);
-                    }
-                    btBuffer += chunk;
+                    this.stats.chunks++;
 
-                    const lines = btBuffer.split('\n');
-                    btBuffer = lines.pop();
+                    if (this.stats.chunks <= 10 || this.stats.chunks % 50 === 0) {
+                        this.log(`chunk #${this.stats.chunks}:`, JSON.stringify(chunk), `(${chunk.length} bytes)`);
+                    }
+
+                    this.btBuffer += chunk;
+                    const lines = this.btBuffer.split('\n');
+                    this.btBuffer = lines.pop();
 
                     if (!state.isCollecting) return;
 
@@ -6519,17 +6477,15 @@ basic.forever(function () {
                     const useMbTime = state.microbitTimestamp;
                     const expectedParts = useMbTime ? numVars + 1 : numVars;
 
-                    _btLineCount += lines.length;
-                    if (_btLineCount <= 10 || _btLineCount % 100 === 0) {
-                        console.log(`[BT] Líneas completas: ${lines.length} | total acumulado: ${_btLineCount} | isCollecting: ${state.isCollecting} | expectedParts: ${expectedParts}`);
-                    }
+                    this.stats.lines += lines.length;
+
                     for (let li = 0; li < lines.length; li++) {
                         const line = lines[li];
                         if (line.length === 0 || line === '\r') continue;
 
                         const parts = line.split(',');
                         if (parts.length !== expectedParts) {
-                            console.warn('[BT] ⚠ Format mismatch:', JSON.stringify(line), '| parts:', parts.length, '| expected:', expectedParts);
+                            this.warn('Format mismatch:', JSON.stringify(line), '| parts:', parts.length, '| expected:', expectedParts);
                             _formatMismatchCount++;
                             _lastMismatchParts = parts.length;
                             continue;
@@ -6561,7 +6517,6 @@ basic.forever(function () {
                         }
                         if (!valid) continue;
 
-                        // Filtro de picos: descartar valores anómalos
                         if (state.spikeFilter && hasSpikeValues(values)) continue;
 
                         const dataPoint = {
@@ -6571,31 +6526,457 @@ basic.forever(function () {
                             id: 'd' + (++_dataPointCounter)
                         };
 
+                        if (typeof onDataPoint === 'function') {
+                            onDataPoint(dataPoint);
+                        }
+
                         state.rawData.push(dataPoint);
                         pendingChartPoints.push(dataPoint);
                         sampleTimestamps.push(batchTime);
-                        _btDataPointCount++;
-                        // Log los primeros 5 puntos, luego cada 100
-                        if (_btDataPointCount <= 5 || _btDataPointCount % 100 === 0) {
-                            console.log(`[BT] ✓ Dato #${_btDataPointCount}: t=${pointTime}, valores=[${values.join(', ')}]`);
+                        this.stats.dataPoints++;
+
+                        if (this.stats.dataPoints <= 5 || this.stats.dataPoints % 100 === 0) {
+                            this.log(`Dato #${this.stats.dataPoints}: t=${pointTime}, valores=[${values.join(', ')}]`);
                         }
-                        // Resumen periódico cada 10 segundos
+
                         const now = Date.now();
-                        if (now - _btLastLogTime > 10000) {
-                            console.log(`[BT] ── Resumen: ${_btChunkCount} chunks | ${_btLineCount} líneas | ${_btDataPointCount} datos válidos | buffer pendiente: ${btBuffer.length} chars ──`);
-                            _btLastLogTime = now;
+                        if (now - this.stats.lastLogTime > 10000) {
+                            this.log(`── Resumen: ${this.stats.chunks} chunks | ${this.stats.lines} líneas | ${this.stats.dataPoints} datos | buffer: ${this.btBuffer.length} chars | reconexiones: ${this.stats.reconnects} ──`);
+                            this.stats.lastLogTime = now;
                         }
                     }
-                });
-            } catch (err) {
-                console.error('[BT] ✗ Error en startBluetoothLoop:', err.name, err.message);
-                console.error('[BT] Stack:', err.stack);
-                btLoopRunning = false;
-                // Mostrar en la UI para que el usuario sepa qué pasó
-                const statusEl = document.getElementById('statusText');
-                if (statusEl) {
-                    statusEl.textContent = 'Error BT: ' + err.message;
+                };
+
+                txChar.addEventListener('characteristicvaluechanged', handler);
+                this._notificationHandlers.push({ char: txChar, handler });
+            }
+
+            // ── Conexión completa con fases de retry ──
+            async connect() {
+                if (this.connecting) {
+                    this.log('Conexión ya en progreso');
+                    return false;
                 }
+                this.connecting = true;
+                this._destroyed = false;
+
+                const statusEl = document.getElementById('statusText');
+                try {
+                    // Fase 1: Solicitar dispositivo
+                    await this.requestDevice();
+
+                    statusEl.textContent = 'Conectando a ' + (this.device.name || 'micro:bit') + '...';
+
+                    // Fase 2: Conectar GATT con reintentos
+                    let found = false;
+                    let lastError = null;
+
+                    // ── Fase A: intentos directos ──
+                    const maxAttempts = BT_CONFIG.maxConnectAttempts;
+                    for (let attempt = 1; attempt <= maxAttempts && !found; attempt++) {
+                        try {
+                            statusEl.textContent = `Conectando... intento ${attempt}/${maxAttempts}`;
+                            if (attempt > 1) {
+                                if (this.device.gatt.connected) this.device.gatt.disconnect();
+                                await this._delay(BT_CONFIG.connectRetryWait);
+                            }
+                            await this.connectGATT(this.device, `Intento ${attempt}`);
+                            found = true;
+                        } catch (e) {
+                            lastError = e;
+                            this.warn(`Intento ${attempt} falló:`, e.name, e.message);
+                        }
+                    }
+
+                    // ── Fase B: forget() + re-solicitar ──
+                    if (!found) {
+                        if (this.device.gatt.connected) this.device.gatt.disconnect();
+                        this.log('── Fase B: limpiando cache BLE ──');
+
+                        if (typeof this.device.forget === 'function') {
+                            try {
+                                statusEl.textContent = 'Limpiando cache BLE... seleccioná el micro:bit de nuevo';
+                                await this.device.forget();
+                                this.log('device.forget() completado');
+                                await this._delay(_isWindows ? 2000 : 1000);
+
+                                this.device = await navigator.bluetooth.requestDevice(
+                                    _isWindows
+                                        ? { acceptAllDevices: true, optionalServices: ALL_OPTIONAL_SERVICES }
+                                        : { filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }], optionalServices: ALL_OPTIONAL_SERVICES }
+                                );
+                                this.log('Nuevo dispositivo:', this.device.name);
+                                statusEl.textContent = 'Reconectando a ' + (this.device.name || 'micro:bit') + '...';
+
+                                for (let retry = 1; retry <= BT_CONFIG.maxPostForgetAttempts && !found; retry++) {
+                                    try {
+                                        if (retry > 1) {
+                                            if (this.device.gatt.connected) this.device.gatt.disconnect();
+                                            await this._delay(BT_CONFIG.postForgetRetryWait);
+                                        }
+                                        await this.connectGATT(this.device, `Post-forget ${retry}`);
+                                        found = true;
+                                    } catch (e) {
+                                        lastError = e;
+                                        this.warn(`Post-forget intento ${retry} falló:`, e.name, e.message);
+                                    }
+                                }
+                            } catch (forgetErr) {
+                                if (forgetErr.name === 'NotFoundError') { this.connecting = false; return false; }
+                                this.warn('Error en fase forget:', forgetErr.message);
+                                lastError = forgetErr;
+                            }
+                        }
+                    }
+
+                    // ── Fase C: todo falló ──
+                    if (!found) {
+                        this.error('Todos los intentos fallaron:', lastError?.message);
+                        this._showConnectionError();
+                        this.connecting = false;
+                        return false;
+                    }
+
+                    // Fase 3: Inicializar servicios
+                    const hasUART = await this.initUART().catch(() => false);
+                    const directSensors = await this.initDirectSensors().catch(() => []);
+
+                    if (!hasUART && directSensors.length === 0) {
+                        throw new Error('No se encontró servicio UART ni sensores BLE directos. Verificá tu programa MakeCode.');
+                    }
+
+                    // Fase 4: Estado y UI
+                    this.connected = true;
+                    state.btDevice = this.device;
+                    state.btCharTx = this.characteristics.UART_RX || null;
+                    state.isConnected = true;
+                    state.isBluetooth = true;
+                    this.log('Estado actualizado: conectado=true, bluetooth=true');
+
+                    // Info de servicios disponibles
+                    const serviceNames = [];
+                    if (hasUART) serviceNames.push('UART');
+                    serviceNames.push(...directSensors);
+                    this.log('Servicios activos:', serviceNames.join(', '));
+
+                    // Listener de desconexión
+                    this._setupDisconnectListener();
+
+                    // Health monitoring
+                    this._startHealthCheck();
+
+                    // UI
+                    document.getElementById('connectBtn').style.display = 'none';
+                    document.getElementById('connectBluetoothBtn').style.display = 'none';
+                    document.getElementById('collectBtn').style.display = 'inline-block';
+                    const pressCapture = {
+                        es: 'BLUETOOTH CONECTADO — Presioná CAPTURAR',
+                        en: 'BLUETOOTH CONNECTED — Press CAPTURE',
+                        pt: 'BLUETOOTH CONECTADO — Pressione CAPTURAR'
+                    };
+                    statusEl.textContent = pressCapture[currentLanguage] || pressCapture.es;
+
+                    const collectBtn = document.getElementById('collectBtn');
+                    collectBtn.classList.add('pulse-hint');
+                    setTimeout(() => collectBtn.classList.remove('pulse-hint'), 4000);
+
+                    syncExpBtButton();
+                    this.log('── Conexión completa, iniciando loop de lectura ──');
+
+                    // Iniciar UART loop si hay UART
+                    if (hasUART) {
+                        await this.startUARTLoop();
+                    }
+
+                    this.connecting = false;
+                    return true;
+
+                } catch (err) {
+                    this.connecting = false;
+                    this.error('Error en conexión:', err.name, err.message, err.stack);
+                    statusEl.textContent = 'Error de conexión BT';
+                    if (err.name === 'NotFoundError') {
+                        this.log('Usuario canceló el selector');
+                    } else if (err.message && err.message.includes('UART')) {
+                        alert('No se encontró el servicio UART en el micro:bit.\n\n' +
+                            'Verificá que el programa MakeCode tenga el bloque:\n' +
+                            '"bluetooth uart service"');
+                    } else {
+                        alert('Error Bluetooth: ' + err.message);
+                    }
+                    return false;
+                }
+            }
+
+            // ── Listener de desconexión con auto-reconexión ──
+            _setupDisconnectListener() {
+                // Remover listener anterior si existe
+                if (this._disconnectListenerBound && this.device) {
+                    this.device.removeEventListener('gattserverdisconnected', this._disconnectListenerBound);
+                }
+
+                this._disconnectListenerBound = () => this._handleDisconnect();
+                this.device.addEventListener('gattserverdisconnected', this._disconnectListenerBound);
+            }
+
+            async _handleDisconnect() {
+                if (this._destroyed) return;
+
+                this.warn('── GATT desconectado ── Iniciando reconexión automática');
+                this.connected = false;
+                state.isConnected = false;
+                state.btCharTx = null;
+                this.btLoopRunning = false;
+                this._stopHealthCheck();
+                this._cleanupNotificationHandlers();
+                syncExpBtButton();
+
+                const t = translations[currentLanguage];
+                const statusEl = document.getElementById('statusText');
+                statusEl.textContent = t.reconnecting || 'Reconectando...';
+
+                this.reconnecting = true;
+                this._reconnectAbort = false;
+
+                const maxReconnect = BT_CONFIG.maxReconnectAttempts;
+                let waitMs = BT_CONFIG.reconnectBaseWait;
+
+                for (let attempt = 1; attempt <= maxReconnect && !this._reconnectAbort; attempt++) {
+                    try {
+                        this.log(`Reconexión intento ${attempt}/${maxReconnect} — esperando ${waitMs}ms...`);
+                        statusEl.textContent = `${t.reconnecting || 'Reconectando'} (${attempt}/${maxReconnect})...`;
+                        await this._delay(waitMs);
+
+                        if (this._reconnectAbort || this._destroyed) break;
+
+                        this.log(`Reconexión intento ${attempt}/${maxReconnect} — conectando GATT...`);
+                        await this.connectGATT(this.device, `Reconexión ${attempt}`);
+
+                        // Re-inicializar servicios
+                        const hasUART = await this.initUART().catch(() => false);
+                        await this.initDirectSensors().catch(() => []);
+
+                        state.btCharTx = this.characteristics.UART_RX || null;
+                        state.isConnected = true;
+                        this.connected = true;
+                        this.stats.reconnects++;
+
+                        this.log(`Reconexión exitosa en intento ${attempt}/${maxReconnect}`);
+                        statusEl.textContent = t.connectedBluetooth || 'BLUETOOTH CONECTADO';
+                        syncExpBtButton();
+
+                        this._startHealthCheck();
+
+                        if (hasUART) {
+                            this.btLoopRunning = false; // Reset para permitir nuevo loop
+                            await this.startUARTLoop();
+                        }
+
+                        this.reconnecting = false;
+                        return;
+                    } catch (e) {
+                        this.warn(`Reconexión intento ${attempt}/${maxReconnect} fallido:`, e.name, e.message);
+                        // Backoff exponencial con tope
+                        waitMs = Math.min(waitMs * 1.5, BT_CONFIG.reconnectMaxWait);
+                    }
+                }
+
+                // Reconexión fallida
+                this.reconnecting = false;
+                this.error(`Reconexión fallida después de ${maxReconnect} intentos`);
+                state.isBluetooth = false;
+                state.btDevice = null;
+                syncExpBtButton();
+                document.getElementById('connectBtn').style.display = 'inline-block';
+                document.getElementById('connectBluetoothBtn').style.display = 'inline-block';
+                document.getElementById('collectBtn').style.display = 'none';
+                document.getElementById('stopBtn').style.display = 'none';
+                statusEl.textContent = t.disconnected || 'DESCONECTADO';
+            }
+
+            // ── Health check: verificar que la conexión sigue viva ──
+            _startHealthCheck() {
+                this._stopHealthCheck();
+                this._healthCheckTimer = setInterval(() => {
+                    if (!this.device || !this.device.gatt || !this.device.gatt.connected) {
+                        this.warn('Health check: GATT desconectado detectado');
+                        this._stopHealthCheck();
+                        // Trigger reconnection if not already reconnecting
+                        if (!this.reconnecting && !this._destroyed) {
+                            this._handleDisconnect();
+                        }
+                        return;
+                    }
+                    // Si estamos colectando y no recibimos datos en 30s, alertar
+                    if (state.isCollecting && this._lastDataTime > 0) {
+                        const silenceMs = Date.now() - this._lastDataTime;
+                        if (silenceMs > 30000) {
+                            this.warn(`Health check: sin datos por ${(silenceMs / 1000).toFixed(0)}s`);
+                        }
+                    }
+                }, BT_CONFIG.healthCheckInterval);
+            }
+
+            _stopHealthCheck() {
+                if (this._healthCheckTimer) {
+                    clearInterval(this._healthCheckTimer);
+                    this._healthCheckTimer = null;
+                }
+            }
+
+            // ── Desconexión limpia ──
+            destroy() {
+                this._destroyed = true;
+                this._reconnectAbort = true;
+                this._stopHealthCheck();
+                this._cleanupNotificationHandlers();
+                if (this.device && this.device.gatt && this.device.gatt.connected) {
+                    this.device.gatt.disconnect();
+                }
+                this.connected = false;
+                this.btLoopRunning = false;
+                this.device = null;
+                this.server = null;
+                this.services = {};
+                this.characteristics = {};
+                this.log('Bluetooth desconectado y limpiado');
+            }
+
+            // ── Helpers internos ──
+            _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+            async _getChar(service, uuid) {
+                try {
+                    return await service.getCharacteristic(uuid);
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            async _startNotify(characteristic, handler) {
+                await this._startNotifyWithRetry(characteristic);
+                characteristic.addEventListener('characteristicvaluechanged', handler);
+                this._notificationHandlers.push({ char: characteristic, handler });
+            }
+
+            async _startNotifyWithRetry(characteristic) {
+                for (let n = 1; n <= BT_CONFIG.notifyStartRetries; n++) {
+                    try {
+                        if (n > 1) {
+                            this.log(`Reintentando startNotifications (${n}/${BT_CONFIG.notifyStartRetries})...`);
+                            await this._delay(1000);
+                        }
+                        await characteristic.startNotifications();
+                        this.log('Notificaciones iniciadas para', characteristic.uuid);
+                        return;
+                    } catch (e) {
+                        this.warn(`startNotifications intento ${n}/${BT_CONFIG.notifyStartRetries} falló:`, e.message);
+                        if (n === BT_CONFIG.notifyStartRetries) throw e;
+                    }
+                }
+            }
+
+            _cleanupNotificationHandlers() {
+                for (const { char, handler } of this._notificationHandlers) {
+                    try { char.removeEventListener('characteristicvaluechanged', handler); } catch (e) { /* ok */ }
+                }
+                this._notificationHandlers = [];
+            }
+
+            _showConnectionError() {
+                if (_isWindows) {
+                    renderBtWindowsModal();
+                    return;
+                }
+                let msg = 'No se encontraron servicios BLE en el micro:bit.\n\n';
+                if (_isAndroid) {
+                    msg += '1. Bluetooth y Ubicación activados\n';
+                    msg += '2. Permisos de Bluetooth otorgados al navegador\n';
+                    msg += '3. Desvinculá el micro:bit del sistema si aparece vinculado\n';
+                    msg += '4. Reseteá el micro:bit (botón de atrás)\n';
+                } else if (_isMac) {
+                    msg += 'macOS tiene el micro:bit cacheado:\n\n';
+                    msg += '1. Configuración del Sistema → Bluetooth\n';
+                    msg += '2. Clic en (i) junto a "BBC micro:bit" → Olvidar dispositivo\n';
+                    msg += '3. Resetear el micro:bit\n';
+                    msg += '4. Volvé a conectar desde esta página\n';
+                } else if (isMobileBrowser) {
+                    msg += '1. Bluetooth activado\n';
+                    msg += '2. Permisos de Bluetooth otorgados al navegador\n';
+                    msg += '3. Desvinculá el micro:bit del sistema\n';
+                    msg += '4. Reseteá el micro:bit (botón de atrás)\n';
+                } else {
+                    msg += '1. Desvinculá el micro:bit de la configuración Bluetooth del sistema\n';
+                    msg += '2. Verificá que tu programa MakeCode tenga "bluetooth uart service"\n';
+                    msg += '3. Reseteá el micro:bit y volvé a intentar\n';
+                }
+                alert(msg);
+            }
+
+            // ── Info de conexión ──
+            getConnectionInfo() {
+                return {
+                    connected: this.connected,
+                    deviceName: this.device?.name || null,
+                    platform: BT_CONFIG.platform,
+                    availableServices: [...this.availableServices],
+                    hasUART: this.availableServices.has(BLE_UUIDS.UART_SERVICE),
+                    hasAccelerometer: this.availableServices.has(BLE_UUIDS.ACCEL_SERVICE),
+                    hasTemperature: this.availableServices.has(BLE_UUIDS.TEMP_SERVICE),
+                    hasMagnetometer: this.availableServices.has(BLE_UUIDS.MAG_SERVICE),
+                    hasButtons: this.availableServices.has(BLE_UUIDS.BTN_SERVICE),
+                    hasLED: this.availableServices.has(BLE_UUIDS.LED_SERVICE),
+                    stats: { ...this.stats }
+                };
+            }
+        }
+
+        // ── Instancia global ──
+        let microbitBT = null;
+        let btBuffer = '';       // Compat: referenciado en otros lugares
+        let btLoopRunning = false; // Compat
+
+        // ── Backward compat aliases ──
+        const UART_SERVICE_UUID = BLE_UUIDS.UART_SERVICE;
+        const UART_TX_CHAR_UUID = BLE_UUIDS.UART_TX;
+        const UART_RX_CHAR_UUID = BLE_UUIDS.UART_RX;
+
+        document.getElementById('connectBluetoothBtn').addEventListener('click', () => {
+            console.log('[BT] ── Botón Bluetooth presionado ──');
+            console.log('[BT] navigator.bluetooth disponible:', 'bluetooth' in navigator);
+            console.log('[BT] User Agent:', navigator.userAgent);
+            if (!('bluetooth' in navigator)) {
+                alert(currentLanguage === 'es'
+                    ? 'Web Bluetooth API no soportada. Usa Chrome o Edge en escritorio/Android.'
+                    : currentLanguage === 'pt'
+                    ? 'Web Bluetooth API não suportada. Use Chrome ou Edge no desktop/Android.'
+                    : 'Web Bluetooth API not supported. Use Chrome or Edge on desktop/Android.');
+                return;
+            }
+            if (isMobileBrowser) {
+                renderBtPairingModal();
+            } else if (_isWindows) {
+                renderBtWindowsModal();
+            } else {
+                connectBluetooth();
+            }
+        });
+
+        async function connectBluetooth() {
+            // Destruir instancia anterior si existe
+            if (microbitBT) {
+                microbitBT.destroy();
+            }
+            microbitBT = new MicrobitBluetooth();
+            await microbitBT.connect();
+        }
+
+        // Compat: función legacy que redirige al nuevo sistema
+        async function startBluetoothLoop(txChar) {
+            // El nuevo sistema inicia el loop automáticamente en connect()
+            // Esta función existe solo por compatibilidad con código que la llame
+            if (microbitBT && !microbitBT.btLoopRunning) {
+                await microbitBT.startUARTLoop();
             }
         }
 
@@ -9615,10 +9996,9 @@ basic.forever(function () {
                 if (expInfo) expInfo.textContent = 'BT OK';
                 return;
             }
-            // Mobile: modal. Windows: modal. Otros desktop: directo.
             if (isMobileBrowser) {
                 renderBtPairingModal();
-            } else if (/Windows/i.test(navigator.userAgent)) {
+            } else if (_isWindows) {
                 renderBtWindowsModal();
             } else {
                 connectBluetooth();
