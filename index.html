@@ -6201,18 +6201,56 @@ basic.forever(function () {
                 this.services[BLE_UUIDS.UART_SERVICE] = uartService;
                 this.availableServices.add(BLE_UUIDS.UART_SERVICE);
 
-                // Obtener característica RX (la que envía datos desde el micro:bit)
-                this.log('Buscando característica UART RX...');
-                const rxChar = await uartService.getCharacteristic(BLE_UUIDS.UART_RX);
-                this.characteristics.UART_RX = rxChar;
-                this.log('UART RX encontrada:', rxChar.uuid);
+                // Obtener TODAS las características y encontrar cuál soporta notify
+                // (Chrome/macOS puede tener el GATT cache corrupto y reportar propiedades incorrectas por UUID)
+                const allChars = await uartService.getCharacteristics();
+                this.log('UART: encontradas', allChars.length, 'características');
 
-                // Obtener característica TX (para enviar datos al micro:bit) si existe
-                try {
-                    const txChar = await uartService.getCharacteristic(BLE_UUIDS.UART_TX);
-                    this.characteristics.UART_TX = txChar;
-                    this.log('UART TX encontrada:', txChar.uuid);
-                } catch (_) { /* TX es opcional */ }
+                let notifyChar = null;
+                let writeChar = null;
+
+                for (const ch of allChars) {
+                    const p = ch.properties;
+                    this.log(`  char ${ch.uuid} — notify:${p.notify} indicate:${p.indicate} write:${p.write} writeNoResp:${p.writeWithoutResponse}`);
+
+                    // La característica que notifica es la que usamos para leer datos
+                    if (p.notify || p.indicate) {
+                        notifyChar = ch;
+                    }
+                    // La característica de escritura es para enviar al micro:bit
+                    if (p.write || p.writeWithoutResponse) {
+                        writeChar = ch;
+                    }
+                }
+
+                // Si no encontramos por propiedades (cache corrupto), intentar startNotifications en cada una
+                if (!notifyChar) {
+                    this.warn('Ninguna característica reporta notify — probando startNotifications en cada una...');
+                    for (const ch of allChars) {
+                        try {
+                            await ch.startNotifications();
+                            this.log('startNotifications exitoso en:', ch.uuid);
+                            notifyChar = ch;
+                            // Detener las notificaciones — se reiniciarán en startUARTLoop
+                            try { await ch.stopNotifications(); } catch (_) {}
+                            break;
+                        } catch (e) {
+                            this.log('startNotifications falló en', ch.uuid, ':', e.message);
+                        }
+                    }
+                }
+
+                if (!notifyChar) {
+                    throw new Error('No se encontró característica UART con soporte de notificaciones');
+                }
+
+                this.characteristics.UART_RX = notifyChar;
+                this.log('UART RX (lectura):', notifyChar.uuid);
+
+                if (writeChar) {
+                    this.characteristics.UART_TX = writeChar;
+                    this.log('UART TX (escritura):', writeChar.uuid);
+                }
 
                 return true;
             }
