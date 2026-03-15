@@ -6371,15 +6371,23 @@ basic.forever(function () {
                 this.log('Característica UUID:', txChar.uuid);
                 this.log('Propiedades — notify:', props.notify, '| indicate:', props.indicate);
 
+                // No bloquear por props.notify === false: Chrome/macOS a veces
+                // reporta false por caché GATT. Intentar startNotifications directamente.
                 if (!props.notify && !props.indicate) {
-                    this.error('La característica NO soporta notify ni indicate');
-                    this.btLoopRunning = false;
-                    alert('Error: La característica UART TX no soporta notificaciones. Verificá tu programa MakeCode.');
-                    return;
+                    this.warn('Propiedades reportan notify=false, pero intentando startNotifications de todos modos (puede ser caché BLE)...');
                 }
 
                 // startNotifications con reintentos
-                await this._startNotifyWithRetry(txChar);
+                try {
+                    await this._startNotifyWithRetry(txChar);
+                } catch (notifyErr) {
+                    this.error('startNotifications falló:', notifyErr.message);
+                    this.btLoopRunning = false;
+                    alert('Error: No se pudo activar notificaciones UART.\n\n' +
+                        'Verificá que tu programa MakeCode tenga "bluetooth uart service".\n' +
+                        'Probá olvidar el dispositivo en configuración Bluetooth y reconectar.');
+                    return;
+                }
 
                 this.log('Esperando datos del micro:bit...');
 
