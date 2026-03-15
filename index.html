@@ -6622,7 +6622,7 @@ basic.forever(function () {
                         try {
                             statusEl.textContent = `Conectando... intento ${attempt}/${maxAttempts}`;
                             if (attempt > 1) {
-                                if (this.device.gatt.connected) this.device.gatt.disconnect();
+                                try { if (this.device && this.device.gatt && this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                                 await this._delay(BT_CONFIG.connectRetryWait);
                             }
                             const result = await tryFullConnect(this.device, `Intento ${attempt}`);
@@ -6633,13 +6633,13 @@ basic.forever(function () {
                             lastError = e;
                             this.warn(`Intento ${attempt} falló:`, e.name, e.message);
                             // Disconnect para forzar re-discovery limpia en el próximo intento
-                            if (this.device.gatt.connected) this.device.gatt.disconnect();
+                            try { if (this.device && this.device.gatt && this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                         }
                     }
 
                     // ── Fase B: forget() + re-solicitar ──
-                    if (!found) {
-                        if (this.device.gatt && this.device.gatt.connected) this.device.gatt.disconnect();
+                    if (!found && this.device) {
+                        try { if (this.device.gatt && this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                         this.log('── Fase B: limpiando cache BLE ──');
 
                         if (typeof this.device.forget === 'function') {
@@ -6660,7 +6660,7 @@ basic.forever(function () {
                                 for (let retry = 1; retry <= BT_CONFIG.maxPostForgetAttempts && !found; retry++) {
                                     try {
                                         if (retry > 1) {
-                                            if (this.device.gatt.connected) this.device.gatt.disconnect();
+                                            try { if (this.device && this.device.gatt && this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                                             await this._delay(BT_CONFIG.postForgetRetryWait);
                                         }
                                         const result = await tryFullConnect(this.device, `Post-forget ${retry}`);
@@ -6670,7 +6670,7 @@ basic.forever(function () {
                                     } catch (e) {
                                         lastError = e;
                                         this.warn(`Post-forget intento ${retry} falló:`, e.name, e.message);
-                                        if (this.device.gatt.connected) this.device.gatt.disconnect();
+                                        try { if (this.device && this.device.gatt && this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                                     }
                                 }
                             } catch (forgetErr) {
@@ -6986,6 +6986,11 @@ basic.forever(function () {
         const UART_RX_CHAR_UUID = BLE_UUIDS.UART_RX;
 
         document.getElementById('connectBluetoothBtn').addEventListener('click', () => {
+            // Ignorar clicks si ya hay conexión en progreso
+            if (microbitBT && microbitBT.connecting) {
+                console.log('[BT] Conexión en progreso, ignorando click');
+                return;
+            }
             console.log('[BT] ── Botón Bluetooth presionado ──');
             console.log('[BT] navigator.bluetooth disponible:', 'bluetooth' in navigator);
             console.log('[BT] User Agent:', navigator.userAgent);
@@ -7007,7 +7012,12 @@ basic.forever(function () {
         });
 
         async function connectBluetooth() {
-            // Destruir instancia anterior si existe
+            // Ignorar si ya hay una conexión en progreso
+            if (microbitBT && microbitBT.connecting) {
+                console.log('[BT] Conexión ya en progreso, ignorando click');
+                return;
+            }
+            // Destruir instancia anterior solo si no está conectando
             if (microbitBT) {
                 microbitBT.destroy();
             }
