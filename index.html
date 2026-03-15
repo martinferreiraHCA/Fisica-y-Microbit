@@ -4378,22 +4378,45 @@ while True:
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
-    📶 CÓDIGO MICRO:BIT - BLUETOOTH <span class="help-accordion-arrow">▶</span>
+    📶 CONEXIÓN BLUETOOTH - TUTORIAL PASO A PASO <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p>Para enviar datos por <strong>Bluetooth</strong> en vez de USB, usa la extensión <code>bluetooth</code> en MakeCode. Importante: al agregar bluetooth se desactiva el serial USB.</p>
-    <p><strong>1 Variable con timestamp - Bluetooth (recomendado):</strong></p>
+    <p style="background:#e3f2fd; padding:10px; border-radius:6px; border-left:4px solid #1565c0;">
+        <strong>La conexión Bluetooth</strong> permite enviar datos desde la micro:bit de forma inalámbrica usando el servicio UART (Nordic UART Service) sobre BLE (Bluetooth Low Energy). Funciona en <strong>Chrome</strong> y <strong>Edge</strong> en computadoras y Android. <strong>No funciona en iOS/Safari.</strong>
+    </p>
+
+    <h4 style="margin-top:15px; color:#1565c0;">PASO 1: Preparar el programa en MakeCode</h4>
+    <p>En <a href="https://makecode.microbit.org" target="_blank" style="color:#1565c0;">makecode.microbit.org</a>:</p>
+    <ol>
+        <li>Crear un proyecto nuevo</li>
+        <li>Ir a <strong>Extensiones</strong> (menú lateral) y buscar <code>bluetooth</code></li>
+        <li>Agregar la extensión Bluetooth (esto elimina automáticamente la extensión <code>radio</code>)</li>
+        <li>En la configuración del proyecto (engranaje &gt; Proyecto), verificar que <strong>"No Pairing Required"</strong> esté habilitado. Esto permite que cualquier dispositivo se conecte sin necesidad de emparejar.</li>
+    </ol>
+    <p style="font-size:0.9em; color:#c62828;"><strong>Importante:</strong> Al agregar Bluetooth se desactiva el serial USB. Para volver a usar USB, eliminar la extensión Bluetooth y agregar serial.</p>
+
+    <h4 style="margin-top:15px; color:#1565c0;">PASO 2: Código MakeCode (Bloques / JavaScript)</h4>
+    <p>El código mínimo necesita:</p>
+    <ul>
+        <li><code>bluetooth.startUartService()</code> — habilitar el servicio UART</li>
+        <li><code>bluetooth.uartWriteLine()</code> — enviar una línea de datos CSV</li>
+    </ul>
+
+    <p><strong>1 Variable con timestamp (recomendado):</strong></p>
     <div class="code-block">
-        <pre>bluetooth.startUartService()
+        <pre>let t = 0
+let valor = 0
+bluetooth.startUartService()
 
 basic.forever(function () {
-    let t = input.runningTime()
-    let valor = input.acceleration(Dimension.X)
+    t = input.runningTime()
+    valor = input.acceleration(Dimension.X)
     bluetooth.uartWriteLine("" + t + "," + valor)
     basic.pause(100)
 })</pre>
     </div>
-    <p><strong>2 Variables con timestamp - Bluetooth:</strong></p>
+
+    <p><strong>2 Variables con timestamp:</strong></p>
     <div class="code-block">
         <pre>bluetooth.startUartService()
 
@@ -4405,7 +4428,8 @@ basic.forever(function () {
     basic.pause(100)
 })</pre>
     </div>
-    <p><strong>3 Variables con timestamp - Bluetooth:</strong></p>
+
+    <p><strong>3 Variables con timestamp:</strong></p>
     <div class="code-block">
         <pre>bluetooth.startUartService()
 
@@ -4418,7 +4442,99 @@ basic.forever(function () {
     basic.pause(50)
 })</pre>
     </div>
-    <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Importante:</strong> En MakeCode, agregar la extensión <code>bluetooth</code> (menu Extensiones). Al hacerlo se elimina automáticamente la extensión <code>radio</code>. La micro:bit debe estar emparejada con el navegador usando el botón BLUETOOTH de la app.</p>
+
+    <p><strong>Otros sensores - Bluetooth:</strong></p>
+    <div class="code-block">
+        <pre>// Temperatura
+bluetooth.startUartService()
+basic.forever(function () {
+    let t = input.runningTime()
+    bluetooth.uartWriteLine("" + t + "," + input.temperature())
+    basic.pause(1000)
+})
+
+// Nivel de luz
+bluetooth.startUartService()
+basic.forever(function () {
+    let t = input.runningTime()
+    bluetooth.uartWriteLine("" + t + "," + input.lightLevel())
+    basic.pause(200)
+})
+
+// Brújula (magnetómetro)
+bluetooth.startUartService()
+basic.forever(function () {
+    let t = input.runningTime()
+    bluetooth.uartWriteLine("" + t + "," + input.compassHeading())
+    basic.pause(100)
+})</pre>
+    </div>
+
+    <p style="font-size:0.9em; color:#555;"><strong>Formato de datos:</strong> Cada línea es <code>timestamp,valor1,valor2,...</code> separados por coma. El timestamp es <code>input.runningTime()</code> en milisegundos. Activar <strong>"Micro:bit envía timestamp"</strong> en la configuración de la app.</p>
+
+    <h4 style="margin-top:15px; color:#1565c0;">PASO 3: Descargar el programa a la micro:bit</h4>
+    <ol>
+        <li>Conectar la micro:bit por USB a la computadora</li>
+        <li>En MakeCode, presionar <strong>"Descargar"</strong></li>
+        <li>El archivo .hex se copia a la micro:bit</li>
+        <li>Esperar a que la micro:bit reinicie (la luz naranja deja de parpadear)</li>
+        <li><strong>Desconectar el cable USB</strong> — la micro:bit puede funcionar con batería</li>
+    </ol>
+
+    <h4 style="margin-top:15px; color:#1565c0;">PASO 4: Conectar desde la app</h4>
+    <ol>
+        <li>Abrir esta app en <strong>Chrome</strong> o <strong>Edge</strong></li>
+        <li>Presionar el botón <strong>BLUETOOTH</strong> (azul)</li>
+        <li>En el selector del navegador, elegir tu micro:bit (aparece como <code>BBC micro:bit [XXXXX]</code>)</li>
+        <li>Esperar a que se conecte — el botón cambia a <strong>"BLUETOOTH CONECTADO"</strong></li>
+        <li>Presionar <strong>CAPTURAR</strong> para iniciar la toma de datos</li>
+    </ol>
+    <p style="font-size:0.9em; color:#555;"><strong>Reconexión automática:</strong> Si la micro:bit se desconecta (por ejemplo, si se aleja demasiado), la app intenta reconectarse automáticamente hasta 4 veces con backoff exponencial.</p>
+
+    <h4 style="margin-top:15px; color:#1565c0;">PASO 5: Servicios BLE adicionales (opcional)</h4>
+    <p>Además del UART, podés habilitar otros servicios BLE en tu programa MakeCode para que la app los detecte automáticamente:</p>
+    <div class="code-block">
+        <pre>bluetooth.startUartService()
+bluetooth.startAccelerometerService()
+bluetooth.startTemperatureService()
+bluetooth.startMagnetometerService()
+bluetooth.startButtonService()
+bluetooth.startLEDService()
+bluetooth.startIOPinService()</pre>
+    </div>
+    <p style="font-size:0.9em; color:#555;">Estos servicios permiten lectura directa BLE de sensores. Sin embargo, el UART es el método principal y recomendado para la captura de datos.</p>
+
+    <h4 style="margin-top:15px; color:#c62828;">Solución de problemas Bluetooth</h4>
+    <table style="width:100%; border-collapse:collapse; margin-top:5px; font-size:0.9em;">
+        <tr style="background:#f5f5f5; border-bottom:2px solid #333;">
+            <td style="padding:6px; font-weight:bold; width:40%;">Problema</td>
+            <td style="padding:6px; font-weight:bold;">Solución</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">No aparece en el selector</td>
+            <td style="padding:6px;">Verificar que la micro:bit tenga el programa con <code>bluetooth.startUartService()</code>. Reiniciar la micro:bit. Verificar que no esté conectada a otro dispositivo.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Se conecta pero no llegan datos</td>
+            <td style="padding:6px;">Verificar que el programa use <code>bluetooth.uartWriteLine()</code>. Presionar CAPTURAR después de conectar. Verificar que "Micro:bit envía timestamp" coincida con el formato del código.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Error "UART no encontrado"</td>
+            <td style="padding:6px;">El programa de la micro:bit no tiene <code>bluetooth.startUartService()</code>. Recompilar y descargar el programa.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Error "Not supported" en notificaciones</td>
+            <td style="padding:6px;">Cache BLE corrupto del navegador. Ir a <code>chrome://bluetooth-internals</code>, olvidar el dispositivo, y reconectar. En macOS: también eliminar desde Preferencias del Sistema &gt; Bluetooth.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Se desconecta frecuentemente</td>
+            <td style="padding:6px;">Acercar la micro:bit al dispositivo (rango BLE: ~10m). Verificar que la batería de la micro:bit no esté baja. La app intenta reconectar automáticamente.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">No funciona en iPhone/iPad</td>
+            <td style="padding:6px;">Apple no soporta Web Bluetooth en Safari/iOS. Usar Chrome en Android o computadora.</td>
+        </tr>
+    </table>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -4526,11 +4642,25 @@ basic.forever(function () {
     ❓ SOLUCIÓN DE PROBLEMAS <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p><strong>No aparece el puerto:</strong> Verifica cable USB, prueba otro puerto, reinicia navegador.</p>
-    <p><strong>Bluetooth no encuentra la micro:bit:</strong> Asegúrate de que la micro:bit tenga un programa con el servicio Bluetooth UART (extensión "bluetooth" en MakeCode). La micro:bit debe estar encendida y cerca. Usa bluetooth.uartWriteNumber() y bluetooth.uartWriteLine("") en lugar de serial.</p>
-    <p><strong>No llegan datos:</strong> Asegúrate de usar serial.writeNumber() + serial.writeLine("") (USB) o bluetooth.uartWriteNumber() + bluetooth.uartWriteLine("") (Bluetooth). No envíes texto.</p>
-    <p><strong>Cámara no funciona:</strong> Permite acceso cuando el navegador lo solicite. Verifica que otra app no la use.</p>
-    <p><strong>Video no sincroniza:</strong> Activa cámara ANTES de presionar CAPTURAR.</p>
+    <p><strong>Conexión USB:</strong></p>
+    <ul>
+        <li><strong>No aparece el puerto:</strong> Verificar cable USB (debe ser de datos, no solo carga), probar otro puerto USB, reiniciar navegador.</li>
+        <li><strong>No llegan datos por USB:</strong> Usar <code>serial.writeLine()</code> en MakeCode. Verificar que el número de variables en la app coincida con las que envía el código.</li>
+    </ul>
+    <p><strong>Conexión Bluetooth:</strong></p>
+    <ul>
+        <li><strong>No aparece en el selector:</strong> Verificar que el programa tenga <code>bluetooth.startUartService()</code>. Reiniciar la micro:bit. Verificar que "No Pairing Required" esté habilitado en MakeCode.</li>
+        <li><strong>Se conecta pero no llegan datos:</strong> Verificar que use <code>bluetooth.uartWriteLine()</code>. Presionar CAPTURAR. Verificar checkbox "Micro:bit envía timestamp".</li>
+        <li><strong>Error "Not supported":</strong> Cache BLE corrupto. Ir a <code>chrome://bluetooth-internals</code> &gt; Devices &gt; olvidar el micro:bit. En macOS: también eliminarlo de Preferencias &gt; Bluetooth.</li>
+        <li><strong>Se desconecta mucho:</strong> Acercar la micro:bit (~10m máx). Verificar batería. La app reconecta automáticamente.</li>
+        <li><strong>No funciona en iPhone/iPad:</strong> Apple no soporta Web Bluetooth. Usar Chrome en Android o computadora.</li>
+    </ul>
+    <p><strong>General:</strong></p>
+    <ul>
+        <li><strong>Cámara no funciona:</strong> Permitir acceso cuando el navegador lo solicite. Verificar que otra app no la use.</li>
+        <li><strong>Video no sincroniza:</strong> Activar cámara ANTES de presionar CAPTURAR.</li>
+        <li><strong>Datos con picos/spikes:</strong> Activar "Filtro de picos" en configuración. Si persiste, reducir velocidad de envío.</li>
+    </ul>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -4761,22 +4891,45 @@ while True:
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
-    📶 MICRO:BIT CODE - BLUETOOTH <span class="help-accordion-arrow">▶</span>
+    📶 BLUETOOTH CONNECTION - STEP BY STEP TUTORIAL <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p>To send data via <strong>Bluetooth</strong> instead of USB, use the <code>bluetooth</code> extension in MakeCode. Important: adding bluetooth disables USB serial.</p>
-    <p><strong>1 Variable with timestamp - Bluetooth (recommended):</strong></p>
+    <p style="background:#e3f2fd; padding:10px; border-radius:6px; border-left:4px solid #1565c0;">
+        <strong>Bluetooth connection</strong> allows sending data wirelessly from the micro:bit using the UART service (Nordic UART Service) over BLE (Bluetooth Low Energy). Works on <strong>Chrome</strong> and <strong>Edge</strong> on computers and Android. <strong>Does NOT work on iOS/Safari.</strong>
+    </p>
+
+    <h4 style="margin-top:15px; color:#1565c0;">STEP 1: Prepare the MakeCode program</h4>
+    <p>In <a href="https://makecode.microbit.org" target="_blank" style="color:#1565c0;">makecode.microbit.org</a>:</p>
+    <ol>
+        <li>Create a new project</li>
+        <li>Go to <strong>Extensions</strong> (sidebar menu) and search for <code>bluetooth</code></li>
+        <li>Add the Bluetooth extension (this automatically removes the <code>radio</code> extension)</li>
+        <li>In project settings (gear icon &gt; Project), verify that <strong>"No Pairing Required"</strong> is enabled. This allows any device to connect without pairing.</li>
+    </ol>
+    <p style="font-size:0.9em; color:#c62828;"><strong>Important:</strong> Adding Bluetooth disables USB serial. To use USB again, remove the Bluetooth extension and add serial.</p>
+
+    <h4 style="margin-top:15px; color:#1565c0;">STEP 2: MakeCode Code (Blocks / JavaScript)</h4>
+    <p>The minimum code needs:</p>
+    <ul>
+        <li><code>bluetooth.startUartService()</code> — enable the UART service</li>
+        <li><code>bluetooth.uartWriteLine()</code> — send a CSV data line</li>
+    </ul>
+
+    <p><strong>1 Variable with timestamp (recommended):</strong></p>
     <div class="code-block">
-        <pre>bluetooth.startUartService()
+        <pre>let t = 0
+let value = 0
+bluetooth.startUartService()
 
 basic.forever(function () {
-    let t = input.runningTime()
-    let value = input.acceleration(Dimension.X)
+    t = input.runningTime()
+    value = input.acceleration(Dimension.X)
     bluetooth.uartWriteLine("" + t + "," + value)
     basic.pause(100)
 })</pre>
     </div>
-    <p><strong>2 Variables with timestamp - Bluetooth:</strong></p>
+
+    <p><strong>2 Variables with timestamp:</strong></p>
     <div class="code-block">
         <pre>bluetooth.startUartService()
 
@@ -4788,7 +4941,8 @@ basic.forever(function () {
     basic.pause(100)
 })</pre>
     </div>
-    <p><strong>3 Variables with timestamp - Bluetooth:</strong></p>
+
+    <p><strong>3 Variables with timestamp:</strong></p>
     <div class="code-block">
         <pre>bluetooth.startUartService()
 
@@ -4801,7 +4955,99 @@ basic.forever(function () {
     basic.pause(50)
 })</pre>
     </div>
-    <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Important:</strong> In MakeCode, add the <code>bluetooth</code> extension (Extensions menu). This automatically removes the <code>radio</code> extension. The micro:bit must be paired with the browser using the app's BLUETOOTH button.</p>
+
+    <p><strong>Other sensors - Bluetooth:</strong></p>
+    <div class="code-block">
+        <pre>// Temperature
+bluetooth.startUartService()
+basic.forever(function () {
+    let t = input.runningTime()
+    bluetooth.uartWriteLine("" + t + "," + input.temperature())
+    basic.pause(1000)
+})
+
+// Light level
+bluetooth.startUartService()
+basic.forever(function () {
+    let t = input.runningTime()
+    bluetooth.uartWriteLine("" + t + "," + input.lightLevel())
+    basic.pause(200)
+})
+
+// Compass (magnetometer)
+bluetooth.startUartService()
+basic.forever(function () {
+    let t = input.runningTime()
+    bluetooth.uartWriteLine("" + t + "," + input.compassHeading())
+    basic.pause(100)
+})</pre>
+    </div>
+
+    <p style="font-size:0.9em; color:#555;"><strong>Data format:</strong> Each line is <code>timestamp,value1,value2,...</code> separated by commas. The timestamp is <code>input.runningTime()</code> in milliseconds. Enable <strong>"Micro:bit sends timestamp"</strong> in the app settings.</p>
+
+    <h4 style="margin-top:15px; color:#1565c0;">STEP 3: Download the program to the micro:bit</h4>
+    <ol>
+        <li>Connect the micro:bit via USB to the computer</li>
+        <li>In MakeCode, press <strong>"Download"</strong></li>
+        <li>The .hex file copies to the micro:bit</li>
+        <li>Wait for the micro:bit to restart (orange light stops blinking)</li>
+        <li><strong>Disconnect the USB cable</strong> — the micro:bit can run on battery</li>
+    </ol>
+
+    <h4 style="margin-top:15px; color:#1565c0;">STEP 4: Connect from the app</h4>
+    <ol>
+        <li>Open this app in <strong>Chrome</strong> or <strong>Edge</strong></li>
+        <li>Press the <strong>BLUETOOTH</strong> button (blue)</li>
+        <li>In the browser picker, select your micro:bit (appears as <code>BBC micro:bit [XXXXX]</code>)</li>
+        <li>Wait for it to connect — the button changes to <strong>"BLUETOOTH CONNECTED"</strong></li>
+        <li>Press <strong>CAPTURE</strong> to start collecting data</li>
+    </ol>
+    <p style="font-size:0.9em; color:#555;"><strong>Auto-reconnection:</strong> If the micro:bit disconnects (e.g., goes out of range), the app automatically tries to reconnect up to 4 times with exponential backoff.</p>
+
+    <h4 style="margin-top:15px; color:#1565c0;">STEP 5: Additional BLE services (optional)</h4>
+    <p>Besides UART, you can enable other BLE services in your MakeCode program for automatic detection:</p>
+    <div class="code-block">
+        <pre>bluetooth.startUartService()
+bluetooth.startAccelerometerService()
+bluetooth.startTemperatureService()
+bluetooth.startMagnetometerService()
+bluetooth.startButtonService()
+bluetooth.startLEDService()
+bluetooth.startIOPinService()</pre>
+    </div>
+    <p style="font-size:0.9em; color:#555;">These services enable direct BLE sensor reading. However, UART is the primary and recommended method for data capture.</p>
+
+    <h4 style="margin-top:15px; color:#c62828;">Bluetooth Troubleshooting</h4>
+    <table style="width:100%; border-collapse:collapse; margin-top:5px; font-size:0.9em;">
+        <tr style="background:#f5f5f5; border-bottom:2px solid #333;">
+            <td style="padding:6px; font-weight:bold; width:40%;">Problem</td>
+            <td style="padding:6px; font-weight:bold;">Solution</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Not showing in picker</td>
+            <td style="padding:6px;">Verify micro:bit has <code>bluetooth.startUartService()</code>. Restart the micro:bit. Verify it's not connected to another device.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Connects but no data arrives</td>
+            <td style="padding:6px;">Verify the program uses <code>bluetooth.uartWriteLine()</code>. Press CAPTURE after connecting. Check "Micro:bit sends timestamp" checkbox matches your code format.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">"UART not found" error</td>
+            <td style="padding:6px;">The micro:bit program doesn't have <code>bluetooth.startUartService()</code>. Recompile and download.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">"Not supported" notification error</td>
+            <td style="padding:6px;">Corrupted browser BLE cache. Go to <code>chrome://bluetooth-internals</code>, forget the device, and reconnect. On macOS: also remove from System Preferences &gt; Bluetooth.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Disconnects frequently</td>
+            <td style="padding:6px;">Move micro:bit closer (BLE range: ~10m). Check micro:bit battery. The app auto-reconnects automatically.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Doesn't work on iPhone/iPad</td>
+            <td style="padding:6px;">Apple doesn't support Web Bluetooth on Safari/iOS. Use Chrome on Android or a computer.</td>
+        </tr>
+    </table>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -4909,11 +5155,25 @@ basic.forever(function () {
     ❓ TROUBLESHOOTING <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p><strong>Port doesn't appear:</strong> Check USB cable, try another port, restart browser.</p>
-    <p><strong>Bluetooth can't find micro:bit:</strong> Make sure the micro:bit has a program with the Bluetooth UART service ("bluetooth" extension in MakeCode). The micro:bit must be powered on and nearby. Use bluetooth.uartWriteNumber() and bluetooth.uartWriteLine("") instead of serial.</p>
-    <p><strong>No data arriving:</strong> Make sure to use serial.writeNumber() + serial.writeLine("") (USB) or bluetooth.uartWriteNumber() + bluetooth.uartWriteLine("") (Bluetooth). Don't send text.</p>
-    <p><strong>Camera not working:</strong> Allow access when browser requests. Check no other app is using it.</p>
-    <p><strong>Video doesn't sync:</strong> Activate camera BEFORE pressing CAPTURE.</p>
+    <p><strong>USB Connection:</strong></p>
+    <ul>
+        <li><strong>Port doesn't appear:</strong> Check USB cable (must be data cable, not charge-only), try another USB port, restart browser.</li>
+        <li><strong>No data via USB:</strong> Use <code>serial.writeLine()</code> in MakeCode. Verify the number of variables in the app matches what the code sends.</li>
+    </ul>
+    <p><strong>Bluetooth Connection:</strong></p>
+    <ul>
+        <li><strong>Not showing in picker:</strong> Verify program has <code>bluetooth.startUartService()</code>. Restart micro:bit. Verify "No Pairing Required" is enabled in MakeCode.</li>
+        <li><strong>Connects but no data:</strong> Verify it uses <code>bluetooth.uartWriteLine()</code>. Press CAPTURE. Check "Micro:bit sends timestamp" checkbox.</li>
+        <li><strong>"Not supported" error:</strong> Corrupted BLE cache. Go to <code>chrome://bluetooth-internals</code> &gt; Devices &gt; forget the micro:bit. On macOS: also remove from Preferences &gt; Bluetooth.</li>
+        <li><strong>Frequent disconnections:</strong> Move micro:bit closer (~10m max). Check battery. The app auto-reconnects.</li>
+        <li><strong>Doesn't work on iPhone/iPad:</strong> Apple doesn't support Web Bluetooth. Use Chrome on Android or a computer.</li>
+    </ul>
+    <p><strong>General:</strong></p>
+    <ul>
+        <li><strong>Camera not working:</strong> Allow access when browser requests. Check no other app is using it.</li>
+        <li><strong>Video doesn't sync:</strong> Activate camera BEFORE pressing CAPTURE.</li>
+        <li><strong>Data spikes/outliers:</strong> Enable "Spike filter" in settings. If persistent, reduce sending speed.</li>
+    </ul>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -5144,22 +5404,45 @@ while True:
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
-    📶 CÓDIGO MICRO:BIT - BLUETOOTH <span class="help-accordion-arrow">▶</span>
+    📶 CONEXÃO BLUETOOTH - TUTORIAL PASSO A PASSO <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p>Para enviar dados por <strong>Bluetooth</strong> em vez de USB, use a extensão <code>bluetooth</code> no MakeCode. Importante: ao adicionar bluetooth, o serial USB é desativado.</p>
-    <p><strong>1 Variável com timestamp - Bluetooth (recomendado):</strong></p>
+    <p style="background:#e3f2fd; padding:10px; border-radius:6px; border-left:4px solid #1565c0;">
+        <strong>A conexão Bluetooth</strong> permite enviar dados da micro:bit de forma sem fio usando o serviço UART (Nordic UART Service) sobre BLE (Bluetooth Low Energy). Funciona no <strong>Chrome</strong> e <strong>Edge</strong> em computadores e Android. <strong>Não funciona no iOS/Safari.</strong>
+    </p>
+
+    <h4 style="margin-top:15px; color:#1565c0;">PASSO 1: Preparar o programa no MakeCode</h4>
+    <p>Em <a href="https://makecode.microbit.org" target="_blank" style="color:#1565c0;">makecode.microbit.org</a>:</p>
+    <ol>
+        <li>Criar um projeto novo</li>
+        <li>Ir a <strong>Extensões</strong> (menu lateral) e buscar <code>bluetooth</code></li>
+        <li>Adicionar a extensão Bluetooth (isso remove automaticamente a extensão <code>radio</code>)</li>
+        <li>Nas configurações do projeto (engrenagem &gt; Projeto), verificar que <strong>"No Pairing Required"</strong> esteja habilitado. Isso permite que qualquer dispositivo se conecte sem necessidade de emparelhar.</li>
+    </ol>
+    <p style="font-size:0.9em; color:#c62828;"><strong>Importante:</strong> Ao adicionar Bluetooth, o serial USB é desativado. Para voltar a usar USB, remover a extensão Bluetooth e adicionar serial.</p>
+
+    <h4 style="margin-top:15px; color:#1565c0;">PASSO 2: Código MakeCode (Blocos / JavaScript)</h4>
+    <p>O código mínimo precisa de:</p>
+    <ul>
+        <li><code>bluetooth.startUartService()</code> — habilitar o serviço UART</li>
+        <li><code>bluetooth.uartWriteLine()</code> — enviar uma linha de dados CSV</li>
+    </ul>
+
+    <p><strong>1 Variável com timestamp (recomendado):</strong></p>
     <div class="code-block">
-        <pre>bluetooth.startUartService()
+        <pre>let t = 0
+let valor = 0
+bluetooth.startUartService()
 
 basic.forever(function () {
-    let t = input.runningTime()
-    let valor = input.acceleration(Dimension.X)
+    t = input.runningTime()
+    valor = input.acceleration(Dimension.X)
     bluetooth.uartWriteLine("" + t + "," + valor)
     basic.pause(100)
 })</pre>
     </div>
-    <p><strong>2 Variáveis com timestamp - Bluetooth:</strong></p>
+
+    <p><strong>2 Variáveis com timestamp:</strong></p>
     <div class="code-block">
         <pre>bluetooth.startUartService()
 
@@ -5171,7 +5454,8 @@ basic.forever(function () {
     basic.pause(100)
 })</pre>
     </div>
-    <p><strong>3 Variáveis com timestamp - Bluetooth:</strong></p>
+
+    <p><strong>3 Variáveis com timestamp:</strong></p>
     <div class="code-block">
         <pre>bluetooth.startUartService()
 
@@ -5184,7 +5468,99 @@ basic.forever(function () {
     basic.pause(50)
 })</pre>
     </div>
-    <p style="margin-top:10px; font-size:0.9em; color:#555;"><strong>Importante:</strong> No MakeCode, adicione a extensão <code>bluetooth</code> (menu Extensões). Isso remove automaticamente a extensão <code>radio</code>. A micro:bit deve ser emparelhada com o navegador usando o botão BLUETOOTH do aplicativo.</p>
+
+    <p><strong>Outros sensores - Bluetooth:</strong></p>
+    <div class="code-block">
+        <pre>// Temperatura
+bluetooth.startUartService()
+basic.forever(function () {
+    let t = input.runningTime()
+    bluetooth.uartWriteLine("" + t + "," + input.temperature())
+    basic.pause(1000)
+})
+
+// Nível de luz
+bluetooth.startUartService()
+basic.forever(function () {
+    let t = input.runningTime()
+    bluetooth.uartWriteLine("" + t + "," + input.lightLevel())
+    basic.pause(200)
+})
+
+// Bússola (magnetômetro)
+bluetooth.startUartService()
+basic.forever(function () {
+    let t = input.runningTime()
+    bluetooth.uartWriteLine("" + t + "," + input.compassHeading())
+    basic.pause(100)
+})</pre>
+    </div>
+
+    <p style="font-size:0.9em; color:#555;"><strong>Formato dos dados:</strong> Cada linha é <code>timestamp,valor1,valor2,...</code> separados por vírgula. O timestamp é <code>input.runningTime()</code> em milissegundos. Ativar <strong>"Micro:bit envia timestamp"</strong> nas configurações do app.</p>
+
+    <h4 style="margin-top:15px; color:#1565c0;">PASSO 3: Baixar o programa na micro:bit</h4>
+    <ol>
+        <li>Conectar a micro:bit via USB ao computador</li>
+        <li>No MakeCode, pressionar <strong>"Download"</strong></li>
+        <li>O arquivo .hex é copiado para a micro:bit</li>
+        <li>Esperar que a micro:bit reinicie (a luz laranja para de piscar)</li>
+        <li><strong>Desconectar o cabo USB</strong> — a micro:bit pode funcionar com bateria</li>
+    </ol>
+
+    <h4 style="margin-top:15px; color:#1565c0;">PASSO 4: Conectar pelo app</h4>
+    <ol>
+        <li>Abrir este app no <strong>Chrome</strong> ou <strong>Edge</strong></li>
+        <li>Pressionar o botão <strong>BLUETOOTH</strong> (azul)</li>
+        <li>No seletor do navegador, escolher sua micro:bit (aparece como <code>BBC micro:bit [XXXXX]</code>)</li>
+        <li>Esperar a conexão — o botão muda para <strong>"BLUETOOTH CONECTADO"</strong></li>
+        <li>Pressionar <strong>CAPTURAR</strong> para iniciar a coleta de dados</li>
+    </ol>
+    <p style="font-size:0.9em; color:#555;"><strong>Reconexão automática:</strong> Se a micro:bit desconectar (por exemplo, se afastar demais), o app tenta reconectar automaticamente até 4 vezes com backoff exponencial.</p>
+
+    <h4 style="margin-top:15px; color:#1565c0;">PASSO 5: Serviços BLE adicionais (opcional)</h4>
+    <p>Além do UART, você pode habilitar outros serviços BLE no seu programa MakeCode para detecção automática:</p>
+    <div class="code-block">
+        <pre>bluetooth.startUartService()
+bluetooth.startAccelerometerService()
+bluetooth.startTemperatureService()
+bluetooth.startMagnetometerService()
+bluetooth.startButtonService()
+bluetooth.startLEDService()
+bluetooth.startIOPinService()</pre>
+    </div>
+    <p style="font-size:0.9em; color:#555;">Esses serviços permitem leitura direta BLE de sensores. No entanto, o UART é o método principal e recomendado para captura de dados.</p>
+
+    <h4 style="margin-top:15px; color:#c62828;">Solução de problemas Bluetooth</h4>
+    <table style="width:100%; border-collapse:collapse; margin-top:5px; font-size:0.9em;">
+        <tr style="background:#f5f5f5; border-bottom:2px solid #333;">
+            <td style="padding:6px; font-weight:bold; width:40%;">Problema</td>
+            <td style="padding:6px; font-weight:bold;">Solução</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Não aparece no seletor</td>
+            <td style="padding:6px;">Verificar que a micro:bit tem <code>bluetooth.startUartService()</code>. Reiniciar a micro:bit. Verificar que não está conectada a outro dispositivo.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Conecta mas não chegam dados</td>
+            <td style="padding:6px;">Verificar que o programa usa <code>bluetooth.uartWriteLine()</code>. Pressionar CAPTURAR após conectar. Verificar checkbox "Micro:bit envia timestamp" conforme o formato do código.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Erro "UART não encontrado"</td>
+            <td style="padding:6px;">O programa da micro:bit não tem <code>bluetooth.startUartService()</code>. Recompilar e baixar o programa.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Erro "Not supported" nas notificações</td>
+            <td style="padding:6px;">Cache BLE corrompido do navegador. Ir a <code>chrome://bluetooth-internals</code>, esquecer o dispositivo, e reconectar. No macOS: também remover das Preferências do Sistema &gt; Bluetooth.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Desconecta frequentemente</td>
+            <td style="padding:6px;">Aproximar a micro:bit do dispositivo (alcance BLE: ~10m). Verificar bateria da micro:bit. O app reconecta automaticamente.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Não funciona no iPhone/iPad</td>
+            <td style="padding:6px;">Apple não suporta Web Bluetooth no Safari/iOS. Usar Chrome no Android ou computador.</td>
+        </tr>
+    </table>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -5292,11 +5668,25 @@ basic.forever(function () {
     ❓ SOLUÇÃO DE PROBLEMAS <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
-    <p><strong>Porta não aparece:</strong> Verifique cabo USB, tente outra porta, reinicie navegador.</p>
-    <p><strong>Bluetooth não encontra a micro:bit:</strong> Certifique-se de que a micro:bit tenha um programa com o serviço Bluetooth UART (extensão "bluetooth" no MakeCode). A micro:bit deve estar ligada e próxima. Use bluetooth.uartWriteNumber() e bluetooth.uartWriteLine("") em vez de serial.</p>
-    <p><strong>Dados não chegam:</strong> Certifique-se de usar serial.writeNumber() + serial.writeLine("") (USB) ou bluetooth.uartWriteNumber() + bluetooth.uartWriteLine("") (Bluetooth). Não envie texto.</p>
-    <p><strong>Câmera não funciona:</strong> Permita acesso quando o navegador solicitar. Verifique se outro app não está usando.</p>
-    <p><strong>Vídeo não sincroniza:</strong> Ative câmera ANTES de pressionar CAPTURAR.</p>
+    <p><strong>Conexão USB:</strong></p>
+    <ul>
+        <li><strong>Porta não aparece:</strong> Verificar cabo USB (deve ser de dados, não apenas carga), tentar outra porta USB, reiniciar navegador.</li>
+        <li><strong>Dados não chegam via USB:</strong> Usar <code>serial.writeLine()</code> no MakeCode. Verificar que o número de variáveis no app coincide com o que o código envia.</li>
+    </ul>
+    <p><strong>Conexão Bluetooth:</strong></p>
+    <ul>
+        <li><strong>Não aparece no seletor:</strong> Verificar que o programa tem <code>bluetooth.startUartService()</code>. Reiniciar a micro:bit. Verificar que "No Pairing Required" está habilitado no MakeCode.</li>
+        <li><strong>Conecta mas sem dados:</strong> Verificar que usa <code>bluetooth.uartWriteLine()</code>. Pressionar CAPTURAR. Verificar checkbox "Micro:bit envia timestamp".</li>
+        <li><strong>Erro "Not supported":</strong> Cache BLE corrompido. Ir a <code>chrome://bluetooth-internals</code> &gt; Devices &gt; esquecer a micro:bit. No macOS: também remover das Preferências &gt; Bluetooth.</li>
+        <li><strong>Desconecta muito:</strong> Aproximar a micro:bit (~10m máx). Verificar bateria. O app reconecta automaticamente.</li>
+        <li><strong>Não funciona no iPhone/iPad:</strong> Apple não suporta Web Bluetooth. Usar Chrome no Android ou computador.</li>
+    </ul>
+    <p><strong>Geral:</strong></p>
+    <ul>
+        <li><strong>Câmera não funciona:</strong> Permitir acesso quando o navegador solicitar. Verificar se outro app não está usando.</li>
+        <li><strong>Vídeo não sincroniza:</strong> Ativar câmera ANTES de pressionar CAPTURAR.</li>
+        <li><strong>Dados com picos/spikes:</strong> Ativar "Filtro de picos" nas configurações. Se persistir, reduzir velocidade de envio.</li>
+    </ul>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
