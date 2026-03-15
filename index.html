@@ -6109,11 +6109,12 @@ basic.forever(function () {
                 return 'desktop';
             },
             // Tiempos de espera para service discovery (ms)
-            get serviceDiscoveryWait() { return _isWindows ? 5000 : isMobileBrowser ? 3000 : 1500; },
-            // Intentos de conexión inicial
-            get maxConnectAttempts() { return _isWindows ? 4 : isMobileBrowser ? 3 : 2; },
+            // macOS Chrome cachea GATT tables agresivamente — necesita más tiempo después de forget
+            get serviceDiscoveryWait() { return _isWindows ? 5000 : isMobileBrowser ? 3000 : _isMac ? 3000 : 2000; },
+            // Intentos de conexión inicial (cada intento hace disconnect+reconnect completo)
+            get maxConnectAttempts() { return _isWindows ? 4 : isMobileBrowser ? 3 : _isMac ? 4 : 3; },
             // Espera entre reintentos de conexión (ms)
-            get connectRetryWait() { return _isWindows ? 4000 : isMobileBrowser ? 2500 : 1500; },
+            get connectRetryWait() { return _isWindows ? 4000 : isMobileBrowser ? 2500 : _isMac ? 3000 : 2000; },
             // Intentos de getPrimaryServices en Windows
             get maxServiceEnumRetries() { return _isWindows ? 3 : 1; },
             // Reconexión automática
@@ -6247,6 +6248,20 @@ basic.forever(function () {
                     this.services[svc.uuid] = svc;
                     this.availableServices.add(svc.uuid);
                     this.log(`  Servicio: ${svc.uuid}`);
+                }
+
+                // Verificar que al menos un servicio útil fue descubierto.
+                // Si solo encontramos Device Information (0000180a-...), el BLE stack
+                // no terminó la discovery — necesitamos un ciclo completo de disconnect+reconnect.
+                const hasUsefulService = allServices.some(s =>
+                    s.uuid === BLE_UUIDS.UART_SERVICE || s.uuid === BLE_UUIDS.ACCEL_SERVICE ||
+                    s.uuid === BLE_UUIDS.TEMP_SERVICE || s.uuid === BLE_UUIDS.BTN_SERVICE
+                );
+                if (!hasUsefulService) {
+                    // Disconnect para forzar un ciclo limpio en el próximo intento
+                    if (device.gatt.connected) device.gatt.disconnect();
+                    const foundUUIDs = allServices.map(s => s.uuid).join(', ') || '(ninguno)';
+                    throw new Error(`Service discovery incompleto: solo encontró [${foundUUIDs}]. Se necesita reconnect.`);
                 }
 
                 this.server = srv;
