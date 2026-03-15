@@ -6108,22 +6108,12 @@ basic.forever(function () {
                 if (isMobileBrowser) return 'mobile';
                 return 'desktop';
             },
-            // Tiempos de espera para service discovery (ms)
-            // macOS Chrome cachea GATT tables agresivamente — necesita más tiempo después de forget
-            get serviceDiscoveryWait() { return _isWindows ? 5000 : isMobileBrowser ? 3000 : _isMac ? 3000 : 2000; },
-            // Intentos de conexión inicial (cada intento hace disconnect+reconnect completo)
-            get maxConnectAttempts() { return _isWindows ? 4 : isMobileBrowser ? 3 : _isMac ? 4 : 3; },
-            // Espera entre reintentos de conexión (ms)
-            get connectRetryWait() { return _isWindows ? 4000 : isMobileBrowser ? 2500 : _isMac ? 3000 : 2000; },
-            // Intentos de getPrimaryServices en Windows
-            get maxServiceEnumRetries() { return _isWindows ? 3 : 1; },
+            // Intentos de conexión inicial
+            get maxConnectAttempts() { return 3; },
             // Reconexión automática
             get maxReconnectAttempts() { return _isWindows ? 8 : isMobileBrowser ? 6 : 4; },
             get reconnectBaseWait() { return _isWindows ? 2500 : isMobileBrowser ? 2000 : 1000; },
             get reconnectMaxWait() { return 15000; },
-            // Intentos post-forget
-            get maxPostForgetAttempts() { return _isWindows ? 3 : 2; },
-            get postForgetRetryWait() { return _isWindows ? 4000 : isMobileBrowser ? 3000 : 2000; },
             // Health monitoring
             healthCheckInterval: 5000,      // Intervalo de verificación de salud (ms)
             connectionTimeout: 30000,       // Timeout para conexión completa (ms)
@@ -6195,126 +6185,35 @@ basic.forever(function () {
                 return this.device;
             }
 
-            // ── Conectar al GATT server y descubrir servicios ──
-            // NOTA: este método NO valida qué servicios se encontraron.
-            // La enumeración (getPrimaryServices) puede no listar UART
-            // aunque esté disponible vía getPrimaryService(uuid) directo.
-            // La validación se hace en initUART/initDirectSensors.
-            async connectGATT(device, label = 'Conexión') {
-                this.log(`${label} — Conectando a GATT server...`);
-                const srv = await device.gatt.connect();
-                this.log(`${label} — GATT connected:`, srv.connected);
+            // ── Conexión directa: connect + getPrimaryService(uuid) ──
+            // Basado en mattwilson1024/microbit-bluetooth: sin esperas artificiales,
+            // sin enumeración de servicios. La Web Bluetooth API maneja el timing.
+            async connectAndSetupUART(device) {
+                this.log('Conectando a GATT server...');
+                this.server = await device.gatt.connect();
+                this.log('GATT connected:', this.server.connected);
 
-                // Esperar service discovery (el BLE stack necesita tiempo)
-                const sdWait = BT_CONFIG.serviceDiscoveryWait;
-                this.log(`${label} — Esperando ${sdWait}ms para service discovery...`);
-                await this._delay(sdWait);
+                // Obtener servicio UART directamente por UUID
+                // (getPrimaryService espera internamente a que el service discovery termine)
+                this.log('Buscando servicio UART...');
+                const uartService = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
+                this.log('Servicio UART encontrado');
+                this.services[BLE_UUIDS.UART_SERVICE] = uartService;
+                this.availableServices.add(BLE_UUIDS.UART_SERVICE);
 
-                if (!device.gatt.connected) {
-                    throw new Error('GATT se desconectó durante service discovery');
-                }
+                // Obtener característica RX (la que envía datos desde el micro:bit)
+                this.log('Buscando característica UART RX...');
+                const rxChar = await uartService.getCharacteristic(BLE_UUIDS.UART_RX);
+                this.characteristics.UART_RX = rxChar;
+                this.log('UART RX encontrada:', rxChar.uuid);
 
-                // Obtener servicios via enumeración (best effort)
-                let allServices = [];
-                const maxEnumRetries = Math.max(BT_CONFIG.maxServiceEnumRetries, 2);
-                for (let t = 1; t <= maxEnumRetries; t++) {
-                    try {
-                        allServices = await srv.getPrimaryServices();
-                        this.log(`${label} — getPrimaryServices intento ${t}: ${allServices.length} servicios`);
-                        if (allServices.length > 0) break;
-                        if (t < maxEnumRetries) {
-                            this.log(`${label} — Lista vacía, reintentando en 2000ms...`);
-                            await this._delay(2000);
-                        }
-                    } catch (enumErr) {
-                        this.warn(`${label} — getPrimaryServices() intento ${t} falló:`, enumErr.message);
-                        if (t < maxEnumRetries) await this._delay(2000);
-                    }
-                }
-
-                // Indexar servicios descubiertos via enumeración
-                this.services = {};
-                this.availableServices.clear();
-                for (const svc of allServices) {
-                    this.services[svc.uuid] = svc;
-                    this.availableServices.add(svc.uuid);
-                    this.log(`  Servicio encontrado: ${svc.uuid}`);
-                }
-
-                this.server = srv;
-                return { server: srv, services: allServices };
-            }
-
-            // ── Inicializar UART ──
-            async initUART() {
-                // Primero buscar en servicios ya descubiertos
-                let uartSvc = this.services[BLE_UUIDS.UART_SERVICE];
-                if (uartSvc) {
-                    return await this._setupUARTCharacteristics(uartSvc);
-                }
-
-                // getPrimaryServices() no listó UART — intentar búsqueda directa por UUID.
-                // En muchas plataformas (Android, macOS), la enumeración no lista UART
-                // pero getPrimaryService(uuid) sí lo encuentra.
+                // Obtener característica TX (para enviar datos al micro:bit) si existe
                 try {
-                    this.log('initUART: buscando servicio UART por UUID directo...');
-                    const svc = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
-                    this.services[BLE_UUIDS.UART_SERVICE] = svc;
-                    this.availableServices.add(BLE_UUIDS.UART_SERVICE);
-                    this.log('initUART: servicio UART encontrado via búsqueda directa');
-                    return await this._setupUARTCharacteristics(svc);
-                } catch (e) {
-                    this.warn('initUART: búsqueda directa falló:', e.message);
-                }
+                    const txChar = await uartService.getCharacteristic(BLE_UUIDS.UART_TX);
+                    this.characteristics.UART_TX = txChar;
+                    this.log('UART TX encontrada:', txChar.uuid);
+                } catch (_) { /* TX es opcional */ }
 
-                // Último intento: esperar un poco y reintentar (por si el BLE stack
-                // todavía está procesando service discovery)
-                this.log('initUART: esperando 2s para re-intentar...');
-                await this._delay(2000);
-                try {
-                    const svc = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
-                    this.services[BLE_UUIDS.UART_SERVICE] = svc;
-                    this.availableServices.add(BLE_UUIDS.UART_SERVICE);
-                    this.log('initUART: servicio UART encontrado en segundo intento');
-                    return await this._setupUARTCharacteristics(svc);
-                } catch (e2) {
-                    this.warn('initUART: segundo intento falló:', e2.message);
-                }
-
-                this.warn('Servicio UART no disponible en esta conexión');
-                return false;
-            }
-
-            async _setupUARTCharacteristics(service) {
-                const allChars = await service.getCharacteristics();
-                this.log('UART: Características encontradas:', allChars.length);
-
-                for (const ch of allChars) {
-                    const props = ch.properties;
-                    const propList = [];
-                    if (props.read) propList.push('read');
-                    if (props.write) propList.push('write');
-                    if (props.writeWithoutResponse) propList.push('writeNoResp');
-                    if (props.notify) propList.push('notify');
-                    if (props.indicate) propList.push('indicate');
-                    this.log(`  UART char: ${ch.uuid}, props: [${propList.join(', ')}]`);
-
-                    if (ch.uuid === BLE_UUIDS.UART_RX && (props.notify || props.indicate)) {
-                        this.characteristics.UART_RX = ch;
-                    }
-                    if (ch.uuid === BLE_UUIDS.UART_TX && (props.write || props.writeWithoutResponse)) {
-                        this.characteristics.UART_TX = ch;
-                    }
-                    // Fallback: si no matchea por UUID, usar propiedades
-                    if (!this.characteristics.UART_RX && (props.notify || props.indicate)) {
-                        this.characteristics.UART_RX = ch;
-                    }
-                }
-
-                if (!this.characteristics.UART_RX) {
-                    throw new Error('No se encontró característica UART con notify/indicate');
-                }
-                this.log('UART RX (lectura):', this.characteristics.UART_RX.uuid);
                 return true;
             }
 
@@ -6579,7 +6478,7 @@ basic.forever(function () {
                 this._notificationHandlers.push({ char: txChar, handler });
             }
 
-            // ── Conexión completa con fases de retry ──
+            // ── Conexión completa ──
             async connect() {
                 if (this.connecting) {
                     this.log('Conexión ya en progreso');
@@ -6595,99 +6494,59 @@ basic.forever(function () {
 
                     statusEl.textContent = 'Conectando a ' + (this.device.name || 'micro:bit') + '...';
 
-                    // Fase 2: Conectar GATT con reintentos
-                    let found = false;
+                    // Fase 2: Conectar GATT + obtener servicio UART directamente
+                    // Sin esperas artificiales — getPrimaryService() maneja el timing internamente
+                    let connected = false;
                     let lastError = null;
+                    const maxAttempts = 3;
 
-                    // ── Método interno: un intento completo de conexión ──
-                    // Conecta GATT + intenta inicializar UART (incl. búsqueda directa por UUID)
-                    const tryFullConnect = async (dev, label) => {
-                        await this.connectGATT(dev, label);
-                        // Intentar inicializar UART — incluye búsqueda directa por UUID
-                        // que funciona incluso cuando getPrimaryServices() no lo lista
-                        const hasUART = await this.initUART().catch(() => false);
-                        const directSensors = await this.initDirectSensors().catch(() => []);
-                        if (!hasUART && directSensors.length === 0) {
-                            throw new Error('Service discovery incompleto: UART no encontrado');
-                        }
-                        return { hasUART, directSensors };
-                    };
-
-                    let hasUART = false;
-                    let directSensors = [];
-
-                    // ── Fase A: intentos directos (connect + initUART como unidad) ──
-                    const maxAttempts = BT_CONFIG.maxConnectAttempts;
-                    for (let attempt = 1; attempt <= maxAttempts && !found; attempt++) {
+                    for (let attempt = 1; attempt <= maxAttempts && !connected; attempt++) {
                         try {
-                            statusEl.textContent = `Conectando... intento ${attempt}/${maxAttempts}`;
                             if (attempt > 1) {
-                                try { if (this.device && this.device.gatt && this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
-                                await this._delay(BT_CONFIG.connectRetryWait);
+                                statusEl.textContent = `Reconectando... intento ${attempt}/${maxAttempts}`;
+                                try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
+                                await this._delay(1000);
                             }
-                            const result = await tryFullConnect(this.device, `Intento ${attempt}`);
-                            hasUART = result.hasUART;
-                            directSensors = result.directSensors;
-                            found = true;
+                            await this.connectAndSetupUART(this.device);
+                            connected = true;
                         } catch (e) {
                             lastError = e;
-                            this.warn(`Intento ${attempt} falló:`, e.name, e.message);
-                            // Disconnect para forzar re-discovery limpia en el próximo intento
-                            try { if (this.device && this.device.gatt && this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
+                            this.warn(`Intento ${attempt}/${maxAttempts} falló:`, e.message);
                         }
                     }
 
-                    // ── Fase B: forget() + re-solicitar ──
-                    if (!found && this.device) {
-                        try { if (this.device.gatt && this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
-                        this.log('── Fase B: limpiando cache BLE ──');
-
-                        if (typeof this.device.forget === 'function') {
+                    if (!connected) {
+                        // Último recurso: forget + re-solicitar
+                        if (this.device && typeof this.device.forget === 'function') {
                             try {
+                                this.log('Limpiando cache BLE...');
                                 statusEl.textContent = 'Limpiando cache BLE... seleccioná el micro:bit de nuevo';
+                                try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                                 await this.device.forget();
-                                this.log('device.forget() completado');
-                                await this._delay(_isWindows ? 2000 : 1000);
-
-                                this.device = await navigator.bluetooth.requestDevice(
-                                    _isWindows
-                                        ? { acceptAllDevices: true, optionalServices: ALL_OPTIONAL_SERVICES }
-                                        : { filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }], optionalServices: ALL_OPTIONAL_SERVICES }
-                                );
-                                this.log('Nuevo dispositivo:', this.device.name);
-                                statusEl.textContent = 'Reconectando a ' + (this.device.name || 'micro:bit') + '...';
-
-                                for (let retry = 1; retry <= BT_CONFIG.maxPostForgetAttempts && !found; retry++) {
-                                    try {
-                                        if (retry > 1) {
-                                            try { if (this.device && this.device.gatt && this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
-                                            await this._delay(BT_CONFIG.postForgetRetryWait);
-                                        }
-                                        const result = await tryFullConnect(this.device, `Post-forget ${retry}`);
-                                        hasUART = result.hasUART;
-                                        directSensors = result.directSensors;
-                                        found = true;
-                                    } catch (e) {
-                                        lastError = e;
-                                        this.warn(`Post-forget intento ${retry} falló:`, e.name, e.message);
-                                        try { if (this.device && this.device.gatt && this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
-                                    }
-                                }
+                                await this._delay(500);
+                                this.device = await navigator.bluetooth.requestDevice({
+                                    filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }],
+                                    optionalServices: ALL_OPTIONAL_SERVICES
+                                });
+                                await this.connectAndSetupUART(this.device);
+                                connected = true;
                             } catch (forgetErr) {
                                 if (forgetErr.name === 'NotFoundError') { this.connecting = false; return false; }
-                                this.warn('Error en fase forget:', forgetErr.message);
                                 lastError = forgetErr;
+                                this.warn('Post-forget falló:', forgetErr.message);
                             }
                         }
                     }
 
-                    // ── Fase C: todo falló ──
-                    if (!found) {
-                        this.error('Todos los intentos fallaron:', lastError?.message);
+                    if (!connected) {
+                        this.error('Conexión fallida:', lastError?.message);
                         this._showConnectionError();
                         this.connecting = false;
                         return false;
                     }
+
+                    // Fase 3: Inicializar sensores BLE directos (opcional, no bloquea)
+                    const directSensors = await this.initDirectSensors().catch(() => []);
 
                     // Fase 4: Estado y UI
                     this.connected = true;
@@ -6699,7 +6558,7 @@ basic.forever(function () {
 
                     // Info de servicios disponibles
                     const serviceNames = [];
-                    if (hasUART) serviceNames.push('UART');
+                    serviceNames.push('UART');
                     serviceNames.push(...directSensors);
                     this.log('Servicios activos:', serviceNames.join(', '));
 
@@ -6727,10 +6586,8 @@ basic.forever(function () {
                     syncExpBtButton();
                     this.log('── Conexión completa, iniciando loop de lectura ──');
 
-                    // Iniciar UART loop si hay UART
-                    if (hasUART) {
-                        await this.startUARTLoop();
-                    }
+                    // Iniciar UART loop
+                    await this.startUARTLoop();
 
                     this.connecting = false;
                     return true;
@@ -6793,11 +6650,8 @@ basic.forever(function () {
 
                         if (this._reconnectAbort || this._destroyed) break;
 
-                        this.log(`Reconexión intento ${attempt}/${maxReconnect} — conectando GATT...`);
-                        await this.connectGATT(this.device, `Reconexión ${attempt}`);
-
-                        // Re-inicializar servicios
-                        const hasUART = await this.initUART().catch(() => false);
+                        this.log(`Reconexión intento ${attempt}/${maxReconnect} — conectando...`);
+                        await this.connectAndSetupUART(this.device);
                         await this.initDirectSensors().catch(() => []);
 
                         state.btCharTx = this.characteristics.UART_RX || null;
@@ -6811,10 +6665,8 @@ basic.forever(function () {
 
                         this._startHealthCheck();
 
-                        if (hasUART) {
-                            this.btLoopRunning = false; // Reset para permitir nuevo loop
-                            await this.startUARTLoop();
-                        }
+                        this.btLoopRunning = false;
+                        await this.startUARTLoop();
 
                         this.reconnecting = false;
                         return;
