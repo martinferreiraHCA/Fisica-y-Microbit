@@ -6196,13 +6196,16 @@ basic.forever(function () {
             }
 
             // ── Conectar al GATT server y descubrir servicios ──
+            // NOTA: este método NO valida qué servicios se encontraron.
+            // La enumeración (getPrimaryServices) puede no listar UART
+            // aunque esté disponible vía getPrimaryService(uuid) directo.
+            // La validación se hace en initUART/initDirectSensors.
             async connectGATT(device, label = 'Conexión') {
                 this.log(`${label} — Conectando a GATT server...`);
                 const srv = await device.gatt.connect();
                 this.log(`${label} — GATT connected:`, srv.connected);
 
                 // Esperar service discovery (el BLE stack necesita tiempo)
-                // Después de forget() o primera conexión, necesita más tiempo
                 const sdWait = BT_CONFIG.serviceDiscoveryWait;
                 this.log(`${label} — Esperando ${sdWait}ms para service discovery...`);
                 await this._delay(sdWait);
@@ -6211,27 +6214,15 @@ basic.forever(function () {
                     throw new Error('GATT se desconectó durante service discovery');
                 }
 
-                // Obtener todos los servicios con reintentos.
-                // Siempre hacer al menos 3 intentos: después de forget/desvincular,
-                // el BLE stack puede necesitar varios ciclos para descubrir todos los servicios.
-                const maxEnumRetries = Math.max(BT_CONFIG.maxServiceEnumRetries, 3);
+                // Obtener servicios via enumeración (best effort)
                 let allServices = [];
+                const maxEnumRetries = Math.max(BT_CONFIG.maxServiceEnumRetries, 2);
                 for (let t = 1; t <= maxEnumRetries; t++) {
                     try {
                         allServices = await srv.getPrimaryServices();
                         this.log(`${label} — getPrimaryServices intento ${t}: ${allServices.length} servicios`);
-                        // Verificar que encontramos al menos UART o acelerómetro
-                        const hasUseful = allServices.some(s =>
-                            s.uuid === BLE_UUIDS.UART_SERVICE || s.uuid === BLE_UUIDS.ACCEL_SERVICE
-                        );
-                        if (allServices.length > 0 && hasUseful) break;
-                        // Si hay servicios pero no los útiles, esperar más (discovery incompleto)
-                        if (allServices.length > 0 && !hasUseful && t < maxEnumRetries) {
-                            this.log(`${label} — Servicios encontrados pero sin UART/acelerómetro, esperando más discovery...`);
-                            await this._delay(2500);
-                            continue;
-                        }
-                        if (allServices.length === 0 && t < maxEnumRetries) {
+                        if (allServices.length > 0) break;
+                        if (t < maxEnumRetries) {
                             this.log(`${label} — Lista vacía, reintentando en 2000ms...`);
                             await this._delay(2000);
                         }
@@ -6241,27 +6232,13 @@ basic.forever(function () {
                     }
                 }
 
-                // Indexar servicios descubiertos
+                // Indexar servicios descubiertos via enumeración
                 this.services = {};
                 this.availableServices.clear();
                 for (const svc of allServices) {
                     this.services[svc.uuid] = svc;
                     this.availableServices.add(svc.uuid);
-                    this.log(`  Servicio: ${svc.uuid}`);
-                }
-
-                // Verificar que al menos un servicio útil fue descubierto.
-                // Si solo encontramos Device Information (0000180a-...), el BLE stack
-                // no terminó la discovery — necesitamos un ciclo completo de disconnect+reconnect.
-                const hasUsefulService = allServices.some(s =>
-                    s.uuid === BLE_UUIDS.UART_SERVICE || s.uuid === BLE_UUIDS.ACCEL_SERVICE ||
-                    s.uuid === BLE_UUIDS.TEMP_SERVICE || s.uuid === BLE_UUIDS.BTN_SERVICE
-                );
-                if (!hasUsefulService) {
-                    // Disconnect para forzar un ciclo limpio en el próximo intento
-                    if (device.gatt.connected) device.gatt.disconnect();
-                    const foundUUIDs = allServices.map(s => s.uuid).join(', ') || '(ninguno)';
-                    throw new Error(`Service discovery incompleto: solo encontró [${foundUUIDs}]. Se necesita reconnect.`);
+                    this.log(`  Servicio encontrado: ${svc.uuid}`);
                 }
 
                 this.server = srv;
@@ -6276,48 +6253,35 @@ basic.forever(function () {
                     return await this._setupUARTCharacteristics(uartSvc);
                 }
 
-                // Si no está en la lista, intentar getPrimaryService directo con reintentos.
-                // Después de forget/desvincular, el servicio puede tardar en aparecer.
-                const maxRetries = 4;
-                for (let attempt = 1; attempt <= maxRetries; attempt++) {
-                    try {
-                        this.log(`initUART: intento ${attempt}/${maxRetries} — buscando servicio UART directo...`);
-                        const svc = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
-                        this.services[BLE_UUIDS.UART_SERVICE] = svc;
-                        this.availableServices.add(BLE_UUIDS.UART_SERVICE);
-                        this.log('initUART: servicio UART encontrado en intento', attempt);
-                        return await this._setupUARTCharacteristics(svc);
-                    } catch (e) {
-                        this.warn(`initUART: intento ${attempt}/${maxRetries} falló:`, e.message);
-                        if (attempt < maxRetries) {
-                            // Esperar y re-intentar service discovery completo
-                            const waitMs = 2000 * attempt;
-                            this.log(`initUART: esperando ${waitMs}ms antes de reintentar...`);
-                            await this._delay(waitMs);
-
-                            // Intentar re-descubrir servicios por si el BLE stack los encontró
-                            try {
-                                const freshServices = await this.server.getPrimaryServices();
-                                for (const svc of freshServices) {
-                                    if (!this.services[svc.uuid]) {
-                                        this.services[svc.uuid] = svc;
-                                        this.availableServices.add(svc.uuid);
-                                        this.log(`initUART: nuevo servicio descubierto: ${svc.uuid}`);
-                                    }
-                                }
-                                // Verificar si UART apareció en la re-discovery
-                                if (this.services[BLE_UUIDS.UART_SERVICE]) {
-                                    this.log('initUART: UART encontrado en re-discovery');
-                                    return await this._setupUARTCharacteristics(this.services[BLE_UUIDS.UART_SERVICE]);
-                                }
-                            } catch (rediscErr) {
-                                this.warn('initUART: re-discovery falló:', rediscErr.message);
-                            }
-                        }
-                    }
+                // getPrimaryServices() no listó UART — intentar búsqueda directa por UUID.
+                // En muchas plataformas (Android, macOS), la enumeración no lista UART
+                // pero getPrimaryService(uuid) sí lo encuentra.
+                try {
+                    this.log('initUART: buscando servicio UART por UUID directo...');
+                    const svc = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
+                    this.services[BLE_UUIDS.UART_SERVICE] = svc;
+                    this.availableServices.add(BLE_UUIDS.UART_SERVICE);
+                    this.log('initUART: servicio UART encontrado via búsqueda directa');
+                    return await this._setupUARTCharacteristics(svc);
+                } catch (e) {
+                    this.warn('initUART: búsqueda directa falló:', e.message);
                 }
 
-                this.warn('Servicio UART no disponible después de', maxRetries, 'intentos');
+                // Último intento: esperar un poco y reintentar (por si el BLE stack
+                // todavía está procesando service discovery)
+                this.log('initUART: esperando 2s para re-intentar...');
+                await this._delay(2000);
+                try {
+                    const svc = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
+                    this.services[BLE_UUIDS.UART_SERVICE] = svc;
+                    this.availableServices.add(BLE_UUIDS.UART_SERVICE);
+                    this.log('initUART: servicio UART encontrado en segundo intento');
+                    return await this._setupUARTCharacteristics(svc);
+                } catch (e2) {
+                    this.warn('initUART: segundo intento falló:', e2.message);
+                }
+
+                this.warn('Servicio UART no disponible en esta conexión');
                 return false;
             }
 
@@ -6635,7 +6599,24 @@ basic.forever(function () {
                     let found = false;
                     let lastError = null;
 
-                    // ── Fase A: intentos directos ──
+                    // ── Método interno: un intento completo de conexión ──
+                    // Conecta GATT + intenta inicializar UART (incl. búsqueda directa por UUID)
+                    const tryFullConnect = async (dev, label) => {
+                        await this.connectGATT(dev, label);
+                        // Intentar inicializar UART — incluye búsqueda directa por UUID
+                        // que funciona incluso cuando getPrimaryServices() no lo lista
+                        const hasUART = await this.initUART().catch(() => false);
+                        const directSensors = await this.initDirectSensors().catch(() => []);
+                        if (!hasUART && directSensors.length === 0) {
+                            throw new Error('Service discovery incompleto: UART no encontrado');
+                        }
+                        return { hasUART, directSensors };
+                    };
+
+                    let hasUART = false;
+                    let directSensors = [];
+
+                    // ── Fase A: intentos directos (connect + initUART como unidad) ──
                     const maxAttempts = BT_CONFIG.maxConnectAttempts;
                     for (let attempt = 1; attempt <= maxAttempts && !found; attempt++) {
                         try {
@@ -6644,17 +6625,21 @@ basic.forever(function () {
                                 if (this.device.gatt.connected) this.device.gatt.disconnect();
                                 await this._delay(BT_CONFIG.connectRetryWait);
                             }
-                            await this.connectGATT(this.device, `Intento ${attempt}`);
+                            const result = await tryFullConnect(this.device, `Intento ${attempt}`);
+                            hasUART = result.hasUART;
+                            directSensors = result.directSensors;
                             found = true;
                         } catch (e) {
                             lastError = e;
                             this.warn(`Intento ${attempt} falló:`, e.name, e.message);
+                            // Disconnect para forzar re-discovery limpia en el próximo intento
+                            if (this.device.gatt.connected) this.device.gatt.disconnect();
                         }
                     }
 
                     // ── Fase B: forget() + re-solicitar ──
                     if (!found) {
-                        if (this.device.gatt.connected) this.device.gatt.disconnect();
+                        if (this.device.gatt && this.device.gatt.connected) this.device.gatt.disconnect();
                         this.log('── Fase B: limpiando cache BLE ──');
 
                         if (typeof this.device.forget === 'function') {
@@ -6678,11 +6663,14 @@ basic.forever(function () {
                                             if (this.device.gatt.connected) this.device.gatt.disconnect();
                                             await this._delay(BT_CONFIG.postForgetRetryWait);
                                         }
-                                        await this.connectGATT(this.device, `Post-forget ${retry}`);
+                                        const result = await tryFullConnect(this.device, `Post-forget ${retry}`);
+                                        hasUART = result.hasUART;
+                                        directSensors = result.directSensors;
                                         found = true;
                                     } catch (e) {
                                         lastError = e;
                                         this.warn(`Post-forget intento ${retry} falló:`, e.name, e.message);
+                                        if (this.device.gatt.connected) this.device.gatt.disconnect();
                                     }
                                 }
                             } catch (forgetErr) {
@@ -6699,32 +6687,6 @@ basic.forever(function () {
                         this._showConnectionError();
                         this.connecting = false;
                         return false;
-                    }
-
-                    // Fase 3: Inicializar servicios
-                    // Si no se encontró UART ni acelerómetro en la discovery inicial,
-                    // esperar más tiempo y re-intentar (común después de forget/desvincular)
-                    if (!this.availableServices.has(BLE_UUIDS.UART_SERVICE) &&
-                        !this.availableServices.has(BLE_UUIDS.ACCEL_SERVICE)) {
-                        this.log('Ningún servicio útil en discovery inicial — esperando 3s para re-discovery...');
-                        await this._delay(3000);
-                        try {
-                            const freshServices = await this.server.getPrimaryServices();
-                            for (const svc of freshServices) {
-                                if (!this.services[svc.uuid]) {
-                                    this.services[svc.uuid] = svc;
-                                    this.availableServices.add(svc.uuid);
-                                    this.log(`  Re-discovery: nuevo servicio ${svc.uuid}`);
-                                }
-                            }
-                        } catch (e) { this.warn('Re-discovery falló:', e.message); }
-                    }
-
-                    const hasUART = await this.initUART().catch(() => false);
-                    const directSensors = await this.initDirectSensors().catch(() => []);
-
-                    if (!hasUART && directSensors.length === 0) {
-                        throw new Error('No se encontró servicio UART ni sensores BLE directos. Verificá tu programa MakeCode.');
                     }
 
                     // Fase 4: Estado y UI
