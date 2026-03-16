@@ -6604,32 +6604,67 @@ bluetooth.startIOPinService()</pre>
             //   En GATT timeout → disconnect con HCI_REMOTE_USER_TERMINATED
             // Windows: el service discovery es lento (~15s WinRT) y puede colisionar
             // con la renegociación de parámetros del firmware, causando disconnect.
-            async connectAndSetupUART(device) {
-                this.log('Conectando a GATT server...');
+
+            // Conectar GATT y esperar a que la conexión se estabilice.
+            // En Windows, connect() resuelve con connected=true pero la conexión
+            // puede caer instantáneamente (caché GATT corrupto o pairing inválido).
+            // Usamos un listener de disconnect para detectar este caso.
+            async _connectGATTWithStabilization(device) {
                 this.server = await device.gatt.connect();
                 this.log('GATT connected:', this.server.connected);
 
-                // Iniciar service discovery inmediatamente — NO esperar con delay.
-                // En Windows, una conexión GATT ociosa se desconecta rápidamente
-                // (el stack WinRT o el firmware cortan si no hay actividad GATT).
-                // El service discovery mantiene la conexión activa durante la
-                // negociación de parámetros BLE del firmware.
+                // Esperar brevemente y verificar que la conexión no cayó
+                // (en Windows, el disconnect puede llegar ~50-200ms después de connect)
+                await new Promise((resolve, reject) => {
+                    if (!this.server.connected) {
+                        reject(new Error('GATT_INSTANT_DISCONNECT'));
+                        return;
+                    }
+
+                    let settled = false;
+                    const timer = setTimeout(() => {
+                        settled = true;
+                        device.removeEventListener('gattserverdisconnected', onDisconnect);
+                        if (this.server.connected) {
+                            resolve();
+                        } else {
+                            reject(new Error('GATT_INSTANT_DISCONNECT'));
+                        }
+                    }, 600);
+
+                    const onDisconnect = () => {
+                        if (!settled) {
+                            settled = true;
+                            clearTimeout(timer);
+                            reject(new Error('GATT_INSTANT_DISCONNECT'));
+                        }
+                    };
+                    device.addEventListener('gattserverdisconnected', onDisconnect, { once: true });
+                });
+
+                this.log('GATT estable después de 600ms');
+            }
+
+            async connectAndSetupUART(device) {
+                this.log('Conectando a GATT server...');
+                await this._connectGATTWithStabilization(device);
+
+                // Service discovery con retry
                 this.log('Buscando servicio UART...');
                 let uartService = null;
-                const maxDiscoveryAttempts = _isWindows ? 4 : 2;
+                const maxDiscoveryAttempts = _isWindows ? 3 : 2;
                 for (let i = 1; i <= maxDiscoveryAttempts; i++) {
                     try {
                         if (!this.server.connected) {
                             this.log(`GATT desconectado antes de discovery, reconectando (intento ${i})...`);
-                            this.server = await device.gatt.connect();
-                            this.log('GATT reconectado:', this.server.connected);
+                            await this._connectGATTWithStabilization(device);
                         }
                         uartService = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
                         break;
                     } catch (e) {
+                        if (e.message === 'GATT_INSTANT_DISCONNECT') throw e;
                         this.warn(`getPrimaryService intento ${i}/${maxDiscoveryAttempts}:`, e.message);
                         if (i === maxDiscoveryAttempts) throw e;
-                        // Espera corta y escalonada antes de reintentar
                         const retryMs = 500 * i;
                         this.log(`Esperando ${retryMs}ms antes de reintentar discovery...`);
                         await this._delay(retryMs);
@@ -7015,19 +7050,21 @@ bluetooth.startIOPinService()</pre>
                     statusEl.textContent = 'Conectando a ' + (this.device.name || 'micro:bit') + '...';
 
                     // Fase 2: Conectar GATT + obtener servicio UART
-                    // connectAndSetupUART ya tiene retry interno para service discovery.
-                    // Acá reintentamos la conexión completa si falla todo el proceso.
+                    // Estrategia para Windows: si detectamos "instant disconnect"
+                    // (connect OK → GATT cae en <600ms), es caché GATT corrupto.
+                    // En ese caso usamos device.forget() + re-solicitar como primer
+                    // recurso, no último — es la única forma de limpiar el caché.
                     let connected = false;
                     let lastError = null;
-                    const maxAttempts = _isWindows ? 4 : 3;
+                    let instantDisconnects = 0;
+                    const maxAttempts = 3;
 
                     for (let attempt = 1; attempt <= maxAttempts && !connected; attempt++) {
                         try {
                             if (attempt > 1) {
-                                // Delay corto entre intentos — el retry interno ya maneja los waits
                                 const retryDelay = 1000 * attempt;
                                 statusEl.textContent = `Reconectando... intento ${attempt}/${maxAttempts}`;
-                                this.log(`Reintento ${attempt}/${maxAttempts}: desconectando GATT y esperando ${retryDelay}ms...`);
+                                this.log(`Reintento ${attempt}/${maxAttempts}: esperando ${retryDelay}ms...`);
                                 try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                                 await this._delay(retryDelay);
                             }
@@ -7036,34 +7073,52 @@ bluetooth.startIOPinService()</pre>
                         } catch (e) {
                             lastError = e;
                             this.warn(`Intento ${attempt}/${maxAttempts} falló:`, e.message);
-                        }
-                    }
 
-                    if (!connected) {
-                        // Último recurso: forget + re-solicitar
-                        if (this.device && typeof this.device.forget === 'function') {
-                            try {
-                                this.log('Limpiando cache BLE...');
-                                statusEl.textContent = 'Limpiando cache BLE... seleccioná el micro:bit de nuevo';
-                                try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
-                                await this.device.forget();
-                                await this._delay(500);
-                                const retryFilters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
-                                const reqOpts = { filters: retryFilters, optionalServices: ALL_OPTIONAL_SERVICES };
-                                this.device = await navigator.bluetooth.requestDevice(reqOpts);
-                                await this.connectAndSetupUART(this.device);
-                                connected = true;
-                            } catch (forgetErr) {
-                                if (forgetErr.name === 'NotFoundError') { this.connecting = false; return false; }
-                                lastError = forgetErr;
-                                this.warn('Post-forget falló:', forgetErr.message);
+                            // Si detectamos instant disconnect 2 veces seguidas,
+                            // es caché GATT corrupto. Limpiar con forget() y re-solicitar.
+                            if (e.message === 'GATT_INSTANT_DISCONNECT') {
+                                instantDisconnects++;
+                                if (instantDisconnects >= 2 && this.device && typeof this.device.forget === 'function') {
+                                    this.log('Instant disconnect detectado 2 veces — limpiando caché BLE con forget()...');
+                                    statusEl.textContent = 'Limpiando caché BLE... seleccioná el micro:bit de nuevo';
+                                    try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
+                                    try {
+                                        await this.device.forget();
+                                        await this._delay(1000);
+                                        const retryFilters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
+                                        const reqOpts = { filters: retryFilters, optionalServices: ALL_OPTIONAL_SERVICES };
+                                        this.device = await navigator.bluetooth.requestDevice(reqOpts);
+                                        this.log('Dispositivo re-seleccionado:', this.device.name);
+                                        await this.connectAndSetupUART(this.device);
+                                        connected = true;
+                                    } catch (forgetErr) {
+                                        if (forgetErr.name === 'NotFoundError') { this.connecting = false; return false; }
+                                        lastError = forgetErr;
+                                        this.warn('Post-forget falló:', forgetErr.message);
+                                    }
+                                    break; // No más intentos — forget ya fue nuestro último recurso
+                                }
                             }
                         }
                     }
 
                     if (!connected) {
                         this.error('Conexión fallida:', lastError?.message);
-                        this._showConnectionError();
+                        // Si fue instant disconnect persistente, mostrar ayuda específica
+                        if (instantDisconnects >= 2 && _isWindows) {
+                            alert(
+                                'La conexión Bluetooth se desconecta inmediatamente.\n\n' +
+                                'Esto suele ocurrir por caché Bluetooth corrupto en Windows.\n\n' +
+                                'Solución:\n' +
+                                '1. Abrí Configuración de Windows → Bluetooth y dispositivos\n' +
+                                '2. Buscá "BBC micro:bit" y hacé clic en "Quitar dispositivo"\n' +
+                                '3. Reseteá el micro:bit (botón de atrás)\n' +
+                                '4. Volvé a conectar desde esta página\n\n' +
+                                'Si persiste, probá en chrome://bluetooth-internals → Devices → Forget'
+                            );
+                        } else {
+                            this._showConnectionError();
+                        }
                         this.connecting = false;
                         return false;
                     }
