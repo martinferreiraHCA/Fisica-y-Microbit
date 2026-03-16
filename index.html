@@ -6563,25 +6563,25 @@ bluetooth.startIOPinService()</pre>
                     ? [BLE_UUIDS.UART_SERVICE]
                     : ALL_OPTIONAL_SERVICES;
 
-                // Windows: usar acceptAllDevices directamente para evitar problemas
-                // con cache BLE del sistema (Bleak usa el mismo enfoque con WinRT).
-                if (_isWindows) {
-                    this.log('Windows: acceptAllDevices + solo servicio UART');
-                    this.device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices });
-                } else {
-                    // Mac/Linux/Android: intentar filtros de nombre primero
-                    const filters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
-                    try {
-                        this.device = await navigator.bluetooth.requestDevice({ filters, optionalServices });
-                    } catch (filterErr) {
-                        if (filterErr.name === 'NotFoundError') throw filterErr;
-                        // Fallback: acceptAllDevices (algunos móviles lo necesitan)
-                        if (isMobileBrowser) {
-                            this.log('Filtros fallaron, usando acceptAllDevices...');
-                            this.device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices });
-                        } else {
-                            throw filterErr;
-                        }
+                // Filtros de nombre: la micro:bit anuncia "BBC micro:bit [xxxxx]"
+                // en el paquete BLE (solo nombre, sin UUIDs de servicio ni manufacturer data).
+                // Ref: codal-microbit-v2 MicroBitBLEManager.cpp — BLE_ADVDATA_FULL_NAME.
+                const filters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
+
+                try {
+                    this.device = await navigator.bluetooth.requestDevice({ filters, optionalServices });
+                } catch (filterErr) {
+                    // Si el usuario canceló el diálogo, propagar directamente
+                    if (filterErr.name === 'NotFoundError') throw filterErr;
+
+                    // Windows y móviles: la cache BLE del SO puede impedir que el
+                    // filtro de nombre encuentre el dispositivo. Reintentar con
+                    // acceptAllDevices para que el usuario lo seleccione manualmente.
+                    if (_isWindows || isMobileBrowser) {
+                        this.log('Filtros de nombre fallaron, reintentando con acceptAllDevices...');
+                        this.device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices });
+                    } else {
+                        throw filterErr;
                     }
                 }
 
@@ -7004,10 +7004,9 @@ bluetooth.startIOPinService()</pre>
                                 try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                                 await this.device.forget();
                                 await this._delay(500);
-                                const winServices = [BLE_UUIDS.UART_SERVICE];
-                                const reqOpts = _isWindows
-                                    ? { acceptAllDevices: true, optionalServices: winServices }
-                                    : { filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }], optionalServices: ALL_OPTIONAL_SERVICES };
+                                const retryServices = _isWindows ? [BLE_UUIDS.UART_SERVICE] : ALL_OPTIONAL_SERVICES;
+                                const retryFilters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
+                                const reqOpts = { filters: retryFilters, optionalServices: retryServices };
                                 this.device = await navigator.bluetooth.requestDevice(reqOpts);
                                 await this.connectAndSetupUART(this.device);
                                 connected = true;
