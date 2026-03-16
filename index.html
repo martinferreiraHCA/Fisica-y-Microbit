@@ -6553,21 +6553,28 @@ bluetooth.startIOPinService()</pre>
                 this.log('Solicitando dispositivo BLE...');
                 this.log('Plataforma:', BT_CONFIG.platform);
 
-                // Estrategia: filtros con nombre primero, fallback a acceptAllDevices
-                const filters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
                 const optionalServices = ALL_OPTIONAL_SERVICES;
 
-                try {
-                    // Intento con filtros de nombre
-                    this.device = await navigator.bluetooth.requestDevice({ filters, optionalServices });
-                } catch (filterErr) {
-                    if (filterErr.name === 'NotFoundError') throw filterErr;
-                    // Fallback: acceptAllDevices (necesario en Windows con caché BLE y en algunos móviles)
-                    if (_isWindows || isMobileBrowser) {
-                        this.log('Filtros fallaron, usando acceptAllDevices...');
-                        this.device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices });
-                    } else {
-                        throw filterErr;
+                // Windows: usar acceptAllDevices directamente para evitar problemas
+                // con cache BLE del sistema. El filtro de nombre puede causar que Windows
+                // no encuentre dispositivos que ya están cacheados con otro nombre/estado.
+                if (_isWindows) {
+                    this.log('Windows: usando acceptAllDevices directamente');
+                    this.device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices });
+                } else {
+                    // Mac/Linux/Android: intentar filtros de nombre primero
+                    const filters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
+                    try {
+                        this.device = await navigator.bluetooth.requestDevice({ filters, optionalServices });
+                    } catch (filterErr) {
+                        if (filterErr.name === 'NotFoundError') throw filterErr;
+                        // Fallback: acceptAllDevices (algunos móviles lo necesitan)
+                        if (isMobileBrowser) {
+                            this.log('Filtros fallaron, usando acceptAllDevices...');
+                            this.device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices });
+                        } else {
+                            throw filterErr;
+                        }
                     }
                 }
 
@@ -6983,10 +6990,10 @@ bluetooth.startIOPinService()</pre>
                                 try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                                 await this.device.forget();
                                 await this._delay(500);
-                                this.device = await navigator.bluetooth.requestDevice({
-                                    filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }],
-                                    optionalServices: ALL_OPTIONAL_SERVICES
-                                });
+                                const reqOpts = _isWindows
+                                    ? { acceptAllDevices: true, optionalServices: ALL_OPTIONAL_SERVICES }
+                                    : { filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }], optionalServices: ALL_OPTIONAL_SERVICES };
+                                this.device = await navigator.bluetooth.requestDevice(reqOpts);
                                 await this.connectAndSetupUART(this.device);
                                 connected = true;
                             } catch (forgetErr) {
