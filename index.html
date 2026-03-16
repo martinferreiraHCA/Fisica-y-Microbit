@@ -6441,39 +6441,51 @@ bluetooth.startIOPinService()</pre>
         // Soporta: UART (CSV desde MakeCode) + lectura directa de sensores BLE
 
         // ── UUIDs de servicios BLE del micro:bit ──
+        // Base UUID micro:bit: e95d{xxxx}-251d-470a-a062-fa1922dfa9a8
+        // Ref: codal-microbit-v2/source/bluetooth/MicroBitBLEService.cpp
         const BLE_UUIDS = {
-            // Nordic UART Service
+            // Nordic UART Service (codal-microbit-v2 MicroBitUARTService.cpp)
+            // TX del firmware usa INDICATE (no notify) — requiere ACK del cliente.
+            // RX del firmware acepta WRITE y WRITE_WITHOUT_RESPONSE.
             UART_SERVICE:  '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
-            UART_TX:       '6e400002-b5a3-f393-e0a9-e50e24dcca9e', // micro:bit RX (nosotros escribimos)
-            UART_RX:       '6e400003-b5a3-f393-e0a9-e50e24dcca9e', // micro:bit TX (nosotros leemos)
-            // Acelerómetro
+            UART_TX:       '6e400002-b5a3-f393-e0a9-e50e24dcca9e', // → micro:bit RX (write|writeWithoutResponse)
+            UART_RX:       '6e400003-b5a3-f393-e0a9-e50e24dcca9e', // ← micro:bit TX (indicate, max 20 bytes)
+            // Acelerómetro (MicroBitAccelerometerService.cpp)
+            // DATA: read|notify, 3x int16 (X,Y,Z en milli-g). PERIOD: read|write.
             ACCEL_SERVICE: 'e95d0753-251d-470a-a062-fa1922dfa9a8',
             ACCEL_DATA:    'e95dca4b-251d-470a-a062-fa1922dfa9a8',
             ACCEL_PERIOD:  'e95dfb24-251d-470a-a062-fa1922dfa9a8',
-            // Temperatura
+            // Temperatura (MicroBitTemperatureService.cpp)
+            // DATA: read|notify, int8 (°C). PERIOD: read|write.
             TEMP_SERVICE:  'e95d6100-251d-470a-a062-fa1922dfa9a8',
             TEMP_DATA:     'e95d9250-251d-470a-a062-fa1922dfa9a8',
             TEMP_PERIOD:   'e95d1b25-251d-470a-a062-fa1922dfa9a8',
-            // Magnetómetro
+            // Magnetómetro (MicroBitMagnetometerService.cpp)
+            // DATA: read|notify, 3x int16. BEARING: read|notify, uint16 (grados).
+            // PERIOD: read|write. CALIBRATION: write|notify.
             MAG_SERVICE:   'e95df2d8-251d-470a-a062-fa1922dfa9a8',
             MAG_DATA:      'e95dfb11-251d-470a-a062-fa1922dfa9a8',
             MAG_PERIOD:    'e95d386c-251d-470a-a062-fa1922dfa9a8',
             MAG_BEARING:   'e95d9715-251d-470a-a062-fa1922dfa9a8',
-            // Botones
+            // Botones (MicroBitButtonService.cpp)
+            // A/B: read|notify, uint8 (0=release, 1=press, 2=hold)
             BTN_SERVICE:   'e95d9882-251d-470a-a062-fa1922dfa9a8',
             BTN_A_STATE:   'e95dda90-251d-470a-a062-fa1922dfa9a8',
             BTN_B_STATE:   'e95dda91-251d-470a-a062-fa1922dfa9a8',
-            // LED
+            // LED (MicroBitLEDService.cpp)
+            // STATE: read|write (5 bytes, 1 por fila). TEXT: write only (max 20 bytes).
+            // SCROLL: read|write (velocidad de scroll).
             LED_SERVICE:   'e95dd91d-251d-470a-a062-fa1922dfa9a8',
             LED_STATE:     'e95d7b77-251d-470a-a062-fa1922dfa9a8',
             LED_TEXT:      'e95d93ee-251d-470a-a062-fa1922dfa9a8',
             LED_SCROLL:    'e95d0d2d-251d-470a-a062-fa1922dfa9a8',
-            // IO Pins
+            // IO Pins (MicroBitIOPinService.cpp)
             IO_PIN_SERVICE:'e95d127b-251d-470a-a062-fa1922dfa9a8',
             IO_PIN_DATA:   'e95d8d00-251d-470a-a062-fa1922dfa9a8',
             IO_AD_CONFIG:  'e95d5899-251d-470a-a062-fa1922dfa9a8',
             IO_PIN_CONFIG: 'e95db9fe-251d-470a-a062-fa1922dfa9a8',
-            // Device Information
+            IO_PIN_PWM:    'e95dd822-251d-470a-a062-fa1922dfa9a8',
+            // Device Information Service (estándar BLE)
             DEVICE_INFO:   '0000180a-0000-1000-8000-00805f9b34fb'
         };
 
@@ -6844,12 +6856,19 @@ bluetooth.startIOPinService()</pre>
             }
 
             // ── Enviar datos por UART ──
+            // El firmware acepta WRITE y WRITE_WITHOUT_RESPONSE (MicroBitUARTService.cpp).
+            // writeWithoutResponse es más rápido (sin ACK) — preferimos cuando está disponible.
             async sendUART(data) {
                 if (!this.characteristics.UART_TX) return false;
                 try {
                     const encoder = new TextEncoder();
                     const encoded = encoder.encode(data);
-                    await this.characteristics.UART_TX.writeValue(encoded);
+                    const ch = this.characteristics.UART_TX;
+                    if (ch.properties.writeWithoutResponse) {
+                        await ch.writeValueWithoutResponse(encoded);
+                    } else {
+                        await ch.writeValueWithResponse(encoded);
+                    }
                     this.log('UART enviado:', data);
                     return true;
                 } catch (e) {
@@ -6880,10 +6899,11 @@ bluetooth.startIOPinService()</pre>
                 this.log('Característica UUID:', txChar.uuid);
                 this.log('Propiedades — notify:', props.notify, '| indicate:', props.indicate);
 
-                // No bloquear por props.notify === false: Chrome/macOS a veces
-                // reporta false por caché GATT. Intentar startNotifications directamente.
+                // El firmware usa INDICATE (no notify) para UART TX — Web Bluetooth
+                // maneja ambos con startNotifications(). Chrome/macOS puede reportar
+                // propiedades incorrectas por caché GATT corrupto — intentar igual.
                 if (!props.notify && !props.indicate) {
-                    this.warn('Propiedades reportan notify=false, pero intentando startNotifications de todos modos (puede ser caché BLE)...');
+                    this.warn('Propiedades reportan notify=false e indicate=false — intentando startNotifications de todos modos (puede ser caché BLE corrupto)...');
                 }
 
                 // startNotifications con reintentos
