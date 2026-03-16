@@ -6609,47 +6609,30 @@ bluetooth.startIOPinService()</pre>
                 this.server = await device.gatt.connect();
                 this.log('GATT connected:', this.server.connected);
 
-                // Windows: delay post-connect para que el firmware complete la
-                // negociación inicial de parámetros BLE (interval 10-20ms, latency 0).
-                // Sin este delay, el service discovery de WinRT colisiona con la
-                // negociación y el firmware desconecta por GATT timeout (sup_timeout=4s).
-                if (_isWindows) {
-                    const stabilizeMs = 2000;
-                    this.log(`Windows: esperando ${stabilizeMs}ms para estabilización GATT (firmware conn_sup_timeout=4s)...`);
-                    await this._delay(stabilizeMs);
-
-                    if (!this.server.connected) {
-                        this.warn('Windows: GATT se desconectó durante estabilización, reconectando...');
-                        this.server = await device.gatt.connect();
-                        await this._delay(2500);
-                        if (!this.server.connected) {
-                            throw new Error('GATT se desconecta inmediatamente en Windows — verificar que la micro:bit no esté conectada a otro dispositivo');
-                        }
-                    }
-                }
-
-                // Obtener servicio UART con retry — el firmware tiene supervision timeout
-                // de 4s y puede desconectar si el service discovery de Windows es lento.
-                // getPrimaryService puede fallar si coincide con la renegociación de
-                // parámetros del firmware (first_conn_params_update_delay=5000ms).
+                // Iniciar service discovery inmediatamente — NO esperar con delay.
+                // En Windows, una conexión GATT ociosa se desconecta rápidamente
+                // (el stack WinRT o el firmware cortan si no hay actividad GATT).
+                // El service discovery mantiene la conexión activa durante la
+                // negociación de parámetros BLE del firmware.
                 this.log('Buscando servicio UART...');
                 let uartService = null;
-                const maxDiscoveryAttempts = _isWindows ? 3 : 1;
+                const maxDiscoveryAttempts = _isWindows ? 4 : 2;
                 for (let i = 1; i <= maxDiscoveryAttempts; i++) {
                     try {
+                        if (!this.server.connected) {
+                            this.log(`GATT desconectado antes de discovery, reconectando (intento ${i})...`);
+                            this.server = await device.gatt.connect();
+                            this.log('GATT reconectado:', this.server.connected);
+                        }
                         uartService = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
                         break;
                     } catch (e) {
                         this.warn(`getPrimaryService intento ${i}/${maxDiscoveryAttempts}:`, e.message);
                         if (i === maxDiscoveryAttempts) throw e;
-                        // Reconectar GATT si se perdió la conexión durante discovery
-                        if (!this.server.connected) {
-                            this.log('GATT desconectado, reconectando antes de reintentar...');
-                            this.server = await device.gatt.connect();
-                            await this._delay(2000);
-                        } else {
-                            await this._delay(1000);
-                        }
+                        // Espera corta y escalonada antes de reintentar
+                        const retryMs = 500 * i;
+                        this.log(`Esperando ${retryMs}ms antes de reintentar discovery...`);
+                        await this._delay(retryMs);
                     }
                 }
                 this.log('Servicio UART encontrado');
@@ -7032,16 +7015,17 @@ bluetooth.startIOPinService()</pre>
                     statusEl.textContent = 'Conectando a ' + (this.device.name || 'micro:bit') + '...';
 
                     // Fase 2: Conectar GATT + obtener servicio UART
-                    // Windows necesita más intentos y delays más largos por inestabilidad del stack BLE
+                    // connectAndSetupUART ya tiene retry interno para service discovery.
+                    // Acá reintentamos la conexión completa si falla todo el proceso.
                     let connected = false;
                     let lastError = null;
-                    const maxAttempts = _isWindows ? 5 : 3;
-                    const retryBaseDelay = _isWindows ? 2000 : 1000;
+                    const maxAttempts = _isWindows ? 4 : 3;
 
                     for (let attempt = 1; attempt <= maxAttempts && !connected; attempt++) {
                         try {
                             if (attempt > 1) {
-                                const retryDelay = retryBaseDelay * attempt;
+                                // Delay corto entre intentos — el retry interno ya maneja los waits
+                                const retryDelay = 1000 * attempt;
                                 statusEl.textContent = `Reconectando... intento ${attempt}/${maxAttempts}`;
                                 this.log(`Reintento ${attempt}/${maxAttempts}: desconectando GATT y esperando ${retryDelay}ms...`);
                                 try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
