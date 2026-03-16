@@ -6553,15 +6553,10 @@ bluetooth.startIOPinService()</pre>
                 this.log('Solicitando dispositivo BLE...');
                 this.log('Plataforma:', BT_CONFIG.platform);
 
-                // Windows: solicitar SOLO el servicio UART como optionalService.
-                // Inspirado en kaspersmicrobit/Bleak: el service discovery de Windows (WinRT)
-                // tarda ~15s vs ~5s en otros SO. Pedir muchos servicios opcionales causa que
-                // el GATT se desconecte antes de completar el discovery. Reducir a solo UART
-                // acelera el proceso y evita el timeout. Los demás servicios se descubren
-                // después con getPrimaryService() individual si están disponibles.
-                const optionalServices = _isWindows
-                    ? [BLE_UUIDS.UART_SERVICE]
-                    : ALL_OPTIONAL_SERVICES;
+                // optionalServices solo declara qué servicios podemos acceder después —
+                // NO dispara GATT discovery (eso pasa con getPrimaryService).
+                // Declaramos todos en todas las plataformas para tener acceso.
+                const optionalServices = ALL_OPTIONAL_SERVICES;
 
                 // Filtros de nombre: la micro:bit anuncia "BBC micro:bit [xxxxx]"
                 // en el paquete BLE (solo nombre, sin UUIDs de servicio ni manufacturer data).
@@ -6590,37 +6585,61 @@ bluetooth.startIOPinService()</pre>
             }
 
             // ── Conexión directa: connect + getPrimaryService(uuid) ──
-            // Basado en mattwilson1024/microbit-bluetooth.
-            // Windows requiere un delay de estabilización después de gatt.connect()
-            // porque el stack BLE desconecta GATT antes de completar service discovery.
+            // Basado en mattwilson1024/microbit-bluetooth y parámetros del firmware
+            // codal-microbit-v2 MicroBitBLEManager.cpp:
+            //   conn_sup_timeout = 400 (4s) — el firmware desconecta si no hay actividad
+            //   first_conn_params_update_delay = 5000ms — renegocia parámetros a los 5s
+            //   En GATT timeout → disconnect con HCI_REMOTE_USER_TERMINATED
+            // Windows: el service discovery es lento (~15s WinRT) y puede colisionar
+            // con la renegociación de parámetros del firmware, causando disconnect.
             async connectAndSetupUART(device) {
                 this.log('Conectando a GATT server...');
                 this.server = await device.gatt.connect();
                 this.log('GATT connected:', this.server.connected);
 
-                // Windows: delay de estabilización post-connect
-                // El stack BLE de Windows desconecta GATT inmediatamente si se intenta
-                // service discovery demasiado rápido después de connect()
+                // Windows: delay post-connect para que el firmware complete la
+                // negociación inicial de parámetros BLE (interval 10-20ms, latency 0).
+                // Sin este delay, el service discovery de WinRT colisiona con la
+                // negociación y el firmware desconecta por GATT timeout (sup_timeout=4s).
                 if (_isWindows) {
-                    const stabilizeMs = 1500;
-                    this.log(`Windows: esperando ${stabilizeMs}ms para estabilización GATT...`);
+                    const stabilizeMs = 2000;
+                    this.log(`Windows: esperando ${stabilizeMs}ms para estabilización GATT (firmware conn_sup_timeout=4s)...`);
                     await this._delay(stabilizeMs);
 
-                    // Verificar que GATT sigue conectado después de la espera
                     if (!this.server.connected) {
                         this.warn('Windows: GATT se desconectó durante estabilización, reconectando...');
                         this.server = await device.gatt.connect();
-                        await this._delay(2000);
+                        await this._delay(2500);
                         if (!this.server.connected) {
                             throw new Error('GATT se desconecta inmediatamente en Windows — verificar que la micro:bit no esté conectada a otro dispositivo');
                         }
                     }
                 }
 
-                // Obtener servicio UART directamente por UUID
-                // (getPrimaryService espera internamente a que el service discovery termine)
+                // Obtener servicio UART con retry — el firmware tiene supervision timeout
+                // de 4s y puede desconectar si el service discovery de Windows es lento.
+                // getPrimaryService puede fallar si coincide con la renegociación de
+                // parámetros del firmware (first_conn_params_update_delay=5000ms).
                 this.log('Buscando servicio UART...');
-                const uartService = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
+                let uartService = null;
+                const maxDiscoveryAttempts = _isWindows ? 3 : 1;
+                for (let i = 1; i <= maxDiscoveryAttempts; i++) {
+                    try {
+                        uartService = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
+                        break;
+                    } catch (e) {
+                        this.warn(`getPrimaryService intento ${i}/${maxDiscoveryAttempts}:`, e.message);
+                        if (i === maxDiscoveryAttempts) throw e;
+                        // Reconectar GATT si se perdió la conexión durante discovery
+                        if (!this.server.connected) {
+                            this.log('GATT desconectado, reconectando antes de reintentar...');
+                            this.server = await device.gatt.connect();
+                            await this._delay(2000);
+                        } else {
+                            await this._delay(1000);
+                        }
+                    }
+                }
                 this.log('Servicio UART encontrado');
                 this.services[BLE_UUIDS.UART_SERVICE] = uartService;
                 this.availableServices.add(BLE_UUIDS.UART_SERVICE);
@@ -6679,16 +6698,37 @@ bluetooth.startIOPinService()</pre>
                 return true;
             }
 
-            // ── Inicializar sensores BLE directos ──
-            async initDirectSensors() {
-                // Windows: no iniciar sensores directos BLE — solo se pidió UART
-                // como optionalService para evitar que el service discovery lento
-                // de WinRT cause desconexión GATT (inspirado en kaspersmicrobit/Bleak)
-                if (_isWindows) {
-                    this.log('Windows: sensores directos BLE deshabilitados (solo UART)');
-                    return [];
+            // ── Descubrir un servicio BLE por UUID con manejo de errores ──
+            // En Windows, cada getPrimaryService puede tardar varios segundos
+            // por el service discovery lento de WinRT. Espaciamos las llamadas
+            // para no exceder el supervision timeout del firmware (4s).
+            async _discoverService(uuid, label) {
+                try {
+                    if (_isWindows) await this._delay(500);
+                    const svc = await this.server.getPrimaryService(uuid);
+                    this.services[uuid] = svc;
+                    this.availableServices.add(uuid);
+                    this.log(`Servicio ${label} descubierto`);
+                    return svc;
+                } catch (e) {
+                    this.log(`Servicio ${label} no disponible: ${e.message}`);
+                    return null;
                 }
+            }
+
+            // ── Inicializar sensores BLE directos ──
+            // En Windows, el service discovery es lento (~15s WinRT) y el firmware
+            // tiene supervision timeout de 4s. Descubrimos servicios uno a uno con
+            // delays entre cada getPrimaryService para no saturar el stack BLE.
+            async initDirectSensors() {
                 const inited = [];
+
+                // Descubrir servicios de sensores (secuencial, con delays en Windows)
+                await this._discoverService(BLE_UUIDS.ACCEL_SERVICE, 'acelerómetro');
+                await this._discoverService(BLE_UUIDS.TEMP_SERVICE, 'temperatura');
+                await this._discoverService(BLE_UUIDS.MAG_SERVICE, 'magnetómetro');
+                await this._discoverService(BLE_UUIDS.BTN_SERVICE, 'botones');
+                await this._discoverService(BLE_UUIDS.LED_SERVICE, 'LED');
 
                 // Acelerómetro
                 if (this.availableServices.has(BLE_UUIDS.ACCEL_SERVICE)) {
@@ -7004,9 +7044,8 @@ bluetooth.startIOPinService()</pre>
                                 try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                                 await this.device.forget();
                                 await this._delay(500);
-                                const retryServices = _isWindows ? [BLE_UUIDS.UART_SERVICE] : ALL_OPTIONAL_SERVICES;
                                 const retryFilters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
-                                const reqOpts = { filters: retryFilters, optionalServices: retryServices };
+                                const reqOpts = { filters: retryFilters, optionalServices: ALL_OPTIONAL_SERVICES };
                                 this.device = await navigator.bluetooth.requestDevice(reqOpts);
                                 await this.connectAndSetupUART(this.device);
                                 connected = true;
