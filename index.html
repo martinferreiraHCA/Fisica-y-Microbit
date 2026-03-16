@@ -6664,7 +6664,30 @@ bluetooth.startIOPinService()</pre>
                     } catch (e) {
                         if (e.message === 'GATT_INSTANT_DISCONNECT') throw e;
                         this.warn(`getPrimaryService intento ${i}/${maxDiscoveryAttempts}:`, e.message);
-                        if (i === maxDiscoveryAttempts) throw e;
+                        if (i === maxDiscoveryAttempts) {
+                            // Listar servicios disponibles para diagnóstico
+                            if (this.server.connected) {
+                                try {
+                                    const allSvcs = await this.server.getPrimaryServices();
+                                    this.log('Servicios disponibles en el dispositivo:');
+                                    const knownUUIDs = {};
+                                    for (const [k, v] of Object.entries(BLE_UUIDS)) knownUUIDs[v] = k;
+                                    for (const svc of allSvcs) {
+                                        const name = knownUUIDs[svc.uuid] || 'desconocido';
+                                        this.log(`  → ${svc.uuid} (${name})`);
+                                    }
+                                    if (allSvcs.length === 0) {
+                                        this.log('  (ningún servicio — caché GATT de Windows vacío o corrupto)');
+                                    }
+                                } catch (listErr) {
+                                    this.warn('No se pudieron listar servicios:', listErr.message);
+                                }
+                            }
+                            // Error específico para que connect() pueda distinguir
+                            const noSvcErr = new Error('UART_SERVICE_NOT_FOUND');
+                            noSvcErr.originalMessage = e.message;
+                            throw noSvcErr;
+                        }
                         const retryMs = 500 * i;
                         this.log(`Esperando ${retryMs}ms antes de reintentar discovery...`);
                         await this._delay(retryMs);
@@ -7050,13 +7073,14 @@ bluetooth.startIOPinService()</pre>
                     statusEl.textContent = 'Conectando a ' + (this.device.name || 'micro:bit') + '...';
 
                     // Fase 2: Conectar GATT + obtener servicio UART
-                    // Windows + Chrome: si connect() retorna connected=true pero el GATT
-                    // cae en <600ms (GATT_INSTANT_DISCONNECT), es caché Bluetooth corrupto
-                    // en Windows. Reintentar el mismo dispositivo no sirve — hay que:
-                    // 1. forget() para limpiar caché de Chrome
-                    // 2. Si sigue, el usuario debe quitar el dispositivo de Windows Bluetooth
+                    // Problemas comunes en Windows por caché BLE corrupto:
+                    // - GATT_INSTANT_DISCONNECT: connect() OK → cae en <600ms
+                    // - UART_SERVICE_NOT_FOUND: GATT estable pero Windows ve servicios
+                    //   viejos (de un programa MakeCode anterior sin UART)
+                    // Ambos se solucionan con forget() + re-solicitar dispositivo.
                     let connected = false;
                     let lastError = null;
+                    const CACHE_ERRORS = ['GATT_INSTANT_DISCONNECT', 'UART_SERVICE_NOT_FOUND'];
 
                     // Primer intento directo
                     try {
@@ -7066,10 +7090,13 @@ bluetooth.startIOPinService()</pre>
                         lastError = e1;
                         this.warn('Intento 1 falló:', e1.message);
 
-                        if (e1.message === 'GATT_INSTANT_DISCONNECT') {
-                            // Instant disconnect detectado — el caché BLE está corrupto.
-                            // Intentar forget() para limpiar el caché de Chrome.
-                            this.log('Instant disconnect → intentando limpiar caché BLE...');
+                        const isCacheError = CACHE_ERRORS.includes(e1.message);
+
+                        if (isCacheError && _isWindows) {
+                            // Error de caché BLE de Windows detectado.
+                            // forget() limpia el caché de Chrome — fuerza re-discovery
+                            // de servicios GATT en la próxima conexión.
+                            this.log(`${e1.message} → intentando limpiar caché BLE...`);
                             try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
 
                             let forgetWorked = false;
@@ -7078,7 +7105,7 @@ bluetooth.startIOPinService()</pre>
                                     this.log('device.forget() disponible — ejecutando...');
                                     statusEl.textContent = 'Limpiando caché BLE... seleccioná el micro:bit de nuevo';
                                     await this.device.forget();
-                                    this.log('forget() exitoso');
+                                    this.log('forget() exitoso — caché de Chrome limpiado');
                                     forgetWorked = true;
                                 } catch (fe) {
                                     this.warn('forget() falló:', fe.message);
@@ -7090,7 +7117,7 @@ bluetooth.startIOPinService()</pre>
                             if (forgetWorked) {
                                 // Re-solicitar dispositivo con caché limpio
                                 try {
-                                    await this._delay(1000);
+                                    await this._delay(1500);
                                     const retryFilters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
                                     this.device = await navigator.bluetooth.requestDevice({
                                         filters: retryFilters,
@@ -7108,13 +7135,13 @@ bluetooth.startIOPinService()</pre>
                             }
 
                             if (!connected) {
-                                // forget() no disponible o no solucionó el problema.
-                                // Es un problema de Windows — el usuario debe quitar el
-                                // dispositivo de Configuración > Bluetooth manualmente.
-                                this.error('Conexión fallida: instant disconnect persistente');
+                                this.error('Conexión fallida:', e1.message);
+                                const isInstant = e1.message === 'GATT_INSTANT_DISCONNECT';
                                 alert(
-                                    'La conexión Bluetooth se desconecta inmediatamente.\n\n' +
-                                    'Windows tiene información Bluetooth cacheada que impide la conexión.\n\n' +
+                                    (isInstant
+                                        ? 'La conexión Bluetooth se desconecta inmediatamente.'
+                                        : 'No se encontró el servicio UART en el micro:bit.\nEl programa sí tiene UART, pero Windows usa una lista de servicios vieja (caché).') +
+                                    '\n\nWindows tiene información Bluetooth cacheada que impide la conexión.\n\n' +
                                     'Solución (seguí estos pasos en orden):\n\n' +
                                     '1. Abrí Configuración de Windows → Bluetooth y dispositivos\n' +
                                     '2. Si aparece "BBC micro:bit", hacé clic en ⋯ → Quitar dispositivo\n' +
@@ -7128,8 +7155,8 @@ bluetooth.startIOPinService()</pre>
                                 return false;
                             }
 
-                        } else {
-                            // Error normal (no instant disconnect) — reintentar normalmente
+                        } else if (!isCacheError) {
+                            // Error normal (no caché) — reintentar normalmente
                             for (let attempt = 2; attempt <= 3 && !connected; attempt++) {
                                 try {
                                     const retryDelay = 1500 * attempt;
@@ -7142,8 +7169,7 @@ bluetooth.startIOPinService()</pre>
                                 } catch (e) {
                                     lastError = e;
                                     this.warn(`Intento ${attempt}/3 falló:`, e.message);
-                                    // Si un retry posterior produce instant disconnect, abortar
-                                    if (e.message === 'GATT_INSTANT_DISCONNECT') break;
+                                    if (CACHE_ERRORS.includes(e.message)) break;
                                 }
                             }
                         }
