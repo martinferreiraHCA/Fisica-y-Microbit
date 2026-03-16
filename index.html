@@ -7050,53 +7050,100 @@ bluetooth.startIOPinService()</pre>
                     statusEl.textContent = 'Conectando a ' + (this.device.name || 'micro:bit') + '...';
 
                     // Fase 2: Conectar GATT + obtener servicio UART
-                    // Estrategia para Windows: si detectamos "instant disconnect"
-                    // (connect OK → GATT cae en <600ms), es caché GATT corrupto.
-                    // En ese caso usamos device.forget() + re-solicitar como primer
-                    // recurso, no último — es la única forma de limpiar el caché.
+                    // Windows + Chrome: si connect() retorna connected=true pero el GATT
+                    // cae en <600ms (GATT_INSTANT_DISCONNECT), es caché Bluetooth corrupto
+                    // en Windows. Reintentar el mismo dispositivo no sirve — hay que:
+                    // 1. forget() para limpiar caché de Chrome
+                    // 2. Si sigue, el usuario debe quitar el dispositivo de Windows Bluetooth
                     let connected = false;
                     let lastError = null;
-                    let instantDisconnects = 0;
-                    const maxAttempts = 3;
 
-                    for (let attempt = 1; attempt <= maxAttempts && !connected; attempt++) {
-                        try {
-                            if (attempt > 1) {
-                                const retryDelay = 1000 * attempt;
-                                statusEl.textContent = `Reconectando... intento ${attempt}/${maxAttempts}`;
-                                this.log(`Reintento ${attempt}/${maxAttempts}: esperando ${retryDelay}ms...`);
-                                try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
-                                await this._delay(retryDelay);
-                            }
-                            await this.connectAndSetupUART(this.device);
-                            connected = true;
-                        } catch (e) {
-                            lastError = e;
-                            this.warn(`Intento ${attempt}/${maxAttempts} falló:`, e.message);
+                    // Primer intento directo
+                    try {
+                        await this.connectAndSetupUART(this.device);
+                        connected = true;
+                    } catch (e1) {
+                        lastError = e1;
+                        this.warn('Intento 1 falló:', e1.message);
 
-                            // Si detectamos instant disconnect 2 veces seguidas,
-                            // es caché GATT corrupto. Limpiar con forget() y re-solicitar.
-                            if (e.message === 'GATT_INSTANT_DISCONNECT') {
-                                instantDisconnects++;
-                                if (instantDisconnects >= 2 && this.device && typeof this.device.forget === 'function') {
-                                    this.log('Instant disconnect detectado 2 veces — limpiando caché BLE con forget()...');
+                        if (e1.message === 'GATT_INSTANT_DISCONNECT') {
+                            // Instant disconnect detectado — el caché BLE está corrupto.
+                            // Intentar forget() para limpiar el caché de Chrome.
+                            this.log('Instant disconnect → intentando limpiar caché BLE...');
+                            try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
+
+                            let forgetWorked = false;
+                            if (this.device && typeof this.device.forget === 'function') {
+                                try {
+                                    this.log('device.forget() disponible — ejecutando...');
                                     statusEl.textContent = 'Limpiando caché BLE... seleccioná el micro:bit de nuevo';
+                                    await this.device.forget();
+                                    this.log('forget() exitoso');
+                                    forgetWorked = true;
+                                } catch (fe) {
+                                    this.warn('forget() falló:', fe.message);
+                                }
+                            } else {
+                                this.log('device.forget() NO disponible en este navegador');
+                            }
+
+                            if (forgetWorked) {
+                                // Re-solicitar dispositivo con caché limpio
+                                try {
+                                    await this._delay(1000);
+                                    const retryFilters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
+                                    this.device = await navigator.bluetooth.requestDevice({
+                                        filters: retryFilters,
+                                        optionalServices: ALL_OPTIONAL_SERVICES
+                                    });
+                                    this.log('Dispositivo re-seleccionado:', this.device.name, '| ID:', this.device.id);
+                                    statusEl.textContent = 'Conectando a ' + (this.device.name || 'micro:bit') + '...';
+                                    await this.connectAndSetupUART(this.device);
+                                    connected = true;
+                                } catch (e2) {
+                                    if (e2.name === 'NotFoundError') { this.connecting = false; return false; }
+                                    lastError = e2;
+                                    this.warn('Post-forget falló:', e2.message);
+                                }
+                            }
+
+                            if (!connected) {
+                                // forget() no disponible o no solucionó el problema.
+                                // Es un problema de Windows — el usuario debe quitar el
+                                // dispositivo de Configuración > Bluetooth manualmente.
+                                this.error('Conexión fallida: instant disconnect persistente');
+                                alert(
+                                    'La conexión Bluetooth se desconecta inmediatamente.\n\n' +
+                                    'Windows tiene información Bluetooth cacheada que impide la conexión.\n\n' +
+                                    'Solución (seguí estos pasos en orden):\n\n' +
+                                    '1. Abrí Configuración de Windows → Bluetooth y dispositivos\n' +
+                                    '2. Si aparece "BBC micro:bit", hacé clic en ⋯ → Quitar dispositivo\n' +
+                                    '3. Apagá y prendé el Bluetooth de Windows\n' +
+                                    '4. Reseteá el micro:bit (botón de atrás)\n' +
+                                    '5. Volvé a conectar desde esta página\n\n' +
+                                    'Tip: también podés ir a chrome://bluetooth-internals\n' +
+                                    '     → pestaña Devices → buscar el micro:bit → Forget Device'
+                                );
+                                this.connecting = false;
+                                return false;
+                            }
+
+                        } else {
+                            // Error normal (no instant disconnect) — reintentar normalmente
+                            for (let attempt = 2; attempt <= 3 && !connected; attempt++) {
+                                try {
+                                    const retryDelay = 1500 * attempt;
+                                    statusEl.textContent = `Reconectando... intento ${attempt}/3`;
+                                    this.log(`Reintento ${attempt}/3: esperando ${retryDelay}ms...`);
                                     try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
-                                    try {
-                                        await this.device.forget();
-                                        await this._delay(1000);
-                                        const retryFilters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
-                                        const reqOpts = { filters: retryFilters, optionalServices: ALL_OPTIONAL_SERVICES };
-                                        this.device = await navigator.bluetooth.requestDevice(reqOpts);
-                                        this.log('Dispositivo re-seleccionado:', this.device.name);
-                                        await this.connectAndSetupUART(this.device);
-                                        connected = true;
-                                    } catch (forgetErr) {
-                                        if (forgetErr.name === 'NotFoundError') { this.connecting = false; return false; }
-                                        lastError = forgetErr;
-                                        this.warn('Post-forget falló:', forgetErr.message);
-                                    }
-                                    break; // No más intentos — forget ya fue nuestro último recurso
+                                    await this._delay(retryDelay);
+                                    await this.connectAndSetupUART(this.device);
+                                    connected = true;
+                                } catch (e) {
+                                    lastError = e;
+                                    this.warn(`Intento ${attempt}/3 falló:`, e.message);
+                                    // Si un retry posterior produce instant disconnect, abortar
+                                    if (e.message === 'GATT_INSTANT_DISCONNECT') break;
                                 }
                             }
                         }
@@ -7104,21 +7151,7 @@ bluetooth.startIOPinService()</pre>
 
                     if (!connected) {
                         this.error('Conexión fallida:', lastError?.message);
-                        // Si fue instant disconnect persistente, mostrar ayuda específica
-                        if (instantDisconnects >= 2 && _isWindows) {
-                            alert(
-                                'La conexión Bluetooth se desconecta inmediatamente.\n\n' +
-                                'Esto suele ocurrir por caché Bluetooth corrupto en Windows.\n\n' +
-                                'Solución:\n' +
-                                '1. Abrí Configuración de Windows → Bluetooth y dispositivos\n' +
-                                '2. Buscá "BBC micro:bit" y hacé clic en "Quitar dispositivo"\n' +
-                                '3. Reseteá el micro:bit (botón de atrás)\n' +
-                                '4. Volvé a conectar desde esta página\n\n' +
-                                'Si persiste, probá en chrome://bluetooth-internals → Devices → Forget'
-                            );
-                        } else {
-                            this._showConnectionError();
-                        }
+                        this._showConnectionError();
                         this.connecting = false;
                         return false;
                     }
