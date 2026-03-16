@@ -6649,48 +6649,61 @@ bluetooth.startIOPinService()</pre>
                 this.log('Conectando a GATT server...');
                 await this._connectGATTWithStabilization(device);
 
-                // Service discovery con retry
-                this.log('Buscando servicio UART...');
-                let uartService = null;
-                const maxDiscoveryAttempts = _isWindows ? 3 : 2;
-                for (let i = 1; i <= maxDiscoveryAttempts; i++) {
-                    try {
-                        if (!this.server.connected) {
-                            this.log(`GATT desconectado antes de discovery, reconectando (intento ${i})...`);
-                            await this._connectGATTWithStabilization(device);
-                        }
-                        uartService = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
-                        break;
-                    } catch (e) {
-                        if (e.message === 'GATT_INSTANT_DISCONNECT') throw e;
-                        this.warn(`getPrimaryService intento ${i}/${maxDiscoveryAttempts}:`, e.message);
-                        if (i === maxDiscoveryAttempts) {
-                            // Listar servicios disponibles para diagnóstico
-                            if (this.server.connected) {
-                                try {
-                                    const allSvcs = await this.server.getPrimaryServices();
-                                    this.log('Servicios disponibles en el dispositivo:');
-                                    const knownUUIDs = {};
-                                    for (const [k, v] of Object.entries(BLE_UUIDS)) knownUUIDs[v] = k;
-                                    for (const svc of allSvcs) {
-                                        const name = knownUUIDs[svc.uuid] || 'desconocido';
-                                        this.log(`  → ${svc.uuid} (${name})`);
-                                    }
-                                    if (allSvcs.length === 0) {
-                                        this.log('  (ningún servicio — caché GATT de Windows vacío o corrupto)');
-                                    }
-                                } catch (listErr) {
-                                    this.warn('No se pudieron listar servicios:', listErr.message);
-                                }
+                // En Windows (WinRT), el service discovery GATT es asíncrono y puede
+                // no estar completo cuando connect() resuelve. Primero llamamos
+                // getPrimaryServices() (sin UUID) para forzar un discovery completo,
+                // y luego buscamos UART entre los resultados.
+                if (_isWindows) {
+                    this.log('Windows: esperando 1500ms para service discovery de WinRT...');
+                    await this._delay(1500);
+                }
+
+                // Discovery completo: listar todos los servicios disponibles
+                this.log('Descubriendo servicios BLE...');
+                let allSvcs = [];
+                try {
+                    allSvcs = await this.server.getPrimaryServices();
+                    const knownUUIDs = {};
+                    for (const [k, v] of Object.entries(BLE_UUIDS)) knownUUIDs[v] = k;
+                    this.log(`Servicios encontrados: ${allSvcs.length}`);
+                    for (const svc of allSvcs) {
+                        const name = knownUUIDs[svc.uuid] || 'desconocido';
+                        this.log(`  → ${svc.uuid} (${name})`);
+                    }
+                } catch (listErr) {
+                    this.warn('getPrimaryServices() falló:', listErr.message);
+                }
+
+                // Buscar UART en los servicios descubiertos
+                let uartService = allSvcs.find(s => s.uuid === BLE_UUIDS.UART_SERVICE) || null;
+
+                // Si no está en el listado, intentar getPrimaryService directo con retry
+                if (!uartService) {
+                    this.log('UART no encontrado en discovery — intentando getPrimaryService directo...');
+                    const maxAttempts = _isWindows ? 3 : 2;
+                    for (let i = 1; i <= maxAttempts; i++) {
+                        try {
+                            if (!this.server.connected) {
+                                this.log(`GATT desconectado, reconectando (intento ${i})...`);
+                                await this._connectGATTWithStabilization(device);
                             }
-                            // Error específico para que connect() pueda distinguir
-                            const noSvcErr = new Error('UART_SERVICE_NOT_FOUND');
-                            noSvcErr.originalMessage = e.message;
-                            throw noSvcErr;
+                            uartService = await this.server.getPrimaryService(BLE_UUIDS.UART_SERVICE);
+                            break;
+                        } catch (e) {
+                            if (e.message === 'GATT_INSTANT_DISCONNECT') throw e;
+                            this.warn(`getPrimaryService intento ${i}/${maxAttempts}:`, e.message);
+                            if (i === maxAttempts) {
+                                const noSvcErr = new Error('UART_SERVICE_NOT_FOUND');
+                                noSvcErr.originalMessage = e.message;
+                                noSvcErr.servicesFound = allSvcs.map(s => s.uuid);
+                                throw noSvcErr;
+                            }
+                            // En Windows, esperar más entre reintentos para dar
+                            // tiempo a WinRT a completar el discovery
+                            const retryMs = _isWindows ? 2000 : 500 * i;
+                            this.log(`Esperando ${retryMs}ms antes de reintentar...`);
+                            await this._delay(retryMs);
                         }
-                        const retryMs = 500 * i;
-                        this.log(`Esperando ${retryMs}ms antes de reintentar discovery...`);
-                        await this._delay(retryMs);
                     }
                 }
                 this.log('Servicio UART encontrado');
