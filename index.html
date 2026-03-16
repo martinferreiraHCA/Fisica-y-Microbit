@@ -6553,13 +6553,20 @@ bluetooth.startIOPinService()</pre>
                 this.log('Solicitando dispositivo BLE...');
                 this.log('Plataforma:', BT_CONFIG.platform);
 
-                const optionalServices = ALL_OPTIONAL_SERVICES;
+                // Windows: solicitar SOLO el servicio UART como optionalService.
+                // Inspirado en kaspersmicrobit/Bleak: el service discovery de Windows (WinRT)
+                // tarda ~15s vs ~5s en otros SO. Pedir muchos servicios opcionales causa que
+                // el GATT se desconecte antes de completar el discovery. Reducir a solo UART
+                // acelera el proceso y evita el timeout. Los demás servicios se descubren
+                // después con getPrimaryService() individual si están disponibles.
+                const optionalServices = _isWindows
+                    ? [BLE_UUIDS.UART_SERVICE]
+                    : ALL_OPTIONAL_SERVICES;
 
                 // Windows: usar acceptAllDevices directamente para evitar problemas
-                // con cache BLE del sistema. El filtro de nombre puede causar que Windows
-                // no encuentre dispositivos que ya están cacheados con otro nombre/estado.
+                // con cache BLE del sistema (Bleak usa el mismo enfoque con WinRT).
                 if (_isWindows) {
-                    this.log('Windows: usando acceptAllDevices directamente');
+                    this.log('Windows: acceptAllDevices + solo servicio UART');
                     this.device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices });
                 } else {
                     // Mac/Linux/Android: intentar filtros de nombre primero
@@ -6674,6 +6681,13 @@ bluetooth.startIOPinService()</pre>
 
             // ── Inicializar sensores BLE directos ──
             async initDirectSensors() {
+                // Windows: no iniciar sensores directos BLE — solo se pidió UART
+                // como optionalService para evitar que el service discovery lento
+                // de WinRT cause desconexión GATT (inspirado en kaspersmicrobit/Bleak)
+                if (_isWindows) {
+                    this.log('Windows: sensores directos BLE deshabilitados (solo UART)');
+                    return [];
+                }
                 const inited = [];
 
                 // Acelerómetro
@@ -6990,8 +7004,9 @@ bluetooth.startIOPinService()</pre>
                                 try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                                 await this.device.forget();
                                 await this._delay(500);
+                                const winServices = [BLE_UUIDS.UART_SERVICE];
                                 const reqOpts = _isWindows
-                                    ? { acceptAllDevices: true, optionalServices: ALL_OPTIONAL_SERVICES }
+                                    ? { acceptAllDevices: true, optionalServices: winServices }
                                     : { filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }], optionalServices: ALL_OPTIONAL_SERVICES };
                                 this.device = await navigator.bluetooth.requestDevice(reqOpts);
                                 await this.connectAndSetupUART(this.device);
