@@ -6576,12 +6576,32 @@ bluetooth.startIOPinService()</pre>
             }
 
             // ── Conexión directa: connect + getPrimaryService(uuid) ──
-            // Basado en mattwilson1024/microbit-bluetooth: sin esperas artificiales,
-            // sin enumeración de servicios. La Web Bluetooth API maneja el timing.
+            // Basado en mattwilson1024/microbit-bluetooth.
+            // Windows requiere un delay de estabilización después de gatt.connect()
+            // porque el stack BLE desconecta GATT antes de completar service discovery.
             async connectAndSetupUART(device) {
                 this.log('Conectando a GATT server...');
                 this.server = await device.gatt.connect();
                 this.log('GATT connected:', this.server.connected);
+
+                // Windows: delay de estabilización post-connect
+                // El stack BLE de Windows desconecta GATT inmediatamente si se intenta
+                // service discovery demasiado rápido después de connect()
+                if (_isWindows) {
+                    const stabilizeMs = 1500;
+                    this.log(`Windows: esperando ${stabilizeMs}ms para estabilización GATT...`);
+                    await this._delay(stabilizeMs);
+
+                    // Verificar que GATT sigue conectado después de la espera
+                    if (!this.server.connected) {
+                        this.warn('Windows: GATT se desconectó durante estabilización, reconectando...');
+                        this.server = await device.gatt.connect();
+                        await this._delay(2000);
+                        if (!this.server.connected) {
+                            throw new Error('GATT se desconecta inmediatamente en Windows — verificar que la micro:bit no esté conectada a otro dispositivo');
+                        }
+                    }
+                }
 
                 // Obtener servicio UART directamente por UUID
                 // (getPrimaryService espera internamente a que el service discovery termine)
@@ -6930,18 +6950,21 @@ bluetooth.startIOPinService()</pre>
 
                     statusEl.textContent = 'Conectando a ' + (this.device.name || 'micro:bit') + '...';
 
-                    // Fase 2: Conectar GATT + obtener servicio UART directamente
-                    // Sin esperas artificiales — getPrimaryService() maneja el timing internamente
+                    // Fase 2: Conectar GATT + obtener servicio UART
+                    // Windows necesita más intentos y delays más largos por inestabilidad del stack BLE
                     let connected = false;
                     let lastError = null;
-                    const maxAttempts = 3;
+                    const maxAttempts = _isWindows ? 5 : 3;
+                    const retryBaseDelay = _isWindows ? 2000 : 1000;
 
                     for (let attempt = 1; attempt <= maxAttempts && !connected; attempt++) {
                         try {
                             if (attempt > 1) {
+                                const retryDelay = retryBaseDelay * attempt;
                                 statusEl.textContent = `Reconectando... intento ${attempt}/${maxAttempts}`;
+                                this.log(`Reintento ${attempt}/${maxAttempts}: desconectando GATT y esperando ${retryDelay}ms...`);
                                 try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
-                                await this._delay(1000);
+                                await this._delay(retryDelay);
                             }
                             await this.connectAndSetupUART(this.device);
                             connected = true;
@@ -7075,6 +7098,13 @@ bluetooth.startIOPinService()</pre>
                 this.reconnecting = true;
                 this._reconnectAbort = false;
 
+                // Windows: espera extra antes del primer intento de reconexión
+                // para dar tiempo al stack BLE de liberar el dispositivo
+                if (_isWindows) {
+                    this.log('Windows: espera de 3s antes de reconexión para liberar stack BLE...');
+                    await this._delay(3000);
+                }
+
                 const maxReconnect = BT_CONFIG.maxReconnectAttempts;
                 let waitMs = BT_CONFIG.reconnectBaseWait;
 
@@ -7085,6 +7115,10 @@ bluetooth.startIOPinService()</pre>
                         await this._delay(waitMs);
 
                         if (this._reconnectAbort || this._destroyed) break;
+
+                        // Desconectar GATT antes de reconectar (limpiar estado anterior)
+                        try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
+                        if (_isWindows) await this._delay(500);
 
                         this.log(`Reconexión intento ${attempt}/${maxReconnect} — conectando...`);
                         await this.connectAndSetupUART(this.device);
