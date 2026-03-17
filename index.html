@@ -3332,8 +3332,9 @@
                 btWindowsCacheStep1: 'Seleccioná tu micro:bit en la ventana que aparece...',
                 btWindowsCacheStep2: 'Limpiando caché BLE del navegador...',
                 btWindowsCacheDone: '✔ Caché limpiado. Ahora presioná CONECTAR.',
-                btWindowsCacheFail: '✘ No se pudo limpiar (el navegador no soporta forget). Seguí los pasos manuales de arriba.',
+                btWindowsCacheFail: '✘ No se pudo limpiar. Seguí los pasos manuales de arriba.',
                 btWindowsCacheNoDevice: 'No se seleccionó ningún dispositivo. Intentá de nuevo.',
+                btWindowsCacheNoForget: '⚠ Tu navegador no soporta limpieza automática.<br><b>Solución:</b> Copiá y pegá en la barra de direcciones:<br><code style="background:#fff;padding:2px 6px;border:1px solid #ccc;user-select:all">chrome://flags/#web-bluetooth-new-permissions-backend</code><br>Activalo (<b>Enabled</b>), reiniciá Chrome y volvé a intentar.<br><br>O andá a <code style="background:#fff;padding:2px 6px;border:1px solid #ccc;user-select:all">chrome://bluetooth-internals</code> → Devices → Forget.',
                 btWindowsConnect: 'YA ESTÁ LISTO — CONECTAR',
                 // View switcher
                 viewSplit: 'SPLIT',
@@ -3522,8 +3523,9 @@
                 btWindowsCacheStep1: 'Select your micro:bit from the popup...',
                 btWindowsCacheStep2: 'Clearing browser BLE cache...',
                 btWindowsCacheDone: '✔ Cache cleared. Now press CONNECT.',
-                btWindowsCacheFail: '✘ Could not clear cache (browser does not support forget). Follow the manual steps above.',
+                btWindowsCacheFail: '✘ Could not clear cache. Follow the manual steps above.',
                 btWindowsCacheNoDevice: 'No device selected. Try again.',
+                btWindowsCacheNoForget: '⚠ Your browser does not support automatic cache clearing.<br><b>Fix:</b> Copy and paste in the address bar:<br><code style="background:#fff;padding:2px 6px;border:1px solid #ccc;user-select:all">chrome://flags/#web-bluetooth-new-permissions-backend</code><br>Enable it, restart Chrome and try again.<br><br>Or go to <code style="background:#fff;padding:2px 6px;border:1px solid #ccc;user-select:all">chrome://bluetooth-internals</code> → Devices → Forget.',
                 btWindowsConnect: 'ALL SET — CONNECT',
                 // View switcher
                 viewSplit: 'SPLIT',
@@ -3712,8 +3714,9 @@
                 btWindowsCacheStep1: 'Selecione seu micro:bit na janela que aparece...',
                 btWindowsCacheStep2: 'Limpando cache BLE do navegador...',
                 btWindowsCacheDone: '✔ Cache limpo. Agora pressione CONECTAR.',
-                btWindowsCacheFail: '✘ Não foi possível limpar (navegador não suporta forget). Siga os passos manuais acima.',
+                btWindowsCacheFail: '✘ Não foi possível limpar. Siga os passos manuais acima.',
                 btWindowsCacheNoDevice: 'Nenhum dispositivo selecionado. Tente novamente.',
+                btWindowsCacheNoForget: '⚠ Seu navegador não suporta limpeza automática.<br><b>Solução:</b> Copie e cole na barra de endereços:<br><code style="background:#fff;padding:2px 6px;border:1px solid #ccc;user-select:all">chrome://flags/#web-bluetooth-new-permissions-backend</code><br>Ative (<b>Enabled</b>), reinicie o Chrome e tente novamente.<br><br>Ou vá para <code style="background:#fff;padding:2px 6px;border:1px solid #ccc;user-select:all">chrome://bluetooth-internals</code> → Devices → Forget.',
                 btWindowsConnect: 'TUDO PRONTO — CONECTAR',
                 // View switcher
                 viewSplit: 'SPLIT',
@@ -6491,9 +6494,9 @@ bluetooth.startIOPinService()</pre>
                     statusEl.textContent = t.btWindowsCacheDone;
                 } else {
                     console.warn('[BT] clearBleCache: device.forget() no disponible');
-                    statusEl.style.borderColor = '#c62828';
-                    statusEl.style.background = '#ffebee';
-                    statusEl.textContent = t.btWindowsCacheFail;
+                    statusEl.style.borderColor = '#e65100';
+                    statusEl.style.background = '#fff3e0';
+                    statusEl.innerHTML = t.btWindowsCacheNoForget;
                 }
             } catch (err) {
                 if (err.name === 'NotFoundError') {
@@ -7222,7 +7225,45 @@ bluetooth.startIOPinService()</pre>
                                 }
                             }
 
-                            if (!connected) {
+                            // forget() no disponible — intentar reconexión con delays
+                        // más largos para dar tiempo a WinRT a limpiar el estado
+                        if (!connected) {
+                            this.log('forget() no disponible — intentando reconexión con delays largos...');
+                            try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
+
+                            for (let attempt = 2; attempt <= 4 && !connected; attempt++) {
+                                const retryDelay = 2000 * attempt; // 4s, 6s, 8s
+                                statusEl.textContent = `Reconectando... intento ${attempt}/4`;
+                                this.log(`Reintento sin forget ${attempt}/4: esperando ${retryDelay}ms...`);
+                                await this._delay(retryDelay);
+                                try {
+                                    try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
+                                    await this.connectAndSetupUART(this.device);
+                                    connected = true;
+                                } catch (retryErr) {
+                                    lastError = retryErr;
+                                    this.warn(`Reintento ${attempt}/4 falló:`, retryErr.message);
+                                    // Si sigue con INSTANT_DISCONNECT, probar re-solicitar dispositivo
+                                    if (attempt === 3 && retryErr.message === 'GATT_INSTANT_DISCONNECT') {
+                                        this.log('Intentando re-solicitar dispositivo para obtener nuevo ID...');
+                                        try {
+                                            try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
+                                            statusEl.textContent = 'Seleccioná el micro:bit de nuevo...';
+                                            this.device = await navigator.bluetooth.requestDevice({
+                                                filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }],
+                                                optionalServices: ALL_OPTIONAL_SERVICES
+                                            });
+                                            this.log('Re-seleccionado:', this.device.name, '| nuevo ID:', this.device.id);
+                                        } catch (reqErr) {
+                                            if (reqErr.name === 'NotFoundError') { this.connecting = false; return false; }
+                                            this.warn('Re-solicitar falló:', reqErr.message);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!connected) {
                                 this.error('Conexión fallida:', e1.message);
                                 const isInstant = e1.message === 'GATT_INSTANT_DISCONNECT';
                                 alert(
@@ -7236,7 +7277,9 @@ bluetooth.startIOPinService()</pre>
                                     '3. Apagá y prendé el Bluetooth de Windows\n' +
                                     '4. Reseteá el micro:bit (botón de atrás)\n' +
                                     '5. Volvé a conectar desde esta página\n\n' +
-                                    'Tip: también podés ir a chrome://bluetooth-internals\n' +
+                                    'Tip: En Chrome, habilitá chrome://flags/#web-bluetooth-new-permissions-backend\n' +
+                                    '     para que la limpieza automática de caché funcione.\n' +
+                                    '     También podés ir a chrome://bluetooth-internals\n' +
                                     '     → pestaña Devices → buscar el micro:bit → Forget Device'
                                 );
                                 this.connecting = false;
