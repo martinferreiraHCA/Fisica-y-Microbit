@@ -2556,8 +2556,50 @@
                         <video id="cameraPreview" autoplay muted playsinline webkit-playsinline></video>
                         <canvas id="overlayCanvas" style="display:none;"></canvas>
                         <div class="recording-indicator" id="recordingIndicator">● REC</div>
+                        <div class="photo-flash-indicator" id="photoFlashIndicator" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.8); pointer-events:none; z-index:20;"></div>
                     </div>
-                    <button class="toolbar-btn btn-full" id="stopCameraBtn">
+
+                    <!-- Configuración de FPS -->
+                    <div style="margin-top: 8px; padding: 8px; background: #f9f9f9; border-radius: 4px;">
+                        <div style="font-weight: bold; font-size: 0.75rem; margin-bottom: 6px;">CONFIGURACIÓN DE VIDEO</div>
+                        <div class="input-row">
+                            <label style="font-size: 0.78rem;">FPS de grabación</label>
+                            <select id="videoFpsSelect" style="font-size: 0.78rem;">
+                                <option value="15">15 FPS</option>
+                                <option value="24">24 FPS</option>
+                                <option value="30" selected>30 FPS</option>
+                                <option value="60">60 FPS</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Captura de Fotos por Intervalo -->
+                    <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 4px; border: 1px solid #bbdefb;">
+                        <div style="font-weight: bold; font-size: 0.75rem; margin-bottom: 6px;">CAPTURA DE FOTOS</div>
+                        <div class="input-row">
+                            <label style="font-size: 0.78rem;">Modo de captura</label>
+                            <select id="photoCaptureMode" style="font-size: 0.78rem;">
+                                <option value="off">Desactivado</option>
+                                <option value="interval">Por intervalo de tiempo</option>
+                                <option value="onData">Al registrar dato</option>
+                            </select>
+                        </div>
+                        <div id="photoIntervalConfig" style="display:none;">
+                            <div class="input-row">
+                                <label style="font-size: 0.78rem;">Intervalo (segundos)</label>
+                                <input type="number" id="photoIntervalSec" value="5" min="1" max="3600" step="1" style="font-size: 0.78rem;">
+                            </div>
+                            <div class="checkbox-row" style="font-size: 0.78rem;">
+                                <input type="checkbox" id="photoKeepIntermediateData" checked>
+                                <label for="photoKeepIntermediateData">Conservar datos intermedios</label>
+                            </div>
+                        </div>
+                        <button class="toolbar-btn btn-full" id="photoGalleryBtn" style="margin-top: 6px; font-size: 0.78rem; display:none;">
+                            VER GALERÍA DE FOTOS (<span id="photoCount">0</span>)
+                        </button>
+                    </div>
+
+                    <button class="toolbar-btn btn-full" id="stopCameraBtn" style="margin-top: 8px;">
                         DETENER CÁMARA
                     </button>
                     <button class="toolbar-btn btn-full" id="downloadVideoBtn" style="display:none; margin-top: 6px; background: #2e7d32; color: white; border-color: #2e7d32;" onclick="downloadVideo()">
@@ -2800,6 +2842,7 @@
                     <div class="info-box">
                         <strong>REGRESIÓN POR MÍNIMOS CUADRADOS:</strong>
                         Ajusta una función matemática a tus datos experimentales.
+                        El ajuste se realiza sobre los ejes configurados en la gráfica de referencia (ej: variable vs tiempo, o variable vs variable).
                     </div>
 
                     <div class="input-row">
@@ -2873,6 +2916,61 @@
                         <div id="fitEquation" style="margin-bottom: 12px; color: #0066cc;"></div>
                         <div style="margin-bottom: 4px;"><strong>Coeficiente R²:</strong> <span id="fitR2"></span></div>
                         <div style="margin-bottom: 4px;"><strong>Puntos usados:</strong> <span id="fitPoints"></span></div>
+                        <div id="fitParamErrors" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ingreso Manual de Datos -->
+            <div class="panel-section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    INGRESO MANUAL <span>▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="info-box">
+                        <strong>AGREGAR DATOS:</strong>
+                        Ingresa puntos manualmente sin necesidad de micro:bit ni CSV.
+                    </div>
+
+                    <div class="input-row">
+                        <label>Tiempo (s)</label>
+                        <input type="number" id="manualTime" placeholder="Ej: 0.5" step="any">
+                    </div>
+
+                    <div id="manualVarInputs">
+                        <!-- Se generan dinámicamente -->
+                    </div>
+
+                    <button class="toolbar-btn primary btn-full" id="addManualPointBtn" style="margin-top: 8px;">
+                        AGREGAR PUNTO
+                    </button>
+
+                    <div style="margin-top: 8px; font-size: 0.75rem; color: #666;" id="manualPointStatus"></div>
+                </div>
+            </div>
+
+            <!-- Procesamiento de Datos -->
+            <div class="panel-section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    PROCESAMIENTO DE DATOS <span>▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="info-box">
+                        <strong>DIFERENCIA ENTRE PUNTOS (Δ):</strong>
+                        Selecciona dos puntos A y B para calcular diferencias y tasas de cambio.
+                    </div>
+
+                    <button class="toolbar-btn btn-full" id="deltaToggleBtn" onclick="toggleDeltaMode()">
+                        ACTIVAR MODO DELTA
+                    </button>
+
+                    <div id="deltaPanelContent" style="display:none; margin-top: 10px;">
+                        <div style="padding: 8px; background: #f0f0f0; border-radius: 4px; font-size: 0.8rem;" id="deltaInfo">
+                            Haz clic en dos puntos de la tabla o gráfica para seleccionar A y B.
+                        </div>
+                        <button class="toolbar-btn btn-full" id="deltaClearBtn" onclick="clearDeltaPoints()" style="margin-top: 8px;" disabled>
+                            LIMPIAR DELTA
+                        </button>
                     </div>
                 </div>
             </div>
@@ -5921,6 +6019,7 @@ bluetooth.startIOPinService()</pre>
             updateDataTableHeader();
             updateGraphsDisplay();
             updateFitVariableOptions();
+            updateManualVarInputs();
 
             alert(`Configuración aplicada: ${num} variable(s)`);
         }
@@ -7079,6 +7178,11 @@ bluetooth.startIOPinService()</pre>
                         sampleTimestamps.push(batchTime);
                         this.stats.dataPoints++;
 
+                        // Photo on data capture
+                        if (photoCaptureState.mode === 'onData' && state.cameraActive) {
+                            capturePhoto();
+                        }
+
                         if (this.stats.dataPoints <= 5 || this.stats.dataPoints % 100 === 0) {
                             this.log(`Dato #${this.stats.dataPoints}: t=${pointTime}, valores=[${values.join(', ')}]`);
                         }
@@ -7644,6 +7748,10 @@ bluetooth.startIOPinService()</pre>
 
             if (state.cameraActive) {
                 startVideoRecording();
+                // Start photo interval if configured
+                if (photoCaptureState.mode === 'interval') {
+                    startPhotoInterval();
+                }
             }
 
             // Iniciar render loop a 60fps (desacoplado de los datos)
@@ -7654,6 +7762,7 @@ bluetooth.startIOPinService()</pre>
             state.isCollecting = false;
             chartDatasetsInitialized = false;
             stopVideoRecording();
+            stopPhotoInterval();
             stopRenderLoop();
             document.getElementById('formatWarning').style.display = 'none';
 
@@ -8206,6 +8315,11 @@ bluetooth.startIOPinService()</pre>
                         state.rawData.push(dataPoint);
                         pendingChartPoints.push(dataPoint);
                         sampleTimestamps.push(batchTime);
+
+                        // Photo on data capture (serial)
+                        if (photoCaptureState.mode === 'onData' && state.cameraActive) {
+                            capturePhoto();
+                        }
                     }
                 }
             } catch (err) {
@@ -8275,6 +8389,119 @@ bluetooth.startIOPinService()</pre>
             }
 
             return 1 - (ssRes / ssTot);
+        }
+
+        // Calcula errores estándar de los parámetros del ajuste
+        // Usa propagación numérica: perturba cada coeficiente y calcula la varianza de los residuos
+        function calculateParameterErrors(type, coeffs, xData, yData) {
+            const n = xData.length;
+            const p = coeffs.length; // número de parámetros
+            if (n <= p) return coeffs.map(() => NaN); // no hay grados de libertad
+
+            const predict = createPredictor(type, coeffs);
+
+            // Calcular varianza de los residuos: s² = SSR / (n - p)
+            let ssr = 0;
+            for (let i = 0; i < n; i++) {
+                const res = yData[i] - predict(xData[i]);
+                ssr += res * res;
+            }
+            const s2 = ssr / (n - p);
+
+            // Para modelos lineales (linear, quadratic, cubic), calcular errores exactos
+            // usando la matriz de diseño X y (X^T X)^{-1}
+            if (type === 'linear' || type === 'quadratic' || type === 'cubic') {
+                const order = type === 'linear' ? 1 : (type === 'quadratic' ? 2 : 3);
+                const cols = order + 1;
+
+                // Construir X^T X (cols x cols)
+                const XtX = Array.from({ length: cols }, () => new Array(cols).fill(0));
+                for (let i = 0; i < n; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        for (let k = 0; k < cols; k++) {
+                            // Column j corresponde a x^(order-j), column last = x^0
+                            XtX[j][k] += Math.pow(xData[i], order - j) * Math.pow(xData[i], order - k);
+                        }
+                    }
+                }
+
+                // Invertir XtX usando Gauss-Jordan
+                const aug = XtX.map((row, i) => [...row, ...Array.from({ length: cols }, (_, j) => i === j ? 1 : 0)]);
+                for (let c = 0; c < cols; c++) {
+                    let maxRow = c;
+                    for (let r = c + 1; r < cols; r++) {
+                        if (Math.abs(aug[r][c]) > Math.abs(aug[maxRow][c])) maxRow = r;
+                    }
+                    [aug[c], aug[maxRow]] = [aug[maxRow], aug[c]];
+                    const pivot = aug[c][c];
+                    if (Math.abs(pivot) < 1e-15) return coeffs.map(() => NaN);
+                    for (let j = 0; j < 2 * cols; j++) aug[c][j] /= pivot;
+                    for (let r = 0; r < cols; r++) {
+                        if (r === c) continue;
+                        const factor = aug[r][c];
+                        for (let j = 0; j < 2 * cols; j++) aug[r][j] -= factor * aug[c][j];
+                    }
+                }
+
+                // Diagonal of inverse gives variance of each coefficient
+                const errors = [];
+                for (let j = 0; j < cols; j++) {
+                    errors.push(Math.sqrt(s2 * aug[j][j + cols]));
+                }
+                return errors;
+            }
+
+            // Para modelos no lineales, usar diferenciación numérica (Jacobiano)
+            const eps = 1e-7;
+            const J = []; // Jacobian: n x p
+            for (let i = 0; i < n; i++) {
+                J[i] = [];
+                for (let j = 0; j < p; j++) {
+                    const coeffsPlus = [...coeffs];
+                    const coeffsMinus = [...coeffs];
+                    const h = Math.max(Math.abs(coeffs[j]) * eps, eps);
+                    coeffsPlus[j] += h;
+                    coeffsMinus[j] -= h;
+                    const predPlus = createPredictor(type, coeffsPlus)(xData[i]);
+                    const predMinus = createPredictor(type, coeffsMinus)(xData[i]);
+                    J[i][j] = (predPlus - predMinus) / (2 * h);
+                }
+            }
+
+            // J^T J
+            const JtJ = Array.from({ length: p }, () => new Array(p).fill(0));
+            for (let j = 0; j < p; j++) {
+                for (let k = 0; k < p; k++) {
+                    for (let i = 0; i < n; i++) {
+                        JtJ[j][k] += J[i][j] * J[i][k];
+                    }
+                }
+            }
+
+            // Invert JtJ
+            const aug2 = JtJ.map((row, i) => [...row, ...Array.from({ length: p }, (_, j) => i === j ? 1 : 0)]);
+            for (let c = 0; c < p; c++) {
+                let maxRow = c;
+                for (let r = c + 1; r < p; r++) {
+                    if (Math.abs(aug2[r][c]) > Math.abs(aug2[maxRow][c])) maxRow = r;
+                }
+                [aug2[c], aug2[maxRow]] = [aug2[maxRow], aug2[c]];
+                const pivot = aug2[c][c];
+                if (Math.abs(pivot) < 1e-15) return coeffs.map(() => NaN);
+                for (let j = 0; j < 2 * p; j++) aug2[c][j] /= pivot;
+                for (let r = 0; r < p; r++) {
+                    if (r === c) continue;
+                    const factor = aug2[r][c];
+                    for (let j = 0; j < 2 * p; j++) aug2[r][j] -= factor * aug2[c][j];
+                }
+            }
+
+            const errors = [];
+            for (let j = 0; j < p; j++) {
+                const variance = s2 * aug2[j][j + p];
+                errors.push(variance > 0 ? Math.sqrt(variance) : NaN);
+            }
+            return errors;
         }
 
         // Función para crear predictor basado en tipo y coeficientes
@@ -8632,6 +8859,20 @@ bluetooth.startIOPinService()</pre>
         }
 
         // Función principal para realizar ajuste
+        function getParamNames(fitType) {
+            switch (fitType) {
+                case 'linear': return ['m (pendiente)', 'b (ordenada)'];
+                case 'quadratic': return ['a (x²)', 'b (x)', 'c (constante)'];
+                case 'cubic': return ['a (x³)', 'b (x²)', 'c (x)', 'd (constante)'];
+                case 'exponential': return ['a (amplitud)', 'b (exponente)'];
+                case 'power': return ['a (coeficiente)', 'b (exponente)'];
+                case 'logarithmic': return ['a (coeficiente)', 'b (constante)'];
+                case 'inverse': return ['a (numerador)', 'b (constante)'];
+                case 'sinusoidal': return ['A (amplitud)', 'ω (frecuencia)', 'φ (fase)', 'C (offset)'];
+                default: return [];
+            }
+        }
+
         function performCurveFit(fitType, xData, yData) {
             if (xData.length < 2 || yData.length < 2 || xData.length !== yData.length) {
                 throw new Error('Datos insuficientes o inconsistentes para ajuste');
@@ -8667,9 +8908,13 @@ bluetooth.startIOPinService()</pre>
                     throw new Error('Tipo de ajuste no reconocido');
             }
 
+            // Calculate parameter errors
+            const errors = calculateParameterErrors(fitType, result.coeffs, xData, yData);
+
             return {
                 type: fitType,
                 coeffs: result.coeffs,
+                errors: errors,
                 equation: result.equation,
                 r2: result.r2,
                 predict: result.predict
@@ -9304,6 +9549,286 @@ bluetooth.startIOPinService()</pre>
             updateCurveFitButtons();
         };
 
+        // ========== INGRESO MANUAL DE DATOS ==========
+
+        function updateManualVarInputs() {
+            const container = document.getElementById('manualVarInputs');
+            container.innerHTML = '';
+            for (let i = 0; i < state.numVariables; i++) {
+                container.innerHTML += `
+                    <div class="input-row">
+                        <label>${state.variables[i].name}</label>
+                        <input type="number" id="manualVar${i}" placeholder="Valor" step="any">
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize and update on config change
+        updateManualVarInputs();
+
+        document.getElementById('addManualPointBtn').addEventListener('click', () => {
+            const timeInput = document.getElementById('manualTime');
+            const timeVal = parseFloat(timeInput.value);
+
+            if (isNaN(timeVal)) {
+                alert('Ingresa un valor de tiempo válido');
+                return;
+            }
+
+            const values = [];
+            for (let i = 0; i < state.numVariables; i++) {
+                const v = parseFloat(document.getElementById(`manualVar${i}`).value);
+                if (isNaN(v)) {
+                    alert(`Ingresa un valor válido para ${state.variables[i].name}`);
+                    return;
+                }
+                values.push(v);
+            }
+
+            // Convert time in seconds to ms timestamp
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            const timestamp = (timeVal * timeUnitValue) + state.timeZeroOffset;
+
+            const newPoint = {
+                time: timestamp,
+                values: values,
+                id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                wallTime: Date.now()
+            };
+
+            // Insert in chronological order
+            let inserted = false;
+            for (let i = 0; i < state.rawData.length; i++) {
+                if (state.rawData[i].time > timestamp) {
+                    state.rawData.splice(i, 0, newPoint);
+                    inserted = true;
+                    break;
+                }
+            }
+            if (!inserted) state.rawData.push(newPoint);
+
+            _rebuildVideoFrameLogIndices();
+            updateDisplay();
+
+            const status = document.getElementById('manualPointStatus');
+            status.textContent = `Punto agregado: t=${timeVal}, ${values.map((v, i) => state.variables[i].name + '=' + v).join(', ')}`;
+
+            // Clear inputs for next entry but keep focus flow
+            timeInput.value = '';
+            for (let i = 0; i < state.numVariables; i++) {
+                document.getElementById(`manualVar${i}`).value = '';
+            }
+            timeInput.focus();
+        });
+
+        // ========== PROCESAMIENTO - MODO DELTA (PANEL LATERAL) ==========
+
+        let deltaMode = false;
+        let deltaPointA = null;
+        let deltaPointB = null;
+
+        function toggleDeltaMode() {
+            deltaMode = !deltaMode;
+            const btn = document.getElementById('deltaToggleBtn');
+            const panel = document.getElementById('deltaPanelContent');
+
+            if (deltaMode) {
+                btn.textContent = 'DESACTIVAR MODO DELTA';
+                btn.style.background = '#2e7d32';
+                btn.style.color = 'white';
+                btn.style.borderColor = '#2e7d32';
+                panel.style.display = 'block';
+                deltaPointA = null;
+                deltaPointB = null;
+                updateDeltaInfo();
+            } else {
+                btn.textContent = 'ACTIVAR MODO DELTA';
+                btn.style.background = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
+                panel.style.display = 'none';
+                deltaPointA = null;
+                deltaPointB = null;
+                updateDisplay();
+            }
+        }
+
+        function clearDeltaPoints() {
+            deltaPointA = null;
+            deltaPointB = null;
+            updateDeltaInfo();
+            updateDisplay();
+        }
+
+        function deltaSelectPoint(id) {
+            if (!deltaMode) return;
+            const idx = state.rawData.findIndex(d => d.id === id);
+            if (idx < 0) return;
+
+            if (deltaPointA === null) {
+                deltaPointA = idx;
+            } else if (deltaPointB === null) {
+                deltaPointB = idx;
+            } else {
+                deltaPointA = idx;
+                deltaPointB = null;
+            }
+            updateDeltaInfo();
+            updateDisplay();
+        }
+
+        function updateDeltaInfo() {
+            const info = document.getElementById('deltaInfo');
+            const clearBtn = document.getElementById('deltaClearBtn');
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+
+            if (deltaPointA === null) {
+                info.innerHTML = '<span style="color:#555;">Haz clic en un punto de la tabla o gráfica para seleccionar el punto A.</span>';
+                clearBtn.disabled = true;
+                return;
+            }
+
+            clearBtn.disabled = false;
+            const dA = state.rawData[deltaPointA];
+            const tA = (dA.time - state.timeZeroOffset) / timeUnitValue;
+
+            if (deltaPointB === null) {
+                let html = `<div style="color:#2e7d32; font-weight:bold;">Punto A (#${deltaPointA + 1}): t=${tA.toFixed(4)}`;
+                for (let v = 0; v < state.numVariables; v++) {
+                    html += `, ${state.variables[v].name}=${dA.values[v].toFixed(4)}`;
+                }
+                html += `</div><div style="color:#555; margin-top:4px;">Ahora selecciona el punto B.</div>`;
+                info.innerHTML = html;
+                return;
+            }
+
+            const dB = state.rawData[deltaPointB];
+            const tB = (dB.time - state.timeZeroOffset) / timeUnitValue;
+
+            let html = '';
+            html += `<div style="color:#2e7d32; font-weight:600;">A (#${deltaPointA + 1}): t=${tA.toFixed(4)}`;
+            for (let v = 0; v < state.numVariables; v++) html += `, ${state.variables[v].name}=${dA.values[v].toFixed(4)}`;
+            html += `</div>`;
+            html += `<div style="color:#ff9800; font-weight:600;">B (#${deltaPointB + 1}): t=${tB.toFixed(4)}`;
+            for (let v = 0; v < state.numVariables; v++) html += `, ${state.variables[v].name}=${dB.values[v].toFixed(4)}`;
+            html += `</div>`;
+            html += `<div style="border-top:1px solid #ccc; margin-top:6px; padding-top:6px;">`;
+            html += `<div><strong>Δt (B−A):</strong> ${(tB - tA).toFixed(4)}</div>`;
+            for (let v = 0; v < state.numVariables; v++) {
+                const delta = dB.values[v] - dA.values[v];
+                html += `<div><strong>Δ${state.variables[v].name}:</strong> ${delta.toFixed(4)}</div>`;
+            }
+            if (tB - tA !== 0) {
+                html += `<div style="margin-top:4px; border-top:1px dashed #ccc; padding-top:4px;">`;
+                for (let v = 0; v < state.numVariables; v++) {
+                    const delta = dB.values[v] - dA.values[v];
+                    const rate = delta / (tB - tA);
+                    html += `<div><strong>Δ${state.variables[v].name}/Δt:</strong> ${rate.toFixed(4)}</div>`;
+                }
+                html += `</div>`;
+            }
+            html += `</div>`;
+            info.innerHTML = html;
+        }
+
+        // Hook delta mode into toggleSelect
+        const _originalToggleSelect = toggleSelect;
+        toggleSelect = function(id) {
+            if (deltaMode) {
+                deltaSelectPoint(id);
+                return;
+            }
+            _originalToggleSelect(id);
+        };
+
+        // ========== CAPTURA DE FOTOS POR INTERVALO ==========
+
+        let photoCaptureState = {
+            photos: [],        // [{dataUrl, timestamp, pointIndex}]
+            intervalTimer: null,
+            mode: 'off'        // 'off', 'interval', 'onData'
+        };
+
+        document.getElementById('photoCaptureMode').addEventListener('change', function() {
+            const mode = this.value;
+            photoCaptureState.mode = mode;
+            document.getElementById('photoIntervalConfig').style.display = mode === 'interval' ? 'block' : 'none';
+        });
+
+        function capturePhoto() {
+            const video = document.getElementById('cameraPreview');
+            if (!video || !video.srcObject) return null;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+            const photo = {
+                dataUrl: dataUrl,
+                timestamp: Date.now(),
+                pointIndex: state.rawData.length > 0 ? state.rawData.length - 1 : 0
+            };
+
+            photoCaptureState.photos.push(photo);
+
+            // Update counter
+            const countEl = document.getElementById('photoCount');
+            if (countEl) countEl.textContent = photoCaptureState.photos.length;
+            const galleryBtn = document.getElementById('photoGalleryBtn');
+            if (galleryBtn) galleryBtn.style.display = 'block';
+
+            // Flash effect
+            const flash = document.getElementById('photoFlashIndicator');
+            if (flash) {
+                flash.style.display = 'block';
+                setTimeout(() => { flash.style.display = 'none'; }, 150);
+            }
+
+            return photo;
+        }
+
+        function startPhotoInterval() {
+            stopPhotoInterval();
+            if (photoCaptureState.mode !== 'interval') return;
+            const sec = parseInt(document.getElementById('photoIntervalSec').value) || 5;
+            photoCaptureState.intervalTimer = setInterval(() => {
+                capturePhoto();
+            }, sec * 1000);
+        }
+
+        function stopPhotoInterval() {
+            if (photoCaptureState.intervalTimer) {
+                clearInterval(photoCaptureState.intervalTimer);
+                photoCaptureState.intervalTimer = null;
+            }
+        }
+
+        // Photo gallery modal
+        document.getElementById('photoGalleryBtn').addEventListener('click', () => {
+            if (photoCaptureState.photos.length === 0) {
+                alert('No hay fotos capturadas');
+                return;
+            }
+            let html = '<div style="max-height:70vh; overflow:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:8px; padding:8px;">';
+            photoCaptureState.photos.forEach((p, i) => {
+                const t = new Date(p.timestamp).toLocaleTimeString();
+                html += `<div style="border:1px solid #ccc; border-radius:4px; overflow:hidden;">
+                    <img src="${p.dataUrl}" style="width:100%; display:block;">
+                    <div style="padding:4px; font-size:0.7rem; background:#f5f5f5;">#${i + 1} | ${t} | Punto ${p.pointIndex + 1}</div>
+                </div>`;
+            });
+            html += '</div>';
+
+            // Reuse stats modal
+            document.getElementById('statsBody').innerHTML = html;
+            document.getElementById('statsModal').classList.add('active');
+        });
+
         // ========== AJUSTE DE CURVAS - CONTROLES ==========
 
         function updateCurveFitButtons() {
@@ -9453,6 +9978,23 @@ bluetooth.startIOPinService()</pre>
                 document.getElementById('fitEquation').textContent = fitResult.equation;
                 document.getElementById('fitR2').textContent = fitResult.r2.toFixed(6);
                 document.getElementById('fitPoints').textContent = dataToFit.length;
+
+                // Mostrar errores de parámetros
+                const errorsDiv = document.getElementById('fitParamErrors');
+                if (fitResult.errors && fitResult.errors.length > 0) {
+                    const paramNames = getParamNames(fitResult.type);
+                    let errHtml = '<div style="margin-bottom:4px;"><strong>Parámetros ± error estándar:</strong></div>';
+                    for (let i = 0; i < fitResult.coeffs.length; i++) {
+                        const name = paramNames[i] || `p${i}`;
+                        const val = fitResult.coeffs[i];
+                        const err = fitResult.errors[i];
+                        const errStr = isNaN(err) ? 'N/A' : err.toFixed(6);
+                        errHtml += `<div>${name} = ${val.toFixed(6)} ± ${errStr}</div>`;
+                    }
+                    errorsDiv.innerHTML = errHtml;
+                } else {
+                    errorsDiv.innerHTML = '';
+                }
 
                 // Actualizar gráfico con la curva de ajuste
                 updateAllCharts();
@@ -9891,7 +10433,7 @@ bluetooth.startIOPinService()</pre>
             // Se ejecuta a 30fps via setInterval para coincidir EXACTAMENTE con
             // captureStream(30). Cada ejecución = 1 fotograma del video grabado.
             _overlayFrameCount = 0;
-            const VIDEO_FPS = 30;
+            const VIDEO_FPS = parseInt(document.getElementById('videoFpsSelect').value) || 30;
 
             function drawOverlayFrame() {
                 if (!state.isCollecting || !state.cameraActive) {
@@ -9998,7 +10540,7 @@ bluetooth.startIOPinService()</pre>
                 console.warn('[CAM] captureStream o MediaRecorder no disponible en este navegador');
                 // Seguimos con la cámara visible pero sin grabar
             } else {
-            const canvasStream = captureMethod.call(canvas, 30); // 30 fps
+            const canvasStream = captureMethod.call(canvas, VIDEO_FPS);
 
             // Seleccionar codec compatible (Safari no soporta webm, priorizar mp4)
             let recorderOptions = {};
