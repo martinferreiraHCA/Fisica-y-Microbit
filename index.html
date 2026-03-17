@@ -2964,9 +2964,11 @@
             <div id="btWindowsContent">
                 <!-- Steps rendered by JS -->
             </div>
-            <div style="margin-top:14px; display:flex; gap:8px;">
-                <button class="toolbar-btn" onclick="closeBtWindowsModal()" style="flex:1;" id="btWindowsCancelBtn">CANCELAR</button>
-                <button class="toolbar-btn primary bluetooth" onclick="proceedBtWindowsConnect()" style="flex:1;" id="btWindowsConnectBtn">CONECTAR</button>
+            <div id="btWindowsCacheStatus" style="display:none; margin-top:12px; padding:10px; font-size:13px; border:2px solid #1565c0; background:#e3f2fd;"></div>
+            <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="toolbar-btn" onclick="closeBtWindowsModal()" style="flex:1; min-width:120px;" id="btWindowsCancelBtn">CANCELAR</button>
+                <button class="toolbar-btn" onclick="clearBleCache()" style="flex:1; min-width:120px; background:#ff8f00; color:white; border-color:#e65100;" id="btWindowsClearCacheBtn">LIMPIAR CACHÉ BLE</button>
+                <button class="toolbar-btn primary bluetooth" onclick="proceedBtWindowsConnect()" style="flex:1; min-width:120px;" id="btWindowsConnectBtn">CONECTAR</button>
             </div>
         </div>
     </div>
@@ -3326,6 +3328,12 @@
                 btWindowsStep3: 'Presioná el botón <b>RESET</b> en la parte de atrás del micro:bit para reiniciarlo.',
                 btWindowsStep4: 'Presioná <b>CONECTAR</b> abajo y seleccioná tu micro:bit en la ventana del navegador.',
                 btWindowsCancel: 'CANCELAR',
+                btWindowsClearCache: 'LIMPIAR CACHÉ BLE',
+                btWindowsCacheStep1: 'Seleccioná tu micro:bit en la ventana que aparece...',
+                btWindowsCacheStep2: 'Limpiando caché BLE del navegador...',
+                btWindowsCacheDone: '✔ Caché limpiado. Ahora presioná CONECTAR.',
+                btWindowsCacheFail: '✘ No se pudo limpiar (el navegador no soporta forget). Seguí los pasos manuales de arriba.',
+                btWindowsCacheNoDevice: 'No se seleccionó ningún dispositivo. Intentá de nuevo.',
                 btWindowsConnect: 'YA ESTÁ LISTO — CONECTAR',
                 // View switcher
                 viewSplit: 'SPLIT',
@@ -3510,6 +3518,12 @@
                 btWindowsStep3: 'Press the <b>RESET</b> button on the back of the micro:bit to restart it.',
                 btWindowsStep4: 'Press <b>CONNECT</b> below and select your micro:bit from the browser popup.',
                 btWindowsCancel: 'CANCEL',
+                btWindowsClearCache: 'CLEAR BLE CACHE',
+                btWindowsCacheStep1: 'Select your micro:bit from the popup...',
+                btWindowsCacheStep2: 'Clearing browser BLE cache...',
+                btWindowsCacheDone: '✔ Cache cleared. Now press CONNECT.',
+                btWindowsCacheFail: '✘ Could not clear cache (browser does not support forget). Follow the manual steps above.',
+                btWindowsCacheNoDevice: 'No device selected. Try again.',
                 btWindowsConnect: 'ALL SET — CONNECT',
                 // View switcher
                 viewSplit: 'SPLIT',
@@ -3694,6 +3708,12 @@
                 btWindowsStep3: 'Pressione o botão <b>RESET</b> na parte de trás do micro:bit para reiniciá-lo.',
                 btWindowsStep4: 'Pressione <b>CONECTAR</b> abaixo e selecione seu micro:bit na janela do navegador.',
                 btWindowsCancel: 'CANCELAR',
+                btWindowsClearCache: 'LIMPAR CACHE BLE',
+                btWindowsCacheStep1: 'Selecione seu micro:bit na janela que aparece...',
+                btWindowsCacheStep2: 'Limpando cache BLE do navegador...',
+                btWindowsCacheDone: '✔ Cache limpo. Agora pressione CONECTAR.',
+                btWindowsCacheFail: '✘ Não foi possível limpar (navegador não suporta forget). Siga os passos manuais acima.',
+                btWindowsCacheNoDevice: 'Nenhum dispositivo selecionado. Tente novamente.',
                 btWindowsConnect: 'TUDO PRONTO — CONECTAR',
                 // View switcher
                 viewSplit: 'SPLIT',
@@ -6413,6 +6433,7 @@ bluetooth.startIOPinService()</pre>
             document.getElementById('btWindowsTitle').textContent   = t.btWindowsTitle;
             document.getElementById('btWindowsWarning').textContent = t.btWindowsWarning;
             document.getElementById('btWindowsCancelBtn').textContent  = t.btWindowsCancel;
+            document.getElementById('btWindowsClearCacheBtn').textContent = t.btWindowsClearCache;
             document.getElementById('btWindowsConnectBtn').textContent = t.btWindowsConnect;
 
             const steps = [t.btWindowsStep1, t.btWindowsStep2, t.btWindowsStep3, t.btWindowsStep4];
@@ -6424,6 +6445,12 @@ bluetooth.startIOPinService()</pre>
                 </div>`;
             }
             document.getElementById('btWindowsContent').innerHTML = html;
+
+            // Resetear estado del caché
+            const statusEl = document.getElementById('btWindowsCacheStatus');
+            statusEl.style.display = 'none';
+            statusEl.textContent = '';
+
             document.getElementById('btWindowsModal').classList.add('active');
         }
 
@@ -6434,6 +6461,54 @@ bluetooth.startIOPinService()</pre>
         async function proceedBtWindowsConnect() {
             closeBtWindowsModal();
             await connectBluetooth();
+        }
+
+        // ── Limpiar caché BLE de Chrome (device.forget) ──
+        async function clearBleCache() {
+            const t = translations[currentLanguage];
+            const statusEl = document.getElementById('btWindowsCacheStatus');
+            const btn = document.getElementById('btWindowsClearCacheBtn');
+            btn.disabled = true;
+            statusEl.style.display = 'block';
+            statusEl.style.borderColor = '#1565c0';
+            statusEl.style.background = '#e3f2fd';
+            statusEl.textContent = t.btWindowsCacheStep1;
+
+            try {
+                // Pedir al usuario que seleccione el micro:bit para poder hacer forget
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }],
+                    optionalServices: ALL_OPTIONAL_SERVICES
+                });
+
+                statusEl.textContent = t.btWindowsCacheStep2;
+
+                if (typeof device.forget === 'function') {
+                    await device.forget();
+                    console.log('[BT] clearBleCache: device.forget() exitoso para', device.name);
+                    statusEl.style.borderColor = '#2e7d32';
+                    statusEl.style.background = '#e8f5e9';
+                    statusEl.textContent = t.btWindowsCacheDone;
+                } else {
+                    console.warn('[BT] clearBleCache: device.forget() no disponible');
+                    statusEl.style.borderColor = '#c62828';
+                    statusEl.style.background = '#ffebee';
+                    statusEl.textContent = t.btWindowsCacheFail;
+                }
+            } catch (err) {
+                if (err.name === 'NotFoundError') {
+                    statusEl.style.borderColor = '#e65100';
+                    statusEl.style.background = '#fff3e0';
+                    statusEl.textContent = t.btWindowsCacheNoDevice;
+                } else {
+                    console.error('[BT] clearBleCache error:', err);
+                    statusEl.style.borderColor = '#c62828';
+                    statusEl.style.background = '#ffebee';
+                    statusEl.textContent = t.btWindowsCacheFail;
+                }
+            } finally {
+                btn.disabled = false;
+            }
         }
 
         // ========== CONEXIÓN BLUETOOTH ROBUSTA ==========
