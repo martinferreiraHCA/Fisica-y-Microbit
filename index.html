@@ -2079,18 +2079,20 @@
             height: calc(100% - 16px) !important;
         }
 
-        /* Video preview in desktop LAB (small, bottom-left corner) */
+        /* Video preview in desktop LAB - proportions similar to mobile LAB (42%) */
         .dlab-video-pip {
             position: absolute;
-            bottom: 16px;
-            left: 16px;
-            width: 240px;
-            height: 160px;
+            bottom: 0;
+            left: 0;
+            width: 40%;
+            height: 42%;
             border: 2px solid black;
+            border-left: none;
+            border-bottom: none;
             background: black;
             z-index: 5;
             cursor: move;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 -2px 12px rgba(0,0,0,0.25);
         }
 
         .dlab-video-pip video {
@@ -2129,6 +2131,34 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        /* Drag selection overlay for charts */
+        .drag-select-overlay {
+            position: absolute;
+            border: 2px dashed #d32f2f;
+            background: rgba(211, 47, 47, 0.10);
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+        }
+
+        .drag-select-btn {
+            background: white;
+            border: 2px solid #d32f2f;
+            color: #d32f2f;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .drag-select-btn.active {
+            background: #d32f2f;
+            color: white;
+        }
+
+        .drag-select-btn:hover:not(.active) {
+            background: #ffebee;
         }
 
         /* Bottom bar: playback + info */
@@ -2857,6 +2887,10 @@
                         <strong>ELIMINAR PUNTOS:</strong>
                         Usa estas herramientas para limpiar datos incorrectos o no deseados.
                     </div>
+
+                    <button class="toolbar-btn btn-full drag-select-btn" id="dragSelectBtn" onclick="toggleDragSelectMode()" style="margin-bottom: 8px;">
+                        &#9634; SELECCIÓN POR ARRASTRE
+                    </button>
 
                     <div class="input-row">
                         <label>Eliminar Rango (desde)</label>
@@ -8969,6 +9003,7 @@ bluetooth.startIOPinService()</pre>
         }
 
         function handleChartClick(evt, chartIndex) {
+            if (dragSelectMode) return; // Handled by drag selection
             const chart = state.charts[chartIndex];
             const points = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
 
@@ -8987,6 +9022,193 @@ bluetooth.startIOPinService()</pre>
                     }
                 }
             }
+        }
+
+        // ========== SELECCIÓN POR ARRASTRE ==========
+
+        let dragSelectMode = false;
+        let dragSelectState = null; // {chartIndex, startX, startY, overlay}
+
+        function toggleDragSelectMode() {
+            dragSelectMode = !dragSelectMode;
+            const btn = document.getElementById('dragSelectBtn');
+            btn.classList.toggle('active', dragSelectMode);
+            btn.textContent = dragSelectMode ? '✓ SELECCIÓN POR ARRASTRE (ACTIVA)' : '▢ SELECCIÓN POR ARRASTRE';
+
+            // Toggle zoom-drag and pan on all charts
+            state.charts.forEach(chart => {
+                if (!chart) return;
+                chart.options.plugins.zoom.pan.enabled = !dragSelectMode;
+                if (dragSelectMode) {
+                    chart.options.plugins.zoom.zoom.drag = false;
+                } else {
+                    chart.options.plugins.zoom.zoom.drag = {
+                        enabled: true,
+                        modifierKey: 'shift',
+                        backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                        borderColor: 'rgba(0, 0, 0, 0.3)',
+                        borderWidth: 1
+                    };
+                }
+                chart.update('none');
+            });
+
+            // Attach/detach drag handlers on each chart canvas
+            for (let i = 0; i < state.numGraphs; i++) {
+                const canvas = document.getElementById(`chart${i}`);
+                if (!canvas) continue;
+                if (dragSelectMode) {
+                    canvas.addEventListener('pointerdown', onDragSelectStart);
+                    canvas.style.cursor = 'crosshair';
+                } else {
+                    canvas.removeEventListener('pointerdown', onDragSelectStart);
+                    canvas.style.cursor = '';
+                    // Clean up any active overlay
+                    if (dragSelectState && dragSelectState.overlay) {
+                        dragSelectState.overlay.remove();
+                        dragSelectState = null;
+                    }
+                }
+            }
+        }
+
+        function onDragSelectStart(e) {
+            if (!dragSelectMode) return;
+            // Find which chart index this canvas belongs to
+            const canvas = e.currentTarget;
+            let chartIndex = -1;
+            for (let i = 0; i < state.numGraphs; i++) {
+                if (document.getElementById(`chart${i}`) === canvas) { chartIndex = i; break; }
+            }
+            if (chartIndex < 0) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const startX = e.clientX - rect.left;
+            const startY = e.clientY - rect.top;
+
+            // Create overlay element
+            const container = canvas.parentElement;
+            let overlay = container.querySelector('.drag-select-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.className = 'drag-select-overlay';
+                container.style.position = 'relative';
+                container.appendChild(overlay);
+            }
+            overlay.style.display = 'block';
+            overlay.style.left = startX + 'px';
+            overlay.style.top = startY + 'px';
+            overlay.style.width = '0px';
+            overlay.style.height = '0px';
+
+            dragSelectState = { chartIndex, startX, startY, overlay, rect };
+
+            canvas.setPointerCapture(e.pointerId);
+            canvas.addEventListener('pointermove', onDragSelectMove);
+            canvas.addEventListener('pointerup', onDragSelectEnd);
+            e.preventDefault();
+        }
+
+        function onDragSelectMove(e) {
+            if (!dragSelectState) return;
+            const { startX, startY, overlay, rect } = dragSelectState;
+            const canvas = e.currentTarget;
+            const canvasRect = canvas.getBoundingClientRect();
+            const curX = e.clientX - canvasRect.left;
+            const curY = e.clientY - canvasRect.top;
+
+            const x = Math.min(startX, curX);
+            const y = Math.min(startY, curY);
+            const w = Math.abs(curX - startX);
+            const h = Math.abs(curY - startY);
+
+            overlay.style.left = x + 'px';
+            overlay.style.top = y + 'px';
+            overlay.style.width = w + 'px';
+            overlay.style.height = h + 'px';
+        }
+
+        function onDragSelectEnd(e) {
+            if (!dragSelectState) return;
+            const { chartIndex, startX, startY, overlay } = dragSelectState;
+            const canvas = e.currentTarget;
+            const canvasRect = canvas.getBoundingClientRect();
+            const endX = e.clientX - canvasRect.left;
+            const endY = e.clientY - canvasRect.top;
+
+            canvas.removeEventListener('pointermove', onDragSelectMove);
+            canvas.removeEventListener('pointerup', onDragSelectEnd);
+
+            // Hide overlay
+            overlay.style.display = 'none';
+
+            // Calculate selection rectangle in pixel space
+            const selLeft = Math.min(startX, endX);
+            const selRight = Math.max(startX, endX);
+            const selTop = Math.min(startY, endY);
+            const selBottom = Math.max(startY, endY);
+
+            // Ignore tiny drags (< 5px)
+            if (selRight - selLeft < 5 && selBottom - selTop < 5) {
+                dragSelectState = null;
+                return;
+            }
+
+            // Get chart and find points inside the rectangle
+            const chart = state.charts[chartIndex];
+            if (!chart) { dragSelectState = null; return; }
+
+            // Use CSS pixel coordinates relative to canvas for Chart.js pixel mapping
+            const chartArea = chart.chartArea;
+            const xScale = chart.scales.x;
+            const yScale = chart.scales.y;
+
+            // Convert pixel selection rect to data coordinates
+            // Canvas pixel coords need to account for CSS→canvas pixel ratio
+            const canvasEl = chart.canvas;
+            const cssW = canvasEl.clientWidth;
+            const cssH = canvasEl.clientHeight;
+            const pixelW = canvasEl.width;
+            const pixelH = canvasEl.height;
+            const ratioX = pixelW / cssW;
+            const ratioY = pixelH / cssH;
+
+            const dataLeft = xScale.getValueForPixel(selLeft * ratioX);
+            const dataRight = xScale.getValueForPixel(selRight * ratioX);
+            const dataTop = yScale.getValueForPixel(selTop * ratioY);
+            const dataBottom = yScale.getValueForPixel(selBottom * ratioY);
+
+            const xMin = Math.min(dataLeft, dataRight);
+            const xMax = Math.max(dataLeft, dataRight);
+            const yMin = Math.min(dataTop, dataBottom);
+            const yMax = Math.max(dataTop, dataBottom);
+
+            // Find all data points inside the rectangle across all datasets
+            let selectedCount = 0;
+            chart.data.datasets.forEach(dataset => {
+                dataset.data.forEach(point => {
+                    if (point.id && point.x >= xMin && point.x <= xMax && point.y >= yMin && point.y <= yMax) {
+                        if (!state.selectedPoints.has(point.id)) {
+                            state.selectedPoints.add(point.id);
+                            selectedCount++;
+                        }
+                    }
+                });
+            });
+
+            if (selectedCount > 0) {
+                if (state.selectedPoints.size === 1) {
+                    const selectedId = Array.from(state.selectedPoints)[0];
+                    const selectedIndex = state.rawData.findIndex(d => d.id === selectedId);
+                    document.getElementById('pointInfo').textContent = `PUNTO #${selectedIndex + 1} SELECCIONADO`;
+                } else {
+                    document.getElementById('pointInfo').textContent = `${state.selectedPoints.size} PUNTOS SELECCIONADOS`;
+                }
+                document.getElementById('pointInfo').style.display = 'inline-block';
+                updateDisplay();
+            }
+
+            dragSelectState = null;
         }
 
         // ========== TABLA - BÚSQUEDA Y FILTROS ==========
