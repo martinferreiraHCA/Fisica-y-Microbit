@@ -3315,7 +3315,7 @@
                 allGraphs: 'Todas las gráficas',
                 // Bluetooth pairing guide
                 btPairingTitle: 'CONEXIÓN BLUETOOTH',
-                btPairingStep1: 'Asegurate de que tu programa MakeCode tenga <b>"No Pairing Required"</b> activado en <b>Project Settings</b>.',
+                btPairingStep1: 'Asegurate de que tu programa MakeCode tenga <b>"No Pairing Required: JustWorks pairing"</b> activado en <b>⚙ → Project Settings</b>.',
                 btPairingStep2: 'Encendé la micro:bit (o presioná <b>RESET</b> una vez para reiniciar).',
                 btPairingStep3: 'Presioná <b>CONECTAR</b> y seleccioná tu micro:bit (<b>"BBC micro:bit"</b>) en la ventana del navegador.',
                 btPairingCancel: 'CANCELAR',
@@ -3324,7 +3324,7 @@
                 btWindowsTitle: 'BLUETOOTH EN WINDOWS',
                 btWindowsWarning: '⚠ IMPORTANTE: el micro:bit NO debe estar vinculado en Windows',
                 btWindowsStep1: 'Abrí <b>Configuración → Bluetooth y dispositivos</b>. Si ves <b>"BBC micro:bit"</b> en la lista, hacé clic en los tres puntos (···) y elegí <b>"Quitar dispositivo"</b>.',
-                btWindowsStep2: 'En tu programa MakeCode verificá que <b>Project Settings → "No Pairing Required"</b> esté activado.',
+                btWindowsStep2: 'En tu programa MakeCode verificá que <b>Project Settings → "No Pairing Required: JustWorks pairing"</b> esté activado (⚙ → Project Settings). Esto configura <code>bluetooth.open=1</code> para conexión sin PIN.',
                 btWindowsStep3: 'Presioná el botón <b>RESET</b> en la parte de atrás del micro:bit para reiniciarlo.',
                 btWindowsStep4: 'Presioná <b>CONECTAR</b> abajo y seleccioná tu micro:bit en la ventana del navegador.',
                 btWindowsCancel: 'CANCELAR',
@@ -3332,8 +3332,9 @@
                 btWindowsCacheStep1: 'Seleccioná tu micro:bit en la ventana que aparece...',
                 btWindowsCacheStep2: 'Limpiando caché BLE del navegador...',
                 btWindowsCacheDone: '✔ Caché limpiado. Ahora presioná CONECTAR.',
-                btWindowsCacheFail: '✘ No se pudo limpiar (el navegador no soporta forget). Seguí los pasos manuales de arriba.',
+                btWindowsCacheFail: '✘ No se pudo limpiar. Seguí los pasos manuales de arriba.',
                 btWindowsCacheNoDevice: 'No se seleccionó ningún dispositivo. Intentá de nuevo.',
+                btWindowsCacheNoForget: '⚠ Tu navegador no soporta limpieza automática.<br><b>Solución:</b> Copiá y pegá en la barra de direcciones:<br><code style="background:#fff;padding:2px 6px;border:1px solid #ccc;user-select:all">chrome://flags/#web-bluetooth-new-permissions-backend</code><br>Activalo (<b>Enabled</b>), reiniciá Chrome y volvé a intentar.<br><br>O andá a <code style="background:#fff;padding:2px 6px;border:1px solid #ccc;user-select:all">chrome://bluetooth-internals</code> → Devices → Forget.',
                 btWindowsConnect: 'YA ESTÁ LISTO — CONECTAR',
                 // View switcher
                 viewSplit: 'SPLIT',
@@ -3505,7 +3506,7 @@
                 allGraphs: 'All graphs',
                 // Bluetooth pairing guide
                 btPairingTitle: 'BLUETOOTH CONNECTION',
-                btPairingStep1: 'Make sure your MakeCode program has <b>"No Pairing Required"</b> enabled in <b>Project Settings</b>.',
+                btPairingStep1: 'Make sure your MakeCode program has <b>"No Pairing Required: JustWorks pairing"</b> enabled in <b>⚙ → Project Settings</b>.',
                 btPairingStep2: 'Turn on the micro:bit (or press <b>RESET</b> once to restart).',
                 btPairingStep3: 'Press <b>CONNECT</b> and select your micro:bit (<b>"BBC micro:bit"</b>) from the browser popup.',
                 btPairingCancel: 'CANCEL',
@@ -3514,7 +3515,7 @@
                 btWindowsTitle: 'BLUETOOTH ON WINDOWS',
                 btWindowsWarning: '⚠ IMPORTANT: the micro:bit must NOT be paired in Windows',
                 btWindowsStep1: 'Open <b>Settings → Bluetooth & devices</b>. If you see <b>"BBC micro:bit"</b> in the list, click the three dots (···) and choose <b>"Remove device"</b>.',
-                btWindowsStep2: 'In your MakeCode program, check that <b>Project Settings → "No Pairing Required"</b> is enabled.',
+                btWindowsStep2: 'In your MakeCode program, check that <b>Project Settings → "No Pairing Required: JustWorks pairing"</b> is enabled (⚙ → Project Settings). This sets <code>bluetooth.open=1</code> for PIN-free connection.',
                 btWindowsStep3: 'Press the <b>RESET</b> button on the back of the micro:bit to restart it.',
                 btWindowsStep4: 'Press <b>CONNECT</b> below and select your micro:bit from the browser popup.',
                 btWindowsCancel: 'CANCEL',
@@ -3522,8 +3523,9 @@
                 btWindowsCacheStep1: 'Select your micro:bit from the popup...',
                 btWindowsCacheStep2: 'Clearing browser BLE cache...',
                 btWindowsCacheDone: '✔ Cache cleared. Now press CONNECT.',
-                btWindowsCacheFail: '✘ Could not clear cache (browser does not support forget). Follow the manual steps above.',
+                btWindowsCacheFail: '✘ Could not clear cache. Follow the manual steps above.',
                 btWindowsCacheNoDevice: 'No device selected. Try again.',
+                btWindowsCacheNoForget: '⚠ Your browser does not support automatic cache clearing.<br><b>Fix:</b> Copy and paste in the address bar:<br><code style="background:#fff;padding:2px 6px;border:1px solid #ccc;user-select:all">chrome://flags/#web-bluetooth-new-permissions-backend</code><br>Enable it, restart Chrome and try again.<br><br>Or go to <code style="background:#fff;padding:2px 6px;border:1px solid #ccc;user-select:all">chrome://bluetooth-internals</code> → Devices → Forget.',
                 btWindowsConnect: 'ALL SET — CONNECT',
                 // View switcher
                 viewSplit: 'SPLIT',
@@ -3695,7 +3697,7 @@
                 allGraphs: 'Todos os gráficos',
                 // Bluetooth pairing guide
                 btPairingTitle: 'CONEXÃO BLUETOOTH',
-                btPairingStep1: 'Certifique-se de que seu programa MakeCode tenha <b>"No Pairing Required"</b> ativado em <b>Project Settings</b>.',
+                btPairingStep1: 'Certifique-se de que seu programa MakeCode tenha <b>"No Pairing Required: JustWorks pairing"</b> ativado em <b>⚙ → Project Settings</b>.',
                 btPairingStep2: 'Ligue o micro:bit (ou pressione <b>RESET</b> uma vez para reiniciar).',
                 btPairingStep3: 'Pressione <b>CONECTAR</b> e selecione seu micro:bit (<b>"BBC micro:bit"</b>) na janela do navegador.',
                 btPairingCancel: 'CANCELAR',
@@ -3704,7 +3706,7 @@
                 btWindowsTitle: 'BLUETOOTH NO WINDOWS',
                 btWindowsWarning: '⚠ IMPORTANTE: o micro:bit NÃO deve estar vinculado no Windows',
                 btWindowsStep1: 'Abra <b>Configurações → Bluetooth e dispositivos</b>. Se ver <b>"BBC micro:bit"</b> na lista, clique nos três pontos (···) e escolha <b>"Remover dispositivo"</b>.',
-                btWindowsStep2: 'No seu programa MakeCode, verifique que <b>Project Settings → "No Pairing Required"</b> esteja ativado.',
+                btWindowsStep2: 'No seu programa MakeCode, verifique que <b>Project Settings → "No Pairing Required: JustWorks pairing"</b> esteja ativado (⚙ → Project Settings). Isso configura <code>bluetooth.open=1</code> para conexão sem PIN.',
                 btWindowsStep3: 'Pressione o botão <b>RESET</b> na parte de trás do micro:bit para reiniciá-lo.',
                 btWindowsStep4: 'Pressione <b>CONECTAR</b> abaixo e selecione seu micro:bit na janela do navegador.',
                 btWindowsCancel: 'CANCELAR',
@@ -3712,8 +3714,9 @@
                 btWindowsCacheStep1: 'Selecione seu micro:bit na janela que aparece...',
                 btWindowsCacheStep2: 'Limpando cache BLE do navegador...',
                 btWindowsCacheDone: '✔ Cache limpo. Agora pressione CONECTAR.',
-                btWindowsCacheFail: '✘ Não foi possível limpar (navegador não suporta forget). Siga os passos manuais acima.',
+                btWindowsCacheFail: '✘ Não foi possível limpar. Siga os passos manuais acima.',
                 btWindowsCacheNoDevice: 'Nenhum dispositivo selecionado. Tente novamente.',
+                btWindowsCacheNoForget: '⚠ Seu navegador não suporta limpeza automática.<br><b>Solução:</b> Copie e cole na barra de endereços:<br><code style="background:#fff;padding:2px 6px;border:1px solid #ccc;user-select:all">chrome://flags/#web-bluetooth-new-permissions-backend</code><br>Ative (<b>Enabled</b>), reinicie o Chrome e tente novamente.<br><br>Ou vá para <code style="background:#fff;padding:2px 6px;border:1px solid #ccc;user-select:all">chrome://bluetooth-internals</code> → Devices → Forget.',
                 btWindowsConnect: 'TUDO PRONTO — CONECTAR',
                 // View switcher
                 viewSplit: 'SPLIT',
@@ -6491,9 +6494,9 @@ bluetooth.startIOPinService()</pre>
                     statusEl.textContent = t.btWindowsCacheDone;
                 } else {
                     console.warn('[BT] clearBleCache: device.forget() no disponible');
-                    statusEl.style.borderColor = '#c62828';
-                    statusEl.style.background = '#ffebee';
-                    statusEl.textContent = t.btWindowsCacheFail;
+                    statusEl.style.borderColor = '#e65100';
+                    statusEl.style.background = '#fff3e0';
+                    statusEl.innerHTML = t.btWindowsCacheNoForget;
                 }
             } catch (err) {
                 if (err.name === 'NotFoundError') {
@@ -6684,7 +6687,8 @@ bluetooth.startIOPinService()</pre>
             // En Windows, connect() resuelve con connected=true pero la conexión
             // puede caer instantáneamente (caché GATT corrupto o pairing inválido).
             // Usamos un listener de disconnect para detectar este caso.
-            async _connectGATTWithStabilization(device) {
+            async _connectGATTWithStabilization(device, stabilizationMs) {
+                const waitMs = stabilizationMs || 600;
                 this.server = await device.gatt.connect();
                 this.log('GATT connected:', this.server.connected);
 
@@ -6705,7 +6709,7 @@ bluetooth.startIOPinService()</pre>
                         } else {
                             reject(new Error('GATT_INSTANT_DISCONNECT'));
                         }
-                    }, 600);
+                    }, waitMs);
 
                     const onDisconnect = () => {
                         if (!settled) {
@@ -6717,12 +6721,12 @@ bluetooth.startIOPinService()</pre>
                     device.addEventListener('gattserverdisconnected', onDisconnect, { once: true });
                 });
 
-                this.log('GATT estable después de 600ms');
+                this.log(`GATT estable después de ${waitMs}ms`);
             }
 
-            async connectAndSetupUART(device) {
+            async connectAndSetupUART(device, stabilizationMs) {
                 this.log('Conectando a GATT server...');
-                await this._connectGATTWithStabilization(device);
+                await this._connectGATTWithStabilization(device, stabilizationMs);
 
                 // En Windows (WinRT), el service discovery GATT es asíncrono y puede
                 // no estar completo cuando connect() resuelve. Primero llamamos
@@ -7213,7 +7217,7 @@ bluetooth.startIOPinService()</pre>
                                     });
                                     this.log('Dispositivo re-seleccionado:', this.device.name, '| ID:', this.device.id);
                                     statusEl.textContent = 'Conectando a ' + (this.device.name || 'micro:bit') + '...';
-                                    await this.connectAndSetupUART(this.device);
+                                    await this.connectAndSetupUART(this.device, 1200);
                                     connected = true;
                                 } catch (e2) {
                                     if (e2.name === 'NotFoundError') { this.connecting = false; return false; }
@@ -7222,7 +7226,51 @@ bluetooth.startIOPinService()</pre>
                                 }
                             }
 
+                            // forget() no disponible — intentar reconexión con delays
+                            // más largos y ventanas de estabilización crecientes.
+                            // A veces WinRT necesita más tiempo para que la conexión GATT
+                            // se estabilice, especialmente con caché parcialmente corrupto.
                             if (!connected) {
+                                this.log('forget() no disponible — intentando reconexión con estabilización creciente...');
+                                try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
+
+                                // Ventanas de estabilización crecientes: 1200ms, 2000ms, 3000ms
+                                const stabilizationWindows = [1200, 2000, 3000];
+
+                                for (let attempt = 2; attempt <= 4 && !connected; attempt++) {
+                                    const retryDelay = 2000 * attempt; // 4s, 6s, 8s
+                                    const stabilMs = stabilizationWindows[attempt - 2] || 3000;
+                                    statusEl.textContent = `Reconectando... intento ${attempt}/4`;
+                                    this.log(`Reintento sin forget ${attempt}/4: delay=${retryDelay}ms, estabilización=${stabilMs}ms`);
+                                    await this._delay(retryDelay);
+                                    try {
+                                        try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
+                                        await this.connectAndSetupUART(this.device, stabilMs);
+                                        connected = true;
+                                    } catch (retryErr) {
+                                        lastError = retryErr;
+                                        this.warn(`Reintento ${attempt}/4 falló:`, retryErr.message);
+                                        // Si sigue con INSTANT_DISCONNECT, probar re-solicitar dispositivo
+                                        if (attempt === 3 && retryErr.message === 'GATT_INSTANT_DISCONNECT') {
+                                            this.log('Intentando re-solicitar dispositivo para obtener nuevo ID...');
+                                            try {
+                                                try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
+                                                statusEl.textContent = 'Seleccioná el micro:bit de nuevo...';
+                                                this.device = await navigator.bluetooth.requestDevice({
+                                                    filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }],
+                                                    optionalServices: ALL_OPTIONAL_SERVICES
+                                                });
+                                                this.log('Re-seleccionado:', this.device.name, '| nuevo ID:', this.device.id);
+                                            } catch (reqErr) {
+                                                if (reqErr.name === 'NotFoundError') { this.connecting = false; return false; }
+                                                this.warn('Re-solicitar falló:', reqErr.message);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                        if (!connected) {
                                 this.error('Conexión fallida:', e1.message);
                                 const isInstant = e1.message === 'GATT_INSTANT_DISCONNECT';
                                 alert(
@@ -7234,9 +7282,12 @@ bluetooth.startIOPinService()</pre>
                                     '1. Abrí Configuración de Windows → Bluetooth y dispositivos\n' +
                                     '2. Si aparece "BBC micro:bit", hacé clic en ⋯ → Quitar dispositivo\n' +
                                     '3. Apagá y prendé el Bluetooth de Windows\n' +
-                                    '4. Reseteá el micro:bit (botón de atrás)\n' +
-                                    '5. Volvé a conectar desde esta página\n\n' +
-                                    'Tip: también podés ir a chrome://bluetooth-internals\n' +
+                                    '4. En MakeCode: ⚙ → Project Settings → activar "No Pairing Required"\n' +
+                                    '5. Reseteá el micro:bit (botón de atrás)\n' +
+                                    '6. Volvé a conectar desde esta página\n\n' +
+                                    'Tip: En Chrome, habilitá chrome://flags/#web-bluetooth-new-permissions-backend\n' +
+                                    '     para que la limpieza automática de caché funcione.\n' +
+                                    '     También podés ir a chrome://bluetooth-internals\n' +
                                     '     → pestaña Devices → buscar el micro:bit → Forget Device'
                                 );
                                 this.connecting = false;
