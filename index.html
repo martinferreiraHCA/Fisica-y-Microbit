@@ -6193,20 +6193,48 @@ bluetooth.startIOPinService()</pre>
             const setZeroBtn = document.getElementById('setZeroBtn');
             if (setZeroBtn) setZeroBtn.style.display = isVarsOnly ? 'none' : '';
 
-            // Update graph configuration options
+            // Auto-configure graphs based on data format BEFORE rebuilding UI
+            if (isVarsOnly) {
+                for (let g = 0; g < 3; g++) {
+                    state.graphs[g].xAxis = 'var0';
+                    state.graphs[g].xLabel = state.variables[0].name;
+                    // Y: primera variable que no sea la del X
+                    const yVars = [];
+                    for (let i = 1; i < state.numVariables; i++) {
+                        if (yVars.length === 0) yVars.push(i);
+                    }
+                    if (yVars.length === 0) yVars.push(0); // Solo 1 variable
+                    state.graphs[g].yVars = yVars;
+                    state.graphs[g].yLabel = state.variables[yVars[0]].name;
+                }
+            } else {
+                for (let g = 0; g < 3; g++) {
+                    state.graphs[g].xAxis = 'time';
+                    state.graphs[g].xLabel = 'Tiempo (s)';
+                    state.graphs[g].yVars = [0];
+                    state.graphs[g].yLabel = state.variables[0].name;
+                }
+            }
+
+            // Rebuild UI (dropdowns, checkboxes, labels) from state
             updateGraphConfiguration();
             updateDataTableHeader();
 
-            // If switching to varsOnly and graph X is still 'time', default to var0
-            if (isVarsOnly) {
-                for (let g = 0; g < 3; g++) {
-                    if (state.graphs[g].xAxis === 'time') {
-                        state.graphs[g].xAxis = 'var0';
-                        const sel = document.getElementById(`graph${g + 1}XAxis`);
-                        if (sel) sel.value = 'var0';
-                        // Update label to match variable name
-                        const labelInput = document.getElementById(`graph${g + 1}XLabel`);
-                        if (labelInput) labelInput.value = state.variables[0].name;
+            // Sync UI inputs with state
+            for (let g = 0; g < 3; g++) {
+                const gn = g + 1;
+                const sel = document.getElementById(`graph${gn}XAxis`);
+                if (sel) sel.value = state.graphs[g].xAxis;
+                const xLabel = document.getElementById(`graph${gn}XLabel`);
+                if (xLabel) xLabel.value = state.graphs[g].xLabel;
+                const yLabel = document.getElementById(`graph${gn}YLabel`);
+                if (yLabel) yLabel.value = state.graphs[g].yLabel;
+
+                // Sync Y checkboxes
+                for (let i = 0; i < state.numVariables; i++) {
+                    const cb = document.getElementById(`graph${gn}Var${i}`);
+                    if (cb && !cb.disabled) {
+                        cb.checked = state.graphs[g].yVars.includes(i);
                     }
                 }
             }
@@ -6286,35 +6314,94 @@ bluetooth.startIOPinService()</pre>
                 } else if (isVarsOnly) {
                     select.value = 'var0';
                 }
+
+                // Al cambiar eje X, actualizar etiquetas y marcar variable usada en Y
+                select.onchange = (function(graphNum) {
+                    return function() {
+                        const xVal = this.value;
+                        const xLabelInput = document.getElementById(`graph${graphNum}XLabel`);
+                        if (xVal === 'time') {
+                            if (xLabelInput) xLabelInput.value = 'Tiempo (s)';
+                        } else {
+                            const xIdx = parseInt(xVal.replace('var', ''));
+                            if (xLabelInput) xLabelInput.value = state.variables[xIdx].name;
+                        }
+                        updateYVarCheckboxes(graphNum);
+                    };
+                })(g);
             }
 
             // Actualizar checkboxes de variables en Y
             for (let g = 1; g <= 3; g++) {
-                const container = document.getElementById(`graph${g}YVars`);
-                container.innerHTML = '';
+                buildYVarCheckboxes(g);
+            }
+        }
 
-                for (let i = 0; i < state.numVariables; i++) {
-                    const div = document.createElement('div');
-                    div.className = 'checkbox-row';
+        // Construir checkboxes de Y para una gráfica, marcando la variable del eje X
+        function buildYVarCheckboxes(graphNum) {
+            const container = document.getElementById(`graph${graphNum}YVars`);
+            const xAxis = document.getElementById(`graph${graphNum}XAxis`).value;
+            const isVarsOnly = !state.microbitTimestamp;
+            const xVarIdx = (xAxis !== 'time') ? parseInt(xAxis.replace('var', '')) : -1;
+            container.innerHTML = '';
 
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.id = `graph${g}Var${i}`;
-                    checkbox.value = i;
+            for (let i = 0; i < state.numVariables; i++) {
+                const div = document.createElement('div');
+                div.className = 'checkbox-row';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `graph${graphNum}Var${i}`;
+                checkbox.value = i;
+
+                // Determinar checked: usar state si hay config existente, sino defaults
+                const gIdx = graphNum - 1;
+                const savedYVars = state.graphs[gIdx] ? state.graphs[gIdx].yVars : null;
+                if (savedYVars && savedYVars.length > 0) {
+                    checkbox.checked = savedYVars.includes(i);
+                } else if (isVarsOnly && xVarIdx >= 0) {
+                    checkbox.checked = (i !== xVarIdx && i === (xVarIdx === 0 ? 1 : 0));
+                } else {
                     checkbox.checked = (i === 0);
+                }
 
-                    const label = document.createElement('label');
-                    label.htmlFor = checkbox.id;
-                    label.textContent = state.variables[i].name;
+                // Si esta variable está en el eje X, deshabilitarla y marcar visualmente
+                if (isVarsOnly && i === xVarIdx && state.numVariables > 1) {
+                    checkbox.disabled = true;
+                    checkbox.checked = false;
+                }
 
-                    const colorSpan = document.createElement('span');
-                    colorSpan.className = 'color-preview';
-                    colorSpan.style.background = state.variables[i].color;
+                const label = document.createElement('label');
+                label.htmlFor = checkbox.id;
+                label.textContent = state.variables[i].name;
+                if (isVarsOnly && i === xVarIdx && state.numVariables > 1) {
+                    label.style.color = '#999';
+                    label.title = 'Esta variable está en el eje X';
+                }
 
-                    div.appendChild(checkbox);
-                    div.appendChild(label);
-                    label.appendChild(colorSpan);
-                    container.appendChild(div);
+                const colorSpan = document.createElement('span');
+                colorSpan.className = 'color-preview';
+                colorSpan.style.background = state.variables[i].color;
+
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                label.appendChild(colorSpan);
+                container.appendChild(div);
+            }
+        }
+
+        // Cuando el usuario cambia el eje X, reconstruir Y checkboxes y actualizar label Y
+        function updateYVarCheckboxes(graphNum) {
+            buildYVarCheckboxes(graphNum);
+            // Auto-actualizar label Y con la primera variable checked
+            const yLabel = document.getElementById(`graph${graphNum}YLabel`);
+            if (yLabel) {
+                for (let i = 0; i < state.numVariables; i++) {
+                    const cb = document.getElementById(`graph${graphNum}Var${i}`);
+                    if (cb && cb.checked) {
+                        yLabel.value = state.variables[i].name;
+                        break;
+                    }
                 }
             }
         }
