@@ -3534,6 +3534,7 @@
                 deleteRange: 'ELIMINAR RANGO',
                 deleteSelected: 'ELIMINAR SELECCIONADOS',
                 clearSelection: 'LIMPIAR SELECCIÓN',
+                dataAnalysis: 'ANÁLISIS DE DATOS',
                 data: 'DATOS',
                 noData: 'SIN DATOS',
                 time: 'Tiempo',
@@ -3716,6 +3717,7 @@
                 deleteRange: 'DELETE RANGE',
                 deleteSelected: 'DELETE SELECTED',
                 clearSelection: 'CLEAR SELECTION',
+                dataAnalysis: 'DATA ANALYSIS',
                 data: 'DATA',
                 noData: 'NO DATA',
                 time: 'Time',
@@ -3898,6 +3900,7 @@
                 deleteRange: 'ELIMINAR INTERVALO',
                 deleteSelected: 'ELIMINAR SELECIONADOS',
                 clearSelection: 'LIMPAR SELEÇÃO',
+                dataAnalysis: 'ANÁLISE DE DADOS',
                 data: 'DADOS',
                 noData: 'SEM DADOS',
                 time: 'Tempo',
@@ -4138,6 +4141,8 @@
                     header.innerHTML = `${t.curveFit} <span>${header.querySelector('span').textContent}</span>`;
                 } else if (text.includes('DEPURACIÓN DE DATOS') || text.includes('DATA DEBUGGING') || text.includes('DEPURAÇÃO DE DADOS')) {
                     header.innerHTML = `${t.dataDebug} <span>${header.querySelector('span').textContent}</span>`;
+                } else if (text.includes('ANÁLISIS') || text.includes('ANALYSIS') || text.includes('ANÁLISE')) {
+                    header.innerHTML = `${t.dataAnalysis} <span>${header.querySelector('span').textContent}</span>`;
                 } else if (text.includes('DATOS') || text.includes('DATA') || text.includes('DADOS')) {
                     header.innerHTML = `${t.data} <span>${header.querySelector('span').textContent}</span>`;
                 }
