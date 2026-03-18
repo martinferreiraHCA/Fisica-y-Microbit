@@ -2624,9 +2624,9 @@
             <!-- Video -->
             <div class="panel-section" id="videoSection" style="display:none;">
                 <div class="section-header" onclick="toggleSection(this)">
-                    VIDEO <span>▼</span>
+                    VIDEO <span>▶</span>
                 </div>
-                <div class="section-content">
+                <div class="section-content collapsed">
                     <div class="camera-controls">
                         <select id="cameraSelect" class="camera-select">
                             <option value="">Seleccionar cámara...</option>
@@ -2694,18 +2694,10 @@
             <!-- Configuración de Variables -->
             <div class="panel-section">
                 <div class="section-header" onclick="toggleSection(this)">
-                    VARIABLES <span>▼</span>
+                    VARIABLES <span>▶</span>
                 </div>
-                <div class="section-content">
-                    <div class="input-row">
-                        <label>Número de Variables</label>
-                        <select id="numVariables">
-                            <option value="1" selected>1 Variable</option>
-                            <option value="2">2 Variables</option>
-                            <option value="3">3 Variables</option>
-                        </select>
-                    </div>
-
+                <div class="section-content collapsed">
+                    <!-- Formato de datos -->
                     <div class="input-row">
                         <label>Formato de datos</label>
                         <select id="dataFormat" onchange="onDataFormatChange()">
@@ -2720,21 +2712,45 @@
                         <b>Formato:</b> <code>var1,var2,...,varN</code>
                     </div>
 
-                    <div class="input-row" style="align-items: center;">
+                    <!-- Cantidad de variables -->
+                    <div class="input-row">
+                        <label>Número de Variables</label>
+                        <select id="numVariables">
+                            <option value="1" selected>1 Variable</option>
+                            <option value="2">2 Variables</option>
+                            <option value="3">3 Variables</option>
+                        </select>
+                    </div>
+
+                    <!-- Configuración de cada variable: nombre + color en línea -->
+                    <div class="variable-config" id="var1Config" style="margin: 8px 0 4px 0; padding: 6px 8px; background: #fafafa; border-radius: 4px; border-left: 3px solid #000000;">
+                        <div class="input-row" style="margin: 0; gap: 6px;">
+                            <input type="color" id="var1Color" value="#000000" style="width: 28px; height: 28px; padding: 0; border: 1px solid #ccc; cursor: pointer;" title="Color Variable 1">
+                            <span class="color-preview" id="var1ColorPreview" style="display:none;"></span>
+                            <input type="text" id="var1Name" value="Variable 1" style="flex: 1;" placeholder="Nombre Variable 1">
+                        </div>
+                    </div>
+
+                    <div class="variable-config hidden" id="var2Config" style="margin: 4px 0; padding: 6px 8px; background: #fafafa; border-radius: 4px; border-left: 3px solid #ff0000;">
+                        <div class="input-row" style="margin: 0; gap: 6px;">
+                            <input type="color" id="var2Color" value="#ff0000" style="width: 28px; height: 28px; padding: 0; border: 1px solid #ccc; cursor: pointer;" title="Color Variable 2">
+                            <span class="color-preview" id="var2ColorPreview" style="display:none;"></span>
+                            <input type="text" id="var2Name" value="Variable 2" style="flex: 1;" placeholder="Nombre Variable 2">
+                        </div>
+                    </div>
+
+                    <div class="variable-config hidden" id="var3Config" style="margin: 4px 0; padding: 6px 8px; background: #fafafa; border-radius: 4px; border-left: 3px solid #0000ff;">
+                        <div class="input-row" style="margin: 0; gap: 6px;">
+                            <input type="color" id="var3Color" value="#0000ff" style="width: 28px; height: 28px; padding: 0; border: 1px solid #ccc; cursor: pointer;" title="Color Variable 3">
+                            <span class="color-preview" id="var3ColorPreview" style="display:none;"></span>
+                            <input type="text" id="var3Name" value="Variable 3" style="flex: 1;" placeholder="Nombre Variable 3">
+                        </div>
+                    </div>
+
+                    <!-- Opciones de captura -->
+                    <div class="input-row" style="align-items: center; margin-top: 8px;">
                         <label for="spikeFilter" style="cursor: pointer;">Filtro de picos</label>
                         <input type="checkbox" id="spikeFilter" style="width: auto; cursor: pointer;" title="Descarta lecturas anómalas causadas por errores de comunicación serial/Bluetooth">
-                    </div>
-
-                    <div class="input-row" style="align-items: center;">
-                        <label id="overlayOpacityLabel">Overlay: opacidad</label>
-                        <input type="range" id="overlayOpacity" min="0" max="100" value="85" style="flex:1; min-width: 60px;">
-                        <span id="overlayOpacityVal" style="min-width: 2.5em; text-align:right; font-size:0.8rem;">85%</span>
-                    </div>
-
-                    <div class="input-row" style="align-items: center;">
-                        <label id="overlayFontLabel">Overlay: tamaño</label>
-                        <input type="range" id="overlayFontScale" min="50" max="200" value="100" style="flex:1; min-width: 60px;">
-                        <span id="overlayFontVal" style="min-width: 2.5em; text-align:right; font-size:0.8rem;">100%</span>
                     </div>
 
                     <div class="input-row" style="align-items: center;">
@@ -2751,43 +2767,17 @@
                         </span>
                     </div>
 
-                    <!-- Variable 1 -->
-                    <div class="variable-config" id="var1Config">
-                        <h4>Variable 1</h4>
-                        <div class="input-row">
-                            <label>Nombre</label>
-                            <input type="text" id="var1Name" value="Variable 1">
-                        </div>
-                        <div class="input-row">
-                            <label>Color <span class="color-preview" id="var1ColorPreview" style="background: #000000;"></span></label>
-                            <input type="color" id="var1Color" value="#000000">
-                        </div>
+                    <!-- Overlay de video -->
+                    <div class="input-row" style="align-items: center;">
+                        <label id="overlayOpacityLabel">Overlay: opacidad</label>
+                        <input type="range" id="overlayOpacity" min="0" max="100" value="85" style="flex:1; min-width: 60px;">
+                        <span id="overlayOpacityVal" style="min-width: 2.5em; text-align:right; font-size:0.8rem;">85%</span>
                     </div>
 
-                    <!-- Variable 2 -->
-                    <div class="variable-config hidden" id="var2Config">
-                        <h4>Variable 2</h4>
-                        <div class="input-row">
-                            <label>Nombre</label>
-                            <input type="text" id="var2Name" value="Variable 2">
-                        </div>
-                        <div class="input-row">
-                            <label>Color <span class="color-preview" id="var2ColorPreview" style="background: #ff0000;"></span></label>
-                            <input type="color" id="var2Color" value="#ff0000">
-                        </div>
-                    </div>
-
-                    <!-- Variable 3 -->
-                    <div class="variable-config hidden" id="var3Config">
-                        <h4>Variable 3</h4>
-                        <div class="input-row">
-                            <label>Nombre</label>
-                            <input type="text" id="var3Name" value="Variable 3">
-                        </div>
-                        <div class="input-row">
-                            <label>Color <span class="color-preview" id="var3ColorPreview" style="background: #0000ff;"></span></label>
-                            <input type="color" id="var3Color" value="#0000ff">
-                        </div>
+                    <div class="input-row" style="align-items: center;">
+                        <label id="overlayFontLabel">Overlay: tamaño</label>
+                        <input type="range" id="overlayFontScale" min="50" max="200" value="100" style="flex:1; min-width: 60px;">
+                        <span id="overlayFontVal" style="min-width: 2.5em; text-align:right; font-size:0.8rem;">100%</span>
                     </div>
 
                     <details id="microbitCodeHelp" style="margin: 8px 0; font-size: 0.78rem; background: #f5f5f5; border-radius: 4px; padding: 0;">
@@ -2820,9 +2810,9 @@
             <!-- Configuración de Gráficas -->
             <div class="panel-section">
                 <div class="section-header" onclick="toggleSection(this)">
-                    CONFIGURACIÓN DE GRÁFICAS <span>▼</span>
+                    CONFIGURACIÓN DE GRÁFICAS <span>▶</span>
                 </div>
-                <div class="section-content">
+                <div class="section-content collapsed">
                     <div class="input-row">
                         <label>Número de Gráficas</label>
                         <select id="numGraphs">
@@ -2951,9 +2941,9 @@
             <!-- Ajuste de Curva -->
             <div class="panel-section">
                 <div class="section-header" onclick="toggleSection(this)">
-                    AJUSTE DE CURVA <span>▼</span>
+                    AJUSTE DE CURVA <span>▶</span>
                 </div>
-                <div class="section-content">
+                <div class="section-content collapsed">
                     <div class="info-box">
                         <strong>REGRESIÓN POR MÍNIMOS CUADRADOS:</strong>
                         Ajusta una función matemática a tus datos experimentales.
@@ -3039,9 +3029,9 @@
             <!-- Procesamiento de los Datos -->
             <div class="panel-section">
                 <div class="section-header" onclick="toggleSection(this)">
-                    PROCESAMIENTO DE LOS DATOS <span>▼</span>
+                    PROCESAMIENTO DE LOS DATOS <span>▶</span>
                 </div>
-                <div class="section-content">
+                <div class="section-content collapsed">
 
                     <!-- Estadísticas -->
                     <div style="margin-bottom: 12px;">
@@ -3110,9 +3100,9 @@
             <!-- Depuración de Datos -->
             <div class="panel-section">
                 <div class="section-header" onclick="toggleSection(this)">
-                    DEPURACIÓN DE DATOS <span>▼</span>
+                    DEPURACIÓN DE DATOS <span>▶</span>
                 </div>
-                <div class="section-content">
+                <div class="section-content collapsed">
                     <div class="info-box">
                         <strong>ELIMINAR PUNTOS:</strong>
                         Usa estas herramientas para limpiar datos incorrectos o no deseados.
@@ -3141,8 +3131,9 @@
             <!-- Tabla de Datos -->
             <div class="panel-section" style="flex: 1; display: flex; flex-direction: column;">
                 <div class="section-header" onclick="toggleSection(this)">
-                    DATOS <span>▼</span>
+                    DATOS <span>▶</span>
                 </div>
+                <div class="section-content collapsed" style="padding: 0;">
                 <div class="table-controls">
                     <input type="text" id="tableSearch" class="table-search" placeholder="Buscar...">
                     <select id="tableFilter" class="table-filter">
@@ -3150,7 +3141,7 @@
                         <option value="selected">Seleccionados</option>
                     </select>
                 </div>
-                <div class="section-content" style="flex: 1; overflow-y: auto; max-height: 400px; padding: 0;">
+                <div style="flex: 1; overflow-y: auto; max-height: 400px;">
                     <table class="data-table">
                         <thead>
                             <tr id="dataTableHeader">
@@ -3167,6 +3158,7 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
                 </div>
             </div>
         </div>
@@ -6165,12 +6157,14 @@ bluetooth.startIOPinService()</pre>
             this.style.display = 'none';
         });
 
-        // Color previews
+        // Color previews y borde de tarjeta
         ['var1', 'var2', 'var3'].forEach((varId, idx) => {
             const colorInput = document.getElementById(varId + 'Color');
             const preview = document.getElementById(varId + 'ColorPreview');
+            const card = document.getElementById(varId + 'Config');
             colorInput.addEventListener('input', function() {
                 preview.style.background = this.value;
+                if (card) card.style.borderLeftColor = this.value;
             });
         });
 
@@ -6251,7 +6245,30 @@ bluetooth.startIOPinService()</pre>
                 }
             }
 
-            // Apply data format
+            // Sanitizar yVars de cada gráfica: eliminar índices fuera de rango
+            for (let g = 0; g < 3; g++) {
+                state.graphs[g].yVars = state.graphs[g].yVars.filter(v => v < num);
+                if (state.graphs[g].yVars.length === 0) {
+                    state.graphs[g].yVars = [0]; // Al menos variable 0
+                }
+                // Si el eje X referencia una variable fuera de rango, resetear
+                if (state.graphs[g].xAxis !== 'time') {
+                    const xIdx = parseInt(state.graphs[g].xAxis.replace('var', ''));
+                    if (xIdx >= num) {
+                        state.graphs[g].xAxis = state.microbitTimestamp ? 'time' : 'var0';
+                    }
+                }
+                // Actualizar labels con nombres actuales
+                if (state.graphs[g].xAxis === 'time') {
+                    state.graphs[g].xLabel = 'Tiempo (s)';
+                } else {
+                    const xIdx = parseInt(state.graphs[g].xAxis.replace('var', ''));
+                    state.graphs[g].xLabel = state.variables[xIdx].name;
+                }
+                state.graphs[g].yLabel = state.variables[state.graphs[g].yVars[0]].name;
+            }
+
+            // Apply data format (adjusts graph config based on time mode)
             onDataFormatChange();
 
             updateGraphConfiguration();
@@ -6455,7 +6472,8 @@ bluetooth.startIOPinService()</pre>
                 const title = document.createElement('div');
                 title.className = 'graph-title';
                 title.id = `graphTitle${i}`;
-                title.textContent = state.graphs[i].title || `Gráfica ${i + 1}`;
+                const yNames = state.graphs[i].yVars.map(v => state.variables[v].name).join(', ');
+                title.textContent = `${(yNames || state.graphs[i].yLabel).toUpperCase()} vs ${state.graphs[i].xLabel.toUpperCase()}`;
 
                 const t = translations[currentLanguage];
                 const controls = document.createElement('div');
@@ -8165,9 +8183,10 @@ bluetooth.startIOPinService()</pre>
         // Crea la configuración de dataset optimizada para streaming
         // Inspirada en Smoothie.js: líneas suavizadas, sin fill, puntos discretos
         function createStreamingDatasetConfig(varIdx) {
-            const color = state.variables[varIdx].color;
+            const varDef = state.variables[varIdx] || { color: '#000000', name: `Var ${varIdx + 1}` };
+            const color = varDef.color;
             return {
-                label: state.variables[varIdx].name,
+                label: varDef.name,
                 data: [],
                 // Línea suavizada con interpolación Bezier monotónica (Fritsch-Carlson)
                 borderColor: color,
@@ -9289,9 +9308,10 @@ bluetooth.startIOPinService()</pre>
             const chart = state.charts[index];
             const config = state.graphs[index];
 
-            // Actualizar título
+            // Actualizar título: si hay múltiples Y, listarlas
+            const yNames = config.yVars.map(v => state.variables[v].name).join(', ');
             document.getElementById(`graphTitle${index}`).textContent =
-                `${config.yLabel.toUpperCase()} vs ${config.xLabel.toUpperCase()}`;
+                `${(yNames || config.yLabel).toUpperCase()} vs ${config.xLabel.toUpperCase()}`;
 
             // Actualizar etiquetas de ejes
             chart.options.scales.x.title.text = config.xLabel.toUpperCase();
@@ -9301,6 +9321,7 @@ bluetooth.startIOPinService()</pre>
             chart.data.datasets = [];
 
             for (const varIdx of config.yVars) {
+                if (varIdx >= state.numVariables || !state.variables[varIdx]) continue;
                 const color = state.variables[varIdx].color;
                 const data = state.rawData.map(d => {
                     let xVal;
