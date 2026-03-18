@@ -2706,8 +2706,19 @@
                         </select>
                     </div>
 
-                    <!-- Timestamp siempre activo: la micro:bit siempre envía input.runningTime() -->
+                    <div class="input-row">
+                        <label>Formato de datos</label>
+                        <select id="dataFormat" onchange="onDataFormatChange()">
+                            <option value="timeVars" selected>Tiempo + Variables</option>
+                            <option value="varsOnly">Solo Variables</option>
+                        </select>
+                    </div>
                     <input type="checkbox" id="microbitTimestamp" checked style="display: none;">
+                    <div id="dataFormatInfo" style="display:none; background: #e3f2fd; border-left: 3px solid #1976d2; padding: 8px 10px; margin: 4px 0 8px 0; font-size: 0.78rem; line-height: 1.4; border-radius: 4px; color: #333;">
+                        <strong style="color:#1565c0;">&#9432; Modo Solo Variables</strong><br>
+                        La micro:bit envía solo valores de variables (sin timestamp). El eje X se configura con cualquiera de las variables recibidas.<br>
+                        <b>Formato:</b> <code>var1,var2,...,varN</code>
+                    </div>
 
                     <div class="input-row" style="align-items: center;">
                         <label for="spikeFilter" style="cursor: pointer;">Filtro de picos</label>
@@ -2778,6 +2789,27 @@
                             <input type="color" id="var3Color" value="#0000ff">
                         </div>
                     </div>
+
+                    <details id="microbitCodeHelp" style="margin: 8px 0; font-size: 0.78rem; background: #f5f5f5; border-radius: 4px; padding: 0;">
+                        <summary style="cursor:pointer; padding: 8px 10px; font-weight:600; color:#1565c0;">Código base micro:bit</summary>
+                        <div style="padding: 4px 10px 10px 10px; line-height: 1.5;">
+                            <p style="margin: 4px 0 6px 0;"><b>Tiempo + Variables</b> (por defecto):</p>
+                            <pre style="background:#263238; color:#eee; padding:8px; border-radius:4px; font-size:0.72rem; overflow-x:auto; white-space:pre;">basic.forever(function () {
+    let sensor = pins.analogReadPin(AnalogPin.P0)
+    serial.writeLine("" + input.runningTime() + "," + sensor)
+    basic.pause(100)
+})</pre>
+                            <p style="margin: 8px 0 6px 0;"><b>Solo Variables</b> (sin timestamp):</p>
+                            <pre style="background:#263238; color:#eee; padding:8px; border-radius:4px; font-size:0.72rem; overflow-x:auto; white-space:pre;">basic.forever(function () {
+    let x = pins.analogReadPin(AnalogPin.P0)
+    let y = pins.analogReadPin(AnalogPin.P1)
+    serial.writeLine("" + x + "," + y)
+    basic.pause(100)
+})</pre>
+                            <p style="margin: 8px 0 4px 0; color:#666;">El formato de cada línea debe ser:<br>
+                            <code>tiempo,var1,var2,...</code> o <code>var1,var2,...</code></p>
+                        </div>
+                    </details>
 
                     <button class="toolbar-btn primary btn-full" id="applyVarConfigBtn">
                         APLICAR CONFIGURACIÓN
@@ -5992,7 +6024,7 @@ bluetooth.startIOPinService()</pre>
             timeZeroOffset: 0,
             // Configuración de variables
             numVariables: 1,
-            microbitTimestamp: true,  // siempre true: la micro:bit envía input.runningTime() como primer valor
+            microbitTimestamp: true,  // true: la micro:bit envía input.runningTime() como primer valor; false: solo variables
             spikeFilter: false,       // true para filtrar picos anómalos de comunicación
             overlayOpacity: 0.85,     // opacidad del fondo del overlay en el video (0-1)
             overlayFontScale: 1.0,    // escala de fuente del overlay (0.5-2.0)
@@ -6098,7 +6130,7 @@ bluetooth.startIOPinService()</pre>
             document.getElementById('var3Config').classList.toggle('hidden', num < 3);
         });
 
-        // microbitTimestamp siempre activo, no necesita event listener
+        // microbitTimestamp controlado por selector dataFormat
 
         document.getElementById('spikeFilter').addEventListener('change', function() {
             state.spikeFilter = this.checked;
@@ -6121,11 +6153,14 @@ bluetooth.startIOPinService()</pre>
             document.getElementById('videoSyncInfo').style.display = this.checked ? 'block' : 'none';
         });
 
-        // Click en la advertencia de formato → corregir automáticamente el checkbox
+        // Click en la advertencia de formato → corregir automáticamente el formato
         document.getElementById('formatWarning').addEventListener('click', function() {
             const cb = document.getElementById('microbitTimestamp');
             cb.checked = !cb.checked;
             state.microbitTimestamp = cb.checked;
+            // Sync data format selector
+            document.getElementById('dataFormat').value = cb.checked ? 'timeVars' : 'varsOnly';
+            onDataFormatChange();
             _formatMismatchCount = 0;
             this.style.display = 'none';
         });
@@ -6141,6 +6176,42 @@ bluetooth.startIOPinService()</pre>
 
         document.getElementById('applyVarConfigBtn').addEventListener('click', applyVariableConfiguration);
 
+        function onDataFormatChange() {
+            const format = document.getElementById('dataFormat').value;
+            const isVarsOnly = format === 'varsOnly';
+
+            // Update state
+            state.microbitTimestamp = !isVarsOnly;
+            document.getElementById('microbitTimestamp').checked = !isVarsOnly;
+
+            // Show/hide info box
+            document.getElementById('dataFormatInfo').style.display = isVarsOnly ? 'block' : 'none';
+
+            // Show/hide time-related controls
+            const timeUnitRow = document.getElementById('timeUnit').closest('.input-row');
+            if (timeUnitRow) timeUnitRow.style.display = isVarsOnly ? 'none' : '';
+            const setZeroBtn = document.getElementById('setZeroBtn');
+            if (setZeroBtn) setZeroBtn.style.display = isVarsOnly ? 'none' : '';
+
+            // Update graph configuration options
+            updateGraphConfiguration();
+            updateDataTableHeader();
+
+            // If switching to varsOnly and graph X is still 'time', default to var0
+            if (isVarsOnly) {
+                for (let g = 0; g < 3; g++) {
+                    if (state.graphs[g].xAxis === 'time') {
+                        state.graphs[g].xAxis = 'var0';
+                        const sel = document.getElementById(`graph${g + 1}XAxis`);
+                        if (sel) sel.value = 'var0';
+                        // Update label to match variable name
+                        const labelInput = document.getElementById(`graph${g + 1}XLabel`);
+                        if (labelInput) labelInput.value = state.variables[0].name;
+                    }
+                }
+            }
+        }
+
         function applyVariableConfiguration() {
             const num = parseInt(document.getElementById('numVariables').value);
             state.numVariables = num;
@@ -6151,6 +6222,9 @@ bluetooth.startIOPinService()</pre>
                     state.variables[i].color = document.getElementById(`var${i+1}Color`).value;
                 }
             }
+
+            // Apply data format
+            onDataFormatChange();
 
             updateGraphConfiguration();
             updateDataTableHeader();
@@ -6186,17 +6260,31 @@ bluetooth.startIOPinService()</pre>
 
         function updateGraphConfiguration() {
             const t = translations[currentLanguage];
+            const isVarsOnly = !state.microbitTimestamp;
 
             // Actualizar opciones de eje X para incluir variables
             for (let g = 1; g <= 3; g++) {
                 const select = document.getElementById(`graph${g}XAxis`);
-                select.innerHTML = `<option value="time">${t.time}</option>`;
+                const prevVal = select.value;
+                select.innerHTML = '';
+
+                // Solo mostrar "Tiempo" si el formato incluye timestamp
+                if (!isVarsOnly) {
+                    select.innerHTML = `<option value="time">${t.time}</option>`;
+                }
 
                 for (let i = 0; i < state.numVariables; i++) {
                     const option = document.createElement('option');
                     option.value = `var${i}`;
                     option.textContent = state.variables[i].name;
                     select.appendChild(option);
+                }
+
+                // Restore previous selection if still valid
+                if (prevVal && select.querySelector(`option[value="${prevVal}"]`)) {
+                    select.value = prevVal;
+                } else if (isVarsOnly) {
+                    select.value = 'var0';
                 }
             }
 
@@ -6580,7 +6668,10 @@ bluetooth.startIOPinService()</pre>
 
         function updateDataTableHeader() {
             const header = document.getElementById('dataTableHeader');
-            let html = '<th>#</th><th>T</th>';
+            let html = '<th>#</th>';
+            if (state.microbitTimestamp) {
+                html += '<th>T</th>';
+            }
 
             for (let i = 0; i < state.numVariables; i++) {
                 html += `<th>${state.variables[i].name.substring(0, 8)}</th>`;
@@ -9286,10 +9377,11 @@ bluetooth.startIOPinService()</pre>
                     `;
                 }
 
+                const timeCell = state.microbitTimestamp ? `<td>${adjustedTime.toFixed(3)}</td>` : '';
                 return `
                     <tr class="${state.selectedPoints.has(d.id) ? 'selected' : ''}" data-id="${d.id}" onclick="toggleSelect('${d.id}')">
                         <td>${originalIdx + 1}</td>
-                        <td>${adjustedTime.toFixed(3)}</td>
+                        ${timeCell}
                         ${valuesHtml}
                         <td>
                             <button class="toolbar-btn"
@@ -9748,9 +9840,11 @@ bluetooth.startIOPinService()</pre>
         function buildManualTable() {
             const numVars = parseInt(document.getElementById('mtNumVars').value);
             const numRows = parseInt(document.getElementById('mtNumRows').value) || 10;
+            const hasTime = state.microbitTimestamp;
 
             // Build header
-            let headerHtml = '<th style="width:30px;">#</th><th>Tiempo (s)</th>';
+            let headerHtml = '<th style="width:30px;">#</th>';
+            if (hasTime) headerHtml += '<th>Tiempo (s)</th>';
             for (let v = 0; v < numVars; v++) {
                 const nameInput = document.getElementById(`mtVar${v}Name`);
                 const name = nameInput ? nameInput.value : `Var ${v + 1}`;
@@ -9762,7 +9856,9 @@ bluetooth.startIOPinService()</pre>
             let bodyHtml = '';
             for (let r = 0; r < numRows; r++) {
                 bodyHtml += `<tr><td style="color:#999; font-size:0.7rem;">${r + 1}</td>`;
-                bodyHtml += `<td><input type="number" step="any" class="mt-cell" id="mt_t_${r}" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
+                if (hasTime) {
+                    bodyHtml += `<td><input type="number" step="any" class="mt-cell" id="mt_t_${r}" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
+                }
                 for (let v = 0; v < numVars; v++) {
                     bodyHtml += `<td><input type="number" step="any" class="mt-cell" id="mt_v${v}_${r}" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
                 }
@@ -9775,6 +9871,7 @@ bluetooth.startIOPinService()</pre>
             const numVars = parseInt(document.getElementById('mtNumVars').value);
             const numRows = parseInt(document.getElementById('mtNumRows').value) || 10;
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            const hasTime = state.microbitTimestamp;
 
             // Read variable names
             const varNames = [];
@@ -9797,9 +9894,16 @@ bluetooth.startIOPinService()</pre>
             // Parse rows
             const imported = [];
             for (let r = 0; r < numRows; r++) {
-                const tInput = document.getElementById(`mt_t_${r}`);
-                const tVal = parseFloat(tInput ? tInput.value : '');
-                if (isNaN(tVal)) continue; // Skip empty rows
+                let timestamp;
+                if (hasTime) {
+                    const tInput = document.getElementById(`mt_t_${r}`);
+                    const tVal = parseFloat(tInput ? tInput.value : '');
+                    if (isNaN(tVal)) continue; // Skip empty rows
+                    timestamp = (tVal * timeUnitValue) + state.timeZeroOffset;
+                } else {
+                    // En modo solo variables, verificar que al menos la primera variable tenga valor
+                    timestamp = Date.now() + r; // Sequential timestamp
+                }
 
                 const values = [];
                 let allValid = true;
@@ -9811,7 +9915,6 @@ bluetooth.startIOPinService()</pre>
                 }
                 if (!allValid) continue;
 
-                const timestamp = (tVal * timeUnitValue) + state.timeZeroOffset;
                 imported.push({
                     time: timestamp,
                     values: values,
@@ -10541,12 +10644,14 @@ bluetooth.startIOPinService()</pre>
                         return;
                     }
 
+                    const hasTime = state.microbitTimestamp;
+
                     // Parsear header
                     const header = lines[0].split(',').map(h => h.trim());
-                    const numVars = header.length - 1; // Menos la columna de tiempo
+                    const numVars = hasTime ? header.length - 1 : header.length;
 
                     if (numVars < 1 || numVars > 3) {
-                        alert('El CSV debe tener entre 1 y 3 variables (más la columna de tiempo)');
+                        alert(`El CSV debe tener entre 1 y 3 variables${hasTime ? ' (más la columna de tiempo)' : ''}`);
                         return;
                     }
 
@@ -10557,13 +10662,19 @@ bluetooth.startIOPinService()</pre>
                         if (!line) continue;
 
                         const parts = line.split(',').map(p => parseFloat(p.trim()));
-                        if (parts.length !== numVars + 1 || parts.some(p => isNaN(p))) continue;
+                        const expectedCols = hasTime ? numVars + 1 : numVars;
+                        if (parts.length !== expectedCols || parts.some(p => isNaN(p))) continue;
 
-                        const [time, ...values] = parts;
-
-                        // Convertir tiempo relativo a timestamp
-                        const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
-                        const timestamp = Date.now() + (time * timeUnitValue);
+                        let timestamp, values;
+                        if (hasTime) {
+                            const [time, ...vals] = parts;
+                            values = vals;
+                            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+                            timestamp = Date.now() + (time * timeUnitValue);
+                        } else {
+                            values = parts;
+                            timestamp = Date.now() + i; // Sequential
+                        }
 
                         importedData.push({
                             time: timestamp,
@@ -10581,9 +10692,10 @@ bluetooth.startIOPinService()</pre>
                     document.getElementById('numVariables').value = numVars;
                     document.getElementById('numVariables').dispatchEvent(new Event('change'));
 
+                    const varOffset = hasTime ? 1 : 0;
                     for (let i = 0; i < numVars; i++) {
-                        if (header[i + 1]) {
-                            document.getElementById(`var${i+1}Name`).value = header[i + 1];
+                        if (header[i + varOffset]) {
+                            document.getElementById(`var${i+1}Name`).value = header[i + varOffset];
                         }
                     }
 
