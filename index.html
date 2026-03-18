@@ -158,6 +158,83 @@
             flex: 1;
         }
 
+        /* Graph selection bar below charts */
+        .graph-selection-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 4px;
+            justify-content: flex-end;
+            flex-shrink: 0;
+        }
+
+        .graph-sel-btn {
+            background: white;
+            border: 1.5px solid #999;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+
+        .graph-sel-btn:hover:not(:disabled) {
+            background: #000;
+            color: #fff;
+            border-color: #000;
+        }
+
+        .graph-sel-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .graph-sel-btn.drag-select-btn.active {
+            background: #d32f2f;
+            color: white;
+            border-color: #d32f2f;
+        }
+
+        .graph-sel-info {
+            font-size: 0.75rem;
+            color: #d32f2f;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        /* Data entry dropdown menu */
+        .data-entry-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            border: 2px solid black;
+            z-index: 100;
+            min-width: 180px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .data-entry-dropdown button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 10px 14px;
+            border: none;
+            background: white;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .data-entry-dropdown button:last-child {
+            border-bottom: none;
+        }
+
+        .data-entry-dropdown button:hover {
+            background: #f0f0f0;
+        }
+
         .graph-wrapper {
             flex: 1;
             display: flex;
@@ -2466,12 +2543,17 @@
 
         <!-- Secondary actions: hidden in hamburger on mobile -->
         <span class="toolbar-secondary">
-            <button id="statsBtn" class="toolbar-btn">ESTADÍSTICAS</button>
+            <div style="position:relative; display:inline-block;">
+                <button id="dataEntryBtn" class="toolbar-btn" onclick="toggleDataEntryMenu()">INGRESO DE DATOS ▾</button>
+                <div id="dataEntryMenu" class="data-entry-dropdown" style="display:none;">
+                    <button onclick="document.getElementById('importFile').click(); closeDataEntryMenu();">IMPORTAR CSV</button>
+                    <button onclick="openManualTableModal(); closeDataEntryMenu();">TABLA DE VALORES</button>
+                </div>
+            </div>
+            <input type="file" id="importFile" accept=".csv" style="display: none;">
             <div class="toolbar-separator"></div>
             <button id="exportBtn" class="toolbar-btn" disabled>EXPORTAR CSV</button>
             <button id="saveGraphBtn" class="toolbar-btn" disabled>GUARDAR GRÁFICO</button>
-            <button id="importBtn" class="toolbar-btn">IMPORTAR CSV</button>
-            <input type="file" id="importFile" accept=".csv" style="display: none;">
             <button id="clearBtn" class="toolbar-btn">LIMPIAR</button>
             <div class="toolbar-separator"></div>
             <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: inline-flex; align-items: center;">
@@ -2499,10 +2581,10 @@
     <div class="toolbar-menu-overlay" id="toolbarMenuOverlay" onclick="closeToolbarMenu()"></div>
     <div class="toolbar-menu-panel" id="toolbarMenuPanel">
         <button class="toolbar-menu-close" onclick="closeToolbarMenu()">✕</button>
-        <button id="statsBtn2" class="toolbar-btn" onclick="document.getElementById('statsBtn').click(); closeToolbarMenu();">ESTADÍSTICAS</button>
+        <button class="toolbar-btn" onclick="document.getElementById('importFile').click(); closeToolbarMenu();">IMPORTAR CSV</button>
+        <button class="toolbar-btn" onclick="openManualTableModal(); closeToolbarMenu();">TABLA DE VALORES</button>
         <button id="exportBtn2" class="toolbar-btn" onclick="document.getElementById('exportBtn').click(); closeToolbarMenu();">EXPORTAR CSV</button>
         <button id="saveGraphBtn2" class="toolbar-btn" onclick="document.getElementById('saveGraphBtn').click(); closeToolbarMenu();">GUARDAR GRÁFICO</button>
-        <button id="importBtn2" class="toolbar-btn" onclick="document.getElementById('importBtn').click(); closeToolbarMenu();">IMPORTAR CSV</button>
         <button id="clearBtn2" class="toolbar-btn" onclick="document.getElementById('clearBtn').click(); closeToolbarMenu();">LIMPIAR</button>
         <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: flex; align-items: center;">MAKECODE ↗</a>
         <button id="helpBtn2" class="toolbar-btn" onclick="document.getElementById('helpBtn').click(); closeToolbarMenu();">AYUDA</button>
@@ -2926,57 +3008,74 @@
                 </div>
             </div>
 
-            <!-- Ingreso Manual de Datos -->
+            <!-- Procesamiento de los Datos -->
             <div class="panel-section">
                 <div class="section-header" onclick="toggleSection(this)">
-                    INGRESO MANUAL <span>▼</span>
+                    PROCESAMIENTO DE LOS DATOS <span>▼</span>
                 </div>
                 <div class="section-content">
-                    <div class="info-box">
-                        <strong>AGREGAR DATOS:</strong>
-                        Ingresa puntos manualmente sin necesidad de micro:bit ni CSV.
-                    </div>
 
-                    <div class="input-row">
-                        <label>Tiempo (s)</label>
-                        <input type="number" id="manualTime" placeholder="Ej: 0.5" step="any">
-                    </div>
-
-                    <div id="manualVarInputs">
-                        <!-- Se generan dinámicamente -->
-                    </div>
-
-                    <button class="toolbar-btn primary btn-full" id="addManualPointBtn" style="margin-top: 8px;">
-                        AGREGAR PUNTO
-                    </button>
-
-                    <div style="margin-top: 8px; font-size: 0.75rem; color: #666;" id="manualPointStatus"></div>
-                </div>
-            </div>
-
-            <!-- Procesamiento de Datos -->
-            <div class="panel-section">
-                <div class="section-header" onclick="toggleSection(this)">
-                    PROCESAMIENTO DE DATOS <span>▼</span>
-                </div>
-                <div class="section-content">
-                    <div class="info-box">
-                        <strong>DIFERENCIA ENTRE PUNTOS (Δ):</strong>
-                        Selecciona dos puntos A y B para calcular diferencias y tasas de cambio.
-                    </div>
-
-                    <button class="toolbar-btn btn-full" id="deltaToggleBtn" onclick="toggleDeltaMode()">
-                        ACTIVAR MODO DELTA
-                    </button>
-
-                    <div id="deltaPanelContent" style="display:none; margin-top: 10px;">
-                        <div style="padding: 8px; background: #f0f0f0; border-radius: 4px; font-size: 0.8rem;" id="deltaInfo">
-                            Haz clic en dos puntos de la tabla o gráfica para seleccionar A y B.
+                    <!-- Estadísticas -->
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-weight:700; font-size:0.8rem; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px;">Estadísticas</div>
+                        <div class="checkbox-row" style="margin-bottom: 6px;">
+                            <input type="radio" id="statsSourceAll" name="statsSource" value="all" checked>
+                            <label for="statsSourceAll" style="font-size:0.78rem;">Todos los datos</label>
                         </div>
-                        <button class="toolbar-btn btn-full" id="deltaClearBtn" onclick="clearDeltaPoints()" style="margin-top: 8px;" disabled>
-                            LIMPIAR DELTA
-                        </button>
+                        <div class="checkbox-row" style="margin-bottom: 6px;">
+                            <input type="radio" id="statsSourceSelected" name="statsSource" value="selected">
+                            <label for="statsSourceSelected" style="font-size:0.78rem;">Solo puntos seleccionados</label>
+                        </div>
+                        <div id="statsInlineContent" style="padding: 8px; background: #f0f0f0; border-radius: 4px; font-family: monospace; font-size: 0.75rem; margin-top: 4px;">
+                            <span style="color:#999;">Sin datos</span>
+                        </div>
                     </div>
+
+                    <div style="border-top: 1px solid #e0e0e0; margin: 8px 0;"></div>
+
+                    <!-- Delta -->
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-weight:700; font-size:0.8rem; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px;">Diferencia entre puntos (Δ)</div>
+                        <button class="toolbar-btn btn-full" id="deltaToggleBtn" onclick="toggleDeltaMode()">
+                            ACTIVAR MODO DELTA
+                        </button>
+                        <div id="deltaPanelContent" style="display:none; margin-top: 10px;">
+                            <div style="padding: 8px; background: #f0f0f0; border-radius: 4px; font-size: 0.8rem;" id="deltaInfo">
+                                Haz clic en dos puntos de la tabla o gráfica para seleccionar A y B.
+                            </div>
+                            <button class="toolbar-btn btn-full" id="deltaClearBtn" onclick="clearDeltaPoints()" style="margin-top: 8px;" disabled>
+                                LIMPIAR DELTA
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="border-top: 1px solid #e0e0e0; margin: 8px 0;"></div>
+
+                    <!-- Integral -->
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-weight:700; font-size:0.8rem; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px;">Integral numérica</div>
+                        <div class="info-box" style="font-size:0.75rem; margin-bottom:6px;">
+                            Calcula el área bajo la curva (método trapezoidal). Si hay puntos seleccionados, integra solo esa región.
+                        </div>
+                        <div class="input-row">
+                            <label style="font-size:0.78rem;">Variable</label>
+                            <select id="integralVarSelect" style="font-size:0.78rem;">
+                                <option value="0">Variable 1</option>
+                            </select>
+                        </div>
+                        <div class="input-row">
+                            <label style="font-size:0.78rem;">Gráfica</label>
+                            <select id="integralGraphSelect" style="font-size:0.78rem;">
+                                <option value="0">Gráfica 1</option>
+                            </select>
+                        </div>
+                        <button class="toolbar-btn primary btn-full" id="computeIntegralBtn" disabled>
+                            CALCULAR INTEGRAL
+                        </button>
+                        <div id="integralResult" style="display:none; margin-top: 8px; padding: 8px; background: #e8f5e9; border-radius: 4px; font-family: monospace; font-size: 0.78rem;">
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -2990,10 +3089,6 @@
                         <strong>ELIMINAR PUNTOS:</strong>
                         Usa estas herramientas para limpiar datos incorrectos o no deseados.
                     </div>
-
-                    <button class="toolbar-btn btn-full drag-select-btn" id="dragSelectBtn" onclick="toggleDragSelectMode()" style="margin-bottom: 8px;">
-                        &#9634; SELECCIÓN POR ARRASTRE
-                    </button>
 
                     <div class="input-row">
                         <label>Eliminar Rango (desde)</label>
@@ -3012,14 +3107,10 @@
                     <button class="toolbar-btn btn-full" id="deleteSelectedBtn" disabled style="margin-top: 8px;">
                         ELIMINAR SELECCIONADOS
                     </button>
-
-                    <button class="toolbar-btn btn-full" id="clearSelectionBtn" disabled style="margin-top: 8px;">
-                        LIMPIAR SELECCIÓN
-                    </button>
                 </div>
             </div>
 
-            <!-- Datos -->
+            <!-- Tabla de Datos -->
             <div class="panel-section" style="flex: 1; display: flex; flex-direction: column;">
                 <div class="section-header" onclick="toggleSection(this)">
                     DATOS <span>▼</span>
@@ -3049,6 +3140,52 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de tabla de valores manual -->
+    <div class="modal" id="manualTableModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">TABLA DE VALORES</div>
+            <div style="margin-bottom: 12px;">
+                <div class="info-box" style="font-size: 0.78rem;">
+                    Configura las variables y luego ingresa los valores en la tabla. Al confirmar, los datos se cargarán en el sistema.
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px;">
+                    <div class="input-row" style="flex: 0 0 auto; margin:0;">
+                        <label style="font-size:0.78rem; min-width:80px;">Variables:</label>
+                        <select id="mtNumVars" style="font-size:0.78rem;">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+                    <div class="input-row" style="flex: 1; margin:0;">
+                        <label style="font-size:0.78rem; min-width:50px;">Filas:</label>
+                        <input type="number" id="mtNumRows" value="10" min="1" max="500" style="font-size:0.78rem; width:60px;">
+                    </div>
+                    <button class="toolbar-btn" onclick="buildManualTable()" style="font-size:0.78rem; padding: 4px 12px;">GENERAR TABLA</button>
+                </div>
+                <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;" id="mtVarNames">
+                    <div class="input-row" style="margin:0; flex:1; min-width:120px;">
+                        <label style="font-size:0.75rem;">Nombre Var 1</label>
+                        <input type="text" id="mtVar0Name" value="Variable 1" style="font-size:0.75rem;">
+                    </div>
+                </div>
+            </div>
+            <div style="max-height: 45vh; overflow: auto; border: 1px solid #ccc; border-radius: 4px;">
+                <table class="data-table" style="font-size: 0.78rem;">
+                    <thead>
+                        <tr id="mtTableHeader"><th>#</th><th>Tiempo (s)</th><th>Var 1</th></tr>
+                    </thead>
+                    <tbody id="mtTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                <button class="toolbar-btn" onclick="closeManualTableModal()" style="flex:1;">CANCELAR</button>
+                <button class="toolbar-btn primary" onclick="importManualTable()" style="flex:1;">CARGAR DATOS</button>
             </div>
         </div>
     </div>
@@ -3910,10 +4047,8 @@
             document.getElementById('collectBtn').textContent = t.capture;
             document.getElementById('stopBtn').textContent = t.stop;
             document.getElementById('cameraBtn').textContent = t.camera;
-            document.getElementById('statsBtn').textContent = t.statistics;
             document.getElementById('exportBtn').textContent = t.exportCSV;
             document.getElementById('saveGraphBtn').textContent = t.saveGraph;
-            document.getElementById('importBtn').textContent = t.importCSV;
             document.getElementById('clearBtn').textContent = t.clear;
             document.getElementById('helpBtn').textContent = t.help;
 
@@ -6025,7 +6160,8 @@ bluetooth.startIOPinService()</pre>
             updateDataTableHeader();
             updateGraphsDisplay();
             updateFitVariableOptions();
-            updateManualVarInputs();
+            updateIntegralVarOptions();
+            updateIntegralGraphOptions();
 
             alert(`Configuración aplicada: ${num} variable(s)`);
         }
@@ -6177,6 +6313,21 @@ bluetooth.startIOPinService()</pre>
                 // Crear chart
                 createChart(i);
             }
+
+            // Add selection toolbar below all graphs
+            const selBar = document.createElement('div');
+            selBar.className = 'graph-selection-bar';
+            selBar.id = 'graphSelectionBar';
+            selBar.innerHTML = `
+                <button class="graph-sel-btn drag-select-btn" id="dragSelectBtn" onclick="toggleDragSelectMode()" title="Selección por arrastre">
+                    ⬚ SELECCIÓN
+                </button>
+                <button class="graph-sel-btn" id="clearSelectionBtn" onclick="clearAllSelection()" title="Limpiar selección" disabled>
+                    ✕ LIMPIAR
+                </button>
+                <span class="graph-sel-info" id="graphSelInfo"></span>
+            `;
+            container.appendChild(selBar);
 
             // Restaurar datos si existen
             if (state.rawData.length > 0) {
@@ -9283,8 +9434,10 @@ bluetooth.startIOPinService()</pre>
         function toggleDragSelectMode() {
             dragSelectMode = !dragSelectMode;
             const btn = document.getElementById('dragSelectBtn');
-            btn.classList.toggle('active', dragSelectMode);
-            btn.textContent = dragSelectMode ? '✓ SELECCIÓN POR ARRASTRE (ACTIVA)' : '▢ SELECCIÓN POR ARRASTRE';
+            if (btn) {
+                btn.classList.toggle('active', dragSelectMode);
+                btn.innerHTML = dragSelectMode ? '✓ SELECCIÓN' : '⬚ SELECCIÓN';
+            }
 
             // Toggle zoom-drag and pan on all charts
             state.charts.forEach(chart => {
@@ -9494,7 +9647,8 @@ bluetooth.startIOPinService()</pre>
 
             document.getElementById('deleteRangeBtn').disabled = !hasData || !hasValidRange;
             document.getElementById('deleteSelectedBtn').disabled = !hasSelection;
-            document.getElementById('clearSelectionBtn').disabled = !hasSelection;
+            const clearSelBtn = document.getElementById('clearSelectionBtn');
+            if (clearSelBtn) clearSelBtn.disabled = !hasSelection;
         }
 
         // Actualizar botones cuando cambien los inputs
@@ -9539,94 +9693,303 @@ bluetooth.startIOPinService()</pre>
             }
         });
 
-        // Limpiar selección
-        document.getElementById('clearSelectionBtn').addEventListener('click', () => {
-            state.selectedPoints.clear();
-            document.getElementById('pointInfo').style.display = 'none';
-            updateDisplay();
-            updateDebugButtons();
-        });
-
         // Actualizar botones con cada cambio en los datos
         const originalUpdateDisplay = updateDisplay;
         updateDisplay = function() {
             originalUpdateDisplay();
             updateDebugButtons();
             updateCurveFitButtons();
+            updateInlineStats();
+            updateIntegralButton();
+            updateGraphSelectionInfo();
         };
 
-        // ========== INGRESO MANUAL DE DATOS ==========
+        // ========== INGRESO DE DATOS - MENÚ DESPLEGABLE ==========
 
-        function updateManualVarInputs() {
-            const container = document.getElementById('manualVarInputs');
+        function toggleDataEntryMenu() {
+            const menu = document.getElementById('dataEntryMenu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function closeDataEntryMenu() {
+            document.getElementById('dataEntryMenu').style.display = 'none';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const btn = document.getElementById('dataEntryBtn');
+            const menu = document.getElementById('dataEntryMenu');
+            if (btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+
+        // ========== TABLA DE VALORES MANUAL (MODAL) ==========
+
+        function openManualTableModal() {
+            const modal = document.getElementById('manualTableModal');
+            modal.classList.add('active');
+            // Sync current variable count
+            document.getElementById('mtNumVars').value = state.numVariables;
+            updateMtVarNameInputs();
+            buildManualTable();
+        }
+
+        function closeManualTableModal() {
+            document.getElementById('manualTableModal').classList.remove('active');
+        }
+
+        function updateMtVarNameInputs() {
+            const numVars = parseInt(document.getElementById('mtNumVars').value);
+            const container = document.getElementById('mtVarNames');
             container.innerHTML = '';
-            for (let i = 0; i < state.numVariables; i++) {
+            for (let i = 0; i < numVars; i++) {
+                const name = i < state.numVariables ? state.variables[i].name : `Variable ${i + 1}`;
                 container.innerHTML += `
-                    <div class="input-row">
-                        <label>${state.variables[i].name}</label>
-                        <input type="number" id="manualVar${i}" placeholder="Valor" step="any">
+                    <div class="input-row" style="margin:0; flex:1; min-width:120px;">
+                        <label style="font-size:0.75rem;">Var ${i + 1}</label>
+                        <input type="text" id="mtVar${i}Name" value="${name}" style="font-size:0.75rem;">
                     </div>
                 `;
             }
         }
 
-        // Initialize and update on config change
-        updateManualVarInputs();
+        document.getElementById('mtNumVars').addEventListener('change', () => {
+            updateMtVarNameInputs();
+            buildManualTable();
+        });
 
-        document.getElementById('addManualPointBtn').addEventListener('click', () => {
-            const timeInput = document.getElementById('manualTime');
-            const timeVal = parseFloat(timeInput.value);
+        function buildManualTable() {
+            const numVars = parseInt(document.getElementById('mtNumVars').value);
+            const numRows = parseInt(document.getElementById('mtNumRows').value) || 10;
 
-            if (isNaN(timeVal)) {
-                alert('Ingresa un valor de tiempo válido');
+            // Build header
+            let headerHtml = '<th style="width:30px;">#</th><th>Tiempo (s)</th>';
+            for (let v = 0; v < numVars; v++) {
+                const nameInput = document.getElementById(`mtVar${v}Name`);
+                const name = nameInput ? nameInput.value : `Var ${v + 1}`;
+                headerHtml += `<th>${name}</th>`;
+            }
+            document.getElementById('mtTableHeader').innerHTML = headerHtml;
+
+            // Build body with editable cells
+            let bodyHtml = '';
+            for (let r = 0; r < numRows; r++) {
+                bodyHtml += `<tr><td style="color:#999; font-size:0.7rem;">${r + 1}</td>`;
+                bodyHtml += `<td><input type="number" step="any" class="mt-cell" id="mt_t_${r}" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
+                for (let v = 0; v < numVars; v++) {
+                    bodyHtml += `<td><input type="number" step="any" class="mt-cell" id="mt_v${v}_${r}" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
+                }
+                bodyHtml += '</tr>';
+            }
+            document.getElementById('mtTableBody').innerHTML = bodyHtml;
+        }
+
+        function importManualTable() {
+            const numVars = parseInt(document.getElementById('mtNumVars').value);
+            const numRows = parseInt(document.getElementById('mtNumRows').value) || 10;
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+
+            // Read variable names
+            const varNames = [];
+            for (let v = 0; v < numVars; v++) {
+                const nameInput = document.getElementById(`mtVar${v}Name`);
+                varNames.push(nameInput ? nameInput.value : `Variable ${v + 1}`);
+            }
+
+            // Apply variable configuration if different
+            if (numVars !== state.numVariables) {
+                document.getElementById('numVariables').value = numVars;
+                document.getElementById('numVariables').dispatchEvent(new Event('change'));
+            }
+            for (let i = 0; i < numVars; i++) {
+                const nameField = document.getElementById(`var${i+1}Name`);
+                if (nameField) nameField.value = varNames[i];
+            }
+            applyVariableConfiguration();
+
+            // Parse rows
+            const imported = [];
+            for (let r = 0; r < numRows; r++) {
+                const tInput = document.getElementById(`mt_t_${r}`);
+                const tVal = parseFloat(tInput ? tInput.value : '');
+                if (isNaN(tVal)) continue; // Skip empty rows
+
+                const values = [];
+                let allValid = true;
+                for (let v = 0; v < numVars; v++) {
+                    const vInput = document.getElementById(`mt_v${v}_${r}`);
+                    const val = parseFloat(vInput ? vInput.value : '');
+                    if (isNaN(val)) { allValid = false; break; }
+                    values.push(val);
+                }
+                if (!allValid) continue;
+
+                const timestamp = (tVal * timeUnitValue) + state.timeZeroOffset;
+                imported.push({
+                    time: timestamp,
+                    values: values,
+                    id: `manual-${Date.now()}-${r}-${Math.random().toString(36).substr(2, 5)}`,
+                    wallTime: Date.now()
+                });
+            }
+
+            if (imported.length === 0) {
+                alert('No se encontraron filas completas válidas');
                 return;
             }
 
-            const values = [];
-            for (let i = 0; i < state.numVariables; i++) {
-                const v = parseFloat(document.getElementById(`manualVar${i}`).value);
-                if (isNaN(v)) {
-                    alert(`Ingresa un valor válido para ${state.variables[i].name}`);
-                    return;
-                }
-                values.push(v);
-            }
-
-            // Convert time in seconds to ms timestamp
-            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
-            const timestamp = (timeVal * timeUnitValue) + state.timeZeroOffset;
-
-            const newPoint = {
-                time: timestamp,
-                values: values,
-                id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                wallTime: Date.now()
-            };
-
-            // Insert in chronological order
-            let inserted = false;
-            for (let i = 0; i < state.rawData.length; i++) {
-                if (state.rawData[i].time > timestamp) {
-                    state.rawData.splice(i, 0, newPoint);
-                    inserted = true;
-                    break;
-                }
-            }
-            if (!inserted) state.rawData.push(newPoint);
+            // Add to rawData in chronological order
+            state.rawData = state.rawData.concat(imported);
+            state.rawData.sort((a, b) => a.time - b.time);
 
             _rebuildVideoFrameLogIndices();
             updateDisplay();
+            closeManualTableModal();
 
-            const status = document.getElementById('manualPointStatus');
-            status.textContent = `Punto agregado: t=${timeVal}, ${values.map((v, i) => state.variables[i].name + '=' + v).join(', ')}`;
+            alert(`Se importaron ${imported.length} puntos con ${numVars} variable(s)`);
+        }
 
-            // Clear inputs for next entry but keep focus flow
-            timeInput.value = '';
+        // ========== INTEGRAL NUMÉRICA ==========
+
+        function updateIntegralVarOptions() {
+            const select = document.getElementById('integralVarSelect');
+            if (!select) return;
+            select.innerHTML = '';
             for (let i = 0; i < state.numVariables; i++) {
-                document.getElementById(`manualVar${i}`).value = '';
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = state.variables[i].name;
+                select.appendChild(opt);
             }
-            timeInput.focus();
+        }
+
+        function updateIntegralGraphOptions() {
+            const select = document.getElementById('integralGraphSelect');
+            if (!select) return;
+            select.innerHTML = '';
+            for (let i = 0; i < state.numGraphs; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = state.graphs[i].title || `Gráfica ${i + 1}`;
+                select.appendChild(opt);
+            }
+        }
+
+        function updateIntegralButton() {
+            const btn = document.getElementById('computeIntegralBtn');
+            if (btn) btn.disabled = state.rawData.length < 2;
+        }
+
+        updateIntegralVarOptions();
+        updateIntegralGraphOptions();
+
+        document.getElementById('computeIntegralBtn').addEventListener('click', () => {
+            const varIdx = parseInt(document.getElementById('integralVarSelect').value);
+            const graphIdx = parseInt(document.getElementById('integralGraphSelect').value);
+            const graphConfig = state.graphs[graphIdx];
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+
+            // Determine data subset: selected points or all
+            let dataToUse = state.rawData;
+            let usingSelection = false;
+            if (state.selectedPoints.size >= 2) {
+                dataToUse = state.rawData.filter(d => state.selectedPoints.has(d.id));
+                usingSelection = true;
+            }
+
+            if (dataToUse.length < 2) {
+                alert('Se necesitan al menos 2 puntos para calcular la integral');
+                return;
+            }
+
+            // Build (x, y) pairs based on graph config
+            const pairs = dataToUse.map(d => {
+                let xVal;
+                if (graphConfig.xAxis === 'time') {
+                    xVal = (d.time - state.timeZeroOffset) / timeUnitValue;
+                } else {
+                    const xVarIdx = parseInt(graphConfig.xAxis.replace('var', ''));
+                    xVal = d.values[xVarIdx];
+                }
+                return { x: xVal, y: d.values[varIdx] };
+            });
+
+            // Sort by x
+            pairs.sort((a, b) => a.x - b.x);
+
+            // Trapezoidal integration
+            let integral = 0;
+            for (let i = 1; i < pairs.length; i++) {
+                const dx = pairs[i].x - pairs[i - 1].x;
+                const avgY = (pairs[i].y + pairs[i - 1].y) / 2;
+                integral += dx * avgY;
+            }
+
+            const xMin = pairs[0].x;
+            const xMax = pairs[pairs.length - 1].x;
+
+            const resultDiv = document.getElementById('integralResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `
+                <strong>∫ ${state.variables[varIdx].name} d(${graphConfig.xAxis === 'time' ? 't' : graphConfig.xLabel})</strong><br>
+                <strong>Resultado:</strong> ${integral.toFixed(6)}<br>
+                <strong>Rango:</strong> [${xMin.toFixed(4)}, ${xMax.toFixed(4)}]<br>
+                <strong>Puntos:</strong> ${pairs.length}${usingSelection ? ' (seleccionados)' : ''}
+            `;
+
+            // Shade the area on the chart
+            shadeIntegralArea(graphIdx, varIdx, pairs);
         });
+
+        function shadeIntegralArea(graphIdx, varIdx, pairs) {
+            const chart = state.charts[graphIdx];
+            if (!chart) return;
+
+            // Add a fill dataset to show the integrated area
+            const fillData = pairs.map(p => ({ x: p.x, y: p.y }));
+
+            // Check if we already have an integral dataset and remove it
+            chart.data.datasets = chart.data.datasets.filter(ds => ds.label !== '∫ Área');
+
+            chart.data.datasets.push({
+                label: '∫ Área',
+                data: fillData,
+                borderColor: 'rgba(46, 125, 50, 0.6)',
+                backgroundColor: 'rgba(46, 125, 50, 0.15)',
+                fill: 'origin',
+                borderWidth: 1,
+                pointRadius: 0,
+                showLine: true,
+                tension: 0.3
+            });
+
+            chart.update('none');
+        }
+
+        // ========== SELECCIÓN POR ARRASTRE + LIMPIAR (BARRA DE GRÁFICA) ==========
+
+        function clearAllSelection() {
+            state.selectedPoints.clear();
+            document.getElementById('pointInfo').style.display = 'none';
+            updateDisplay();
+        }
+
+        function updateGraphSelectionInfo() {
+            const info = document.getElementById('graphSelInfo');
+            const clearBtn = document.getElementById('clearSelectionBtn');
+            if (!info || !clearBtn) return;
+            if (state.selectedPoints.size > 0) {
+                info.textContent = state.selectedPoints.size + ' pts';
+                clearBtn.disabled = false;
+            } else {
+                info.textContent = '';
+                clearBtn.disabled = true;
+            }
+        }
+
+        // Keep old manual input function for backwards compat but make it a no-op
+        function updateManualVarInputs() { }
 
         // ========== PROCESAMIENTO - MODO DELTA (PANEL LATERAL) ==========
 
@@ -10019,39 +10382,44 @@ bluetooth.startIOPinService()</pre>
             updateCurveFitButtons();
         });
 
-        // ========== ESTADÍSTICAS ==========
+        // ========== ESTADÍSTICAS INLINE ==========
 
-        document.getElementById('statsBtn').addEventListener('click', () => {
-            const t = translations[currentLanguage];
+        function updateInlineStats() {
+            const container = document.getElementById('statsInlineContent');
+            if (!container) return;
 
-            if (state.rawData.length === 0) {
-                alert(t.noDataAlert);
+            const source = document.querySelector('input[name="statsSource"]:checked');
+            const useSelected = source && source.value === 'selected' && state.selectedPoints.size > 0;
+
+            const data = useSelected
+                ? state.rawData.filter(d => state.selectedPoints.has(d.id))
+                : state.rawData;
+
+            if (data.length === 0) {
+                container.innerHTML = '<span style="color:#999;">Sin datos</span>';
                 return;
             }
 
-            let statsHtml = '';
-
+            const t = translations[currentLanguage];
+            let html = '';
             for (let i = 0; i < state.numVariables; i++) {
-                const values = state.rawData.map(d => d.values[i]);
+                const values = data.map(d => d.values[i]);
                 const mean = values.reduce((a, b) => a + b, 0) / values.length;
                 const min = Math.min(...values);
                 const max = Math.max(...values);
                 const stdDev = Math.sqrt(values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length);
 
-                statsHtml += `
-                    <strong>${state.variables[i].name}:</strong><br>
-                    ${t.mean}: ${mean.toFixed(4)}<br>
-                    ${t.minimum}: ${min.toFixed(4)}<br>
-                    ${t.maximum}: ${max.toFixed(4)}<br>
-                    ${t.stdDev}: ${stdDev.toFixed(4)}<br>
-                    <br>
-                `;
+                html += `<strong>${state.variables[i].name}:</strong> `;
+                html += `${t.mean}=${mean.toFixed(4)}, ${t.minimum}=${min.toFixed(4)}, ${t.maximum}=${max.toFixed(4)}, σ=${stdDev.toFixed(4)}<br>`;
             }
+            html += `<strong>${t.totalPoints}:</strong> ${data.length}`;
+            if (useSelected) html += ' (seleccionados)';
+            container.innerHTML = html;
+        }
 
-            statsHtml += `${t.totalPoints}: ${state.rawData.length}`;
-
-            document.getElementById('statsBody').innerHTML = statsHtml;
-            document.getElementById('statsModal').classList.add('active');
+        // Update stats when source radio changes
+        document.querySelectorAll('input[name="statsSource"]').forEach(r => {
+            r.addEventListener('change', updateInlineStats);
         });
 
         function closeStatsModal() {
@@ -10173,9 +10541,7 @@ bluetooth.startIOPinService()</pre>
             URL.revokeObjectURL(url);
         });
 
-        document.getElementById('importBtn').addEventListener('click', () => {
-            document.getElementById('importFile').click();
-        });
+        // importFile click is triggered directly from the data entry dropdown
 
         document.getElementById('importFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
