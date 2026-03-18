@@ -158,49 +158,7 @@
             flex: 1;
         }
 
-        /* Graph selection bar below charts */
-        .graph-selection-bar {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 4px;
-            justify-content: flex-end;
-            flex-shrink: 0;
-        }
 
-        .graph-sel-btn {
-            background: white;
-            border: 1.5px solid #999;
-            padding: 4px 10px;
-            cursor: pointer;
-            font-size: 0.75rem;
-            font-weight: 600;
-            transition: all 0.15s;
-        }
-
-        .graph-sel-btn:hover:not(:disabled) {
-            background: #000;
-            color: #fff;
-            border-color: #000;
-        }
-
-        .graph-sel-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-
-        .graph-sel-btn.drag-select-btn.active {
-            background: #d32f2f;
-            color: white;
-            border-color: #d32f2f;
-        }
-
-        .graph-sel-info {
-            font-size: 0.75rem;
-            color: #d32f2f;
-            font-weight: 600;
-            margin-left: 4px;
-        }
 
         /* Data entry dropdown menu */
         .data-entry-dropdown {
@@ -299,10 +257,48 @@
             color: #555;
         }
 
-        .graph-controls button:hover {
+        .graph-controls button:hover:not(:disabled) {
             background: #000;
             color: #fff;
             border-color: #000;
+        }
+
+        .graph-controls button:disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+        }
+
+        /* Selection buttons in graph title bar */
+        .graph-ctrl-sel {
+            border-color: #1976d2 !important;
+            color: #1976d2 !important;
+            font-weight: 700;
+        }
+
+        .graph-ctrl-sel.drag-select-btn.active {
+            background: #1976d2 !important;
+            color: white !important;
+            border-color: #1976d2 !important;
+        }
+
+        .graph-ctrl-sel:hover:not(:disabled) {
+            background: #1976d2 !important;
+            color: white !important;
+            border-color: #1976d2 !important;
+        }
+
+        .graph-controls-sep {
+            width: 1px;
+            height: 18px;
+            background: #ccc;
+            margin: 0 2px;
+        }
+
+        .graph-sel-count {
+            font-size: 0.68rem;
+            color: #1976d2;
+            font-weight: 700;
+            min-width: 0;
         }
 
         .graph-title-bar {
@@ -3072,7 +3068,7 @@
                         <button class="toolbar-btn primary btn-full" id="computeIntegralBtn" disabled>
                             CALCULAR INTEGRAL
                         </button>
-                        <div id="integralResult" style="display:none; margin-top: 8px; padding: 8px; background: #e8f5e9; border-radius: 4px; font-family: monospace; font-size: 0.78rem;">
+                        <div id="integralResult" style="display:none; margin-top: 8px; padding: 8px; background: #e3f2fd; border-radius: 4px; font-family: monospace; font-size: 0.78rem; border-left: 3px solid #1976d2;">
                         </div>
                     </div>
 
@@ -6290,6 +6286,10 @@ bluetooth.startIOPinService()</pre>
                 const controls = document.createElement('div');
                 controls.className = 'graph-controls';
                 controls.innerHTML = `
+                    <button class="graph-ctrl-sel drag-select-btn" id="dragSelectBtn${i}" onclick="toggleDragSelectMode()" title="Selección por arrastre">⬚</button>
+                    <button class="graph-ctrl-sel" onclick="clearAllSelection()" title="Limpiar selección" id="clearSelBtn${i}" disabled>✕</button>
+                    <span class="graph-sel-count" id="graphSelCount${i}"></span>
+                    <span class="graph-controls-sep"></span>
                     <button onclick="zoomChart(${i}, 'in')" title="${t.zoomIn}">+</button>
                     <button onclick="zoomChart(${i}, 'out')" title="${t.zoomOut}">&minus;</button>
                     <button onclick="resetChartZoom(${i})" title="${t.resetZoom}">&#8634;</button>
@@ -6313,21 +6313,6 @@ bluetooth.startIOPinService()</pre>
                 // Crear chart
                 createChart(i);
             }
-
-            // Add selection toolbar below all graphs
-            const selBar = document.createElement('div');
-            selBar.className = 'graph-selection-bar';
-            selBar.id = 'graphSelectionBar';
-            selBar.innerHTML = `
-                <button class="graph-sel-btn drag-select-btn" id="dragSelectBtn" onclick="toggleDragSelectMode()" title="Selección por arrastre">
-                    ⬚ SELECCIÓN
-                </button>
-                <button class="graph-sel-btn" id="clearSelectionBtn" onclick="clearAllSelection()" title="Limpiar selección" disabled>
-                    ✕ LIMPIAR
-                </button>
-                <span class="graph-sel-info" id="graphSelInfo"></span>
-            `;
-            container.appendChild(selBar);
 
             // Restaurar datos si existen
             if (state.rawData.length > 0) {
@@ -9433,10 +9418,13 @@ bluetooth.startIOPinService()</pre>
 
         function toggleDragSelectMode() {
             dragSelectMode = !dragSelectMode;
-            const btn = document.getElementById('dragSelectBtn');
-            if (btn) {
-                btn.classList.toggle('active', dragSelectMode);
-                btn.innerHTML = dragSelectMode ? '✓ SELECCIÓN' : '⬚ SELECCIÓN';
+            // Update all drag select buttons across graphs
+            for (let i = 0; i < state.numGraphs; i++) {
+                const btn = document.getElementById(`dragSelectBtn${i}`);
+                if (btn) {
+                    btn.classList.toggle('active', dragSelectMode);
+                    btn.innerHTML = dragSelectMode ? '✓' : '⬚';
+                }
             }
 
             // Toggle zoom-drag and pan on all charts
@@ -9647,8 +9635,6 @@ bluetooth.startIOPinService()</pre>
 
             document.getElementById('deleteRangeBtn').disabled = !hasData || !hasValidRange;
             document.getElementById('deleteSelectedBtn').disabled = !hasSelection;
-            const clearSelBtn = document.getElementById('clearSelectionBtn');
-            if (clearSelBtn) clearSelBtn.disabled = !hasSelection;
         }
 
         // Actualizar botones cuando cambien los inputs
@@ -9955,10 +9941,10 @@ bluetooth.startIOPinService()</pre>
             chart.data.datasets.push({
                 label: '∫ Área',
                 data: fillData,
-                borderColor: 'rgba(46, 125, 50, 0.6)',
-                backgroundColor: 'rgba(46, 125, 50, 0.15)',
+                borderColor: 'rgba(25, 118, 210, 0.7)',
+                backgroundColor: 'rgba(25, 118, 210, 0.15)',
                 fill: 'origin',
-                borderWidth: 1,
+                borderWidth: 1.5,
                 pointRadius: 0,
                 showLine: true,
                 tension: 0.3
@@ -9976,15 +9962,12 @@ bluetooth.startIOPinService()</pre>
         }
 
         function updateGraphSelectionInfo() {
-            const info = document.getElementById('graphSelInfo');
-            const clearBtn = document.getElementById('clearSelectionBtn');
-            if (!info || !clearBtn) return;
-            if (state.selectedPoints.size > 0) {
-                info.textContent = state.selectedPoints.size + ' pts';
-                clearBtn.disabled = false;
-            } else {
-                info.textContent = '';
-                clearBtn.disabled = true;
+            const hasSel = state.selectedPoints.size > 0;
+            for (let i = 0; i < state.numGraphs; i++) {
+                const countEl = document.getElementById(`graphSelCount${i}`);
+                const clearBtn = document.getElementById(`clearSelBtn${i}`);
+                if (countEl) countEl.textContent = hasSel ? state.selectedPoints.size + ' pts' : '';
+                if (clearBtn) clearBtn.disabled = !hasSel;
             }
         }
 
