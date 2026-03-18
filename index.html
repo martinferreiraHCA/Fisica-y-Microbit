@@ -3029,7 +3029,7 @@
             <!-- Procesamiento de los Datos -->
             <div class="panel-section">
                 <div class="section-header" onclick="toggleSection(this)">
-                    PROCESAMIENTO DE LOS DATOS <span>▶</span>
+                    ANÁLISIS DE DATOS <span>▶</span>
                 </div>
                 <div class="section-content collapsed">
 
@@ -4385,10 +4385,12 @@
             }
 
             // Valores por defecto - Etiquetas de ejes
-            ['graph1XLabel', 'graph2XLabel', 'graph3XLabel'].forEach(id => {
+            ['graph1XLabel', 'graph2XLabel', 'graph3XLabel'].forEach((id, idx) => {
                 const input = document.getElementById(id);
-                if (input && (input.value === 'Tiempo (s)' || input.value === 'Time (s)' || input.value === 'Tempo (s)')) {
-                    input.value = t.timeSeconds;
+                if (input && state.graphs[idx] && state.graphs[idx].xAxis === 'time') {
+                    const label = typeof getXAxisLabel === 'function' ? getXAxisLabel('time') : t.timeSeconds;
+                    input.value = label;
+                    state.graphs[idx].xLabel = label;
                 }
             });
 
@@ -6170,6 +6172,17 @@ bluetooth.startIOPinService()</pre>
 
         document.getElementById('applyVarConfigBtn').addEventListener('click', applyVariableConfiguration);
 
+        // Genera la etiqueta del eje X según el tipo de eje y la unidad de tiempo
+        function getXAxisLabel(xAxis) {
+            if (xAxis === 'time') {
+                const unitVal = parseFloat(document.getElementById('timeUnit').value);
+                const unitName = unitVal === 1 ? 'ms' : unitVal === 60000 ? 'min' : 's';
+                return `Tiempo (${unitName})`;
+            }
+            const xIdx = parseInt(xAxis.replace('var', ''));
+            return state.variables[xIdx] ? state.variables[xIdx].name : 'X';
+        }
+
         function onDataFormatChange() {
             const format = document.getElementById('dataFormat').value;
             const isVarsOnly = format === 'varsOnly';
@@ -6204,7 +6217,7 @@ bluetooth.startIOPinService()</pre>
             } else {
                 for (let g = 0; g < 3; g++) {
                     state.graphs[g].xAxis = 'time';
-                    state.graphs[g].xLabel = 'Tiempo (s)';
+                    state.graphs[g].xLabel = getXAxisLabel('time');
                     state.graphs[g].yVars = [0];
                     state.graphs[g].yLabel = state.variables[0].name;
                 }
@@ -6259,12 +6272,7 @@ bluetooth.startIOPinService()</pre>
                     }
                 }
                 // Actualizar labels con nombres actuales
-                if (state.graphs[g].xAxis === 'time') {
-                    state.graphs[g].xLabel = 'Tiempo (s)';
-                } else {
-                    const xIdx = parseInt(state.graphs[g].xAxis.replace('var', ''));
-                    state.graphs[g].xLabel = state.variables[xIdx].name;
-                }
+                state.graphs[g].xLabel = getXAxisLabel(state.graphs[g].xAxis);
                 state.graphs[g].yLabel = state.variables[state.graphs[g].yVars[0]].name;
             }
 
@@ -6337,12 +6345,7 @@ bluetooth.startIOPinService()</pre>
                     return function() {
                         const xVal = this.value;
                         const xLabelInput = document.getElementById(`graph${graphNum}XLabel`);
-                        if (xVal === 'time') {
-                            if (xLabelInput) xLabelInput.value = 'Tiempo (s)';
-                        } else {
-                            const xIdx = parseInt(xVal.replace('var', ''));
-                            if (xLabelInput) xLabelInput.value = state.variables[xIdx].name;
-                        }
+                        if (xLabelInput) xLabelInput.value = getXAxisLabel(xVal);
                         updateYVarCheckboxes(graphNum);
                     };
                 })(g);
@@ -9821,7 +9824,17 @@ bluetooth.startIOPinService()</pre>
             }
         });
 
-        document.getElementById('timeUnit').addEventListener('change', updateDisplay);
+        document.getElementById('timeUnit').addEventListener('change', function() {
+            // Actualizar labels de eje X en gráficas que usen tiempo
+            for (let g = 0; g < 3; g++) {
+                if (state.graphs[g].xAxis === 'time') {
+                    state.graphs[g].xLabel = getXAxisLabel('time');
+                    const input = document.getElementById(`graph${g + 1}XLabel`);
+                    if (input) input.value = state.graphs[g].xLabel;
+                }
+            }
+            updateDisplay();
+        });
 
         // ========== DEPURACIÓN DE DATOS ==========
 
