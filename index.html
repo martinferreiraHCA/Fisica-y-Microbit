@@ -2510,9 +2510,260 @@
 
         /* Desktop LAB button: hide on mobile/tablet (they use view-switcher) */
         @media (max-width: 1024px) {
-            #desktopLabBtn {
+            #desktopLabBtn, #sensorModeBtn {
                 display: none !important;
             }
+        }
+
+        /* ========== SENSOR MODE ========== */
+        .sensor-mode {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 1000;
+            background: #fafafa;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .sensor-mode.active { display: flex; }
+
+        body.sensor-mode-active .toolbar,
+        body.sensor-mode-active .view-switcher,
+        body.sensor-mode-active .timeline-scrubber,
+        body.sensor-mode-active .main-container,
+        body.sensor-mode-active .toolbar-menu-overlay,
+        body.sensor-mode-active .toolbar-menu-panel,
+        body.sensor-mode-active footer { display: none !important; }
+
+        .sm-toolbar {
+            background: white;
+            border-bottom: 2px solid black;
+            padding: 8px 16px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .sm-toolbar-title {
+            font-weight: 800;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-right: 8px;
+        }
+
+        .sm-main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            overflow: hidden;
+        }
+
+        /* Panel de sensores - arriba izquierda */
+        .sm-sensors-panel {
+            border-right: 2px solid black;
+            border-bottom: 2px solid black;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            overflow: auto;
+        }
+        .sm-sensor-card {
+            background: white;
+            border: 2px solid black;
+            border-radius: 4px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+        }
+        .sm-sensor-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .sm-sensor-name input {
+            border: none;
+            border-bottom: 1px solid #ccc;
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 2px 4px;
+            flex: 1;
+            background: transparent;
+        }
+        .sm-sensor-name input:focus {
+            border-bottom-color: #1976d2;
+            outline: none;
+        }
+        .sm-sensor-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .sm-sensor-value {
+            font-family: 'Courier New', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            padding: 8px 0;
+            min-height: 48px;
+        }
+        .sm-freq {
+            font-size: 0.78rem;
+            color: #666;
+            text-align: center;
+        }
+
+        .sm-chrono {
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-align: center;
+            padding: 8px 0;
+            color: #1976d2;
+        }
+        .sm-register-btn {
+            width: 100%;
+            padding: 12px;
+            background: #2e7d32;
+            color: white;
+            border: 2px solid #2e7d32;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+            transition: all 0.15s;
+        }
+        .sm-register-btn:hover { background: #1b5e20; border-color: #1b5e20; }
+        .sm-register-btn:active { transform: scale(0.97); }
+        .sm-register-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        /* Panel de video - arriba derecha */
+        .sm-video-panel {
+            border-bottom: 2px solid black;
+            background: black;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sm-video-panel video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .sm-video-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 3px 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        .sm-video-badge.recording { color: #ff4444; animation: blink 1s infinite; }
+        .sm-no-camera {
+            color: #666;
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* Tabla de datos - abajo completa */
+        .sm-data-panel {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .sm-data-header {
+            display: flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-bottom: 2px solid black;
+            background: white;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .sm-data-header span {
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        .sm-data-count {
+            font-size: 0.78rem;
+            color: #666;
+            margin-left: auto;
+        }
+        .sm-table-wrap {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .sm-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .sm-table thead { position: sticky; top: 0; background: white; z-index: 5; }
+        .sm-table th {
+            padding: 6px 8px;
+            text-align: left;
+            border-bottom: 2px solid black;
+            font-weight: 700;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+        }
+        .sm-table td {
+            padding: 4px 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .sm-table tr:hover { background: #f5f5f5; }
+        .sm-table .sm-photo-thumb {
+            width: 40px;
+            height: 30px;
+            object-fit: cover;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        /* Config antes de volver */
+        .sm-config-bar {
+            background: white;
+            border-top: 2px solid black;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .sm-config-bar label {
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+        .sm-config-bar select, .sm-config-bar button {
+            padding: 6px 12px;
+            border: 2px solid black;
+            font-size: 0.82rem;
+            font-weight: 600;
+            background: white;
+            cursor: pointer;
+        }
+        .sm-config-bar button.primary {
+            background: black;
+            color: white;
+        }
+        .sm-config-bar button.primary:hover { background: #333; }
+        .sm-config-bar button.export {
+            background: #1976d2;
+            color: white;
+            border-color: #1976d2;
         }
     </style>
 </head>
@@ -2534,7 +2785,8 @@
             <button id="cameraBtn" class="toolbar-btn">CÁMARA</button>
         </span>
 
-        <!-- LAB button for desktop -->
+        <!-- Mode buttons for desktop -->
+        <button id="sensorModeBtn" class="toolbar-btn" style="background: #2e7d32; color: white; border-color: #2e7d32;" onclick="enterSensorMode()">SENSORES</button>
         <button id="desktopLabBtn" class="toolbar-btn" style="background: #1976d2; color: white; border-color: #1976d2;" onclick="enterExperimentMode()">LAB</button>
 
         <!-- Secondary actions: hidden in hamburger on mobile -->
@@ -3402,6 +3654,92 @@
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- ========== SENSOR MODE ========== -->
+    <div class="sensor-mode" id="sensorMode">
+        <div class="sm-toolbar">
+            <span class="sm-toolbar-title">SENSORES EN TIEMPO REAL</span>
+            <div class="dlab-separator"></div>
+            <button class="dlab-btn bluetooth" id="smBtBtn" onclick="smConnectDevice()">CONECTAR</button>
+            <button class="dlab-btn success" id="smRegBtn" onclick="smRegisterDataPoint()" disabled>REGISTRAR DATO</button>
+            <div class="dlab-separator"></div>
+            <label style="font-size:0.82rem; font-weight:600; display:flex; align-items:center; gap:4px;">
+                <input type="checkbox" id="smTimeBased" checked style="width:auto;" onchange="smUpdateTableHeader(); smUpdateTable();"> Modo tiempo
+            </label>
+            <label style="font-size:0.82rem; font-weight:600; display:flex; align-items:center; gap:4px;">
+                <input type="checkbox" id="smPhotoOnReg" checked style="width:auto;"> Foto al registrar
+            </label>
+            <div class="dlab-separator"></div>
+            <span class="dlab-status" id="smStatus">DESCONECTADO</span>
+            <div style="flex:1;"></div>
+            <button class="dlab-btn" onclick="exitSensorMode()">INICIO</button>
+        </div>
+
+        <div class="sm-main">
+            <!-- Sensores en vivo -->
+            <div class="sm-sensors-panel" id="smSensorsPanel">
+                <div id="smSensorCards">
+                    <div class="sm-sensor-card" id="smSensorCard0">
+                        <div class="sm-sensor-name">
+                            <span class="sm-sensor-color" style="background:#000;"></span>
+                            <input type="text" id="smVarName0" value="Variable 1" onchange="smUpdateVarName(0, this.value)">
+                        </div>
+                        <div class="sm-sensor-value" id="smValue0">--</div>
+                    </div>
+                </div>
+                <div class="sm-freq" id="smFreqDisplay">Frecuencia: -- Hz</div>
+                <div class="sm-chrono" id="smChrono">00:00.000</div>
+                <button class="sm-register-btn" id="smRegBtnBig" onclick="smRegisterDataPoint()" disabled>
+                    REGISTRAR DATO
+                </button>
+            </div>
+
+            <!-- Video en vivo -->
+            <div class="sm-video-panel" id="smVideoPanel">
+                <video id="smVideo" autoplay muted playsinline webkit-playsinline></video>
+                <span class="sm-video-badge" id="smVideoBadge" style="display:none;">LIVE</span>
+                <div class="sm-no-camera" id="smNoCamera">Sin cámara activa</div>
+            </div>
+
+            <!-- Tabla de datos registrados -->
+            <div class="sm-data-panel">
+                <div class="sm-data-header">
+                    <span>Datos registrados</span>
+                    <span class="sm-data-count" id="smDataCount">0 registros</span>
+                </div>
+                <div class="sm-table-wrap">
+                    <table class="sm-table">
+                        <thead>
+                            <tr id="smTableHeader">
+                                <th>#</th><th>T (s)</th><th>Var 1</th><th>Foto</th><th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="smTableBody">
+                            <tr><td colspan="10" style="text-align:center; padding:20px; color:#999;">Presiona REGISTRAR DATO para capturar valores</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de configuración y export -->
+        <div class="sm-config-bar">
+            <label>Eje X:</label>
+            <select id="smGraphX">
+                <option value="time">Tiempo</option>
+            </select>
+            <label>Eje Y:</label>
+            <div id="smGraphYChecks" style="display:flex; gap:8px;"></div>
+            <label>Gráficas:</label>
+            <select id="smNumGraphs">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+            </select>
+            <button class="primary" onclick="smBuildGraphAndReturn()">GENERAR GRÁFICA Y VOLVER</button>
+            <button class="export" onclick="smExportZip()">EXPORTAR .ZIP</button>
         </div>
     </div>
 
@@ -12285,6 +12623,480 @@ bluetooth.startIOPinService()</pre>
             if (videoZone) { videoZone.style.flex = ''; videoZone.style.overflow = ''; }
             if (graphZone) { graphZone.style.flex = ''; graphZone.style.overflow = ''; }
             if (controlsZone) { controlsZone.style.flex = ''; }
+        }
+
+        // ========== SENSOR MODE (Sensores en Tiempo Real) ==========
+        const smState = {
+            active: false,
+            registeredData: [],   // {id, time, values:[], wallTime, photoDataURL}
+            chronometerStart: null,
+            chronometerInterval: null,
+            lastLiveValues: null, // último valor recibido en vivo
+            liveUpdateInterval: null,
+            sampleCount: 0,
+            sampleWindowStart: 0,
+            samplingRate: 0,
+            cameraStream: null,
+        };
+
+        function enterSensorMode() {
+            smState.active = true;
+            smState.registeredData = [];
+            smState.chronometerStart = null;
+            smState.lastLiveValues = null;
+            smState.sampleCount = 0;
+            smState.sampleWindowStart = Date.now();
+
+            document.body.classList.add('sensor-mode-active');
+            document.getElementById('sensorMode').classList.add('active');
+
+            // Build sensor cards based on current variable config
+            smBuildSensorCards();
+            smBuildGraphConfig();
+            smUpdateTable();
+
+            // Start live display update
+            smState.liveUpdateInterval = setInterval(smUpdateLiveDisplay, 100);
+
+            // Start camera if not active
+            smStartCamera();
+
+            // Update connection status
+            smUpdateStatus();
+        }
+
+        function exitSensorMode() {
+            smState.active = false;
+            document.body.classList.remove('sensor-mode-active');
+            document.getElementById('sensorMode').classList.remove('active');
+
+            if (smState.chronometerInterval) {
+                clearInterval(smState.chronometerInterval);
+                smState.chronometerInterval = null;
+            }
+            if (smState.liveUpdateInterval) {
+                clearInterval(smState.liveUpdateInterval);
+                smState.liveUpdateInterval = null;
+            }
+
+            // Stop dedicated camera if we started it
+            if (smState.cameraStream && !state.cameraActive) {
+                smState.cameraStream.getTracks().forEach(t => t.stop());
+                smState.cameraStream = null;
+            }
+
+            // Resize main charts
+            setTimeout(() => {
+                for (const c of state.charts) { if (c) c.resize(); }
+            }, 100);
+        }
+
+        function smBuildSensorCards() {
+            const container = document.getElementById('smSensorCards');
+            container.innerHTML = '';
+            for (let i = 0; i < state.numVariables; i++) {
+                const v = state.variables[i];
+                const card = document.createElement('div');
+                card.className = 'sm-sensor-card';
+                card.id = `smSensorCard${i}`;
+                card.innerHTML = `
+                    <div class="sm-sensor-name">
+                        <span class="sm-sensor-color" style="background:${v.color};"></span>
+                        <input type="text" id="smVarName${i}" value="${v.name}" onchange="smUpdateVarName(${i}, this.value)">
+                    </div>
+                    <div class="sm-sensor-value" id="smValue${i}">--</div>
+                `;
+                container.appendChild(card);
+            }
+
+            // Update table header
+            smUpdateTableHeader();
+        }
+
+        function smUpdateVarName(idx, name) {
+            state.variables[idx].name = name;
+            // Sync main config
+            const mainInput = document.getElementById(`var${idx + 1}Name`);
+            if (mainInput) mainInput.value = name;
+            smUpdateTableHeader();
+            smBuildGraphConfig();
+        }
+
+        function smUpdateTableHeader() {
+            const header = document.getElementById('smTableHeader');
+            const hasTime = document.getElementById('smTimeBased').checked;
+            let html = '<th>#</th>';
+            if (hasTime) html += '<th>T (s)</th>';
+            for (let i = 0; i < state.numVariables; i++) {
+                html += `<th>${state.variables[i].name}</th>`;
+            }
+            html += '<th>Foto</th><th></th>';
+            header.innerHTML = html;
+        }
+
+        function smUpdateLiveDisplay() {
+            if (!smState.active) return;
+
+            // Read latest values from rawData stream
+            if (state.rawData.length > 0) {
+                const latest = state.rawData[state.rawData.length - 1];
+                smState.lastLiveValues = latest;
+
+                for (let i = 0; i < state.numVariables; i++) {
+                    const el = document.getElementById(`smValue${i}`);
+                    if (el && latest.values[i] !== undefined) {
+                        el.textContent = latest.values[i].toFixed(3);
+                    }
+                }
+
+                // Enable register button
+                document.getElementById('smRegBtn').disabled = false;
+                document.getElementById('smRegBtnBig').disabled = false;
+            }
+
+            // Sampling rate calculation
+            const now = Date.now();
+            const windowMs = now - smState.sampleWindowStart;
+            const currentCount = state.rawData.length;
+            if (windowMs > 1000) {
+                const newSamples = currentCount - smState.sampleCount;
+                smState.samplingRate = Math.round(newSamples / (windowMs / 1000));
+                smState.sampleCount = currentCount;
+                smState.sampleWindowStart = now;
+            }
+            document.getElementById('smFreqDisplay').textContent =
+                `Frecuencia: ${smState.samplingRate} Hz | ${state.rawData.length} muestras`;
+        }
+
+        function smUpdateStatus() {
+            const el = document.getElementById('smStatus');
+            const btn = document.getElementById('smBtBtn');
+            if (state.isConnected || state.isBluetooth) {
+                el.textContent = state.isBluetooth ? 'BLUETOOTH' : 'USB SERIAL';
+                el.style.color = '#2e7d32';
+                btn.textContent = 'CONECTADO';
+                btn.classList.add('connected');
+
+                // Auto-start collecting if not already
+                if (!state.isCollecting) {
+                    document.getElementById('collectBtn').click();
+                }
+            } else {
+                el.textContent = 'DESCONECTADO';
+                el.style.color = '#d32f2f';
+                btn.textContent = 'CONECTAR';
+                btn.classList.remove('connected');
+            }
+        }
+
+        async function smConnectDevice() {
+            if (state.isConnected || state.isBluetooth) {
+                smUpdateStatus();
+                return;
+            }
+            // Use the main connect button
+            document.getElementById('connectBtn').click();
+            // Poll for connection
+            const poll = setInterval(() => {
+                smUpdateStatus();
+                if (state.isConnected || state.isBluetooth) {
+                    clearInterval(poll);
+                }
+            }, 500);
+            setTimeout(() => clearInterval(poll), 30000);
+        }
+
+        async function smStartCamera() {
+            const video = document.getElementById('smVideo');
+            const badge = document.getElementById('smVideoBadge');
+            const noCamera = document.getElementById('smNoCamera');
+
+            // Reuse existing stream if active
+            if (state.mediaStream) {
+                video.srcObject = state.mediaStream;
+                badge.style.display = 'block';
+                noCamera.style.display = 'none';
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+                smState.cameraStream = stream;
+                video.srcObject = stream;
+                badge.style.display = 'block';
+                noCamera.style.display = 'none';
+            } catch (err) {
+                console.log('Camera not available:', err.message);
+                noCamera.style.display = 'block';
+                badge.style.display = 'none';
+            }
+        }
+
+        // ── Cronómetro ──
+        function smStartChronometer() {
+            if (smState.chronometerStart !== null) return;
+            smState.chronometerStart = Date.now();
+            smState.chronometerInterval = setInterval(() => {
+                const elapsed = Date.now() - smState.chronometerStart;
+                const mins = Math.floor(elapsed / 60000);
+                const secs = Math.floor((elapsed % 60000) / 1000);
+                const ms = elapsed % 1000;
+                document.getElementById('smChrono').textContent =
+                    `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
+            }, 50);
+        }
+
+        // ── Registrar dato ──
+        function smRegisterDataPoint() {
+            if (!smState.lastLiveValues) return;
+
+            const isTimeBased = document.getElementById('smTimeBased').checked;
+            const capturePhoto = document.getElementById('smPhotoOnReg').checked;
+
+            // Start chrono on first registration if time-based
+            if (isTimeBased && smState.chronometerStart === null) {
+                smStartChronometer();
+            }
+
+            const now = Date.now();
+            const elapsed = smState.chronometerStart !== null ? (now - smState.chronometerStart) / 1000 : 0;
+
+            // Capture photo from video
+            let photoDataURL = null;
+            if (capturePhoto) {
+                const video = document.getElementById('smVideo');
+                if (video.srcObject && video.videoWidth > 0) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0);
+                    photoDataURL = canvas.toDataURL('image/jpeg', 0.8);
+                }
+            }
+
+            const dataPoint = {
+                id: `sm-${now}-${smState.registeredData.length}`,
+                time: elapsed,
+                values: smState.lastLiveValues.values.slice(0, state.numVariables),
+                wallTime: now,
+                photoDataURL: photoDataURL,
+            };
+
+            smState.registeredData.push(dataPoint);
+            smUpdateTable();
+
+            // Flash effect on register button
+            const btn = document.getElementById('smRegBtnBig');
+            btn.style.background = '#fff';
+            btn.style.color = '#2e7d32';
+            setTimeout(() => { btn.style.background = '#2e7d32'; btn.style.color = '#fff'; }, 150);
+        }
+
+        // ── Tabla de datos registrados ──
+        function smUpdateTable() {
+            const tbody = document.getElementById('smTableBody');
+            const count = document.getElementById('smDataCount');
+            const isTimeBased = document.getElementById('smTimeBased').checked;
+
+            count.textContent = `${smState.registeredData.length} registros`;
+
+            if (smState.registeredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px; color:#999;">Presiona REGISTRAR DATO para capturar valores</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = smState.registeredData.map((d, idx) => {
+                let html = `<tr>`;
+                html += `<td>${idx + 1}</td>`;
+                if (isTimeBased) html += `<td>${d.time.toFixed(3)}</td>`;
+                for (let i = 0; i < state.numVariables; i++) {
+                    html += `<td>${d.values[i] !== undefined ? d.values[i].toFixed(4) : '--'}</td>`;
+                }
+                html += `<td>${d.photoDataURL
+                    ? `<img class="sm-photo-thumb" src="${d.photoDataURL}" onclick="smShowPhoto(${idx})">`
+                    : '--'}</td>`;
+                html += `<td><button class="delete-btn" onclick="smDeletePoint(${idx})" style="background:none;border:none;cursor:pointer;font-size:1rem;font-weight:bold;">×</button></td>`;
+                html += `</tr>`;
+                return html;
+            }).join('');
+        }
+
+        function smDeletePoint(idx) {
+            smState.registeredData.splice(idx, 1);
+            smUpdateTable();
+        }
+
+        function smShowPhoto(idx) {
+            const d = smState.registeredData[idx];
+            if (!d || !d.photoDataURL) return;
+            const win = window.open();
+            win.document.write(`<img src="${d.photoDataURL}" style="max-width:100%;max-height:100vh;">`);
+        }
+
+        // ── Config de gráfica y volver ──
+        function smBuildGraphConfig() {
+            const xSel = document.getElementById('smGraphX');
+            xSel.innerHTML = '<option value="time">Tiempo</option>';
+            for (let i = 0; i < state.numVariables; i++) {
+                xSel.innerHTML += `<option value="var${i}">${state.variables[i].name}</option>`;
+            }
+
+            const yDiv = document.getElementById('smGraphYChecks');
+            yDiv.innerHTML = '';
+            for (let i = 0; i < state.numVariables; i++) {
+                const label = document.createElement('label');
+                label.style.cssText = 'display:flex;align-items:center;gap:3px;font-size:0.82rem;font-weight:500;';
+                label.innerHTML = `<input type="checkbox" id="smGraphY${i}" value="${i}" checked style="width:auto;"> ${state.variables[i].name}`;
+                yDiv.appendChild(label);
+            }
+        }
+
+        function smBuildGraphAndReturn() {
+            if (smState.registeredData.length === 0) {
+                alert('No hay datos registrados');
+                return;
+            }
+
+            const xAxis = document.getElementById('smGraphX').value;
+            const numGraphs = parseInt(document.getElementById('smNumGraphs').value);
+            const yVars = [];
+            for (let i = 0; i < state.numVariables; i++) {
+                const cb = document.getElementById(`smGraphY${i}`);
+                if (cb && cb.checked) yVars.push(i);
+            }
+            if (yVars.length === 0) {
+                alert('Selecciona al menos una variable para el eje Y');
+                return;
+            }
+
+            // Transfer registered data to rawData
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            const baseTime = Date.now();
+            state.rawData = smState.registeredData.map((d, idx) => ({
+                time: baseTime + (d.time * timeUnitValue),
+                wallTime: d.wallTime,
+                values: d.values,
+                id: d.id,
+            }));
+            state.timeZeroOffset = baseTime;
+
+            // Configure graphs
+            state.numGraphs = numGraphs;
+            document.getElementById('numGraphs').value = numGraphs;
+            for (let g = 0; g < 3; g++) {
+                state.graphs[g].xAxis = xAxis;
+                state.graphs[g].xLabel = getXAxisLabel(xAxis);
+                state.graphs[g].yVars = (g === 0) ? yVars : [yVars[0]];
+                state.graphs[g].yLabel = state.variables[yVars[0]].name;
+            }
+
+            // Apply config and exit
+            applyVariableConfiguration();
+            updateGraphsDisplay();
+            updateDisplay();
+            exitSensorMode();
+        }
+
+        // ── Export .zip ──
+        async function smExportZip() {
+            if (smState.registeredData.length === 0) {
+                alert('No hay datos para exportar');
+                return;
+            }
+
+            // We need JSZip - load dynamically if not present
+            if (typeof JSZip === 'undefined') {
+                try {
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                    });
+                } catch (e) {
+                    // Fallback: export CSV only
+                    smExportCSVOnly();
+                    return;
+                }
+            }
+
+            const zip = new JSZip();
+            const isTimeBased = document.getElementById('smTimeBased').checked;
+
+            // CSV
+            let csvHeader = isTimeBased ? 'Tiempo (s)' : '#';
+            for (let i = 0; i < state.numVariables; i++) {
+                csvHeader += ',' + state.variables[i].name;
+            }
+            csvHeader += ',Foto';
+
+            let csvRows = smState.registeredData.map((d, idx) => {
+                let row = isTimeBased ? d.time.toFixed(6) : String(idx + 1);
+                for (let i = 0; i < state.numVariables; i++) {
+                    row += ',' + (d.values[i] !== undefined ? d.values[i].toFixed(6) : '');
+                }
+                const photoName = d.photoDataURL ? `foto_${String(idx + 1).padStart(3, '0')}_${d.values.map(v => v.toFixed(1)).join('_')}.jpg` : '';
+                row += ',' + photoName;
+                return row;
+            });
+
+            zip.file('datos.csv', csvHeader + '\n' + csvRows.join('\n'));
+
+            // Photos
+            const imgFolder = zip.folder('fotos');
+            smState.registeredData.forEach((d, idx) => {
+                if (d.photoDataURL) {
+                    const base64 = d.photoDataURL.split(',')[1];
+                    const fileName = `foto_${String(idx + 1).padStart(3, '0')}_${d.values.map(v => v.toFixed(1)).join('_')}.jpg`;
+                    imgFolder.file(fileName, base64, { base64: true });
+                }
+            });
+
+            // Generate and download
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sensores_${new Date().toISOString().slice(0,19).replace(/[:-]/g,'')}.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function smExportCSVOnly() {
+            const isTimeBased = document.getElementById('smTimeBased').checked;
+            let csv = isTimeBased ? 'Tiempo (s)' : '#';
+            for (let i = 0; i < state.numVariables; i++) {
+                csv += ',' + state.variables[i].name;
+            }
+            csv += '\n';
+            smState.registeredData.forEach((d, idx) => {
+                let row = isTimeBased ? d.time.toFixed(6) : String(idx + 1);
+                for (let i = 0; i < state.numVariables; i++) {
+                    row += ',' + (d.values[i] !== undefined ? d.values[i].toFixed(6) : '');
+                }
+                csv += row + '\n';
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sensores_${new Date().toISOString().slice(0,19).replace(/[:-]/g,'')}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Hook into live data stream for sensor mode
+        const _origOnDataPoint = (typeof onDataPoint === 'function') ? onDataPoint : null;
+        function onDataPoint(dp) {
+            if (_origOnDataPoint) _origOnDataPoint(dp);
+            if (smState.active) {
+                smState.lastLiveValues = dp;
+            }
         }
 
         // ========== DESKTOP LAB MODE ==========
