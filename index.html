@@ -3893,7 +3893,7 @@
                 <!-- Dedicated video zone (not floating) -->
                 <div class="dlab-video-zone" id="dlabVideoZone">
                     <video id="dlabVideo" muted playsinline webkit-playsinline></video>
-                    <img id="dlabPhotoImg" style="display:none; width:100%; max-height:35vh; object-fit:contain;" alt="Foto del punto">
+                    <img id="dlabPhotoImg" style="display:none; width:100%; max-height:35vh; object-fit:contain; cursor:pointer;" alt="Foto del punto" onclick="dlabOpenFrameViewer()" title="Click para ver foto a foto">
                     <span class="dlab-pip-badge" id="dlabPipBadge">LIVE</span>
                     <button class="dlab-video-toggle" onclick="dlabToggleVideoPip()" title="Ocultar video">&minus;</button>
                 </div>
@@ -12998,7 +12998,18 @@ bluetooth.startIOPinService()</pre>
             smUpdateStatus();
         }
 
-        function exitSensorMode() {
+        function exitSensorMode(skipTransferPrompt) {
+            // If there are registered data points, offer to transfer them
+            if (!skipTransferPrompt && smState.registeredData.length > 0) {
+                const transfer = confirm(
+                    `Hay ${smState.registeredData.length} datos registrados.\n¿Transferir datos y fotos a la vista principal?`
+                );
+                if (transfer) {
+                    smBuildGraphAndReturn();
+                    return; // smBuildGraphAndReturn calls exitSensorMode(true) at the end
+                }
+            }
+
             smState.active = false;
             document.body.classList.remove('sensor-mode-active');
             document.getElementById('sensorMode').classList.remove('active');
@@ -13466,7 +13477,7 @@ bluetooth.startIOPinService()</pre>
             applyVariableConfiguration();
             updateGraphsDisplay();
             updateDisplay();
-            exitSensorMode();
+            exitSensorMode(true);
         }
 
         // ── Export .zip ──
@@ -13763,13 +13774,18 @@ bluetooth.startIOPinService()</pre>
                 const dlabPhotoImg = document.getElementById('dlabPhotoImg');
                 dlabVideo.style.display = 'none';
                 dlabPhotoImg.style.display = 'block';
+                // Load first available photo
+                const firstPhoto = state.rawData.find(d => d.photoDataURL);
+                if (firstPhoto) {
+                    dlabPhotoImg.src = firstPhoto.photoDataURL;
+                }
                 if (badge) { badge.textContent = 'FOTO'; badge.classList.remove('recording'); }
                 hasVideo = true; // to show the zone
             }
 
             if (hasVideo) {
                 videoZone.classList.add('visible');
-                videoToggleBtn.style.display = 'none';
+                videoToggleBtn.style.display = hasSensorPhotos && !state.videoBlob ? 'none' : '';
             } else {
                 videoZone.classList.remove('visible');
                 videoToggleBtn.style.display = 'none';
@@ -14101,22 +14117,36 @@ bluetooth.startIOPinService()</pre>
                 }
             }
 
-            // Sync sensor photo if available
+            // Sync sensor photo if available (from sensor mode captures)
             const dlabPhotoImg = document.getElementById('dlabPhotoImg');
-            if (dlabPhotoImg && d.photoDataURL) {
-                dlabPhotoImg.src = d.photoDataURL;
-                dlabPhotoImg.style.display = 'block';
-                dlabVideo.style.display = 'none';
+            if (dlabPhotoImg && hasPhotoFrames()) {
                 const videoZone = document.getElementById('dlabVideoZone');
                 videoZone.classList.add('visible');
-            } else if (dlabPhotoImg && !state.videoBlob) {
-                // No photo for this point and no video — find nearest photo
-                const nearestPhoto = dlabFindNearestPhoto(idx);
-                if (nearestPhoto) {
-                    dlabPhotoImg.src = nearestPhoto.photoDataURL;
-                    dlabPhotoImg.style.display = 'block';
-                    dlabVideo.style.display = 'none';
+                dlabVideo.style.display = 'none';
+                dlabPhotoImg.style.display = 'block';
+
+                if (d.photoDataURL) {
+                    dlabPhotoImg.src = d.photoDataURL;
+                } else {
+                    // Find nearest point with photo
+                    const nearestPhoto = dlabFindNearestPhoto(idx);
+                    if (nearestPhoto) {
+                        dlabPhotoImg.src = nearestPhoto.photoDataURL;
+                    }
                 }
+            }
+        }
+
+        function dlabOpenFrameViewer() {
+            // Open frame viewer at the current slider position's point
+            const slider = document.getElementById('dlabTimelineBar');
+            const idx = parseInt(slider.value) || 0;
+            const d = state.rawData[idx];
+            if (d && d.photoDataURL) {
+                smFrameOpen(d.id);
+            } else {
+                // Open at first available photo
+                smFrameOpen();
             }
         }
 
