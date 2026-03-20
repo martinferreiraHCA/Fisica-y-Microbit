@@ -2556,25 +2556,29 @@
             flex: 1;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
+            grid-template-rows: 70fr 30fr;
             overflow: hidden;
         }
 
-        /* Panel de sensores - arriba izquierda */
+        /* Panel de sensores - abajo completo */
         .sm-sensors-panel {
-            border-right: 2px solid black;
-            border-bottom: 2px solid black;
+            grid-column: 1 / -1;
+            border-top: 2px solid black;
             display: flex;
-            flex-direction: column;
-            padding: 16px;
-            overflow: auto;
+            flex-direction: row;
+            align-items: center;
+            padding: 12px 16px;
+            gap: 12px;
+            overflow-x: auto;
+            overflow-y: hidden;
         }
         .sm-sensor-card {
             background: white;
             border: 2px solid black;
             border-radius: 4px;
-            padding: 12px 16px;
-            margin-bottom: 8px;
+            padding: 10px 16px;
+            flex: 1;
+            min-width: 140px;
         }
         .sm-sensor-name {
             display: flex;
@@ -2614,6 +2618,8 @@
             font-size: 0.78rem;
             color: #666;
             text-align: center;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .sm-chrono {
@@ -2621,12 +2627,12 @@
             font-size: 1.5rem;
             font-weight: 700;
             text-align: center;
-            padding: 8px 0;
+            padding: 8px 16px;
             color: #1976d2;
+            white-space: nowrap;
         }
         .sm-register-btn {
-            width: 100%;
-            padding: 12px;
+            padding: 12px 24px;
             background: #2e7d32;
             color: white;
             border: 2px solid #2e7d32;
@@ -2635,8 +2641,9 @@
             cursor: pointer;
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-top: 8px;
             transition: all 0.15s;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         .sm-register-btn:hover { background: #1b5e20; border-color: #1b5e20; }
         .sm-register-btn:active { transform: scale(0.97); }
@@ -2644,7 +2651,6 @@
 
         /* Panel de video - arriba derecha */
         .sm-video-panel {
-            border-bottom: 2px solid black;
             background: black;
             position: relative;
             display: flex;
@@ -2674,12 +2680,12 @@
             padding: 20px;
         }
 
-        /* Tabla de datos - abajo completa */
+        /* Tabla de datos - arriba izquierda */
         .sm-data-panel {
-            grid-column: 1 / -1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            border-right: 2px solid black;
         }
         .sm-data-header {
             display: flex;
@@ -3678,32 +3684,7 @@
         </div>
 
         <div class="sm-main">
-            <!-- Sensores en vivo -->
-            <div class="sm-sensors-panel" id="smSensorsPanel">
-                <div id="smSensorCards">
-                    <div class="sm-sensor-card" id="smSensorCard0">
-                        <div class="sm-sensor-name">
-                            <span class="sm-sensor-color" style="background:#000;"></span>
-                            <input type="text" id="smVarName0" value="Variable 1" onchange="smUpdateVarName(0, this.value)">
-                        </div>
-                        <div class="sm-sensor-value" id="smValue0">--</div>
-                    </div>
-                </div>
-                <div class="sm-freq" id="smFreqDisplay">Frecuencia: -- Hz</div>
-                <div class="sm-chrono" id="smChrono">00:00.000</div>
-                <button class="sm-register-btn" id="smRegBtnBig" onclick="smRegisterDataPoint()" disabled>
-                    REGISTRAR DATO
-                </button>
-            </div>
-
-            <!-- Video en vivo -->
-            <div class="sm-video-panel" id="smVideoPanel">
-                <video id="smVideo" autoplay muted playsinline webkit-playsinline></video>
-                <span class="sm-video-badge" id="smVideoBadge" style="display:none;">LIVE</span>
-                <div class="sm-no-camera" id="smNoCamera">Sin cámara activa</div>
-            </div>
-
-            <!-- Tabla de datos registrados -->
+            <!-- Tabla de datos registrados - arriba izquierda -->
             <div class="sm-data-panel">
                 <div class="sm-data-header">
                     <span>Datos registrados</span>
@@ -3721,6 +3702,31 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- Video en vivo - arriba derecha -->
+            <div class="sm-video-panel" id="smVideoPanel">
+                <video id="smVideo" autoplay muted playsinline webkit-playsinline></video>
+                <span class="sm-video-badge" id="smVideoBadge" style="display:none;">LIVE</span>
+                <div class="sm-no-camera" id="smNoCamera">Sin cámara activa</div>
+            </div>
+
+            <!-- Sensores en vivo - abajo completo -->
+            <div class="sm-sensors-panel" id="smSensorsPanel">
+                <div id="smSensorCards">
+                    <div class="sm-sensor-card" id="smSensorCard0">
+                        <div class="sm-sensor-name">
+                            <span class="sm-sensor-color" style="background:#000;"></span>
+                            <input type="text" id="smVarName0" value="Variable 1" onchange="smUpdateVarName(0, this.value)">
+                        </div>
+                        <div class="sm-sensor-value" id="smValue0">--</div>
+                    </div>
+                </div>
+                <div class="sm-freq" id="smFreqDisplay">Frecuencia: -- Hz</div>
+                <div class="sm-chrono" id="smChrono">00:00.000</div>
+                <button class="sm-register-btn" id="smRegBtnBig" onclick="smRegisterDataPoint()" disabled>
+                    REGISTRAR DATO
+                </button>
             </div>
         </div>
 
