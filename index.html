@@ -13142,6 +13142,27 @@ bluetooth.startIOPinService()</pre>
         function smStopCapture() {
             smState.stopped = true;
 
+            // Stop data collection (the main system stop)
+            if (state.isCollecting) {
+                document.getElementById('stopBtn').click();
+            }
+
+            // Disconnect serial/bluetooth
+            if (state.reader) {
+                try { state.reader.cancel(); } catch(e) {}
+            }
+            if (state.port) {
+                try { state.port.close(); } catch(e) {}
+                state.port = null;
+            }
+            if (state.btDevice && state.btDevice.gatt && state.btDevice.gatt.connected) {
+                try { state.btDevice.gatt.disconnect(); } catch(e) {}
+            }
+            state.isConnected = false;
+            state.isBluetooth = false;
+            state.btDevice = null;
+            state.btCharTx = null;
+
             // Stop the chronometer
             if (smState.chronometerInterval) {
                 clearInterval(smState.chronometerInterval);
@@ -13170,6 +13191,11 @@ bluetooth.startIOPinService()</pre>
                 noCamera.textContent = 'Captura detenida';
                 noCamera.style.display = 'block';
             }
+
+            // Update main UI buttons
+            document.getElementById('connectBtn').textContent = 'CONECTAR';
+            document.getElementById('collectBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'none';
 
             smUpdateStatus();
         }
