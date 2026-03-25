@@ -3097,7 +3097,6 @@
             <input type="file" id="importFile" accept=".csv" style="display: none;">
             <div class="toolbar-separator"></div>
             <button id="exportBtn" class="toolbar-btn" disabled>EXPORTAR CSV</button>
-            <button id="saveGraphBtn" class="toolbar-btn" disabled>GUARDAR GRÁFICO</button>
             <button id="photoFrameBtn" class="toolbar-btn" style="display:none;" onclick="smFrameOpen()">FOTOS</button>
             <button id="clearBtn" class="toolbar-btn">LIMPIAR</button>
             <div class="toolbar-separator"></div>
@@ -3129,7 +3128,6 @@
         <button class="toolbar-btn" onclick="document.getElementById('importFile').click(); closeToolbarMenu();">IMPORTAR CSV</button>
         <button class="toolbar-btn" onclick="openManualTableModal(); closeToolbarMenu();">TABLA DE VALORES</button>
         <button id="exportBtn2" class="toolbar-btn" onclick="document.getElementById('exportBtn').click(); closeToolbarMenu();">EXPORTAR CSV</button>
-        <button id="saveGraphBtn2" class="toolbar-btn" onclick="document.getElementById('saveGraphBtn').click(); closeToolbarMenu();">GUARDAR GRÁFICO</button>
         <button id="clearBtn2" class="toolbar-btn" onclick="document.getElementById('clearBtn').click(); closeToolbarMenu();">LIMPIAR</button>
         <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: flex; align-items: center;">MAKECODE ↗</a>
         <button id="helpBtn2" class="toolbar-btn" onclick="document.getElementById('helpBtn').click(); closeToolbarMenu();">AYUDA</button>
@@ -4264,6 +4262,7 @@
                 zoomIn: 'Acercar',
                 zoomOut: 'Alejar',
                 resetZoom: 'Restablecer zoom',
+                fitChart: 'Encuadrar datos',
                 saveGraphAs: 'Guardar como imagen',
                 selectGraphToSave: 'Selecciona la gráfica a guardar:',
                 allGraphs: 'Todas las gráficas',
@@ -4448,6 +4447,7 @@
                 zoomIn: 'Zoom in',
                 zoomOut: 'Zoom out',
                 resetZoom: 'Reset zoom',
+                fitChart: 'Fit to data',
                 saveGraphAs: 'Save as image',
                 selectGraphToSave: 'Select graph to save:',
                 allGraphs: 'All graphs',
@@ -4632,6 +4632,7 @@
                 zoomIn: 'Aproximar',
                 zoomOut: 'Afastar',
                 resetZoom: 'Redefinir zoom',
+                fitChart: 'Enquadrar dados',
                 saveGraphAs: 'Salvar como imagem',
                 selectGraphToSave: 'Selecione o gráfico para salvar:',
                 allGraphs: 'Todos os gráficos',
@@ -4736,7 +4737,6 @@
             document.getElementById('stopBtn').textContent = t.stop;
             document.getElementById('cameraBtn').textContent = t.camera;
             document.getElementById('exportBtn').textContent = t.exportCSV;
-            document.getElementById('saveGraphBtn').textContent = t.saveGraph;
             document.getElementById('clearBtn').textContent = t.clear;
             document.getElementById('helpBtn').textContent = t.help;
 
@@ -4770,7 +4770,7 @@
             if (desktopLabBtn) desktopLabBtn.textContent = t.viewExperiment || 'LAB';
 
             // Mobile menu panel buttons
-            const menuMap = { statsBtn2: 'statistics', exportBtn2: 'exportCSV', saveGraphBtn2: 'saveGraph', importBtn2: 'importCSV', clearBtn2: 'clear', helpBtn2: 'help' };
+            const menuMap = { statsBtn2: 'statistics', exportBtn2: 'exportCSV', importBtn2: 'importCSV', clearBtn2: 'clear', helpBtn2: 'help' };
             for (const [id, key] of Object.entries(menuMap)) {
                 const el = document.getElementById(id);
                 if (el && t[key]) el.textContent = t[key];
@@ -7198,6 +7198,7 @@ bluetooth.startIOPinService()</pre>
                     <span class="graph-controls-sep"></span>
                     <button onclick="zoomChart(${i}, 'in')" title="${t.zoomIn}">+</button>
                     <button onclick="zoomChart(${i}, 'out')" title="${t.zoomOut}">&minus;</button>
+                    <button onclick="fitChartToData(${i})" title="${t.fitChart}">⊡</button>
                     <button onclick="resetChartZoom(${i})" title="${t.resetZoom}">&#8634;</button>
                     <button onclick="saveChartAsImage(${i})" title="${t.saveGraphAs}">&#128190;</button>
                 `;
@@ -9188,7 +9189,6 @@ bluetooth.startIOPinService()</pre>
                     lastTableUpdate = now;
                     updateDataTable();
                     document.getElementById('exportBtn').disabled = state.rawData.length === 0;
-                    document.getElementById('saveGraphBtn').disabled = state.rawData.length === 0;
                     document.getElementById('setZeroBtn').disabled = state.selectedPoints.size !== 1;
 
                     // Mostrar advertencia si hay datos llegando con formato incorrecto
@@ -10081,7 +10081,6 @@ bluetooth.startIOPinService()</pre>
                 }
 
                 document.getElementById('exportBtn').disabled = state.rawData.length === 0;
-                document.getElementById('saveGraphBtn').disabled = state.rawData.length === 0;
                 document.getElementById('setZeroBtn').disabled = state.selectedPoints.size !== 1;
 
                 // Show/hide FOTOS button
@@ -11496,28 +11495,41 @@ bluetooth.startIOPinService()</pre>
             chart.resetZoom();
         }
 
-        // Botón toolbar: guardar gráfico
-        document.getElementById('saveGraphBtn').addEventListener('click', () => {
-            if (state.charts.length === 1) {
-                saveChartAsImage(0);
-            } else {
-                const t = translations[currentLanguage];
-                let options = `${t.allGraphs}\n`;
-                for (let i = 0; i < state.charts.length; i++) {
-                    options += `${state.graphs[i].title || t.graphDefault + ' ' + (i + 1)}\n`;
-                }
-                const choice = prompt(t.selectGraphToSave + '\n0 = ' + t.allGraphs + '\n' +
-                    state.charts.map((_, i) => `${i + 1} = ${state.graphs[i].title || t.graphDefault + ' ' + (i + 1)}`).join('\n'),
-                    '0');
-                if (choice === null) return;
-                const idx = parseInt(choice);
-                if (idx === 0) {
-                    saveAllChartsAsImages();
-                } else if (idx >= 1 && idx <= state.charts.length) {
-                    saveChartAsImage(idx - 1);
-                }
-            }
-        });
+        function fitChartToData(index) {
+            const chart = state.charts[index];
+            if (!chart) return;
+
+            // Calcular bounds de todos los datasets
+            let xMin = Infinity, xMax = -Infinity;
+            let yMin = Infinity, yMax = -Infinity;
+            chart.data.datasets.forEach(ds => {
+                ds.data.forEach(pt => {
+                    if (pt.x < xMin) xMin = pt.x;
+                    if (pt.x > xMax) xMax = pt.x;
+                    if (pt.y < yMin) yMin = pt.y;
+                    if (pt.y > yMax) yMax = pt.y;
+                });
+            });
+
+            if (!isFinite(xMin) || !isFinite(yMin)) return;
+
+            // Agregar 5% de margen
+            const xRange = xMax - xMin || 1;
+            const yRange = yMax - yMin || 1;
+            xMin -= xRange * 0.05;
+            xMax += xRange * 0.05;
+            yMin -= yRange * 0.05;
+            yMax += yRange * 0.05;
+
+            // Resetear zoom primero, luego aplicar bounds
+            chart.resetZoom();
+            chart.options.scales.x.min = xMin;
+            chart.options.scales.x.max = xMax;
+            chart.options.scales.y.min = yMin;
+            chart.options.scales.y.max = yMax;
+            chart.update('none');
+        }
+
 
         // ========== EXPORTAR/IMPORTAR ==========
 
