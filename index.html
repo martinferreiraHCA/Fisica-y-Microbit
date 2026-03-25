@@ -3316,7 +3316,7 @@
                         Al activar este modo, cuando detengas la captura se conservarán <b>solo los datos que coinciden con cada fotograma del video</b> (1 dato por frame, ~30 por segundo).<br><br>
                         <b>¿Por qué?</b> La micro:bit puede enviar datos a 50-100 Hz o más, pero el video graba a 30 FPS. Los datos intermedios no tienen un fotograma asociado, así que al reproducir el video cuadro a cuadro, esos datos "extras" no se pueden visualizar.<br><br>
                         <b>Ventaja:</b> Cada punto de tu tabla y gráfica corresponde exactamente a un cuadro del video. Ideal para análisis de video.<br>
-                        <b>Compromiso:</b> Se descartan los datos recibidos entre fotogramas. Si necesitás máxima resolución temporal, dejá este modo desactivado.
+                        <b>Compromiso:</b> Se descartan los datos recibidos entre fotogramas. Si necesitas máxima resolución temporal, deja este modo desactivado.
                         </span>
                     </div>
 
@@ -4146,7 +4146,7 @@
                 overlayOpacity: 'Overlay: opacidad',
                 overlayFontSize: 'Overlay: tamaño',
                 videoSyncMode: 'Sync video (30 FPS)',
-                videoSyncInfo: 'Al activar este modo, cuando detengas la captura se conservarán <b>solo los datos que coinciden con cada fotograma del video</b> (1 dato por frame, ~30 por segundo).<br><br><b>¿Por qué?</b> La micro:bit puede enviar datos a 50-100 Hz o más, pero el video graba a 30 FPS. Los datos intermedios no tienen un fotograma asociado, así que al reproducir el video cuadro a cuadro, esos datos "extras" no se pueden visualizar.<br><br><b>Ventaja:</b> Cada punto de tu tabla y gráfica corresponde exactamente a un cuadro del video. Ideal para análisis de video.<br><b>Compromiso:</b> Se descartan los datos recibidos entre fotogramas. Si necesitás máxima resolución temporal, dejá este modo desactivado.',
+                videoSyncInfo: 'Al activar este modo, cuando detengas la captura se conservarán <b>solo los datos que coinciden con cada fotograma del video</b> (1 dato por frame, ~30 por segundo).<br><br><b>¿Por qué?</b> La micro:bit puede enviar datos a 50-100 Hz o más, pero el video graba a 30 FPS. Los datos intermedios no tienen un fotograma asociado, así que al reproducir el video cuadro a cuadro, esos datos "extras" no se pueden visualizar.<br><br><b>Ventaja:</b> Cada punto de tu tabla y gráfica corresponde exactamente a un cuadro del video. Ideal para análisis de video.<br><b>Compromiso:</b> Se descartan los datos recibidos entre fotogramas. Si necesitas máxima resolución temporal, deja este modo desactivado.',
                 varName: 'Nombre Variable',
                 varColor: 'Color',
                 applyVarConfig: 'APLICAR CONFIGURACIÓN',
@@ -4258,26 +4258,23 @@
                 graphTitle: 'Gráfica:',
                 // Frecuencia de muestreo
                 samplingRate: 'Frec. muestreo',
-                saveGraph: 'GUARDAR GRÁFICO',
                 zoomIn: 'Acercar',
                 zoomOut: 'Alejar',
                 resetZoom: 'Restablecer zoom',
                 fitChart: 'Encuadrar datos',
                 saveGraphAs: 'Guardar como imagen',
-                selectGraphToSave: 'Selecciona la gráfica a guardar:',
-                allGraphs: 'Todas las gráficas',
                 // Bluetooth pairing guide
                 btPairingTitle: 'CONEXIÓN BLUETOOTH',
-                btPairingStep1: 'Asegurate de que tu programa MakeCode tenga <b>"No Pairing Required: JustWorks pairing"</b> activado en <b>⚙ → Project Settings</b>.<br><br>Además, verificá que en el archivo <b>pxt.json</b> la sección <code>bluetooth</code> tenga estos valores:<pre style="background:#1a1a2e;color:#e0e0e0;padding:8px;border-radius:6px;font-size:12px;margin-top:6px;text-align:left">"bluetooth": {\n    "open": 1,\n    "pairing_mode": 0,\n    "whitelist": 0,\n    "security_level": null\n}</pre>',
-                btPairingStep2: 'Encendé la micro:bit (o presioná <b>RESET</b> una vez para reiniciar).',
-                btPairingStep3: 'Presioná <b>CONECTAR</b> y seleccioná tu micro:bit (<b>"BBC micro:bit"</b>) en la ventana del navegador.',
+                btPairingStep1: 'Asegúrate de que tu programa MakeCode tenga <b>"No Pairing Required: JustWorks pairing"</b> activado en <b>⚙ → Project Settings</b>.<br><br>Además, verifica que en el archivo <b>pxt.json</b> la sección <code>bluetooth</code> tenga estos valores:<pre style="background:#1a1a2e;color:#e0e0e0;padding:8px;border-radius:6px;font-size:12px;margin-top:6px;text-align:left">"bluetooth": {\n    "open": 1,\n    "pairing_mode": 0,\n    "whitelist": 0,\n    "security_level": null\n}</pre>',
+                btPairingStep2: 'Enciende la micro:bit (o presiona <b>RESET</b> una vez para reiniciar).',
+                btPairingStep3: 'Presiona <b>CONECTAR</b> y selecciona tu micro:bit (<b>"BBC micro:bit"</b>) en la ventana del navegador.',
                 btPairingCancel: 'CANCELAR',
                 btPairingConnect: 'CONECTAR',
                 // Windows Bluetooth guide
                 btWindowsTitle: 'BLUETOOTH EN WINDOWS',
-                btWindowsStep1: 'En tu programa MakeCode, abrí <b>⚙ → Project Settings</b> y activá <b>"No Pairing Required: JustWorks pairing"</b>. Esto permite la conexión sin PIN.<br><br>Además, verificá que en el archivo <b>pxt.json</b> la sección <code>bluetooth</code> tenga estos valores:<pre style="background:#1a1a2e;color:#e0e0e0;padding:8px;border-radius:6px;font-size:12px;margin-top:6px;text-align:left">"bluetooth": {\n    "open": 1,\n    "pairing_mode": 0,\n    "whitelist": 0,\n    "security_level": null\n}</pre>',
-                btWindowsStep2: 'Si el micro:bit aparece en <b>Configuración → Bluetooth y dispositivos</b> de Windows, hacé clic en ⋯ → <b>Quitar dispositivo</b>.',
-                btWindowsStep3: 'Presioná <b>CONECTAR</b> abajo y seleccioná tu micro:bit en la ventana del navegador.',
+                btWindowsStep1: 'En tu programa MakeCode, abre <b>⚙ → Project Settings</b> y activa <b>"No Pairing Required: JustWorks pairing"</b>. Esto permite la conexión sin PIN.<br><br>Además, verifica que en el archivo <b>pxt.json</b> la sección <code>bluetooth</code> tenga estos valores:<pre style="background:#1a1a2e;color:#e0e0e0;padding:8px;border-radius:6px;font-size:12px;margin-top:6px;text-align:left">"bluetooth": {\n    "open": 1,\n    "pairing_mode": 0,\n    "whitelist": 0,\n    "security_level": null\n}</pre>',
+                btWindowsStep2: 'Si la micro:bit aparece en <b>Configuración → Bluetooth y dispositivos</b> de Windows, haz clic en ⋯ → <b>Quitar dispositivo</b>.',
+                btWindowsStep3: 'Presiona <b>CONECTAR</b> abajo y selecciona tu micro:bit en la ventana del navegador.',
                 btWindowsCancel: 'CANCELAR',
                 btWindowsConnect: 'CONECTAR',
                 // View switcher
@@ -4443,14 +4440,11 @@
                 graphTitle: 'Graph:',
                 // Sampling rate
                 samplingRate: 'Sampling rate',
-                saveGraph: 'SAVE GRAPH',
                 zoomIn: 'Zoom in',
                 zoomOut: 'Zoom out',
                 resetZoom: 'Reset zoom',
                 fitChart: 'Fit to data',
                 saveGraphAs: 'Save as image',
-                selectGraphToSave: 'Select graph to save:',
-                allGraphs: 'All graphs',
                 // Bluetooth pairing guide
                 btPairingTitle: 'BLUETOOTH CONNECTION',
                 btPairingStep1: 'Make sure your MakeCode program has <b>"No Pairing Required: JustWorks pairing"</b> enabled in <b>⚙ → Project Settings</b>.<br><br>Also, verify that the <b>pxt.json</b> file has these values in the <code>bluetooth</code> section:<pre style="background:#1a1a2e;color:#e0e0e0;padding:8px;border-radius:6px;font-size:12px;margin-top:6px;text-align:left">"bluetooth": {\n    "open": 1,\n    "pairing_mode": 0,\n    "whitelist": 0,\n    "security_level": null\n}</pre>',
@@ -4628,14 +4622,11 @@
                 graphTitle: 'Gráfico:',
                 // Taxa de amostragem
                 samplingRate: 'Taxa de amostragem',
-                saveGraph: 'SALVAR GRÁFICO',
                 zoomIn: 'Aproximar',
                 zoomOut: 'Afastar',
                 resetZoom: 'Redefinir zoom',
                 fitChart: 'Enquadrar dados',
                 saveGraphAs: 'Salvar como imagem',
-                selectGraphToSave: 'Selecione o gráfico para salvar:',
-                allGraphs: 'Todos os gráficos',
                 // Bluetooth pairing guide
                 btPairingTitle: 'CONEXÃO BLUETOOTH',
                 btPairingStep1: 'Certifique-se de que seu programa MakeCode tenha <b>"No Pairing Required: JustWorks pairing"</b> ativado em <b>⚙ → Project Settings</b>.<br><br>Além disso, verifique que o arquivo <b>pxt.json</b> tenha estes valores na seção <code>bluetooth</code>:<pre style="background:#1a1a2e;color:#e0e0e0;padding:8px;border-radius:6px;font-size:12px;margin-top:6px;text-align:left">"bluetooth": {\n    "open": 1,\n    "pairing_mode": 0,\n    "whitelist": 0,\n    "security_level": null\n}</pre>',
@@ -5151,13 +5142,19 @@
     <div class="feature-item">
         <div class="feature-icon">Σ</div>
         <div class="feature-text">
-            <strong>ESTADÍSTICAS</strong> - Calcula media, mínimo, máximo, desviación estándar de los datos.
+            <strong>ESTADÍSTICAS</strong> - Calcula media, mínimo, máximo y desviación estándar de los datos.
         </div>
     </div>
     <div class="feature-item">
         <div class="feature-icon">💾</div>
         <div class="feature-text">
-            <strong>EXPORTAR/IMPORTAR CSV</strong> - Guarda o carga experimentos en formato CSV.
+            <strong>EXPORTAR CSV</strong> - Guarda los datos del experimento en formato CSV.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">📥</div>
+        <div class="feature-text">
+            <strong>INGRESO DE DATOS</strong> - Importa datos desde un archivo CSV o ingresa valores manualmente en una tabla.
         </div>
     </div>
     <div class="feature-item">
@@ -5166,6 +5163,23 @@
             <strong>LIMPIAR</strong> - Elimina todos los datos y reinicia el sistema.
         </div>
     </div>
+</div>
+
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    🖱️ CONTROLES DE GRÁFICA <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
+    <p>Cada gráfica tiene una barra de controles con los siguientes botones:</p>
+    <ul>
+        <li><strong>⬚ Selección por arrastre</strong> - Activa el modo de selección rectangular. Dibuja un rectángulo sobre la gráfica para seleccionar varios puntos a la vez. Los puntos seleccionados se marcan en rojo.</li>
+        <li><strong>✕ Limpiar selección</strong> - Deselecciona todos los puntos marcados.</li>
+        <li><strong>+ / − Zoom</strong> - Acerca o aleja la vista de la gráfica.</li>
+        <li><strong>⊡ Encuadrar</strong> - Ajusta automáticamente la vista para mostrar todos los datos con un margen del 5%.</li>
+        <li><strong>↻ Restablecer zoom</strong> - Vuelve al nivel de zoom original.</li>
+        <li><strong>💾 Guardar imagen</strong> - Guarda la gráfica como imagen PNG de alta resolución.</li>
+    </ul>
+    <p><strong>Interacción:</strong> Puedes hacer clic en un punto de la gráfica para seleccionarlo o deseleccionarlo individualmente. Con la cámara activa, al seleccionar un punto se muestra el fotograma del video correspondiente a ese instante.</p>
+    <p><strong>Zoom con teclado:</strong> Mantén presionada la tecla <strong>Shift</strong> y arrastra para hacer zoom en un área específica. Arrastra sin Shift para desplazar (pan) la gráfica.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -5213,6 +5227,7 @@
                 <li>Potencia: y = a·x^b</li>
                 <li>Logarítmico: y = a·ln(x) + b</li>
                 <li>Inverso: y = a/x + b</li>
+                <li>Sinusoidal: y = A·sin(ωx + φ) + C</li>
             </ul>
         </li>
         <li><strong>Variable a Ajustar:</strong> Selecciona cuál variable analizar</li>
@@ -5667,13 +5682,19 @@ bluetooth.startIOPinService()</pre>
     <div class="feature-item">
         <div class="feature-icon">Σ</div>
         <div class="feature-text">
-            <strong>STATISTICS</strong> - Calculates mean, min, max, standard deviation of data.
+            <strong>STATISTICS</strong> - Calculates mean, min, max and standard deviation of data.
         </div>
     </div>
     <div class="feature-item">
         <div class="feature-icon">💾</div>
         <div class="feature-text">
-            <strong>EXPORT/IMPORT CSV</strong> - Save or load experiments in CSV format.
+            <strong>EXPORT CSV</strong> - Saves experiment data in CSV format.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">📥</div>
+        <div class="feature-text">
+            <strong>DATA ENTRY</strong> - Import data from a CSV file or enter values manually in a table.
         </div>
     </div>
     <div class="feature-item">
@@ -5682,6 +5703,23 @@ bluetooth.startIOPinService()</pre>
             <strong>CLEAR</strong> - Deletes all data and resets the system.
         </div>
     </div>
+</div>
+
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    🖱️ GRAPH CONTROLS <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
+    <p>Each graph has a control bar with the following buttons:</p>
+    <ul>
+        <li><strong>⬚ Drag selection</strong> - Activates rectangular selection mode. Draw a rectangle over the graph to select multiple points at once. Selected points are marked in red.</li>
+        <li><strong>✕ Clear selection</strong> - Deselects all marked points.</li>
+        <li><strong>+ / − Zoom</strong> - Zooms in or out on the graph.</li>
+        <li><strong>⊡ Fit to data</strong> - Automatically adjusts the view to show all data with a 5% margin.</li>
+        <li><strong>↻ Reset zoom</strong> - Returns to the original zoom level.</li>
+        <li><strong>💾 Save image</strong> - Saves the graph as a high-resolution PNG image.</li>
+    </ul>
+    <p><strong>Interaction:</strong> Click on a graph point to select or deselect it individually. With the camera active, selecting a point shows the corresponding video frame at that instant.</p>
+    <p><strong>Keyboard zoom:</strong> Hold <strong>Shift</strong> and drag to zoom into a specific area. Drag without Shift to pan the graph.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -5729,6 +5767,7 @@ bluetooth.startIOPinService()</pre>
                 <li>Power: y = a·x^b</li>
                 <li>Logarithmic: y = a·ln(x) + b</li>
                 <li>Inverse: y = a/x + b</li>
+                <li>Sinusoidal: y = A·sin(ωx + φ) + C</li>
             </ul>
         </li>
         <li><strong>Variable to Fit:</strong> Select which variable to analyze</li>
@@ -6183,13 +6222,19 @@ bluetooth.startIOPinService()</pre>
     <div class="feature-item">
         <div class="feature-icon">Σ</div>
         <div class="feature-text">
-            <strong>ESTATÍSTICAS</strong> - Calcula média, mínimo, máximo, desvio padrão dos dados.
+            <strong>ESTATÍSTICAS</strong> - Calcula média, mínimo, máximo e desvio padrão dos dados.
         </div>
     </div>
     <div class="feature-item">
         <div class="feature-icon">💾</div>
         <div class="feature-text">
-            <strong>EXPORTAR/IMPORTAR CSV</strong> - Salva ou carrega experimentos em formato CSV.
+            <strong>EXPORTAR CSV</strong> - Salva os dados do experimento em formato CSV.
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">📥</div>
+        <div class="feature-text">
+            <strong>ENTRADA DE DADOS</strong> - Importa dados de um arquivo CSV ou insere valores manualmente em uma tabela.
         </div>
     </div>
     <div class="feature-item">
@@ -6198,6 +6243,23 @@ bluetooth.startIOPinService()</pre>
             <strong>LIMPAR</strong> - Elimina todos os dados e reinicia o sistema.
         </div>
     </div>
+</div>
+
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    🖱️ CONTROLES DO GRÁFICO <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
+    <p>Cada gráfico tem uma barra de controles com os seguintes botões:</p>
+    <ul>
+        <li><strong>⬚ Seleção por arrasto</strong> - Ativa o modo de seleção retangular. Desenhe um retângulo sobre o gráfico para selecionar vários pontos de uma vez. Os pontos selecionados ficam marcados em vermelho.</li>
+        <li><strong>✕ Limpar seleção</strong> - Desmarca todos os pontos selecionados.</li>
+        <li><strong>+ / − Zoom</strong> - Aproxima ou afasta a visualização do gráfico.</li>
+        <li><strong>⊡ Enquadrar</strong> - Ajusta automaticamente a visualização para mostrar todos os dados com margem de 5%.</li>
+        <li><strong>↻ Redefinir zoom</strong> - Volta ao nível de zoom original.</li>
+        <li><strong>💾 Salvar imagem</strong> - Salva o gráfico como imagem PNG de alta resolução.</li>
+    </ul>
+    <p><strong>Interação:</strong> Clique em um ponto do gráfico para selecioná-lo ou desselecioná-lo individualmente. Com a câmera ativa, ao selecionar um ponto é exibido o quadro do vídeo correspondente àquele instante.</p>
+    <p><strong>Zoom com teclado:</strong> Mantenha pressionada a tecla <strong>Shift</strong> e arraste para ampliar uma área específica. Arraste sem Shift para deslocar (pan) o gráfico.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -6245,6 +6307,7 @@ bluetooth.startIOPinService()</pre>
                 <li>Potência: y = a·x^b</li>
                 <li>Logarítmico: y = a·ln(x) + b</li>
                 <li>Inverso: y = a/x + b</li>
+                <li>Sinusoidal: y = A·sin(ωx + φ) + C</li>
             </ul>
         </li>
         <li><strong>Variável a Ajustar:</strong> Selecione qual variável analisar</li>
@@ -8333,7 +8396,7 @@ bluetooth.startIOPinService()</pre>
                             if (this.device && typeof this.device.forget === 'function') {
                                 try {
                                     this.log('device.forget() disponible — ejecutando...');
-                                    statusEl.textContent = 'Limpiando caché BLE... seleccioná el micro:bit de nuevo';
+                                    statusEl.textContent = 'Limpiando caché BLE... selecciona la micro:bit de nuevo';
                                     await this.device.forget();
                                     this.log('forget() exitoso — caché de Chrome limpiado');
                                     forgetWorked = true;
