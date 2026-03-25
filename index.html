@@ -10448,15 +10448,19 @@ bluetooth.startIOPinService()</pre>
             });
 
             // Attach/detach drag handlers on each chart canvas
+            // Usar capture:true para que los handlers se ejecuten ANTES del plugin zoom (Hammer.js)
+            // Esto es necesario en Windows donde Hammer.js captura pointer events agresivamente
             for (let i = 0; i < state.numGraphs; i++) {
                 const canvas = document.getElementById(`chart${i}`);
                 if (!canvas) continue;
                 if (dragSelectMode) {
-                    canvas.addEventListener('pointerdown', onDragSelectStart);
+                    canvas.addEventListener('pointerdown', onDragSelectStart, true);
                     canvas.style.cursor = 'crosshair';
+                    canvas.style.touchAction = 'none'; // Evitar que Windows interprete gestos
                 } else {
-                    canvas.removeEventListener('pointerdown', onDragSelectStart);
+                    canvas.removeEventListener('pointerdown', onDragSelectStart, true);
                     canvas.style.cursor = '';
+                    canvas.style.touchAction = '';
                     // Clean up any active overlay
                     if (dragSelectState && dragSelectState.overlay) {
                         dragSelectState.overlay.remove();
@@ -10468,6 +10472,11 @@ bluetooth.startIOPinService()</pre>
 
         function onDragSelectStart(e) {
             if (!dragSelectMode) return;
+            // Bloquear propagación para que Hammer.js (zoom plugin) no capture el evento
+            // Crítico en Windows donde Hammer.js intercepta pointer events agresivamente
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
             // Find which chart index this canvas belongs to
             const canvas = e.currentTarget;
             let chartIndex = -1;
@@ -10498,14 +10507,16 @@ bluetooth.startIOPinService()</pre>
             dragSelectState = { chartIndex, startX, startY, overlay, rect };
 
             canvas.setPointerCapture(e.pointerId);
-            canvas.addEventListener('pointermove', onDragSelectMove);
-            canvas.addEventListener('pointerup', onDragSelectEnd);
-            e.preventDefault();
+            canvas.addEventListener('pointermove', onDragSelectMove, true);
+            canvas.addEventListener('pointerup', onDragSelectEnd, true);
         }
 
         function onDragSelectMove(e) {
             if (!dragSelectState) return;
-            const { startX, startY, overlay, rect } = dragSelectState;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            const { startX, startY, overlay } = dragSelectState;
             const canvas = e.currentTarget;
             const canvasRect = canvas.getBoundingClientRect();
             const curX = e.clientX - canvasRect.left;
@@ -10524,14 +10535,17 @@ bluetooth.startIOPinService()</pre>
 
         function onDragSelectEnd(e) {
             if (!dragSelectState) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
             const { chartIndex, startX, startY, overlay } = dragSelectState;
             const canvas = e.currentTarget;
             const canvasRect = canvas.getBoundingClientRect();
             const endX = e.clientX - canvasRect.left;
             const endY = e.clientY - canvasRect.top;
 
-            canvas.removeEventListener('pointermove', onDragSelectMove);
-            canvas.removeEventListener('pointerup', onDragSelectEnd);
+            canvas.removeEventListener('pointermove', onDragSelectMove, true);
+            canvas.removeEventListener('pointerup', onDragSelectEnd, true);
 
             // Hide overlay
             overlay.style.display = 'none';
