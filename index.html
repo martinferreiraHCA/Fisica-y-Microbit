@@ -8173,8 +8173,8 @@ bluetooth.startIOPinService()</pre>
                     this.stats.lines += lines.length;
 
                     for (let li = 0; li < lines.length; li++) {
-                        const line = lines[li];
-                        if (line.length === 0 || line === '\r') continue;
+                        const line = lines[li].trim();
+                        if (line.length === 0) continue;
 
                         const parts = line.split(',');
                         const nParts = parts.length;
@@ -8225,13 +8225,20 @@ bluetooth.startIOPinService()</pre>
 
                         if (hasTimestamp) {
                             const mt = +parts[0];
-                            if (mt !== mt) continue;
+                            if (mt !== mt || !isFinite(mt)) continue; // NaN / Infinity
+                            if (mt < 0) continue; // Timestamp negativo: probable valor de sensor en columna incorrecta
                             valueOffset = 1;
                             if (!state.microbitTimeZeroSet) {
                                 state.timeZeroOffset = mt;
                                 state.microbitTimeZeroSet = true;
                             }
                             if (mt < state.timeZeroOffset) continue;
+                            // Detectar reinicio del micro:bit (timestamp retrocede > 5 s)
+                            if (_lastValidTimestamp >= 0 && mt < _lastValidTimestamp - 5000) {
+                                state.timeZeroOffset = mt;
+                                state.microbitTimeZeroSet = true;
+                            }
+                            _lastValidTimestamp = mt;
                             pointTime = mt;
                         } else {
                             pointTime = batchTime;
@@ -8813,6 +8820,7 @@ bluetooth.startIOPinService()</pre>
             _formatMismatchCount = 0;
             _lastMismatchParts = 0;
             _autoFormatDetected = false;
+            _lastValidTimestamp = -1;
             _spikeFilterHistory = {};
             _spikeLastValue = {};
             document.getElementById('formatWarning').style.display = 'none';
@@ -9320,11 +9328,12 @@ bluetooth.startIOPinService()</pre>
         //   - Counter atómico para IDs (vs Math.random())
         //   - Date.now() cacheado por batch de líneas
         //   - Parsing numérico inline sin .map()/.every()
-        //   - Sin .trim() redundante en partes numéricas
+        //   - .trim() en línea completa para manejar \r de Windows (CRLF)
         let _dataPointCounter = 0;
         let _formatMismatchCount = 0;   // Líneas descartadas por formato incorrecto
         let _lastMismatchParts = 0;     // Número de columnas de la última línea descartada
         let _autoFormatDetected = false; // true después de auto-detectar el formato en la sesión
+        let _lastValidTimestamp = -1;   // Último timestamp válido para detectar reinicios o columnas invertidas
 
         async function startSerialLoop() {
             if (serialLoopRunning) return;
@@ -9359,8 +9368,8 @@ bluetooth.startIOPinService()</pre>
                     const isAutoMode = document.getElementById('dataFormat').value === 'auto';
 
                     for (let li = 0; li < batchLen; li++) {
-                        const line = lines[li];
-                        if (line.length === 0 || line === '\r') continue;
+                        const line = lines[li].trim();
+                        if (line.length === 0) continue;
 
                         const parts = line.split(',');
                         const nParts = parts.length;
@@ -9410,7 +9419,8 @@ bluetooth.startIOPinService()</pre>
 
                         if (hasTimestamp) {
                             const mt = +parts[0];
-                            if (mt !== mt) continue; // NaN check
+                            if (mt !== mt || !isFinite(mt)) continue; // NaN / Infinity
+                            if (mt < 0) continue; // Timestamp negativo: probable valor de sensor (ej. acelerómetro) en columna incorrecta
                             valueOffset = 1;
                             // Ajustar T=0 al primer timestamp del micro:bit
                             if (!state.microbitTimeZeroSet) {
@@ -9419,6 +9429,13 @@ bluetooth.startIOPinService()</pre>
                             }
                             // Descartar datos viejos del buffer serial (anteriores a T=0)
                             if (mt < state.timeZeroOffset) continue;
+                            // Detectar reinicio del micro:bit (timestamp retrocede > 5 s)
+                            if (_lastValidTimestamp >= 0 && mt < _lastValidTimestamp - 5000) {
+                                // El micro:bit se reinició: resetear la base de tiempo
+                                state.timeZeroOffset = mt;
+                                state.microbitTimeZeroSet = true;
+                            }
+                            _lastValidTimestamp = mt;
                             pointTime = mt;
                         } else {
                             pointTime = batchTime;
