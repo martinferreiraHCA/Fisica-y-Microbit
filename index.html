@@ -10583,25 +10583,18 @@ bluetooth.startIOPinService()</pre>
             const chart = state.charts[chartIndex];
             if (!chart) { dragSelectState = null; return; }
 
-            // Use CSS pixel coordinates relative to canvas for Chart.js pixel mapping
-            const chartArea = chart.chartArea;
             const xScale = chart.scales.x;
             const yScale = chart.scales.y;
 
-            // Convert pixel selection rect to data coordinates
-            // Canvas pixel coords need to account for CSS→canvas pixel ratio
-            const canvasEl = chart.canvas;
-            const cssW = canvasEl.clientWidth;
-            const cssH = canvasEl.clientHeight;
-            const pixelW = canvasEl.width;
-            const pixelH = canvasEl.height;
-            const ratioX = pixelW / cssW;
-            const ratioY = pixelH / cssH;
-
-            const dataLeft = xScale.getValueForPixel(selLeft * ratioX);
-            const dataRight = xScale.getValueForPixel(selRight * ratioX);
-            const dataTop = yScale.getValueForPixel(selTop * ratioY);
-            const dataBottom = yScale.getValueForPixel(selBottom * ratioY);
+            // Convert CSS pixel selection rect to data coordinates
+            // Chart.js getValueForPixel() trabaja en CSS pixels (el ctx ya tiene
+            // scale(devicePixelRatio) aplicado internamente), así que NO multiplicar
+            // por el ratio de píxeles del canvas. Eso causaba errores en Windows
+            // con escalado de pantalla (125%, 150%) y en macOS Retina.
+            const dataLeft = xScale.getValueForPixel(selLeft);
+            const dataRight = xScale.getValueForPixel(selRight);
+            const dataTop = yScale.getValueForPixel(selTop);
+            const dataBottom = yScale.getValueForPixel(selBottom);
 
             const xMin = Math.min(dataLeft, dataRight);
             const xMax = Math.max(dataLeft, dataRight);
