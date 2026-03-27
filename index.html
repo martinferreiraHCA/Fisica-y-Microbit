@@ -8668,8 +8668,13 @@ bluetooth.startIOPinService()</pre>
                             if (!state.microbitTimeZeroSet) {
                                 state.timeZeroOffset = mt;
                                 state.microbitTimeZeroSet = true;
+                                state._lastMicrobitTimestamp = mt;
                             }
                             if (mt < state.timeZeroOffset) continue;
+                            // Monotonicity: reject timestamps that go backwards
+                            // (caused by serial corruption losing leading digits)
+                            if (mt < state._lastMicrobitTimestamp) continue;
+                            state._lastMicrobitTimestamp = mt;
                             pointTime = mt;
                         } else {
                             pointTime = batchTime;
@@ -9244,6 +9249,7 @@ bluetooth.startIOPinService()</pre>
             // Se sobrescribe al recibir el primer timestamp del micro:bit (formato N+1)
             state.timeZeroOffset = Date.now();
             state.microbitTimeZeroSet = false;
+            state._lastMicrobitTimestamp = -Infinity; // Track monotonicity
 
             // Limpiar buffers de streaming
             pendingChartPoints = [];
@@ -9855,9 +9861,14 @@ bluetooth.startIOPinService()</pre>
                             if (!state.microbitTimeZeroSet) {
                                 state.timeZeroOffset = mt;
                                 state.microbitTimeZeroSet = true;
+                                state._lastMicrobitTimestamp = mt;
                             }
                             // Descartar datos viejos del buffer serial (anteriores a T=0)
                             if (mt < state.timeZeroOffset) continue;
+                            // Monotonicidad: rechazar timestamps que retroceden
+                            // (causado por corrupción serial que pierde dígitos iniciales)
+                            if (mt < state._lastMicrobitTimestamp) continue;
+                            state._lastMicrobitTimestamp = mt;
                             pointTime = mt;
                         } else {
                             pointTime = batchTime;
