@@ -8669,6 +8669,7 @@ bluetooth.startIOPinService()</pre>
                             if (!state.microbitTimeZeroSet) {
                                 state.timeZeroOffset = mt;
                                 state.microbitTimeZeroSet = true;
+                                state._lastMicrobitTimestamp = mt;
                             }
                             if (mt < state.timeZeroOffset) continue;
                             // Detectar reinicio del micro:bit (timestamp retrocede > 5 s)
@@ -9251,6 +9252,7 @@ bluetooth.startIOPinService()</pre>
             // Se sobrescribe al recibir el primer timestamp del micro:bit (formato N+1)
             state.timeZeroOffset = Date.now();
             state.microbitTimeZeroSet = false;
+            state._lastMicrobitTimestamp = -Infinity; // Track monotonicity
 
             // Limpiar buffers de streaming
             pendingChartPoints = [];
@@ -9865,6 +9867,7 @@ bluetooth.startIOPinService()</pre>
                             if (!state.microbitTimeZeroSet) {
                                 state.timeZeroOffset = mt;
                                 state.microbitTimeZeroSet = true;
+                                state._lastMicrobitTimestamp = mt;
                             }
                             // Descartar datos viejos del buffer serial (anteriores a T=0)
                             if (mt < state.timeZeroOffset) continue;
