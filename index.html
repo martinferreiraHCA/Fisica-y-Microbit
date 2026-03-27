@@ -3246,23 +3246,13 @@
                 <div class="section-content collapsed">
                     <!-- Formato de datos -->
                     <div class="input-row">
-                        <label>Formato de datos</label>
-                        <select id="dataFormat" onchange="onDataFormatChange()">
-                            <option value="auto" selected>Auto</option>
-                            <option value="timeVars">Tiempo + Variables</option>
-                            <option value="varsOnly">Solo Variables</option>
-                        </select>
+                        <label>Micro:bit envía timestamp</label>
+                        <input type="checkbox" id="microbitTimestamp" checked onchange="onTimestampToggle()">
                     </div>
-                    <input type="checkbox" id="microbitTimestamp" checked style="display: none;">
                     <div id="dataFormatInfo" style="display:none; background: #e3f2fd; border-left: 3px solid #1976d2; padding: 8px 10px; margin: 4px 0 8px 0; font-size: 0.78rem; line-height: 1.4; border-radius: 4px; color: #333;">
                         <strong style="color:#1565c0;">&#9432; Modo Solo Variables</strong><br>
-                        La micro:bit envía solo valores de variables (sin timestamp). El eje X se configura con cualquiera de las variables recibidas.<br>
+                        La micro:bit envía solo valores de variables (sin timestamp). El tiempo se registra con el reloj del navegador.<br>
                         <b>Formato:</b> <code>var1,var2,...,varN</code>
-                    </div>
-                    <div id="dataFormatAutoInfo" style="display:block; background: #e8f5e9; border-left: 3px solid #4caf50; padding: 8px 10px; margin: 4px 0 8px 0; font-size: 0.78rem; line-height: 1.4; border-radius: 4px; color: #333;">
-                        <strong style="color:#2e7d32;">&#9432; Detección automática</strong><br>
-                        La app detecta automáticamente si la micro:bit envía timestamp o solo variables.<br>
-                        <b>Acepta:</b> <code>tiempo,var1,...,varN</code> o <code>var1,...,varN</code>
                     </div>
 
                     <!-- Cantidad de variables -->
@@ -4136,7 +4126,6 @@
                 formatWarn: '⚠ Datos llegan ({got} cols) pero se esperan {exp}.',
                 formatHintEnable: ' Activa "Micro:bit envía timestamp"',
                 formatHintDisable: ' Desactiva "Micro:bit envía timestamp"',
-                formatHintAutoDetect: ' Verifica el número de variables configurado.',
                 // Panel lateral
                 varConfig: 'CONFIGURACIÓN DE VARIABLES',
                 numVars: 'Número de Variables',
@@ -4376,7 +4365,6 @@
                 formatWarn: '⚠ Data arriving ({got} cols) but {exp} expected.',
                 formatHintEnable: ' Enable "Micro:bit sends timestamp"',
                 formatHintDisable: ' Disable "Micro:bit sends timestamp"',
-                formatHintAutoDetect: ' Check the configured number of variables.',
                 // Side panel
                 varConfig: 'VARIABLE CONFIGURATION',
                 numVars: 'Number of Variables',
@@ -4616,7 +4604,6 @@
                 formatWarn: '⚠ Dados chegam ({got} cols) mas {exp} esperadas.',
                 formatHintEnable: ' Ative "Micro:bit envia timestamp"',
                 formatHintDisable: ' Desative "Micro:bit envia timestamp"',
-                formatHintAutoDetect: ' Verifique o número de variáveis configurado.',
                 // Painel lateral
                 varConfig: 'CONFIGURAÇÃO DE VARIÁVEIS',
                 numVars: 'Número de Variáveis',
@@ -5537,7 +5524,7 @@
 </div>
 <div class="help-accordion-content collapsed">
     <p style="background:#e8f5e9; padding:8px 10px; border-radius:6px; border-left:4px solid #4caf50; font-size:0.9em;">
-        <strong>Detección automática:</strong> En modo <strong>Auto</strong> (predeterminado), la app detecta automáticamente si los datos incluyen timestamp o no. No necesitas configurar nada.
+        <strong>Formato de datos:</strong> Usa la casilla <strong>"Micro:bit envía timestamp"</strong> para indicar si tu programa envía el tiempo. Está activada por defecto. Si la desactivas, la app usa el reloj del navegador para el tiempo.
     </p>
     <p><strong>Formato básico — solo valor</strong> (la app usa el reloj del navegador para el tiempo):</p>
     <div class="code-block">
@@ -5609,7 +5596,7 @@ while True:
     print("{},{},{},{}".format(running_time(), x, y, z))
     sleep(50)</pre>
     </div>
-    <p style="font-size:0.9em; color:#555;"><strong>Nota:</strong> En modo <strong>Auto</strong>, la app detecta automáticamente si los datos incluyen timestamp o no. Si no envías timestamp (solo valores), la app usa el reloj del navegador. Pero el reloj del navegador tiene resolución limitada (~16ms) y los datos que llegan en el mismo lote USB/BLE reciben el mismo tiempo. Para fenómenos rápidos, siempre usar <code>input.runningTime()</code>.</p>
+    <p style="font-size:0.9em; color:#555;"><strong>Nota:</strong> Si tu programa envía timestamp, asegúrate de que la casilla <strong>"Micro:bit envía timestamp"</strong> esté activada (es el valor por defecto). Si no envías timestamp (solo valores), desactívala para que la app use el reloj del navegador. El reloj del navegador tiene resolución limitada (~16ms) y los datos que llegan en el mismo lote USB/BLE reciben el mismo tiempo. Para fenómenos rápidos, siempre usar <code>input.runningTime()</code>.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -5705,7 +5692,7 @@ basic.forever(function () {
 })</pre>
     </div>
 
-    <p style="font-size:0.9em; color:#555;"><strong>Formato de datos:</strong> Cada línea es <code>timestamp,valor1,valor2,...</code> o <code>valor1,valor2,...</code> separados por coma. El timestamp es <code>input.runningTime()</code> en milisegundos. En modo <strong>Auto</strong> (predeterminado), la app detecta el formato automáticamente.</p>
+    <p style="font-size:0.9em; color:#555;"><strong>Formato de datos:</strong> Cada línea es <code>timestamp,valor1,valor2,...</code> o <code>valor1,valor2,...</code> separados por coma. El timestamp es <code>input.runningTime()</code> en milisegundos. Usa la casilla <strong>"Micro:bit envía timestamp"</strong> (activada por defecto) para indicar qué formato usa tu programa.</p>
 
     <h4 style="margin-top:15px; color:#1565c0;">PASO 3: Descargar el programa a la micro:bit</h4>
     <ol>
@@ -5922,7 +5909,7 @@ bluetooth.startIOPinService()</pre>
     <p><strong>Conexión Bluetooth:</strong></p>
     <ul>
         <li><strong>No aparece en el selector:</strong> Verificar que el programa tenga <code>bluetooth.startUartService()</code>. Reiniciar la micro:bit. Verificar que "No Pairing Required" esté habilitado en MakeCode.</li>
-        <li><strong>Se conecta pero no llegan datos:</strong> Verificar que use <code>bluetooth.uartWriteLine()</code>. Presionar CAPTURAR. El formato (con o sin timestamp) se detecta automáticamente en modo Auto.</li>
+        <li><strong>Se conecta pero no llegan datos:</strong> Verificar que use <code>bluetooth.uartWriteLine()</code>. Presionar CAPTURAR. Verifica que la casilla "Micro:bit envía timestamp" esté configurada correctamente según tu programa.</li>
         <li><strong>Error "Not supported":</strong> Cache BLE corrupto. Ir a <code>chrome://bluetooth-internals</code> &gt; Devices &gt; olvidar el micro:bit. En macOS: también eliminarlo de Preferencias &gt; Bluetooth.</li>
         <li><strong>Se desconecta mucho:</strong> Acercar la micro:bit (~10m máx). Verificar batería. La app reconecta automáticamente.</li>
         <li><strong>No funciona en iPhone/iPad:</strong> Apple no soporta Web Bluetooth. Usar Chrome en Android o computadora.</li>
@@ -6114,7 +6101,7 @@ bluetooth.startIOPinService()</pre>
 </div>
 <div class="help-accordion-content collapsed">
     <p style="background:#e8f5e9; padding:8px 10px; border-radius:6px; border-left:4px solid #4caf50; font-size:0.9em;">
-        <strong>Auto-detection:</strong> In <strong>Auto</strong> mode (default), the app automatically detects whether data includes a timestamp or not. No configuration needed.
+        <strong>Data format:</strong> Use the <strong>"Micro:bit sends timestamp"</strong> checkbox to indicate whether your program sends time. It is enabled by default. If you uncheck it, the app uses the browser clock for timing.
     </p>
     <p><strong>Basic format — value only</strong> (app uses browser clock for timing):</p>
     <div class="code-block">
@@ -6186,7 +6173,7 @@ while True:
     print("{},{},{},{}".format(running_time(), x, y, z))
     sleep(50)</pre>
     </div>
-    <p style="font-size:0.9em; color:#555;"><strong>Note:</strong> In <strong>Auto</strong> mode, the app automatically detects whether data includes a timestamp or not. If you don't send a timestamp (values only), the app uses the browser clock. But the browser clock has limited resolution (~16ms) and data arriving in the same USB/BLE batch receives the same timestamp. For fast phenomena, always use <code>input.runningTime()</code>.</p>
+    <p style="font-size:0.9em; color:#555;"><strong>Note:</strong> If your program sends a timestamp, make sure the <strong>"Micro:bit sends timestamp"</strong> checkbox is enabled (it is by default). If you don't send a timestamp (values only), uncheck it so the app uses the browser clock. The browser clock has limited resolution (~16ms) and data arriving in the same USB/BLE batch receives the same timestamp. For fast phenomena, always use <code>input.runningTime()</code>.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -6282,7 +6269,7 @@ basic.forever(function () {
 })</pre>
     </div>
 
-    <p style="font-size:0.9em; color:#555;"><strong>Data format:</strong> Each line is <code>timestamp,value1,value2,...</code> or <code>value1,value2,...</code> separated by commas. The timestamp is <code>input.runningTime()</code> in milliseconds. In <strong>Auto</strong> mode (default), the app detects the format automatically.</p>
+    <p style="font-size:0.9em; color:#555;"><strong>Data format:</strong> Each line is <code>timestamp,value1,value2,...</code> or <code>value1,value2,...</code> separated by commas. The timestamp is <code>input.runningTime()</code> in milliseconds. Use the <strong>"Micro:bit sends timestamp"</strong> checkbox (enabled by default) to indicate which format your program uses.</p>
 
     <h4 style="margin-top:15px; color:#1565c0;">STEP 3: Download the program to the micro:bit</h4>
     <ol>
@@ -6328,7 +6315,7 @@ bluetooth.startIOPinService()</pre>
         </tr>
         <tr style="border-bottom:1px solid #ddd;">
             <td style="padding:6px;">Connects but no data arrives</td>
-            <td style="padding:6px;">Verify the program uses <code>bluetooth.uartWriteLine()</code>. Press CAPTURE after connecting. The format (with or without timestamp) is detected automatically in Auto mode.</td>
+            <td style="padding:6px;">Verify the program uses <code>bluetooth.uartWriteLine()</code>. Press CAPTURE after connecting. Verify that the "Micro:bit sends timestamp" checkbox is configured correctly for your program.</td>
         </tr>
         <tr style="border-bottom:1px solid #ddd;">
             <td style="padding:6px;">"UART not found" error</td>
@@ -6499,7 +6486,7 @@ bluetooth.startIOPinService()</pre>
     <p><strong>Bluetooth Connection:</strong></p>
     <ul>
         <li><strong>Not showing in picker:</strong> Verify program has <code>bluetooth.startUartService()</code>. Restart micro:bit. Verify "No Pairing Required" is enabled in MakeCode.</li>
-        <li><strong>Connects but no data:</strong> Verify it uses <code>bluetooth.uartWriteLine()</code>. Press CAPTURE. The format (with or without timestamp) is detected automatically in Auto mode.</li>
+        <li><strong>Connects but no data:</strong> Verify it uses <code>bluetooth.uartWriteLine()</code>. Press CAPTURE. Verify that the "Micro:bit sends timestamp" checkbox is configured correctly for your program.</li>
         <li><strong>"Not supported" error:</strong> Corrupted BLE cache. Go to <code>chrome://bluetooth-internals</code> &gt; Devices &gt; forget the micro:bit. On macOS: also remove from Preferences &gt; Bluetooth.</li>
         <li><strong>Frequent disconnections:</strong> Move micro:bit closer (~10m max). Check battery. The app auto-reconnects.</li>
         <li><strong>Doesn't work on iPhone/iPad:</strong> Apple doesn't support Web Bluetooth. Use Chrome on Android or a computer.</li>
@@ -6691,7 +6678,7 @@ bluetooth.startIOPinService()</pre>
 </div>
 <div class="help-accordion-content collapsed">
     <p style="background:#e8f5e9; padding:8px 10px; border-radius:6px; border-left:4px solid #4caf50; font-size:0.9em;">
-        <strong>Detecção automática:</strong> No modo <strong>Auto</strong> (padrão), o app detecta automaticamente se os dados incluem timestamp ou não. Nenhuma configuração necessária.
+        <strong>Formato dos dados:</strong> Use a caixa de seleção <strong>"Micro:bit envia timestamp"</strong> para indicar se o seu programa envia o tempo. Está ativada por padrão. Se desativá-la, o app usa o relógio do navegador para o tempo.
     </p>
     <p><strong>Formato básico — apenas valor</strong> (o app usa o relógio do navegador para o tempo):</p>
     <div class="code-block">
@@ -6763,7 +6750,7 @@ while True:
     print("{},{},{},{}".format(running_time(), x, y, z))
     sleep(50)</pre>
     </div>
-    <p style="font-size:0.9em; color:#555;"><strong>Nota:</strong> No modo <strong>Auto</strong>, o app detecta automaticamente se os dados incluem timestamp ou não. Se você não enviar timestamp (apenas valores), o app usa o relógio do navegador. Mas o relógio do navegador tem resolução limitada (~16ms) e dados que chegam no mesmo lote USB/BLE recebem o mesmo timestamp. Para fenômenos rápidos, sempre use <code>input.runningTime()</code>.</p>
+    <p style="font-size:0.9em; color:#555;"><strong>Nota:</strong> Se o seu programa envia timestamp, certifique-se de que a caixa de seleção <strong>"Micro:bit envia timestamp"</strong> esteja ativada (é o padrão). Se não enviar timestamp (apenas valores), desative-a para que o app use o relógio do navegador. O relógio do navegador tem resolução limitada (~16ms) e dados que chegam no mesmo lote USB/BLE recebem o mesmo timestamp. Para fenômenos rápidos, sempre use <code>input.runningTime()</code>.</p>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -6859,7 +6846,7 @@ basic.forever(function () {
 })</pre>
     </div>
 
-    <p style="font-size:0.9em; color:#555;"><strong>Formato dos dados:</strong> Cada linha é <code>timestamp,valor1,valor2,...</code> ou <code>valor1,valor2,...</code> separados por vírgula. O timestamp é <code>input.runningTime()</code> em milissegundos. No modo <strong>Auto</strong> (padrão), o app detecta o formato automaticamente.</p>
+    <p style="font-size:0.9em; color:#555;"><strong>Formato dos dados:</strong> Cada linha é <code>timestamp,valor1,valor2,...</code> ou <code>valor1,valor2,...</code> separados por vírgula. O timestamp é <code>input.runningTime()</code> em milissegundos. Use a caixa de seleção <strong>"Micro:bit envia timestamp"</strong> (ativada por padrão) para indicar qual formato o seu programa usa.</p>
 
     <h4 style="margin-top:15px; color:#1565c0;">PASSO 3: Baixar o programa na micro:bit</h4>
     <ol>
@@ -6905,7 +6892,7 @@ bluetooth.startIOPinService()</pre>
         </tr>
         <tr style="border-bottom:1px solid #ddd;">
             <td style="padding:6px;">Conecta mas não chegam dados</td>
-            <td style="padding:6px;">Verificar que o programa usa <code>bluetooth.uartWriteLine()</code>. Pressionar CAPTURAR após conectar. O formato (com ou sem timestamp) é detectado automaticamente no modo Auto.</td>
+            <td style="padding:6px;">Verificar que o programa usa <code>bluetooth.uartWriteLine()</code>. Pressionar CAPTURAR após conectar. Verifique se a caixa "Micro:bit envia timestamp" está configurada corretamente para o seu programa.</td>
         </tr>
         <tr style="border-bottom:1px solid #ddd;">
             <td style="padding:6px;">Erro "UART não encontrado"</td>
@@ -7076,7 +7063,7 @@ bluetooth.startIOPinService()</pre>
     <p><strong>Conexão Bluetooth:</strong></p>
     <ul>
         <li><strong>Não aparece no seletor:</strong> Verificar que o programa tem <code>bluetooth.startUartService()</code>. Reiniciar a micro:bit. Verificar que "No Pairing Required" está habilitado no MakeCode.</li>
-        <li><strong>Conecta mas sem dados:</strong> Verificar que usa <code>bluetooth.uartWriteLine()</code>. Pressionar CAPTURAR. O formato (com ou sem timestamp) é detectado automaticamente no modo Auto.</li>
+        <li><strong>Conecta mas sem dados:</strong> Verificar que usa <code>bluetooth.uartWriteLine()</code>. Pressionar CAPTURAR. Verifique se a caixa "Micro:bit envia timestamp" está configurada corretamente para o seu programa.</li>
         <li><strong>Erro "Not supported":</strong> Cache BLE corrompido. Ir a <code>chrome://bluetooth-internals</code> &gt; Devices &gt; esquecer a micro:bit. No macOS: também remover das Preferências &gt; Bluetooth.</li>
         <li><strong>Desconecta muito:</strong> Aproximar a micro:bit (~10m máx). Verificar bateria. O app reconecta automaticamente.</li>
         <li><strong>Não funciona no iPhone/iPad:</strong> Apple não suporta Web Bluetooth. Usar Chrome no Android ou computador.</li>
@@ -7240,7 +7227,7 @@ bluetooth.startIOPinService()</pre>
             document.getElementById('var3Config').classList.toggle('hidden', num < 3);
         });
 
-        // microbitTimestamp controlado por selector dataFormat
+        // microbitTimestamp controlado por checkbox
 
         document.getElementById('spikeFilter').addEventListener('change', function() {
             state.spikeFilter = this.checked;
@@ -7275,7 +7262,6 @@ bluetooth.startIOPinService()</pre>
                 const newNumVars = Math.min(got, 3);
                 document.getElementById('numVariables').value = newNumVars;
                 state.numVariables = newNumVars;
-                _autoFormatDetected = false; // Permitir re-detección del formato
             }
             _formatMismatchCount = 0;
             this.style.display = 'none';
@@ -7305,57 +7291,30 @@ bluetooth.startIOPinService()</pre>
             return state.variables[xIdx] ? state.variables[xIdx].name : 'X';
         }
 
-        function onDataFormatChange() {
-            const format = document.getElementById('dataFormat').value;
-            const isAuto = format === 'auto';
-            const isVarsOnly = format === 'varsOnly';
+        function onTimestampToggle() {
+            const checked = document.getElementById('microbitTimestamp').checked;
+            state.microbitTimestamp = checked;
+            const isVarsOnly = !checked;
 
-            // En modo auto, mantener el estado actual (se auto-detectará al recibir datos)
-            if (!isAuto) {
-                state.microbitTimestamp = !isVarsOnly;
-                document.getElementById('microbitTimestamp').checked = !isVarsOnly;
-            }
+            // Show/hide info box for vars-only mode
+            document.getElementById('dataFormatInfo').style.display = isVarsOnly ? 'block' : 'none';
 
-            // Show/hide info boxes
-            document.getElementById('dataFormatInfo').style.display = (!isAuto && isVarsOnly) ? 'block' : 'none';
-            document.getElementById('dataFormatAutoInfo').style.display = isAuto ? 'block' : 'none';
-
-            // Show/hide time-related controls (ocultar solo si explícitamente "varsOnly")
-            const hideTimeControls = !isAuto && isVarsOnly;
+            // Show/hide time-related controls
             const timeUnitRow = document.getElementById('timeUnit').closest('.input-row');
-            if (timeUnitRow) timeUnitRow.style.display = hideTimeControls ? 'none' : '';
+            if (timeUnitRow) timeUnitRow.style.display = isVarsOnly ? 'none' : '';
             const setZeroBtn = document.getElementById('setZeroBtn');
-            if (setZeroBtn) setZeroBtn.style.display = hideTimeControls ? 'none' : '';
+            if (setZeroBtn) setZeroBtn.style.display = isVarsOnly ? 'none' : '';
 
-            // En modo auto, no reconfigurar gráficas (se hará al detectar datos)
-            if (isAuto) {
-                // Reset auto-detection para la próxima captura
-                _autoFormatDetected = false;
-                // Mantener gráficas con eje X = time por defecto
-                for (let g = 0; g < 3; g++) {
-                    state.graphs[g].xAxis = 'time';
-                    state.graphs[g].xLabel = getXAxisLabel('time');
-                    state.graphs[g].yVars = [0];
-                    state.graphs[g].yLabel = state.variables[0].name;
-                }
-                state.microbitTimestamp = true;
-                document.getElementById('microbitTimestamp').checked = true;
-                updateGraphConfiguration();
-                updateDataTableHeader();
-                return;
-            }
-
-            // Auto-configure graphs based on data format BEFORE rebuilding UI
+            // Auto-configure graphs based on timestamp mode
             if (isVarsOnly) {
                 for (let g = 0; g < 3; g++) {
                     state.graphs[g].xAxis = 'var0';
                     state.graphs[g].xLabel = state.variables[0].name;
-                    // Y: primera variable que no sea la del X
                     const yVars = [];
                     for (let i = 1; i < state.numVariables; i++) {
                         if (yVars.length === 0) yVars.push(i);
                     }
-                    if (yVars.length === 0) yVars.push(0); // Solo 1 variable
+                    if (yVars.length === 0) yVars.push(0);
                     state.graphs[g].yVars = yVars;
                     state.graphs[g].yLabel = state.variables[yVars[0]].name;
                 }
@@ -7368,7 +7327,7 @@ bluetooth.startIOPinService()</pre>
                 }
             }
 
-            // Rebuild UI (dropdowns, checkboxes, labels) from state
+            // Rebuild UI from state
             updateGraphConfiguration();
             updateDataTableHeader();
 
@@ -7382,7 +7341,6 @@ bluetooth.startIOPinService()</pre>
                 const yLabel = document.getElementById(`graph${gn}YLabel`);
                 if (yLabel) yLabel.value = state.graphs[g].yLabel;
 
-                // Sync Y checkboxes
                 for (let i = 0; i < state.numVariables; i++) {
                     const cb = document.getElementById(`graph${gn}Var${i}`);
                     if (cb && !cb.disabled) {
@@ -7422,7 +7380,7 @@ bluetooth.startIOPinService()</pre>
             }
 
             // Apply data format (adjusts graph config based on time mode)
-            onDataFormatChange();
+            onTimestampToggle();
 
             updateGraphConfiguration();
             updateDataTableHeader();
@@ -8606,9 +8564,10 @@ bluetooth.startIOPinService()</pre>
 
                     const numVars = state.numVariables;
                     const batchTime = Date.now();
-                    const isAutoMode = document.getElementById('dataFormat').value === 'auto';
-
                     this.stats.lines += lines.length;
+
+                    const useMbTime = state.microbitTimestamp;
+                    const expectedParts = useMbTime ? numVars + 1 : numVars;
 
                     for (let li = 0; li < lines.length; li++) {
                         const line = lines[li].trim();
@@ -8617,46 +8576,13 @@ bluetooth.startIOPinService()</pre>
                         const parts = line.split(',');
                         const nParts = parts.length;
 
-                        let hasTimestamp, lineIsVarsOnly;
-                        if (isAutoMode) {
-                            // Auto-detectar: aceptar N (solo vars) o N+1 (timestamp + vars)
-                            hasTimestamp = nParts === numVars + 1;
-                            lineIsVarsOnly = nParts === numVars;
-                            if (!hasTimestamp && !lineIsVarsOnly) {
-                                this.warn('Format mismatch:', JSON.stringify(line), '| parts:', nParts, '| expected:', numVars, 'or', numVars + 1);
-                                _formatMismatchCount++;
-                                _lastMismatchParts = nParts;
-                                continue;
-                            }
-                            // Auto-configurar UI en la primera línea válida de la sesión
-                            if (!_autoFormatDetected) {
-                                _autoFormatDetected = true;
-                                state.microbitTimestamp = hasTimestamp;
-                                document.getElementById('microbitTimestamp').checked = hasTimestamp;
-                                if (hasTimestamp) {
-                                    for (let g = 0; g < 3; g++) {
-                                        state.graphs[g].xAxis = 'time';
-                                        state.graphs[g].xLabel = getXAxisLabel('time');
-                                    }
-                                } else {
-                                    for (let g = 0; g < 3; g++) {
-                                        state.graphs[g].xAxis = 'var0';
-                                        state.graphs[g].xLabel = state.variables[0].name;
-                                    }
-                                }
-                            }
-                        } else {
-                            // Modo fijo: respetar la configuración manual
-                            const useMbTime = state.microbitTimestamp;
-                            const expectedParts = useMbTime ? numVars + 1 : numVars;
-                            if (nParts !== expectedParts) {
-                                this.warn('Format mismatch:', JSON.stringify(line), '| parts:', nParts, '| expected:', expectedParts);
-                                _formatMismatchCount++;
-                                _lastMismatchParts = nParts;
-                                continue;
-                            }
-                            hasTimestamp = useMbTime;
+                        if (nParts !== expectedParts) {
+                            this.warn('Format mismatch:', JSON.stringify(line), '| parts:', nParts, '| expected:', expectedParts);
+                            _formatMismatchCount++;
+                            _lastMismatchParts = nParts;
+                            continue;
                         }
+                        const hasTimestamp = useMbTime;
 
                         let pointTime;
                         let valueOffset = 0;
@@ -9261,7 +9187,6 @@ bluetooth.startIOPinService()</pre>
             lastSamplingRateUpdate = 0;
             _formatMismatchCount = 0;
             _lastMismatchParts = 0;
-            _autoFormatDetected = false;
             _lastValidTimestamp = -1;
             _spikeFilterHistory = {};
             _spikeLastValue = {};
@@ -9645,19 +9570,12 @@ bluetooth.startIOPinService()</pre>
                     if (_formatMismatchCount > 0 && state.rawData.length === 0) {
                         const tr = translations[currentLanguage];
                         const n = state.numVariables;
-                        const fmtMode = document.getElementById('dataFormat').value;
-                        let expected, hint;
-                        if (fmtMode === 'auto') {
-                            expected = n + ' o ' + (n + 1);
-                            hint = tr.formatHintAutoDetect || '';
-                        } else {
-                            expected = state.microbitTimestamp ? n + 1 : n;
-                            hint = _lastMismatchParts === n + 1 && !state.microbitTimestamp
-                                ? tr.formatHintEnable
-                                : _lastMismatchParts === n && state.microbitTimestamp
-                                ? tr.formatHintDisable
-                                : '';
-                        }
+                        const expected = state.microbitTimestamp ? n + 1 : n;
+                        const hint = _lastMismatchParts === n + 1 && !state.microbitTimestamp
+                            ? tr.formatHintEnable
+                            : _lastMismatchParts === n && state.microbitTimestamp
+                            ? tr.formatHintDisable
+                            : '';
                         fwEl.textContent = tr.formatWarn.replace('{got}', _lastMismatchParts).replace('{exp}', expected) + hint;
                         fwEl.style.display = 'inline-block';
                     } else {
@@ -9773,7 +9691,6 @@ bluetooth.startIOPinService()</pre>
         let _dataPointCounter = 0;
         let _formatMismatchCount = 0;   // Líneas descartadas por formato incorrecto
         let _lastMismatchParts = 0;     // Número de columnas de la última línea descartada
-        let _autoFormatDetected = false; // true después de auto-detectar el formato en la sesión
         let _lastValidTimestamp = -1;   // Último timestamp válido para detectar reinicios o columnas invertidas
 
         async function startSerialLoop() {
@@ -9800,13 +9717,10 @@ bluetooth.startIOPinService()</pre>
                     if (!state.isCollecting) continue;
 
                     // Modo captura: parsear inline y agregar a buffers
-                    // Auto-detección de formato (modo "auto"):
-                    //   Si la línea tiene N+1 valores → primer valor es timestamp (ms)
-                    //   Si la línea tiene N valores → se usa Date.now()
-                    // En la primera línea válida se auto-configura state.microbitTimestamp
                     const batchTime = Date.now();
                     const batchLen = lines.length;
-                    const isAutoMode = document.getElementById('dataFormat').value === 'auto';
+                    const useMbTime = state.microbitTimestamp;
+                    const expectedParts = useMbTime ? numVars + 1 : numVars;
 
                     for (let li = 0; li < batchLen; li++) {
                         const line = lines[li].trim();
@@ -9815,45 +9729,12 @@ bluetooth.startIOPinService()</pre>
                         const parts = line.split(',');
                         const nParts = parts.length;
 
-                        let hasTimestamp, lineIsVarsOnly;
-                        if (isAutoMode) {
-                            // Auto-detectar: aceptar N (solo vars) o N+1 (timestamp + vars)
-                            hasTimestamp = nParts === numVars + 1;
-                            lineIsVarsOnly = nParts === numVars;
-                            if (!hasTimestamp && !lineIsVarsOnly) {
-                                _formatMismatchCount++;
-                                _lastMismatchParts = nParts;
-                                continue;
-                            }
-                            // Auto-configurar UI en la primera línea válida de la sesión
-                            if (!_autoFormatDetected) {
-                                _autoFormatDetected = true;
-                                state.microbitTimestamp = hasTimestamp;
-                                document.getElementById('microbitTimestamp').checked = hasTimestamp;
-                                // Actualizar gráficas según formato detectado
-                                if (hasTimestamp) {
-                                    for (let g = 0; g < 3; g++) {
-                                        state.graphs[g].xAxis = 'time';
-                                        state.graphs[g].xLabel = getXAxisLabel('time');
-                                    }
-                                } else {
-                                    for (let g = 0; g < 3; g++) {
-                                        state.graphs[g].xAxis = 'var0';
-                                        state.graphs[g].xLabel = state.variables[0].name;
-                                    }
-                                }
-                            }
-                        } else {
-                            // Modo fijo: respetar la configuración manual
-                            const useMbTime = state.microbitTimestamp;
-                            const expectedParts = useMbTime ? numVars + 1 : numVars;
-                            if (nParts !== expectedParts) {
-                                _formatMismatchCount++;
-                                _lastMismatchParts = nParts;
-                                continue;
-                            }
-                            hasTimestamp = useMbTime;
+                        if (nParts !== expectedParts) {
+                            _formatMismatchCount++;
+                            _lastMismatchParts = nParts;
+                            continue;
                         }
+                        const hasTimestamp = useMbTime;
 
                         let pointTime;
                         let valueOffset = 0;
