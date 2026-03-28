@@ -8612,17 +8612,15 @@ bluetooth.startIOPinService()</pre>
                             }
                             if (mt < state.timeZeroOffset) continue;
 
-                            // Monotonía: descartar si el timestamp retrocede
-                            if (_lastValidTimestamp >= 0) {
-                                if (mt < _lastValidTimestamp) {
-                                    if (_lastValidTimestamp - mt > 5000) {
-                                        // Reinicio del micro:bit
-                                        state.timeZeroOffset = mt;
-                                        state.microbitTimeZeroSet = true;
-                                        state._lastMicrobitTimestamp = mt;
-                                    } else {
-                                        continue; // Corrupción: descartar
-                                    }
+                            // Monotonía estricta con verificación por wall clock
+                            if (_lastValidTimestamp >= 0 && mt < _lastValidTimestamp) {
+                                const wallGap = batchTime - _lastBatchWallTime;
+                                if (_lastValidTimestamp - mt > 5000 && wallGap > 2000) {
+                                    state.timeZeroOffset = mt;
+                                    state.microbitTimeZeroSet = true;
+                                    state._lastMicrobitTimestamp = mt;
+                                } else {
+                                    continue; // Corrupción: descartar
                                 }
                             }
 
@@ -8642,7 +8640,13 @@ bluetooth.startIOPinService()</pre>
                         }
                         if (!valid) continue;
 
+                        // Detector de corrupción: digit-loss y line-merge (siempre activo)
+                        if (isSerialCorruption(values, numVars)) continue;
+
                         if (state.spikeFilter && hasSpikeValues(values)) continue;
+
+                        // Punto válido: actualizar buffers de detección de corrupción
+                        updateCorruptionBuffers(values, numVars);
 
                         const dataPoint = {
                             time: pointTime,
@@ -8675,6 +8679,7 @@ bluetooth.startIOPinService()</pre>
                             this.stats.lastLogTime = now;
                         }
                     }
+                    _lastBatchWallTime = batchTime;
                 };
 
                 txChar.addEventListener('characteristicvaluechanged', handler);
@@ -9213,6 +9218,8 @@ bluetooth.startIOPinService()</pre>
             _lastMismatchParts = 0;
             _lastValidTimestamp = -1;
             _serialLastDataTime = Date.now();
+            _lastBatchWallTime = Date.now();
+            _corruptionBuffer = {};
             _spikeFilterHistory = {};
             _spikeLastValue = {};
             document.getElementById('formatWarning').style.display = 'none';
@@ -9739,13 +9746,67 @@ bluetooth.startIOPinService()</pre>
         let _lastMismatchParts = 0;     // Número de columnas de la última línea descartada
         let _lastValidTimestamp = -1;   // Último timestamp válido para detectar reinicios o columnas invertidas
         let _serialLastDataTime = 0;    // Último timestamp con datos recibidos (para health check)
+        let _lastBatchWallTime = 0;     // Wall time del último batch procesado (para verificar resets)
+        let _corruptionMedian = {};     // Running median por variable para detección de digit-loss
+        let _corruptionBuffer = {};     // Buffer circular de últimos N valores por variable
 
         // Límites de protección contra corrupción serial
         const SERIAL_MAX_BUFFER = 8192;     // Máx bytes en buffer de acumulación (evitar memory leak)
         const SERIAL_MAX_LINE_LEN = 200;    // Máx caracteres por línea (líneas más largas = corrupción)
         const SERIAL_SILENCE_WARN = 15000;  // ms sin datos para advertir al usuario
+        const CORRUPTION_WINDOW = 10;       // Ventana de valores para mediana anti-corrupción
+        const CORRUPTION_LOW_RATIO = 0.15;  // Valor < 15% de la mediana = digit-loss
+        const CORRUPTION_HIGH_RATIO = 8;    // Valor > 8x mediana = concatenación basura
+        const CORRUPTION_MIN_MEDIAN = 10;   // Solo filtrar si la mediana es >= 10 (dígitos múltiples)
+        const CORRUPTION_MAX_RANGE_RATIO = 0.5; // Solo filtrar si el rango es < 50% de la mediana (señal estable)
         // Regex para detectar caracteres no imprimibles (excepto \r \n , . - y dígitos)
         const SERIAL_INVALID_CHAR = /[^\x20-\x7E]/;
+
+        // Detector de corrupción serial por pérdida de dígitos ASCII
+        // Cuando un byte se pierde en el UART (sin flow control), un valor como "42"
+        // puede llegar como "4" o "2". Esta función detecta esos patrones comparando
+        // cada valor con la mediana reciente de esa variable.
+        function isSerialCorruption(values, numVars) {
+            for (let vi = 0; vi < numVars; vi++) {
+                const buf = _corruptionBuffer[vi];
+                if (!buf || buf.length < 4) continue; // Necesita historia
+
+                // Calcular mediana y rango
+                const sorted = buf.slice().sort((a, b) => a - b);
+                const mid = sorted.length >> 1;
+                const median = sorted.length % 2 === 0
+                    ? (sorted[mid - 1] + sorted[mid]) / 2
+                    : sorted[mid];
+
+                const absMedian = Math.abs(median);
+                if (absMedian < CORRUPTION_MIN_MEDIAN) continue; // Solo aplica a valores de 2+ dígitos
+
+                // Solo filtrar cuando la señal es estable (rango bajo)
+                const range = sorted[sorted.length - 1] - sorted[0];
+                if (range > absMedian * CORRUPTION_MAX_RANGE_RATIO) continue;
+
+                const v = values[vi];
+                const ratio = absMedian > 0 ? Math.abs(v) / absMedian : 1;
+
+                // Digit-loss: valor ~1/10 del esperado (se perdió un byte ASCII)
+                // Concatenación: valor ~10x del esperado (se fusionaron líneas por \n perdido)
+                if (ratio < CORRUPTION_LOW_RATIO || ratio > CORRUPTION_HIGH_RATIO) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Actualizar buffers de mediana para detección de corrupción
+        function updateCorruptionBuffers(values, numVars) {
+            for (let vi = 0; vi < numVars; vi++) {
+                if (!_corruptionBuffer[vi]) _corruptionBuffer[vi] = [];
+                _corruptionBuffer[vi].push(values[vi]);
+                if (_corruptionBuffer[vi].length > CORRUPTION_WINDOW) {
+                    _corruptionBuffer[vi].shift();
+                }
+            }
+        }
 
         async function startSerialLoop() {
             if (serialLoopRunning) return;
@@ -9825,19 +9886,21 @@ bluetooth.startIOPinService()</pre>
                             // Descartar datos viejos del buffer serial (anteriores a T=0)
                             if (mt < state.timeZeroOffset) continue;
 
-                            // Monotonía: descartar si el timestamp retrocede (corrupción de dígitos)
-                            // Excepción: retroceso > 5s indica reinicio del micro:bit
-                            if (_lastValidTimestamp >= 0) {
-                                if (mt < _lastValidTimestamp) {
-                                    if (_lastValidTimestamp - mt > 5000) {
-                                        // Reinicio del micro:bit: resetear la base de tiempo
-                                        state.timeZeroOffset = mt;
-                                        state.microbitTimeZeroSet = true;
-                                        state._lastMicrobitTimestamp = mt;
-                                    } else {
-                                        // Retroceso pequeño: corrupción, descartar
-                                        continue;
-                                    }
+                            // Monotonía estricta: descartar timestamps que retroceden
+                            // Un "reset" real del micro:bit requiere:
+                            //   1) Retroceso > 5s en timestamp del micro:bit
+                            //   2) Gap > 2s en wall clock (el micro:bit estuvo reiniciando)
+                            // Sin gap en wall clock → corrupción de dígitos (ej: "10028" → "28")
+                            if (_lastValidTimestamp >= 0 && mt < _lastValidTimestamp) {
+                                const wallGap = batchTime - _lastBatchWallTime;
+                                if (_lastValidTimestamp - mt > 5000 && wallGap > 2000) {
+                                    // Reset real: wall clock confirma desconexión
+                                    state.timeZeroOffset = mt;
+                                    state.microbitTimeZeroSet = true;
+                                    state._lastMicrobitTimestamp = mt;
+                                } else {
+                                    // Corrupción: descartar (digit-loss en timestamp)
+                                    continue;
                                 }
                             }
 
@@ -9857,8 +9920,14 @@ bluetooth.startIOPinService()</pre>
                         }
                         if (!valid) continue;
 
-                        // Filtro de picos: descartar valores anómalos
+                        // Detector de corrupción serial: digit-loss y line-merge (siempre activo)
+                        if (isSerialCorruption(values, numVars)) continue;
+
+                        // Filtro de picos: descartar valores anómalos (opcional, usuario lo activa)
                         if (state.spikeFilter && hasSpikeValues(values)) continue;
+
+                        // Punto válido: actualizar buffers de detección de corrupción
+                        updateCorruptionBuffers(values, numVars);
 
                         const dataPoint = {
                             time: pointTime,
@@ -9876,6 +9945,7 @@ bluetooth.startIOPinService()</pre>
                             capturePhoto();
                         }
                     }
+                    _lastBatchWallTime = batchTime;
                 }
             } catch (err) {
                 if (err.name !== 'NetworkError') {
