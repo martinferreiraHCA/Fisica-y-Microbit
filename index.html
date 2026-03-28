@@ -8722,8 +8722,8 @@ bluetooth.startIOPinService()</pre>
 
                         const isCacheError = CACHE_ERRORS.includes(e1.message);
 
-                        if (isCacheError && _isWindows) {
-                            // Error de caché BLE de Windows detectado.
+                        if (isCacheError) {
+                            // Error de caché BLE detectado.
                             // forget() limpia el caché de Chrome — fuerza re-discovery
                             // de servicios GATT en la próxima conexión.
                             this.log(`${e1.message} → intentando limpiar caché BLE...`);
@@ -8810,13 +8810,7 @@ bluetooth.startIOPinService()</pre>
 
                         if (!connected) {
                                 this.error('Conexión fallida:', e1.message);
-                                alert(
-                                    'No se pudo conectar al micro:bit.\n\n' +
-                                    'Verificá estos pasos:\n\n' +
-                                    '1. En MakeCode: ⚙ → Project Settings → activar "No Pairing Required"\n' +
-                                    '2. Si el micro:bit aparece en Bluetooth de Windows → Quitar dispositivo\n' +
-                                    '3. Reseteá el micro:bit y volvé a intentar'
-                                );
+                                this._showConnectionError();
                                 this.connecting = false;
                                 return false;
                             }
