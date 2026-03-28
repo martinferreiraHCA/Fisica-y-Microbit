@@ -8557,6 +8557,12 @@ bluetooth.startIOPinService()</pre>
                     }
 
                     this.btBuffer += chunk;
+
+                    // Protección contra buffer infinito (BLE con datos corruptos)
+                    if (this.btBuffer.length > SERIAL_MAX_BUFFER) {
+                        this.btBuffer = this.btBuffer.slice(-SERIAL_MAX_BUFFER / 2);
+                    }
+
                     const lines = this.btBuffer.split('\n');
                     this.btBuffer = lines.pop();
 
@@ -8572,6 +8578,12 @@ bluetooth.startIOPinService()</pre>
                     for (let li = 0; li < lines.length; li++) {
                         const line = lines[li].trim();
                         if (line.length === 0) continue;
+
+                        // Descartar líneas demasiado largas (corrupción)
+                        if (line.length > SERIAL_MAX_LINE_LEN) continue;
+
+                        // Descartar líneas con caracteres no imprimibles
+                        if (SERIAL_INVALID_CHAR.test(line)) continue;
 
                         const parts = line.split(',');
                         const nParts = parts.length;
@@ -8590,20 +8602,32 @@ bluetooth.startIOPinService()</pre>
                         if (hasTimestamp) {
                             const mt = +parts[0];
                             if (mt !== mt || !isFinite(mt)) continue; // NaN / Infinity
-                            if (mt < 0) continue; // Timestamp negativo: probable valor de sensor en columna incorrecta
+                            if (mt < 0) continue; // Timestamp negativo: probable sensor en columna incorrecta
                             valueOffset = 1;
+
                             if (!state.microbitTimeZeroSet) {
                                 state.timeZeroOffset = mt;
                                 state.microbitTimeZeroSet = true;
                                 state._lastMicrobitTimestamp = mt;
                             }
                             if (mt < state.timeZeroOffset) continue;
-                            // Detectar reinicio del micro:bit (timestamp retrocede > 5 s)
-                            if (_lastValidTimestamp >= 0 && mt < _lastValidTimestamp - 5000) {
-                                state.timeZeroOffset = mt;
-                                state.microbitTimeZeroSet = true;
+
+                            // Monotonía: descartar si el timestamp retrocede
+                            if (_lastValidTimestamp >= 0) {
+                                if (mt < _lastValidTimestamp) {
+                                    if (_lastValidTimestamp - mt > 5000) {
+                                        // Reinicio del micro:bit
+                                        state.timeZeroOffset = mt;
+                                        state.microbitTimeZeroSet = true;
+                                        state._lastMicrobitTimestamp = mt;
+                                    } else {
+                                        continue; // Corrupción: descartar
+                                    }
+                                }
                             }
+
                             _lastValidTimestamp = mt;
+                            state._lastMicrobitTimestamp = mt;
                             pointTime = mt;
                         } else {
                             pointTime = batchTime;
@@ -9188,6 +9212,7 @@ bluetooth.startIOPinService()</pre>
             _formatMismatchCount = 0;
             _lastMismatchParts = 0;
             _lastValidTimestamp = -1;
+            _serialLastDataTime = Date.now();
             _spikeFilterHistory = {};
             _spikeLastValue = {};
             document.getElementById('formatWarning').style.display = 'none';
@@ -9581,6 +9606,23 @@ bluetooth.startIOPinService()</pre>
                     } else {
                         fwEl.style.display = 'none';
                     }
+
+                    // Detección de silencio serial: avisar si no llegan datos
+                    if (!state.isBluetooth && _serialLastDataTime > 0) {
+                        const silenceMs = now - _serialLastDataTime;
+                        if (silenceMs > SERIAL_SILENCE_WARN) {
+                            const statusEl = document.getElementById('statusText');
+                            if (statusEl) {
+                                const secs = (silenceMs / 1000).toFixed(0);
+                                const msg = {
+                                    es: `⚠ Sin datos hace ${secs}s — ¿cable desconectado?`,
+                                    en: `⚠ No data for ${secs}s — cable disconnected?`,
+                                    pt: `⚠ Sem dados há ${secs}s — cabo desconectado?`
+                                };
+                                statusEl.textContent = msg[currentLanguage] || msg.es;
+                            }
+                        }
+                    }
                 }
 
                 renderLoopId = requestAnimationFrame(renderFrame);
@@ -9688,14 +9730,27 @@ bluetooth.startIOPinService()</pre>
         //   - Date.now() cacheado por batch de líneas
         //   - Parsing numérico inline sin .map()/.every()
         //   - .trim() en línea completa para manejar \r de Windows (CRLF)
+        //   - Límite de buffer para evitar crecimiento en datos corruptos
+        //   - Validación de longitud de línea contra corrupción serial
+        //   - Filtro de caracteres no imprimibles (bytes corruptos)
+        //   - Detección de silencio serial para feedback al usuario
         let _dataPointCounter = 0;
         let _formatMismatchCount = 0;   // Líneas descartadas por formato incorrecto
         let _lastMismatchParts = 0;     // Número de columnas de la última línea descartada
         let _lastValidTimestamp = -1;   // Último timestamp válido para detectar reinicios o columnas invertidas
+        let _serialLastDataTime = 0;    // Último timestamp con datos recibidos (para health check)
+
+        // Límites de protección contra corrupción serial
+        const SERIAL_MAX_BUFFER = 8192;     // Máx bytes en buffer de acumulación (evitar memory leak)
+        const SERIAL_MAX_LINE_LEN = 200;    // Máx caracteres por línea (líneas más largas = corrupción)
+        const SERIAL_SILENCE_WARN = 15000;  // ms sin datos para advertir al usuario
+        // Regex para detectar caracteres no imprimibles (excepto \r \n , . - y dígitos)
+        const SERIAL_INVALID_CHAR = /[^\x20-\x7E]/;
 
         async function startSerialLoop() {
             if (serialLoopRunning) return;
             serialLoopRunning = true;
+            _serialLastDataTime = Date.now();
 
             try {
                 const textDecoder = new TextDecoderStream();
@@ -9703,20 +9758,30 @@ bluetooth.startIOPinService()</pre>
                 state.reader = textDecoder.readable.getReader();
 
                 let buffer = '';
-                const numVars = state.numVariables;
 
                 while (state.isConnected) {
                     const { value, done } = await state.reader.read();
                     if (done) break;
 
+                    _serialLastDataTime = Date.now();
+
                     buffer += value;
+
+                    // Protección contra buffer infinito: si no llegan newlines
+                    // (cable roto, datos binarios basura), truncar al máximo
+                    if (buffer.length > SERIAL_MAX_BUFFER) {
+                        // Conservar solo la cola: posible línea parcial válida
+                        buffer = buffer.slice(-SERIAL_MAX_BUFFER / 2);
+                    }
+
                     const lines = buffer.split('\n');
                     buffer = lines.pop();
 
                     // Modo drain: leer y descartar para vaciar buffer serial
                     if (!state.isCollecting) continue;
 
-                    // Modo captura: parsear inline y agregar a buffers
+                    // Leer config actual por batch (permite cambios en caliente)
+                    const numVars = state.numVariables;
                     const batchTime = Date.now();
                     const batchLen = lines.length;
                     const useMbTime = state.microbitTimestamp;
@@ -9725,6 +9790,12 @@ bluetooth.startIOPinService()</pre>
                     for (let li = 0; li < batchLen; li++) {
                         const line = lines[li].trim();
                         if (line.length === 0) continue;
+
+                        // Descartar líneas demasiado largas (corrupción serial)
+                        if (line.length > SERIAL_MAX_LINE_LEN) continue;
+
+                        // Descartar líneas con caracteres no imprimibles (bytes corruptos)
+                        if (SERIAL_INVALID_CHAR.test(line)) continue;
 
                         const parts = line.split(',');
                         const nParts = parts.length;
@@ -9742,8 +9813,9 @@ bluetooth.startIOPinService()</pre>
                         if (hasTimestamp) {
                             const mt = +parts[0];
                             if (mt !== mt || !isFinite(mt)) continue; // NaN / Infinity
-                            if (mt < 0) continue; // Timestamp negativo: probable valor de sensor (ej. acelerómetro) en columna incorrecta
+                            if (mt < 0) continue; // Timestamp negativo: probable sensor en columna incorrecta
                             valueOffset = 1;
+
                             // Ajustar T=0 al primer timestamp del micro:bit
                             if (!state.microbitTimeZeroSet) {
                                 state.timeZeroOffset = mt;
@@ -9752,13 +9824,25 @@ bluetooth.startIOPinService()</pre>
                             }
                             // Descartar datos viejos del buffer serial (anteriores a T=0)
                             if (mt < state.timeZeroOffset) continue;
-                            // Detectar reinicio del micro:bit (timestamp retrocede > 5 s)
-                            if (_lastValidTimestamp >= 0 && mt < _lastValidTimestamp - 5000) {
-                                // El micro:bit se reinició: resetear la base de tiempo
-                                state.timeZeroOffset = mt;
-                                state.microbitTimeZeroSet = true;
+
+                            // Monotonía: descartar si el timestamp retrocede (corrupción de dígitos)
+                            // Excepción: retroceso > 5s indica reinicio del micro:bit
+                            if (_lastValidTimestamp >= 0) {
+                                if (mt < _lastValidTimestamp) {
+                                    if (_lastValidTimestamp - mt > 5000) {
+                                        // Reinicio del micro:bit: resetear la base de tiempo
+                                        state.timeZeroOffset = mt;
+                                        state.microbitTimeZeroSet = true;
+                                        state._lastMicrobitTimestamp = mt;
+                                    } else {
+                                        // Retroceso pequeño: corrupción, descartar
+                                        continue;
+                                    }
+                                }
                             }
+
                             _lastValidTimestamp = mt;
+                            state._lastMicrobitTimestamp = mt;
                             pointTime = mt;
                         } else {
                             pointTime = batchTime;
@@ -9796,6 +9880,16 @@ bluetooth.startIOPinService()</pre>
             } catch (err) {
                 if (err.name !== 'NetworkError') {
                     console.error('Error en lectura serial:', err);
+                }
+                // Si estábamos capturando datos, informar desconexión inesperada
+                if (state.isConnected && state.isCollecting) {
+                    const msg = {
+                        es: 'Se perdió la conexión serial. Verifica el cable USB.',
+                        en: 'Serial connection lost. Check the USB cable.',
+                        pt: 'Conexão serial perdida. Verifique o cabo USB.'
+                    };
+                    const statusEl = document.getElementById('statusText');
+                    if (statusEl) statusEl.textContent = msg[currentLanguage] || msg.es;
                 }
             } finally {
                 serialLoopRunning = false;
