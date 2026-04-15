@@ -3090,7 +3090,7 @@
             <div style="position:relative; display:inline-block;">
                 <button id="dataEntryBtn" class="toolbar-btn" onclick="toggleDataEntryMenu()">INGRESO DE DATOS ▾</button>
                 <div id="dataEntryMenu" class="data-entry-dropdown" style="display:none;">
-                    <button onclick="document.getElementById('importFile').click(); closeDataEntryMenu();">IMPORTAR CSV</button>
+                    <button onclick="openImportDialog(); closeDataEntryMenu();">IMPORTAR CSV</button>
                     <button onclick="openManualTableModal(); closeDataEntryMenu();">TABLA DE VALORES</button>
                 </div>
             </div>
@@ -3125,7 +3125,7 @@
     <div class="toolbar-menu-overlay" id="toolbarMenuOverlay" onclick="closeToolbarMenu()"></div>
     <div class="toolbar-menu-panel" id="toolbarMenuPanel">
         <button class="toolbar-menu-close" onclick="closeToolbarMenu()">✕</button>
-        <button class="toolbar-btn" onclick="document.getElementById('importFile').click(); closeToolbarMenu();">IMPORTAR CSV</button>
+        <button class="toolbar-btn" onclick="openImportDialog(); closeToolbarMenu();">IMPORTAR CSV</button>
         <button class="toolbar-btn" onclick="openManualTableModal(); closeToolbarMenu();">TABLA DE VALORES</button>
         <button id="exportBtn2" class="toolbar-btn" onclick="document.getElementById('exportBtn').click(); closeToolbarMenu();">EXPORTAR CSV</button>
         <button id="clearBtn2" class="toolbar-btn" onclick="document.getElementById('clearBtn').click(); closeToolbarMenu();">LIMPIAR</button>
@@ -3709,32 +3709,46 @@
 
     <!-- Modal de tabla de valores manual -->
     <div class="modal" id="manualTableModal">
-        <div class="modal-content" style="max-width: 700px;">
-            <div class="modal-header">TABLA DE VALORES</div>
+        <div class="modal-content" style="max-width: 780px;">
+            <div class="modal-header" id="mtModalHeader">TABLA DE VALORES</div>
             <div style="margin-bottom: 12px;">
-                <div class="info-box" style="font-size: 0.78rem;">
-                    Configura las variables y luego ingresa los valores en la tabla. Al confirmar, los datos se cargarán en el sistema.
+                <div class="info-box" style="font-size: 0.78rem;" id="mtInfoBox">
+                    Configura las variables y luego ingresa los valores en la tabla. Podés pegar datos (Ctrl+V) desde Excel/CSV. Al confirmar, los datos se cargarán en el sistema.
                 </div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px;">
                     <div class="input-row" style="flex: 0 0 auto; margin:0;">
-                        <label style="font-size:0.78rem; min-width:80px;">Variables:</label>
+                        <label style="font-size:0.78rem; min-width:70px;" id="mtVarsLabel">Variables:</label>
                         <select id="mtNumVars" style="font-size:0.78rem;">
                             <option value="1">1</option>
                             <option value="2">2</option>
                             <option value="3">3</option>
                         </select>
                     </div>
-                    <div class="input-row" style="flex: 1; margin:0;">
-                        <label style="font-size:0.78rem; min-width:50px;">Filas:</label>
+                    <div class="input-row" style="flex: 0 0 auto; margin:0;">
+                        <label style="font-size:0.78rem; min-width:45px;" id="mtRowsLabel">Filas:</label>
                         <input type="number" id="mtNumRows" value="10" min="1" max="500" style="font-size:0.78rem; width:60px;">
                     </div>
-                    <button class="toolbar-btn" onclick="buildManualTable()" style="font-size:0.78rem; padding: 4px 12px;">GENERAR TABLA</button>
+                    <button class="toolbar-btn" onclick="buildManualTable()" style="font-size:0.78rem; padding: 4px 10px;" id="mtGenerateBtn">GENERAR TABLA</button>
+                    <button class="toolbar-btn" onclick="mtAddRow()" style="font-size:0.78rem; padding: 4px 10px;" id="mtAddRowBtn" title="Agregar fila">+ FILA</button>
+                    <button class="toolbar-btn" onclick="mtRemoveRow()" style="font-size:0.78rem; padding: 4px 10px;" id="mtRemoveRowBtn" title="Eliminar última fila">- FILA</button>
+                    <button class="toolbar-btn" onclick="mtClearTable()" style="font-size:0.78rem; padding: 4px 10px;" id="mtClearBtn" title="Vaciar todas las celdas">LIMPIAR</button>
+                </div>
+                <div id="mtTimeFillRow" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; padding: 6px 8px; background: #f0f7ff; border-radius: 4px; border: 1px solid #bbdefb;">
+                    <label style="font-size:0.75rem; font-weight:bold;" id="mtAutoTimeLabel">Auto-rellenar tiempo:</label>
+                    <label style="font-size:0.75rem;" id="mtTimeStartLabel">t₀</label>
+                    <input type="number" id="mtTimeStart" value="0" step="any" style="font-size:0.75rem; width:70px;">
+                    <label style="font-size:0.75rem;" id="mtTimeStepLabel">Δt</label>
+                    <input type="number" id="mtTimeStep" value="1" step="any" style="font-size:0.75rem; width:70px;">
+                    <button class="toolbar-btn" onclick="mtAutoFillTime()" style="font-size:0.75rem; padding: 3px 10px;" id="mtAutoFillBtn">APLICAR</button>
                 </div>
                 <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;" id="mtVarNames">
                     <div class="input-row" style="margin:0; flex:1; min-width:120px;">
                         <label style="font-size:0.75rem;">Nombre Var 1</label>
                         <input type="text" id="mtVar0Name" value="Variable 1" style="font-size:0.75rem;">
                     </div>
+                </div>
+                <div id="mtPasteHint" style="font-size: 0.7rem; color: #666; margin-bottom: 4px;">
+                    💡 Tip: Hacé clic en una celda y pegá (Ctrl+V) desde Excel/CSV para cargar múltiples valores.
                 </div>
             </div>
             <div style="max-height: 45vh; overflow: auto; border: 1px solid #ccc; border-radius: 4px;">
@@ -3747,8 +3761,54 @@
                 </table>
             </div>
             <div style="display: flex; gap: 8px; margin-top: 12px;">
-                <button class="toolbar-btn" onclick="closeManualTableModal()" style="flex:1;">CANCELAR</button>
-                <button class="toolbar-btn primary" onclick="importManualTable()" style="flex:1;">CARGAR DATOS</button>
+                <button class="toolbar-btn" onclick="closeManualTableModal()" style="flex:1;" id="mtCancelBtn">CANCELAR</button>
+                <button class="toolbar-btn primary" onclick="importManualTable()" style="flex:1;" id="mtLoadBtn">CARGAR DATOS</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de importación de CSV con selector de formato -->
+    <div class="modal" id="importModal">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header" id="importModalHeader">IMPORTAR CSV</div>
+            <div class="info-box" style="font-size: 0.78rem; margin-bottom: 12px;" id="importModalInfo">
+                Elegí el formato del archivo CSV y luego seleccioná el archivo a importar.
+            </div>
+            <div id="importFormatOptions" style="display:flex; flex-direction:column; gap:8px; margin-bottom: 12px;">
+                <label class="import-format-option" style="display:flex; gap:8px; padding:10px; border:2px solid #ccc; border-radius:6px; cursor:pointer; align-items:flex-start;">
+                    <input type="radio" name="importFormat" value="auto" checked style="margin-top:3px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:bold; font-size:0.85rem;" id="importFormatAutoTitle">Detectar automáticamente</div>
+                        <div style="font-size:0.75rem; color:#555;" id="importFormatAutoDesc">Detecta el formato del CSV según su contenido. Recomendado.</div>
+                    </div>
+                </label>
+                <label class="import-format-option" style="display:flex; gap:8px; padding:10px; border:2px solid #ccc; border-radius:6px; cursor:pointer; align-items:flex-start;">
+                    <input type="radio" name="importFormat" value="system" style="margin-top:3px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:bold; font-size:0.85rem;" id="importFormatSystemTitle">Formato del sistema</div>
+                        <div style="font-size:0.75rem; color:#555;" id="importFormatSystemDesc">CSV exportado desde esta aplicación.<br><code style="font-size:0.7rem; background:#eef; padding:1px 3px;">Tiempo,Variable 1,Variable 2,...</code></div>
+                    </div>
+                </label>
+                <label class="import-format-option" style="display:flex; gap:8px; padding:10px; border:2px solid #ccc; border-radius:6px; cursor:pointer; align-items:flex-start;">
+                    <input type="radio" name="importFormat" value="datalogger" style="margin-top:3px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:bold; font-size:0.85rem;" id="importFormatDLTitle">Micro:bit Data Logger</div>
+                        <div style="font-size:0.75rem; color:#555;" id="importFormatDLDesc">CSV exportado por la extensión <i>data logger</i> de micro:bit.<br><code style="font-size:0.7rem; background:#eef; padding:1px 3px;">Time (seconds),column1,column2,...</code></div>
+                    </div>
+                </label>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <button class="toolbar-btn btn-full" onclick="document.getElementById('importFile').click();" id="importFileBtn">SELECCIONAR ARCHIVO CSV...</button>
+                <div id="importFileName" style="margin-top:6px; font-size:0.75rem; color:#555;"></div>
+            </div>
+            <div id="importPreviewContainer" style="display:none; margin-bottom:12px;">
+                <div style="font-size:0.75rem; font-weight:bold; margin-bottom:4px;" id="importPreviewLabel">Vista previa:</div>
+                <pre id="importPreview" style="background:#f5f5f5; border:1px solid #ddd; padding:8px; font-size:0.7rem; max-height:140px; overflow:auto; margin:0; border-radius:4px; white-space:pre-wrap; word-break:break-all;"></pre>
+                <div id="importDetectedInfo" style="margin-top:6px; font-size:0.75rem; color:#0066cc;"></div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                <button class="toolbar-btn" onclick="closeImportDialog()" style="flex:1;" id="importCancelBtn">CANCELAR</button>
+                <button class="toolbar-btn primary" onclick="confirmImportCSV()" style="flex:1;" id="importConfirmBtn" disabled>IMPORTAR</button>
             </div>
         </div>
     </div>
@@ -4343,6 +4403,36 @@
                 expandGraph: 'Ampliar gráfica',
                 spikeFilterTitle: 'Descarta lecturas anómalas causadas por errores de comunicación serial/Bluetooth',
                 noDataLabel: 'Sin datos',
+                // Importación de CSV (diálogo de formato)
+                importModalTitle: 'IMPORTAR CSV',
+                importModalInfo: 'Elegí el formato del archivo CSV y luego seleccioná el archivo a importar.',
+                importFormatAuto: 'Detectar automáticamente',
+                importFormatAutoDesc: 'Detecta el formato del CSV según su contenido. Recomendado.',
+                importFormatSystem: 'Formato del sistema',
+                importFormatSystemDesc: 'CSV exportado desde esta aplicación.<br><code style="font-size:0.7rem; background:#eef; padding:1px 3px;">Tiempo,Variable 1,Variable 2,...</code>',
+                importFormatDL: 'Micro:bit Data Logger',
+                importFormatDLDesc: 'CSV exportado por la extensión <i>data logger</i> de micro:bit.<br><code style="font-size:0.7rem; background:#eef; padding:1px 3px;">Time (seconds),column1,column2,...</code>',
+                importSelectFile: 'SELECCIONAR ARCHIVO CSV...',
+                importPreviewLabel: 'Vista previa:',
+                importDetectedVars: 'variable(s)',
+                importDetectedRows: 'fila(s) de datos',
+                importTimeCol: 'columna de tiempo:',
+                importNoTimeCol: 'sin columna de tiempo',
+                importDetectError: 'No se pudo analizar el CSV: ',
+                // Tabla manual mejorada
+                mtTitle: 'TABLA DE VALORES',
+                mtInfo: 'Configura las variables y luego ingresa los valores en la tabla. Podés pegar datos (Ctrl+V) desde Excel/CSV. Al confirmar, los datos se cargarán en el sistema.',
+                mtVarsLabel: 'Variables:',
+                mtRowsLabel: 'Filas:',
+                mtGenerate: 'GENERAR TABLA',
+                mtAddRow: '+ FILA',
+                mtRemoveRow: '- FILA',
+                mtClear: 'LIMPIAR',
+                mtAutoTime: 'Auto-rellenar tiempo:',
+                mtApply: 'APLICAR',
+                mtLoadData: 'CARGAR DATOS',
+                mtPasteHint: 'Tip: hacé clic en una celda y pegá (Ctrl+V) desde Excel/CSV para cargar múltiples valores.',
+                mtAutoFillDisabled: 'La columna de tiempo está desactivada (desmarcá "Micro:bit envía timestamp" para modo sin tiempo).',
             },
             en: {
                 // Toolbar
@@ -4582,6 +4672,36 @@
                 expandGraph: 'Expand graph',
                 spikeFilterTitle: 'Discards anomalous readings caused by serial/Bluetooth communication errors',
                 noDataLabel: 'No data',
+                // CSV import (format dialog)
+                importModalTitle: 'IMPORT CSV',
+                importModalInfo: 'Choose the CSV file format and then select the file to import.',
+                importFormatAuto: 'Auto-detect',
+                importFormatAutoDesc: 'Detects the format from the CSV content. Recommended.',
+                importFormatSystem: 'System format',
+                importFormatSystemDesc: 'CSV exported from this application.<br><code style="font-size:0.7rem; background:#eef; padding:1px 3px;">Time,Variable 1,Variable 2,...</code>',
+                importFormatDL: 'Micro:bit Data Logger',
+                importFormatDLDesc: 'CSV exported by the micro:bit <i>data logger</i> extension.<br><code style="font-size:0.7rem; background:#eef; padding:1px 3px;">Time (seconds),column1,column2,...</code>',
+                importSelectFile: 'SELECT CSV FILE...',
+                importPreviewLabel: 'Preview:',
+                importDetectedVars: 'variable(s)',
+                importDetectedRows: 'data row(s)',
+                importTimeCol: 'time column:',
+                importNoTimeCol: 'no time column',
+                importDetectError: 'Could not parse CSV: ',
+                // Enhanced manual table
+                mtTitle: 'DATA TABLE',
+                mtInfo: 'Configure the variables and enter values in the table. You can paste (Ctrl+V) data from Excel/CSV. When you confirm, data will be loaded into the system.',
+                mtVarsLabel: 'Variables:',
+                mtRowsLabel: 'Rows:',
+                mtGenerate: 'GENERATE TABLE',
+                mtAddRow: '+ ROW',
+                mtRemoveRow: '- ROW',
+                mtClear: 'CLEAR',
+                mtAutoTime: 'Auto-fill time:',
+                mtApply: 'APPLY',
+                mtLoadData: 'LOAD DATA',
+                mtPasteHint: 'Tip: click a cell and paste (Ctrl+V) from Excel/CSV to fill multiple values.',
+                mtAutoFillDisabled: 'Time column is disabled (uncheck "Micro:bit sends timestamp" for variables-only mode).',
             },
             pt: {
                 // Toolbar
@@ -4821,6 +4941,36 @@
                 expandGraph: 'Ampliar gráfico',
                 spikeFilterTitle: 'Descarta leituras anômalas causadas por erros de comunicação serial/Bluetooth',
                 noDataLabel: 'Sem dados',
+                // Importação de CSV (diálogo de formato)
+                importModalTitle: 'IMPORTAR CSV',
+                importModalInfo: 'Escolha o formato do arquivo CSV e depois selecione o arquivo a importar.',
+                importFormatAuto: 'Detectar automaticamente',
+                importFormatAutoDesc: 'Detecta o formato do CSV a partir do conteúdo. Recomendado.',
+                importFormatSystem: 'Formato do sistema',
+                importFormatSystemDesc: 'CSV exportado por esta aplicação.<br><code style="font-size:0.7rem; background:#eef; padding:1px 3px;">Tempo,Variável 1,Variável 2,...</code>',
+                importFormatDL: 'Micro:bit Data Logger',
+                importFormatDLDesc: 'CSV exportado pela extensão <i>data logger</i> do micro:bit.<br><code style="font-size:0.7rem; background:#eef; padding:1px 3px;">Time (seconds),column1,column2,...</code>',
+                importSelectFile: 'SELECIONAR ARQUIVO CSV...',
+                importPreviewLabel: 'Pré-visualização:',
+                importDetectedVars: 'variável(is)',
+                importDetectedRows: 'linha(s) de dados',
+                importTimeCol: 'coluna de tempo:',
+                importNoTimeCol: 'sem coluna de tempo',
+                importDetectError: 'Não foi possível analisar o CSV: ',
+                // Tabela manual aprimorada
+                mtTitle: 'TABELA DE VALORES',
+                mtInfo: 'Configure as variáveis e insira os valores na tabela. Você pode colar (Ctrl+V) dados do Excel/CSV. Ao confirmar, os dados serão carregados no sistema.',
+                mtVarsLabel: 'Variáveis:',
+                mtRowsLabel: 'Linhas:',
+                mtGenerate: 'GERAR TABELA',
+                mtAddRow: '+ LINHA',
+                mtRemoveRow: '- LINHA',
+                mtClear: 'LIMPAR',
+                mtAutoTime: 'Auto-preencher tempo:',
+                mtApply: 'APLICAR',
+                mtLoadData: 'CARREGAR DADOS',
+                mtPasteHint: 'Dica: clique em uma célula e cole (Ctrl+V) do Excel/CSV para preencher vários valores.',
+                mtAutoFillDisabled: 'A coluna de tempo está desativada (desmarque "Micro:bit envia timestamp" para modo somente variáveis).',
             }
         };
 
@@ -11235,10 +11385,29 @@ bluetooth.startIOPinService()</pre>
             document.getElementById('mtNumVars').value = state.numVariables;
             updateMtVarNameInputs();
             buildManualTable();
+            localizeManualTableModal();
         }
 
         function closeManualTableModal() {
             document.getElementById('manualTableModal').classList.remove('active');
+        }
+
+        function localizeManualTableModal() {
+            const setTxt = (id, key) => { const el = document.getElementById(id); if (el && tr(key) !== key) el.textContent = tr(key); };
+            setTxt('mtModalHeader', 'mtTitle');
+            setTxt('mtInfoBox', 'mtInfo');
+            setTxt('mtVarsLabel', 'mtVarsLabel');
+            setTxt('mtRowsLabel', 'mtRowsLabel');
+            setTxt('mtGenerateBtn', 'mtGenerate');
+            setTxt('mtAddRowBtn', 'mtAddRow');
+            setTxt('mtRemoveRowBtn', 'mtRemoveRow');
+            setTxt('mtClearBtn', 'mtClear');
+            setTxt('mtAutoTimeLabel', 'mtAutoTime');
+            setTxt('mtAutoFillBtn', 'mtApply');
+            setTxt('mtCancelBtn', 'btPairingCancel');
+            setTxt('mtLoadBtn', 'mtLoadData');
+            const hint = document.getElementById('mtPasteHint');
+            if (hint && tr('mtPasteHint') !== 'mtPasteHint') hint.textContent = '💡 ' + tr('mtPasteHint');
         }
 
         function updateMtVarNameInputs() {
@@ -11261,14 +11430,46 @@ bluetooth.startIOPinService()</pre>
             buildManualTable();
         });
 
-        function buildManualTable() {
+        // Preserva los valores actuales antes de reconstruir la tabla
+        function _mtSnapshotCells() {
+            const snap = { time: [], vars: [] };
+            const numVars = parseInt(document.getElementById('mtNumVars').value);
+            const numRows = parseInt(document.getElementById('mtNumRows').value) || 0;
+            for (let v = 0; v < numVars; v++) snap.vars.push([]);
+            for (let r = 0; r < numRows; r++) {
+                const tEl = document.getElementById(`mt_t_${r}`);
+                snap.time.push(tEl ? tEl.value : '');
+                for (let v = 0; v < numVars; v++) {
+                    const el = document.getElementById(`mt_v${v}_${r}`);
+                    snap.vars[v].push(el ? el.value : '');
+                }
+            }
+            return snap;
+        }
+
+        function _mtRestoreCells(snap) {
+            if (!snap) return;
+            for (let r = 0; r < snap.time.length; r++) {
+                const tEl = document.getElementById(`mt_t_${r}`);
+                if (tEl && snap.time[r] !== '') tEl.value = snap.time[r];
+            }
+            for (let v = 0; v < snap.vars.length; v++) {
+                for (let r = 0; r < snap.vars[v].length; r++) {
+                    const el = document.getElementById(`mt_v${v}_${r}`);
+                    if (el && snap.vars[v][r] !== '') el.value = snap.vars[v][r];
+                }
+            }
+        }
+
+        function buildManualTable(preserve) {
+            const snap = preserve ? _mtSnapshotCells() : null;
             const numVars = parseInt(document.getElementById('mtNumVars').value);
             const numRows = parseInt(document.getElementById('mtNumRows').value) || 10;
             const hasTime = state.microbitTimestamp;
 
             // Build header
             let headerHtml = '<th style="width:30px;">#</th>';
-            if (hasTime) headerHtml += '<th>Tiempo (s)</th>';
+            if (hasTime) headerHtml += `<th>${tr('timeSeconds') || 'Tiempo (s)'}</th>`;
             for (let v = 0; v < numVars; v++) {
                 const nameInput = document.getElementById(`mtVar${v}Name`);
                 const name = nameInput ? nameInput.value : `Var ${v + 1}`;
@@ -11281,14 +11482,127 @@ bluetooth.startIOPinService()</pre>
             for (let r = 0; r < numRows; r++) {
                 bodyHtml += `<tr><td style="color:#999; font-size:0.7rem;">${r + 1}</td>`;
                 if (hasTime) {
-                    bodyHtml += `<td><input type="number" step="any" class="mt-cell" id="mt_t_${r}" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
+                    bodyHtml += `<td><input type="number" step="any" class="mt-cell" id="mt_t_${r}" data-mt-row="${r}" data-mt-col="t" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
                 }
                 for (let v = 0; v < numVars; v++) {
-                    bodyHtml += `<td><input type="number" step="any" class="mt-cell" id="mt_v${v}_${r}" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
+                    bodyHtml += `<td><input type="number" step="any" class="mt-cell" id="mt_v${v}_${r}" data-mt-row="${r}" data-mt-col="v${v}" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
                 }
                 bodyHtml += '</tr>';
             }
             document.getElementById('mtTableBody').innerHTML = bodyHtml;
+
+            if (snap) _mtRestoreCells(snap);
+            _mtAttachPasteHandlers();
+
+            // Mostrar/ocultar fila de auto-rellenado de tiempo según haya columna de tiempo
+            const tfRow = document.getElementById('mtTimeFillRow');
+            if (tfRow) tfRow.style.display = hasTime ? '' : 'none';
+        }
+
+        // Añade listener de paste para pegar tabular (CSV/TSV)
+        function _mtAttachPasteHandlers() {
+            const cells = document.querySelectorAll('#mtTableBody input.mt-cell');
+            cells.forEach(cell => {
+                cell.addEventListener('paste', _mtOnPaste);
+            });
+        }
+
+        function _mtOnPaste(ev) {
+            const clipboard = ev.clipboardData || window.clipboardData;
+            if (!clipboard) return;
+            const text = clipboard.getData('text');
+            if (!text) return;
+            // Si el contenido tiene separadores de tabla (tab o salto de línea),
+            // distribuir en celdas. Sino, dejar que pegue normalmente.
+            const hasTab = text.indexOf('\t') !== -1;
+            const hasNewline = /\r?\n/.test(text.trim());
+            if (!hasTab && !hasNewline) return;
+
+            ev.preventDefault();
+
+            const target = ev.target;
+            const startRow = parseInt(target.getAttribute('data-mt-row')) || 0;
+            const startColKey = target.getAttribute('data-mt-col');
+
+            // Orden de columnas visibles
+            const hasTime = state.microbitTimestamp;
+            const numVars = parseInt(document.getElementById('mtNumVars').value);
+            const colOrder = [];
+            if (hasTime) colOrder.push('t');
+            for (let v = 0; v < numVars; v++) colOrder.push('v' + v);
+            let startColIdx = colOrder.indexOf(startColKey);
+            if (startColIdx < 0) startColIdx = 0;
+
+            // Parsear contenido pegado (TSV o CSV)
+            const rows = text.replace(/\r\n?/g, '\n').split('\n').filter((l, i, arr) => !(i === arr.length - 1 && l === ''));
+            const sep = hasTab ? '\t' : ',';
+            const matrix = rows.map(r => r.split(sep).map(c => c.trim().replace(',', '.')));
+
+            // Si el número de filas excede, crecer tabla
+            const neededRows = startRow + matrix.length;
+            const currentRows = parseInt(document.getElementById('mtNumRows').value) || 0;
+            if (neededRows > currentRows) {
+                document.getElementById('mtNumRows').value = neededRows;
+                buildManualTable(true);
+            }
+
+            // Pegar valores
+            for (let i = 0; i < matrix.length; i++) {
+                const rowValues = matrix[i];
+                for (let j = 0; j < rowValues.length; j++) {
+                    const colIdx = startColIdx + j;
+                    if (colIdx >= colOrder.length) break;
+                    const colKey = colOrder[colIdx];
+                    const rowIdx = startRow + i;
+                    const id = colKey === 't' ? `mt_t_${rowIdx}` : `mt_${colKey}_${rowIdx}`;
+                    const el = document.getElementById(id);
+                    if (el) {
+                        const val = rowValues[j];
+                        // Aceptar vacío o numérico
+                        if (val === '' || !isNaN(parseFloat(val))) {
+                            el.value = val;
+                        }
+                    }
+                }
+            }
+        }
+
+        function mtAddRow() {
+            const input = document.getElementById('mtNumRows');
+            const current = parseInt(input.value) || 0;
+            input.value = Math.min(current + 1, 500);
+            buildManualTable(true);
+        }
+
+        function mtRemoveRow() {
+            const input = document.getElementById('mtNumRows');
+            const current = parseInt(input.value) || 0;
+            input.value = Math.max(current - 1, 1);
+            buildManualTable(true);
+        }
+
+        function mtClearTable() {
+            document.querySelectorAll('#mtTableBody input.mt-cell').forEach(el => { el.value = ''; });
+        }
+
+        function mtAutoFillTime() {
+            const hasTime = state.microbitTimestamp;
+            if (!hasTime) {
+                alert(tr('mtAutoFillDisabled'));
+                return;
+            }
+            const t0 = parseFloat(document.getElementById('mtTimeStart').value);
+            const dt = parseFloat(document.getElementById('mtTimeStep').value);
+            if (isNaN(t0) || isNaN(dt)) return;
+            const numRows = parseInt(document.getElementById('mtNumRows').value) || 0;
+            for (let r = 0; r < numRows; r++) {
+                const el = document.getElementById(`mt_t_${r}`);
+                if (el) {
+                    const v = t0 + dt * r;
+                    // Limpiar decimales de coma flotante
+                    el.value = Number.isInteger(v) ? v : parseFloat(v.toFixed(10));
+                }
+            }
         }
 
         function importManualTable() {
@@ -12064,91 +12378,310 @@ bluetooth.startIOPinService()</pre>
             URL.revokeObjectURL(url);
         });
 
-        // importFile click is triggered directly from the data entry dropdown
+        // ========== DIÁLOGO DE IMPORTACIÓN DE CSV ==========
+        // Permite elegir el formato (sistema, micro:bit data logger, auto)
+        // y muestra vista previa antes de importar.
+
+        let _pendingImportText = null;
+        let _pendingImportName = null;
+
+        function openImportDialog() {
+            _pendingImportText = null;
+            _pendingImportName = null;
+            document.getElementById('importFileName').textContent = '';
+            document.getElementById('importPreviewContainer').style.display = 'none';
+            document.getElementById('importDetectedInfo').textContent = '';
+            document.getElementById('importConfirmBtn').disabled = true;
+            const autoRadio = document.querySelector('input[name="importFormat"][value="auto"]');
+            if (autoRadio) autoRadio.checked = true;
+            localizeImportDialog();
+            document.getElementById('importModal').classList.add('active');
+        }
+
+        function closeImportDialog() {
+            document.getElementById('importModal').classList.remove('active');
+            _pendingImportText = null;
+            _pendingImportName = null;
+            document.getElementById('importFile').value = '';
+        }
+
+        function localizeImportDialog() {
+            const setTxt = (id, key) => { const el = document.getElementById(id); if (el && tr(key) !== key) el.textContent = tr(key); };
+            const setHtml = (id, key) => { const el = document.getElementById(id); if (el && tr(key) !== key) el.innerHTML = tr(key); };
+            setTxt('importModalHeader', 'importModalTitle');
+            setTxt('importModalInfo', 'importModalInfo');
+            setTxt('importFormatAutoTitle', 'importFormatAuto');
+            setTxt('importFormatAutoDesc', 'importFormatAutoDesc');
+            setTxt('importFormatSystemTitle', 'importFormatSystem');
+            setHtml('importFormatSystemDesc', 'importFormatSystemDesc');
+            setTxt('importFormatDLTitle', 'importFormatDL');
+            setHtml('importFormatDLDesc', 'importFormatDLDesc');
+            setTxt('importFileBtn', 'importSelectFile');
+            setTxt('importPreviewLabel', 'importPreviewLabel');
+            setTxt('importCancelBtn', 'btPairingCancel');
+            setTxt('importConfirmBtn', 'importCSV');
+        }
+
+        // Divide una línea respetando campos entre comillas
+        function _splitCSVLine(line, sep) {
+            const out = [];
+            let cur = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch === '"') {
+                    if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+                    else { inQuotes = !inQuotes; }
+                } else if (ch === sep && !inQuotes) {
+                    out.push(cur); cur = '';
+                } else {
+                    cur += ch;
+                }
+            }
+            out.push(cur);
+            return out.map(s => s.trim());
+        }
+
+        // Parsea un CSV y devuelve { hasTime, numVars, varNames, rows }
+        function parseCSVForImport(text, format) {
+            const rawLines = text.split(/\r?\n/).map(l => l.replace(/\uFEFF/g, '').trim()).filter(l => l.length > 0);
+            if (rawLines.length < 2) throw new Error(tr('alertCsvEmpty'));
+
+            // Detectar separador usando la primera línea con múltiples campos
+            let sep = ',';
+            for (const ln of rawLines) {
+                const c = (ln.match(/,/g) || []).length;
+                const s = (ln.match(/;/g) || []).length;
+                const t = (ln.match(/\t/g) || []).length;
+                if (c + s + t > 0) {
+                    if (t >= c && t >= s) sep = '\t';
+                    else if (s > c) sep = ';';
+                    else sep = ',';
+                    break;
+                }
+            }
+
+            // Buscar la línea de encabezado: aquella cuya siguiente línea tiene el mismo
+            // número de campos y son todos numéricos (excepto posibles vacíos).
+            let headerIdx = -1;
+            const maxSearch = Math.min(rawLines.length - 1, 15);
+            for (let i = 0; i < maxSearch; i++) {
+                const parts = _splitCSVLine(rawLines[i], sep);
+                if (parts.length < 1) continue;
+                const nextParts = _splitCSVLine(rawLines[i + 1], sep);
+                if (nextParts.length !== parts.length) continue;
+                const numericCount = nextParts.filter(p => p !== '' && !isNaN(parseFloat(p.replace(',', '.')))).length;
+                if (numericCount >= Math.max(1, nextParts.length - 1)) {
+                    headerIdx = i;
+                    break;
+                }
+            }
+            if (headerIdx < 0) {
+                // Fallback: asumir primera línea como header
+                headerIdx = 0;
+            }
+
+            const headerRaw = _splitCSVLine(rawLines[headerIdx], sep);
+            const headerLower = headerRaw.map(h => h.toLowerCase());
+
+            // Detectar columna de tiempo
+            const timeKeywords = ['time', 'tiempo', 'tempo', 't(s)', 't (s)'];
+            let timeColIdx = -1;
+            for (let i = 0; i < headerLower.length; i++) {
+                const h = headerLower[i];
+                if (timeKeywords.some(k => h === k || h.startsWith(k))) {
+                    timeColIdx = i;
+                    break;
+                }
+            }
+
+            // Saltar columna de índice (habitual en data logger)
+            const skipCols = new Set();
+            if (format === 'datalogger' || format === 'auto') {
+                for (let i = 0; i < headerLower.length; i++) {
+                    const h = headerLower[i];
+                    if (h === '#' || h === 'row index' || h === 'index' || h === 'row' || h === 'n' || h === 'nº' || h === 'no.') {
+                        skipCols.add(i);
+                    }
+                }
+            }
+
+            // Si format === 'system' y el primer header parece "Tiempo", respetar
+            if (format === 'system' && timeColIdx < 0) {
+                // Forzar: si la primera columna parece tiempo numérico pero sin nombre reconocido,
+                // asumir que es tiempo solo si el estado actual indica microbitTimestamp
+                if (state.microbitTimestamp) timeColIdx = 0;
+            }
+
+            // Columnas de variables (excluyendo tiempo y columnas saltadas)
+            const varCols = [];
+            const varNames = [];
+            for (let i = 0; i < headerRaw.length; i++) {
+                if (i === timeColIdx) continue;
+                if (skipCols.has(i)) continue;
+                varCols.push(i);
+                varNames.push(headerRaw[i] || `Var ${varCols.length}`);
+            }
+
+            if (varCols.length < 1) throw new Error(tr('alertCsvVarCount'));
+            if (varCols.length > 3) {
+                // Limitar a 3
+                varCols.splice(3);
+                varNames.splice(3);
+            }
+
+            // Parsear filas de datos
+            const dataRows = [];
+            for (let i = headerIdx + 1; i < rawLines.length; i++) {
+                const parts = _splitCSVLine(rawLines[i], sep);
+                if (parts.length < headerRaw.length - skipCols.size) continue;
+
+                let timeVal = null;
+                if (timeColIdx >= 0) {
+                    const ts = parts[timeColIdx];
+                    if (ts === undefined || ts === '') continue;
+                    timeVal = parseFloat(ts.replace(',', '.'));
+                    if (isNaN(timeVal)) continue;
+                }
+
+                const vals = [];
+                let ok = true;
+                for (const c of varCols) {
+                    const raw = parts[c];
+                    if (raw === undefined || raw === '') { ok = false; break; }
+                    const v = parseFloat(raw.replace(',', '.'));
+                    if (isNaN(v)) { ok = false; break; }
+                    vals.push(v);
+                }
+                if (!ok) continue;
+                dataRows.push({ time: timeVal, values: vals });
+            }
+
+            return {
+                hasTime: timeColIdx >= 0,
+                numVars: varCols.length,
+                varNames: varNames,
+                timeColName: timeColIdx >= 0 ? headerRaw[timeColIdx] : null,
+                rows: dataRows,
+                separator: sep,
+                skippedCols: Array.from(skipCols)
+            };
+        }
+
+        async function _onImportFileChosen(file) {
+            try {
+                const text = await file.text();
+                _pendingImportText = text;
+                _pendingImportName = file.name;
+                document.getElementById('importFileName').textContent = file.name;
+                _updateImportPreview();
+            } catch (err) {
+                alert(tr('alertImportError') + err.message);
+            }
+        }
+
+        function _updateImportPreview() {
+            if (!_pendingImportText) return;
+            const format = (document.querySelector('input[name="importFormat"]:checked') || {}).value || 'auto';
+            const preview = _pendingImportText.split(/\r?\n/).slice(0, 8).join('\n');
+            document.getElementById('importPreview').textContent = preview;
+            const info = document.getElementById('importDetectedInfo');
+            const btn = document.getElementById('importConfirmBtn');
+            try {
+                const parsed = parseCSVForImport(_pendingImportText, format);
+                const parts = [];
+                parts.push(parsed.numVars + ' ' + tr('importDetectedVars'));
+                parts.push(parsed.hasTime ? tr('importTimeCol') + ' "' + parsed.timeColName + '"' : tr('importNoTimeCol'));
+                parts.push(parsed.rows.length + ' ' + tr('importDetectedRows'));
+                info.style.color = '#0066cc';
+                info.textContent = '✓ ' + parts.join(' · ');
+                btn.disabled = parsed.rows.length === 0;
+            } catch (e) {
+                info.style.color = '#c62828';
+                info.textContent = '⚠ ' + (tr('importDetectError') + e.message);
+                btn.disabled = true;
+            }
+            document.getElementById('importPreviewContainer').style.display = 'block';
+        }
+
+        function confirmImportCSV() {
+            if (!_pendingImportText) return;
+            const format = (document.querySelector('input[name="importFormat"]:checked') || {}).value || 'auto';
+            try {
+                const parsed = parseCSVForImport(_pendingImportText, format);
+                if (parsed.rows.length === 0) {
+                    alert(tr('alertImportFail'));
+                    return;
+                }
+                _applyImportedData(parsed);
+                closeImportDialog();
+            } catch (err) {
+                alert(tr('alertImportError') + err.message);
+            }
+        }
+
+        function _applyImportedData(parsed) {
+            const numVars = parsed.numVars;
+            const hasTime = parsed.hasTime;
+
+            // Configurar número de variables
+            document.getElementById('numVariables').value = numVars;
+            document.getElementById('numVariables').dispatchEvent(new Event('change'));
+
+            // Nombres de variables
+            for (let i = 0; i < numVars; i++) {
+                const nameField = document.getElementById(`var${i+1}Name`);
+                if (nameField && parsed.varNames[i]) nameField.value = parsed.varNames[i];
+            }
+
+            // Ajustar checkbox "micro:bit envía timestamp" según el CSV importado
+            const cb = document.getElementById('microbitTimestamp');
+            if (cb && cb.checked !== hasTime) {
+                cb.checked = hasTime;
+                if (typeof onTimestampToggle === 'function') onTimestampToggle();
+            }
+
+            applyVariableConfiguration();
+
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            const baseTs = Date.now();
+            const importedData = parsed.rows.map((r, i) => {
+                let timestamp;
+                if (hasTime) {
+                    timestamp = baseTs + (r.time * timeUnitValue);
+                } else {
+                    timestamp = baseTs + i;
+                }
+                return {
+                    time: timestamp,
+                    values: r.values,
+                    id: `${timestamp}-${Math.random().toString(36).substr(2, 6)}`
+                };
+            });
+
+            state.rawData = importedData;
+            updateDisplay();
+            alert(tr('alertImportOk', { count: importedData.length, vars: numVars }));
+        }
+
+        // Listeners para actualizar vista previa al cambiar formato
+        document.querySelectorAll('input[name="importFormat"]').forEach(r => {
+            r.addEventListener('change', _updateImportPreview);
+        });
 
         document.getElementById('importFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                try {
-                    const csv = event.target.result;
-                    const lines = csv.split('\n');
-
-                    if (lines.length < 2) {
-                        alert(tr('alertCsvEmpty'));
-                        return;
-                    }
-
-                    const hasTime = state.microbitTimestamp;
-
-                    // Parsear header
-                    const header = lines[0].split(',').map(h => h.trim());
-                    const numVars = hasTime ? header.length - 1 : header.length;
-
-                    if (numVars < 1 || numVars > 3) {
-                        alert(tr('alertCsvVarCount'));
-                        return;
-                    }
-
-                    // Parsear datos
-                    const importedData = [];
-                    for (let i = 1; i < lines.length; i++) {
-                        const line = lines[i].trim();
-                        if (!line) continue;
-
-                        const parts = line.split(',').map(p => parseFloat(p.trim()));
-                        const expectedCols = hasTime ? numVars + 1 : numVars;
-                        if (parts.length !== expectedCols || parts.some(p => isNaN(p))) continue;
-
-                        let timestamp, values;
-                        if (hasTime) {
-                            const [time, ...vals] = parts;
-                            values = vals;
-                            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
-                            timestamp = Date.now() + (time * timeUnitValue);
-                        } else {
-                            values = parts;
-                            timestamp = Date.now() + i; // Sequential
-                        }
-
-                        importedData.push({
-                            time: timestamp,
-                            values: values,
-                            id: `${timestamp}-${Math.random()}`
-                        });
-                    }
-
-                    if (importedData.length === 0) {
-                        alert(tr('alertImportFail'));
-                        return;
-                    }
-
-                    // Configurar variables según el CSV
-                    document.getElementById('numVariables').value = numVars;
-                    document.getElementById('numVariables').dispatchEvent(new Event('change'));
-
-                    const varOffset = hasTime ? 1 : 0;
-                    for (let i = 0; i < numVars; i++) {
-                        if (header[i + varOffset]) {
-                            document.getElementById(`var${i+1}Name`).value = header[i + varOffset];
-                        }
-                    }
-
-                    // Aplicar configuración y cargar datos
-                    applyVariableConfiguration();
-                    state.rawData = importedData;
-                    updateDisplay();
-
-                    alert(tr('alertImportOk', {count: importedData.length, vars: numVars}));
-                } catch (err) {
-                    alert(tr('alertImportError') + err.message);
-                }
-            };
-
-            reader.readAsText(file);
-            e.target.value = ''; // Reset input
+            // Si el diálogo de importación está abierto, cargar vista previa.
+            if (document.getElementById('importModal').classList.contains('active')) {
+                _onImportFileChosen(file);
+                e.target.value = '';
+                return;
+            }
+            // Fallback: abrir diálogo con el archivo ya seleccionado
+            openImportDialog();
+            _onImportFileChosen(file);
+            e.target.value = '';
         });
 
         // ========== LIMPIAR ==========
