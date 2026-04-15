@@ -12444,52 +12444,112 @@ bluetooth.startIOPinService()</pre>
 
         // Parsea un CSV y devuelve { hasTime, numVars, varNames, rows }
         function parseCSVForImport(text, format) {
-            const rawLines = text.split(/\r?\n/).map(l => l.replace(/\uFEFF/g, '').trim()).filter(l => l.length > 0);
+            const rawLines = text.split(/\r?\n/)
+                .map(l => l.replace(/\uFEFF/g, ''))
+                // Preservar tabs y espacios internos; solo quitar \r al final y espacios finales/iniciales suaves
+                .map(l => l.replace(/\s+$/, ''))
+                .filter(l => l.length > 0);
             if (rawLines.length < 2) throw new Error(tr('alertCsvEmpty'));
 
-            // Detectar separador usando la primera línea con múltiples campos
+            // Detectar separador usando la primera línea con múltiples campos,
+            // ignorando líneas de directivas tipo "sep=..."
             let sep = ',';
-            for (const ln of rawLines) {
-                const c = (ln.match(/,/g) || []).length;
-                const s = (ln.match(/;/g) || []).length;
-                const t = (ln.match(/\t/g) || []).length;
-                if (c + s + t > 0) {
-                    if (t >= c && t >= s) sep = '\t';
-                    else if (s > c) sep = ';';
-                    else sep = ',';
-                    break;
+            let explicitSep = null;
+            // Detección explícita "sep=X"
+            const sepDirective = rawLines[0].match(/^sep\s*=\s*(.)/i);
+            if (sepDirective) {
+                explicitSep = sepDirective[1];
+                if (explicitSep === '\\' && rawLines[0].length > 5) explicitSep = '\t';
+            }
+            if (explicitSep) {
+                sep = explicitSep;
+            } else {
+                for (const ln of rawLines) {
+                    const c = (ln.match(/,/g) || []).length;
+                    const s = (ln.match(/;/g) || []).length;
+                    const t = (ln.match(/\t/g) || []).length;
+                    if (c + s + t > 0) {
+                        if (t >= c && t >= s) sep = '\t';
+                        else if (s > c) sep = ';';
+                        else sep = ',';
+                        break;
+                    }
                 }
             }
 
-            // Buscar la línea de encabezado: aquella cuya siguiente línea tiene el mismo
-            // número de campos y son todos numéricos (excepto posibles vacíos).
-            let headerIdx = -1;
-            const maxSearch = Math.min(rawLines.length - 1, 15);
-            for (let i = 0; i < maxSearch; i++) {
-                const parts = _splitCSVLine(rawLines[i], sep);
-                if (parts.length < 1) continue;
-                const nextParts = _splitCSVLine(rawLines[i + 1], sep);
-                if (nextParts.length !== parts.length) continue;
-                const numericCount = nextParts.filter(p => p !== '' && !isNaN(parseFloat(p.replace(',', '.')))).length;
-                if (numericCount >= Math.max(1, nextParts.length - 1)) {
-                    headerIdx = i;
-                    break;
+            // Filtrar directivas (sep=...) y líneas vacías
+            const workLines = rawLines.filter(l => !/^sep\s*=/i.test(l));
+            if (workLines.length < 1) throw new Error(tr('alertCsvEmpty'));
+
+            // Helper: ¿fila numérica?
+            const isNumericRow = (parts) => {
+                if (parts.length === 0) return false;
+                let count = 0;
+                for (const p of parts) {
+                    if (p !== '' && !isNaN(parseFloat(p.replace(',', '.')))) count++;
+                }
+                return count >= Math.max(1, parts.length - 1);
+            };
+
+            // Encontrar la primera fila de datos numéricos
+            let firstDataIdx = -1;
+            let dataCols = 0;
+            for (let i = 0; i < workLines.length; i++) {
+                const parts = _splitCSVLine(workLines[i], sep);
+                if (isNumericRow(parts)) {
+                    // Verificar consistencia con siguiente fila si existe
+                    if (i + 1 < workLines.length) {
+                        const nextParts = _splitCSVLine(workLines[i + 1], sep);
+                        if (nextParts.length === parts.length && isNumericRow(nextParts)) {
+                            firstDataIdx = i;
+                            dataCols = parts.length;
+                            break;
+                        }
+                    } else {
+                        firstDataIdx = i;
+                        dataCols = parts.length;
+                        break;
+                    }
                 }
             }
-            if (headerIdx < 0) {
-                // Fallback: asumir primera línea como header
-                headerIdx = 0;
+            if (firstDataIdx < 0) throw new Error(tr('importDetectError') + '(' + tr('alertCsvEmpty') + ')');
+
+            // Intentar obtener encabezado de la línea previa
+            let headerRaw = null;
+            if (firstDataIdx > 0) {
+                const prev = _splitCSVLine(workLines[firstDataIdx - 1], sep);
+                if (prev.length === dataCols) {
+                    // Encabezado normal (columnas coinciden)
+                    headerRaw = prev;
+                } else if (prev.length > 0 && prev.length < dataCols) {
+                    // Encabezado compuesto tipo "time (fuente1)": intentar desglosar
+                    // Caso frecuente de micro:bit data logger: una sola etiqueta con patrón "time (varname)"
+                    const label = prev.join(' ').trim();
+                    const m = label.match(/^(\S+)\s*\((.+)\)\s*$/);
+                    if (m && dataCols === 2) {
+                        headerRaw = [m[1], m[2]];
+                    } else {
+                        // Usar el label como nombre de la primera variable y defaults para el resto
+                        headerRaw = [label];
+                        while (headerRaw.length < dataCols) headerRaw.push(`Var ${headerRaw.length}`);
+                    }
+                }
             }
 
-            const headerRaw = _splitCSVLine(rawLines[headerIdx], sep);
-            const headerLower = headerRaw.map(h => h.toLowerCase());
+            if (!headerRaw) {
+                // No hay encabezado: generar defaults
+                headerRaw = [];
+                for (let i = 0; i < dataCols; i++) headerRaw.push(i === 0 ? 'time' : `Var ${i}`);
+            }
 
-            // Detectar columna de tiempo
+            const headerLower = headerRaw.map(h => (h || '').toLowerCase());
+
+            // Detectar columna de tiempo por palabras clave
             const timeKeywords = ['time', 'tiempo', 'tempo', 't(s)', 't (s)'];
             let timeColIdx = -1;
             for (let i = 0; i < headerLower.length; i++) {
                 const h = headerLower[i];
-                if (timeKeywords.some(k => h === k || h.startsWith(k))) {
+                if (timeKeywords.some(k => h === k || h.startsWith(k + ' ') || h.startsWith(k + '('))) {
                     timeColIdx = i;
                     break;
                 }
@@ -12506,11 +12566,33 @@ bluetooth.startIOPinService()</pre>
                 }
             }
 
-            // Si format === 'system' y el primer header parece "Tiempo", respetar
-            if (format === 'system' && timeColIdx < 0) {
-                // Forzar: si la primera columna parece tiempo numérico pero sin nombre reconocido,
-                // asumir que es tiempo solo si el estado actual indica microbitTimestamp
-                if (state.microbitTimestamp) timeColIdx = 0;
+            // Si no se detectó columna de tiempo por nombre, verificar si la primera columna
+            // es monotonicamente no-decreciente (heurística de tiempo)
+            if (timeColIdx < 0 && (format === 'datalogger' || format === 'auto')) {
+                const firstColVals = [];
+                for (let i = firstDataIdx; i < Math.min(firstDataIdx + 20, workLines.length); i++) {
+                    const parts = _splitCSVLine(workLines[i], sep);
+                    const v = parseFloat((parts[0] || '').replace(',', '.'));
+                    if (!isNaN(v)) firstColVals.push(v);
+                }
+                if (firstColVals.length >= 3) {
+                    let monotonic = true;
+                    for (let i = 1; i < firstColVals.length; i++) {
+                        if (firstColVals[i] < firstColVals[i - 1] - 0.001) { monotonic = false; break; }
+                    }
+                    // Además, que los valores aumenten en conjunto (no sean todos idénticos)
+                    const span = firstColVals[firstColVals.length - 1] - firstColVals[0];
+                    if (monotonic && span > 0) {
+                        timeColIdx = 0;
+                        if (!headerLower[0] || headerLower[0] === 'var 0') headerRaw[0] = 'time';
+                    }
+                }
+            }
+
+            // Si format === 'system' y el primer header parece numérico sin nombre reconocido,
+            // respetar el estado actual
+            if (format === 'system' && timeColIdx < 0 && state.microbitTimestamp) {
+                timeColIdx = 0;
             }
 
             // Columnas de variables (excluyendo tiempo y columnas saltadas)
@@ -12525,16 +12607,15 @@ bluetooth.startIOPinService()</pre>
 
             if (varCols.length < 1) throw new Error(tr('alertCsvVarCount'));
             if (varCols.length > 3) {
-                // Limitar a 3
                 varCols.splice(3);
                 varNames.splice(3);
             }
 
-            // Parsear filas de datos
+            // Parsear filas de datos desde firstDataIdx
             const dataRows = [];
-            for (let i = headerIdx + 1; i < rawLines.length; i++) {
-                const parts = _splitCSVLine(rawLines[i], sep);
-                if (parts.length < headerRaw.length - skipCols.size) continue;
+            for (let i = firstDataIdx; i < workLines.length; i++) {
+                const parts = _splitCSVLine(workLines[i], sep);
+                if (parts.length < dataCols - skipCols.size) continue;
 
                 let timeVal = null;
                 if (timeColIdx >= 0) {
