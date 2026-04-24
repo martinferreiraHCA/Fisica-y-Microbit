@@ -5520,6 +5520,12 @@
             // Actualizar footer
             updateFooter(lang);
 
+            // Re-sincronizar títulos/etiquetas/cabeceras personalizadas (el loop de
+            // traducción pudo haber reemplazado los encabezados de gráfica y tabla)
+            if (typeof syncChartLabelsAndTitles === 'function') {
+                try { syncChartLabelsAndTitles(); } catch (e) {}
+            }
+
             // Guardar preferencia
             localStorage.setItem('microbit-language', lang);
 
@@ -7455,7 +7461,7 @@ bluetooth.startIOPinService()</pre>
             this.style.display = 'none';
         });
 
-        // Color previews y borde de tarjeta
+        // Color previews y borde de tarjeta + propagación en vivo del color al chart
         ['var1', 'var2', 'var3'].forEach((varId, idx) => {
             const colorInput = document.getElementById(varId + 'Color');
             const preview = document.getElementById(varId + 'ColorPreview');
@@ -7463,6 +7469,78 @@ bluetooth.startIOPinService()</pre>
             colorInput.addEventListener('input', function() {
                 preview.style.background = this.value;
                 if (card) card.style.borderLeftColor = this.value;
+                // Sincroniza también el color en el estado para ver el cambio sin pulsar APLICAR
+                if (state.variables[idx]) {
+                    state.variables[idx].color = this.value;
+                    if (typeof updateAllCharts === 'function') updateAllCharts();
+                }
+            });
+        });
+
+        // Edición en vivo de nombres de variable: propaga a tabla, ejes, leyenda,
+        // selects, títulos auto y checkboxes sin necesidad de pulsar APLICAR.
+        ['var1Name', 'var2Name', 'var3Name'].forEach((id, idx) => {
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.addEventListener('input', function() {
+                if (!state.variables[idx]) return;
+                state.variables[idx].name = this.value;
+
+                // Actualizar etiquetas de ejes que dependen de esta variable,
+                // sólo si el usuario no las personalizó.
+                for (let g = 0; g < 3; g++) {
+                    const gg = state.graphs[g];
+                    if (!gg) continue;
+                    // Eje X basado en var
+                    if (gg.xAxis === `var${idx}` && !gg.xLabelCustom) {
+                        gg.xLabel = this.value;
+                        const xInp = document.getElementById(`graph${g + 1}XLabel`);
+                        if (xInp) xInp.value = this.value;
+                    }
+                    // Eje Y: si esta variable es una de las Y, regenerar la etiqueta Y
+                    // (solo si no está personalizada)
+                    if (!gg.yLabelCustom && gg.yVars && gg.yVars.includes(idx)) {
+                        gg.yLabel = getYAxisLabel(g);
+                        const yInp = document.getElementById(`graph${g + 1}YLabel`);
+                        if (yInp) yInp.value = gg.yLabel;
+                    }
+                }
+
+                // Refrescar textos dependientes en el panel lateral de configuración
+                // (checkboxes Y, labels Y de selección, opciones de eje X)
+                if (typeof updateGraphConfiguration === 'function') {
+                    // updateGraphConfiguration() reconstruye los selectores y checkboxes,
+                    // pero conserva los valores actuales. Aquí solo queremos refrescar
+                    // los textos de las opciones, no tocar inputs del usuario.
+                    for (let g = 1; g <= 3; g++) {
+                        const sel = document.getElementById(`graph${g}XAxis`);
+                        if (sel) {
+                            const opt = sel.querySelector(`option[value="var${idx}"]`);
+                            if (opt) opt.textContent = input.value;
+                        }
+                        const cb = document.getElementById(`graph${g}Var${idx}`);
+                        if (cb && cb.parentElement) {
+                            const lbl = cb.parentElement.querySelector('label');
+                            if (lbl) {
+                                // Mantener el color-preview al final
+                                const span = lbl.querySelector('.color-preview');
+                                lbl.textContent = input.value;
+                                if (span) lbl.appendChild(span);
+                            }
+                        }
+                    }
+                }
+
+                // Actualizar selects de curve fit, integral, Explorer/LAB
+                ['fitVariableSelect', 'integralVarSelect'].forEach(selId => {
+                    const sel = document.getElementById(selId);
+                    if (sel) {
+                        const opt = sel.querySelector(`option[value="${idx}"]`);
+                        if (opt) opt.textContent = input.value;
+                    }
+                });
+
+                syncChartLabelsAndTitles();
             });
         });
 
@@ -7515,6 +7593,78 @@ bluetooth.startIOPinService()</pre>
                 return getXAxisLabel('time').toUpperCase();
             } catch (e) {
                 return 'TIEMPO (s)';
+            }
+        }
+
+        // Sincroniza en vivo títulos, etiquetas de ejes y cabeceras de tabla con el estado.
+        // Llamar tras editar nombres de variables, títulos de gráfica o etiquetas de eje.
+        // Barato: sólo re-pinta textos, no recalcula datasets.
+        function syncChartLabelsAndTitles() {
+            const t = translations[currentLanguage] || {};
+            // Títulos visibles de cada gráfica
+            for (let i = 0; i < (state.charts || []).length; i++) {
+                const titleEl = document.getElementById(`graphTitle${i}`);
+                if (titleEl) titleEl.textContent = computeGraphTitle(i);
+                const chart = state.charts[i];
+                const cfg = state.graphs[i];
+                if (chart && cfg) {
+                    if (chart.options && chart.options.scales) {
+                        if (chart.options.scales.x && chart.options.scales.x.title) {
+                            chart.options.scales.x.title.text = (cfg.xLabel || '').toUpperCase();
+                        }
+                        if (chart.options.scales.y && chart.options.scales.y.title) {
+                            chart.options.scales.y.title.text = (cfg.yLabel || '').toUpperCase();
+                        }
+                    }
+                    // Actualizar etiquetas de datasets (leyenda) con nombres actuales
+                    if (chart.data && chart.data.datasets) {
+                        cfg.yVars.forEach((varIdx, dsIdx) => {
+                            if (chart.data.datasets[dsIdx] && state.variables[varIdx]) {
+                                chart.data.datasets[dsIdx].label = state.variables[varIdx].name;
+                            }
+                        });
+                    }
+                    chart.update('none');
+                }
+            }
+            // Encabezados de gráfica en el panel lateral: reflejan el título personalizado
+            for (let g = 1; g <= 3; g++) {
+                const heading = document.getElementById(`graph${g}Title`);
+                const cfg = state.graphs[g - 1];
+                if (heading && cfg) {
+                    const base = `${(t.graphDefault || 'Gráfica').toUpperCase()} ${g}`;
+                    const custom = (cfg.title || '').trim();
+                    heading.textContent = (custom && custom.toLowerCase() !== `gráfica ${g}`.toLowerCase()
+                        && custom.toLowerCase() !== `graph ${g}`.toLowerCase()
+                        && custom.toLowerCase() !== `gráfico ${g}`.toLowerCase())
+                        ? `${base} — ${custom.toUpperCase()}`
+                        : base;
+                }
+            }
+            // Selects dependientes (integral, curve fit): opciones muestran el título
+            const integralSel = document.getElementById('integralGraphSelect');
+            if (integralSel) {
+                for (let i = 0; i < state.numGraphs; i++) {
+                    const opt = integralSel.querySelector(`option[value="${i}"]`);
+                    if (opt) opt.textContent = (state.graphs[i] && state.graphs[i].title) ? state.graphs[i].title : `${t.graphDefault || 'Gráfica'} ${i + 1}`;
+                }
+            }
+            // Encabezados de la tabla
+            if (typeof updateDataTableHeader === 'function') updateDataTableHeader();
+            // Actualizar Explorer/LAB charts si existen
+            if (typeof expChart !== 'undefined' && expChart && expChart.options && expChart.options.scales) {
+                expChart.options.scales.x.title.text = _expXAxisLabel();
+                if (typeof expSelectedVar === 'number' && state.variables[expSelectedVar]) {
+                    expChart.options.scales.y.title.text = state.variables[expSelectedVar].name.toUpperCase();
+                }
+                expChart.update('none');
+            }
+            if (typeof dlabChart !== 'undefined' && dlabChart && dlabChart.options && dlabChart.options.scales) {
+                dlabChart.options.scales.x.title.text = _expXAxisLabel();
+                if (typeof dlabSelectedVar === 'number' && state.variables[dlabSelectedVar]) {
+                    dlabChart.options.scales.y.title.text = state.variables[dlabSelectedVar].name.toUpperCase();
+                }
+                dlabChart.update('none');
             }
         }
 
@@ -7648,8 +7798,9 @@ bluetooth.startIOPinService()</pre>
 
         document.getElementById('applyGraphConfigBtn').addEventListener('click', applyGraphConfiguration);
 
-        // Listeners para etiquetas y título: marcar como personalizado cuando el usuario edita.
-        // Así el auto-config (cambio de variables, tipo de datos, etc.) no pisa cambios manuales.
+        // Listeners para etiquetas y título: marcar como personalizado cuando el usuario
+        // edita. Así el auto-config (cambio de variables, tipo de datos, etc.) no pisa
+        // cambios manuales. Además, la UI se sincroniza en vivo sin pulsar APLICAR.
         for (let g = 1; g <= 3; g++) {
             const gIdx = g - 1;
             const xLabelInput = document.getElementById(`graph${g}XLabel`);
@@ -7657,6 +7808,7 @@ bluetooth.startIOPinService()</pre>
                 xLabelInput.addEventListener('input', function() {
                     state.graphs[gIdx].xLabel = this.value;
                     state.graphs[gIdx].xLabelCustom = (this.value !== getXAxisLabel(state.graphs[gIdx].xAxis));
+                    syncChartLabelsAndTitles();
                 });
             }
             const yLabelInput = document.getElementById(`graph${g}YLabel`);
@@ -7664,6 +7816,7 @@ bluetooth.startIOPinService()</pre>
                 yLabelInput.addEventListener('input', function() {
                     state.graphs[gIdx].yLabel = this.value;
                     state.graphs[gIdx].yLabelCustom = (this.value !== getYAxisLabel(gIdx));
+                    syncChartLabelsAndTitles();
                 });
             }
             const titleInput = document.getElementById(`graph${g}TitleInput`);
@@ -7676,12 +7829,14 @@ bluetooth.startIOPinService()</pre>
                         autoCb.checked = false;
                         state.graphs[gIdx].autoTitle = false;
                     }
+                    syncChartLabelsAndTitles();
                 });
             }
             const autoTitleCb = document.getElementById(`graph${g}AutoTitle`);
             if (autoTitleCb) {
                 autoTitleCb.addEventListener('change', function() {
                     state.graphs[gIdx].autoTitle = this.checked;
+                    syncChartLabelsAndTitles();
                 });
             }
             // Botón de reset para etiqueta X (vuelve a auto-generada)
@@ -7692,6 +7847,7 @@ bluetooth.startIOPinService()</pre>
                     state.graphs[gIdx].xLabel = auto;
                     state.graphs[gIdx].xLabelCustom = false;
                     if (xLabelInput) xLabelInput.value = auto;
+                    syncChartLabelsAndTitles();
                 });
             }
             const yResetBtn = document.getElementById(`graph${g}YLabelReset`);
@@ -7701,6 +7857,7 @@ bluetooth.startIOPinService()</pre>
                     state.graphs[gIdx].yLabel = auto;
                     state.graphs[gIdx].yLabelCustom = false;
                     if (yLabelInput) yLabelInput.value = auto;
+                    syncChartLabelsAndTitles();
                 });
             }
         }
@@ -8198,15 +8355,37 @@ bluetooth.startIOPinService()</pre>
             state.charts[index] = chart;
         }
 
+        // Helpers para escapar texto en HTML (cabeceras de tabla)
+        function _escHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
         function updateDataTableHeader() {
             const header = document.getElementById('dataTableHeader');
+            if (!header) return;
             let html = '<th>#</th>';
             if (state.microbitTimestamp) {
-                html += '<th>T</th>';
+                // La cabecera de tiempo refleja la etiqueta del eje X de la primera
+                // gráfica configurada para tiempo (compacta — máx ~14 chars visibles,
+                // tooltip con el nombre completo).
+                let fullTimeLabel = '';
+                for (let g = 0; g < state.graphs.length; g++) {
+                    if (state.graphs[g].xAxis === 'time' && state.graphs[g].xLabel) {
+                        fullTimeLabel = state.graphs[g].xLabel;
+                        break;
+                    }
+                }
+                if (!fullTimeLabel) fullTimeLabel = getXAxisLabel('time');
+                const shortTimeLabel = fullTimeLabel.length > 14 ? fullTimeLabel.slice(0, 12) + '…' : fullTimeLabel;
+                html += `<th title="${_escHtml(fullTimeLabel)}">${_escHtml(shortTimeLabel)}</th>`;
             }
 
             for (let i = 0; i < state.numVariables; i++) {
-                html += `<th>${state.variables[i].name.substring(0, 8)}</th>`;
+                const full = state.variables[i].name;
+                // Mostrar nombre completo; añadir title para tooltip cuando se trunque visualmente
+                html += `<th title="${_escHtml(full)}">${_escHtml(full)}</th>`;
             }
 
             html += '<th>📹</th><th></th>';
@@ -11456,6 +11635,7 @@ bluetooth.startIOPinService()</pre>
                 }
             }
             updateDisplay();
+            syncChartLabelsAndTitles();
         });
 
         // ========== DEPURACIÓN DE DATOS ==========
