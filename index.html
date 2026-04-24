@@ -234,6 +234,125 @@
             position: relative;
         }
 
+        /* ── Layout con etiquetas de eje editables ── */
+        .chart-axis-row {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            gap: 4px;
+        }
+        .chart-axis-y {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            padding: 2px 2px;
+            font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+            user-select: none;
+            white-space: nowrap;
+            color: #333;
+        }
+        .chart-axis-x {
+            text-align: center;
+            padding: 6px 0 2px 0;
+            font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+            user-select: none;
+            color: #333;
+        }
+        .axis-prefix {
+            font-weight: 800;
+            color: #1976d2;
+            margin-right: 6px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .axis-value {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 5px;
+            cursor: text;
+            border: 1.5px dashed transparent;
+            transition: background 0.15s, border-color 0.15s;
+            user-select: text;
+            min-width: 40px;
+            outline: none;
+            font-weight: 600;
+        }
+        .axis-value:hover {
+            background: #fff8d5;
+            border-color: #f0ad4e;
+        }
+        .axis-value:focus {
+            background: #fff;
+            border-color: #1976d2;
+            border-style: solid;
+            box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.15);
+        }
+        .axis-value:empty::before {
+            content: attr(data-placeholder);
+            color: #aaa;
+            font-weight: 400;
+            font-style: italic;
+        }
+        /* Indicador didáctico: pills con slot de variable + nombre + estado live */
+        .graph-legend-compact {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            margin-left: 8px;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+        .var-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 8px 2px 4px;
+            border-radius: 999px;
+            background: #f5f5f5;
+            font-size: clamp(0.65rem, 1.4vw, 0.75rem);
+            font-weight: 500;
+            color: #333;
+            border: 1.5px solid #ddd;
+            transition: all 0.2s;
+        }
+        .var-pill .var-pill-slot {
+            font-weight: 800;
+            background: #333;
+            color: #fff;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 0.88em;
+            letter-spacing: 0.3px;
+        }
+        .var-pill .var-pill-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--c, #666);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
+        }
+        .var-pill .var-pill-name {
+            font-weight: 600;
+        }
+        .var-pill.live {
+            background: #e8f5e9;
+            border-color: #2e7d32;
+            color: #1b5e20;
+        }
+        .var-pill.live .var-pill-slot {
+            background: #2e7d32;
+        }
+        .var-pill-live {
+            font-size: 0.9em;
+            animation: pulse-live 1.3s ease-in-out infinite;
+        }
+        @keyframes pulse-live {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.45; transform: scale(0.9); }
+        }
+
         /* Controles de gráfica (zoom + guardar) */
         .graph-controls {
             display: flex;
@@ -4459,6 +4578,11 @@
                 autoTitleLabel: 'Título automático (Y vs X)',
                 graphTitleFieldLabel: 'Título:',
                 xLabelResetTitle: 'Auto-generar etiqueta',
+                axisXPrefix: 'Eje X',
+                axisYPrefix: 'Eje Y',
+                axisClickToEdit: 'click para editar',
+                pillFromBoard: 'desde la placa micro:bit',
+                pillLive: 'datos en vivo',
             },
             en: {
                 // Toolbar
@@ -4732,6 +4856,11 @@
                 autoTitleLabel: 'Auto title (Y vs X)',
                 graphTitleFieldLabel: 'Title:',
                 xLabelResetTitle: 'Auto-generate label',
+                axisXPrefix: 'X axis',
+                axisYPrefix: 'Y axis',
+                axisClickToEdit: 'click to edit',
+                pillFromBoard: 'from the micro:bit board',
+                pillLive: 'live data',
             },
             pt: {
                 // Toolbar
@@ -5005,6 +5134,11 @@
                 autoTitleLabel: 'Título automático (Y vs X)',
                 graphTitleFieldLabel: 'Título:',
                 xLabelResetTitle: 'Gerar rótulo automático',
+                axisXPrefix: 'Eixo X',
+                axisYPrefix: 'Eixo Y',
+                axisClickToEdit: 'clique para editar',
+                pillFromBoard: 'da placa micro:bit',
+                pillLive: 'dados ao vivo',
             }
         };
 
@@ -7579,6 +7713,103 @@ bluetooth.startIOPinService()</pre>
             return names.length ? names.join(', ') : 'Valor';
         }
 
+        // Renderiza los "pills" didácticos (V1/V2/V3 + color + nombre + 📡 live)
+        // para la gráfica dada. Se llama tras updateGraphsDisplay y desde sync.
+        function updateGraphLegendPills(index) {
+            const el = document.getElementById(`graphLegend${index}`);
+            if (!el) return;
+            const cfg = state.graphs[index];
+            if (!cfg) { el.innerHTML = ''; return; }
+            const isLive = !!(state.isConnected || state.isCollecting);
+            const t = translations[currentLanguage] || {};
+            const fromBoardTxt = t.pillFromBoard || 'desde la placa';
+            const liveTxt = t.pillLive || 'datos en vivo';
+
+            // Mostrar pills para variables en Y. Si el eje X también usa una variable,
+            // añadir pill para esa también (con etiqueta "X:")
+            const shown = new Set();
+            const pills = [];
+            if (cfg.xAxis && cfg.xAxis !== 'time') {
+                const xIdx = parseInt(cfg.xAxis.replace('var', ''));
+                if (state.variables[xIdx]) {
+                    shown.add(xIdx);
+                    pills.push({ idx: xIdx, role: 'X' });
+                }
+            }
+            (cfg.yVars || []).forEach(vi => {
+                if (state.variables[vi] && !shown.has(vi)) {
+                    shown.add(vi);
+                    pills.push({ idx: vi, role: 'Y' });
+                }
+            });
+
+            el.innerHTML = pills.map(p => {
+                const v = state.variables[p.idx];
+                const slot = `V${p.idx + 1}`;
+                const liveCls = isLive ? ' live' : '';
+                const liveIco = isLive ? `<span class="var-pill-live" title="${_escHtml(liveTxt)}">📡</span>` : '';
+                const tip = `${p.role === 'X' ? 'Eje X · ' : 'Eje Y · '}${slot} ${fromBoardTxt}`;
+                return `<span class="var-pill${liveCls}" style="--c:${_escHtml(v.color)}" title="${_escHtml(tip)}">` +
+                    `<span class="var-pill-slot">${slot}</span>` +
+                    `<span class="var-pill-dot"></span>` +
+                    `<span class="var-pill-name">${_escHtml(v.name)}</span>` +
+                    liveIco +
+                `</span>`;
+            }).join('');
+        }
+
+        // Activa la edición inline de una etiqueta de eje (click → editable).
+        // Al perder foco o pulsar Enter, confirma el cambio, lo refleja en el
+        // estado, sincroniza la UI y respeta la personalización (xLabelCustom).
+        function _bindEditableAxisLabel(graphIndex, axis) {
+            const id = (axis === 'x' ? `axisValueX${graphIndex}` : `axisValueY${graphIndex}`);
+            const el = document.getElementById(id);
+            if (!el) return;
+            const commit = () => {
+                const raw = (el.textContent || '').replace(/\s+/g, ' ').trim();
+                const cfg = state.graphs[graphIndex];
+                if (!cfg) return;
+                if (axis === 'x') {
+                    const fallback = cfg.xLabelCustom ? cfg.xLabel : getXAxisLabel(cfg.xAxis);
+                    const newVal = raw || fallback;
+                    cfg.xLabel = newVal;
+                    cfg.xLabelCustom = (newVal !== getXAxisLabel(cfg.xAxis));
+                    el.textContent = newVal;
+                    const input = document.getElementById(`graph${graphIndex + 1}XLabel`);
+                    if (input) input.value = newVal;
+                } else {
+                    const fallback = cfg.yLabelCustom ? cfg.yLabel : getYAxisLabel(graphIndex);
+                    const newVal = raw || fallback;
+                    cfg.yLabel = newVal;
+                    cfg.yLabelCustom = (newVal !== getYAxisLabel(graphIndex));
+                    el.textContent = newVal;
+                    const input = document.getElementById(`graph${graphIndex + 1}YLabel`);
+                    if (input) input.value = newVal;
+                }
+                syncChartLabelsAndTitles();
+            };
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+                else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    const cfg = state.graphs[graphIndex];
+                    el.textContent = axis === 'x' ? cfg.xLabel : cfg.yLabel;
+                    el.blur();
+                }
+            });
+            el.addEventListener('blur', commit);
+            // Al hacer click, seleccionar todo el texto para edición rápida
+            el.addEventListener('focus', () => {
+                try {
+                    const range = document.createRange();
+                    range.selectNodeContents(el);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                } catch (_) {}
+            });
+        }
+
         // Etiqueta del eje X para los modos Explorer/LAB: toma la de la primera gráfica
         // configurada para tiempo (respetando personalización); si ninguna usa tiempo,
         // usa la auto-generada a partir de timeUnit. Se asume MAYÚSCULAS.
@@ -7626,6 +7857,17 @@ bluetooth.startIOPinService()</pre>
                     }
                     chart.update('none');
                 }
+                // Sincronizar los labels editables HTML (Eje X / Eje Y)
+                const axEl = document.getElementById(`axisValueX${i}`);
+                if (axEl && cfg && document.activeElement !== axEl) {
+                    axEl.textContent = cfg.xLabel || '';
+                }
+                const ayEl = document.getElementById(`axisValueY${i}`);
+                if (ayEl && cfg && document.activeElement !== ayEl) {
+                    ayEl.textContent = cfg.yLabel || '';
+                }
+                // Refrescar los pills didácticos
+                if (typeof updateGraphLegendPills === 'function') updateGraphLegendPills(i);
             }
             // Encabezados de gráfica en el panel lateral: reflejan el título personalizado
             for (let g = 1; g <= 3; g++) {
@@ -8059,6 +8301,12 @@ bluetooth.startIOPinService()</pre>
                 title.textContent = computeGraphTitle(i);
 
                 const t = translations[currentLanguage];
+
+                // Pills didácticos con la "fuente" de cada variable (slot de la placa)
+                const legendCompact = document.createElement('div');
+                legendCompact.className = 'graph-legend-compact';
+                legendCompact.id = `graphLegend${i}`;
+
                 const controls = document.createElement('div');
                 controls.className = 'graph-controls';
                 controls.innerHTML = `
@@ -8074,21 +8322,45 @@ bluetooth.startIOPinService()</pre>
                 `;
 
                 titleBar.appendChild(title);
+                titleBar.appendChild(legendCompact);
                 titleBar.appendChild(controls);
+
+                // Fila con etiqueta Y + canvas + etiqueta X debajo (labels editables)
+                const chartAxisRow = document.createElement('div');
+                chartAxisRow.className = 'chart-axis-row';
+
+                const axisY = document.createElement('div');
+                axisY.className = 'chart-axis-y';
+                axisY.innerHTML = `<span class="axis-prefix">${_escHtml(t.axisYPrefix || 'Eje Y')}:</span><span class="axis-value" id="axisValueY${i}" contenteditable="true" spellcheck="false" data-graph="${i}" data-axis="y" data-placeholder="${_escHtml(t.axisClickToEdit || 'click para editar')}">${_escHtml(state.graphs[i].yLabel || '')}</span>`;
 
                 const chartContainer = document.createElement('div');
                 chartContainer.className = 'chart-container';
 
                 const canvas = document.createElement('canvas');
                 canvas.id = `chart${i}`;
-
                 chartContainer.appendChild(canvas);
+
+                chartAxisRow.appendChild(axisY);
+                chartAxisRow.appendChild(chartContainer);
+
+                const axisX = document.createElement('div');
+                axisX.className = 'chart-axis-x';
+                axisX.innerHTML = `<span class="axis-prefix">${_escHtml(t.axisXPrefix || 'Eje X')}:</span><span class="axis-value" id="axisValueX${i}" contenteditable="true" spellcheck="false" data-graph="${i}" data-axis="x" data-placeholder="${_escHtml(t.axisClickToEdit || 'click para editar')}">${_escHtml(state.graphs[i].xLabel || '')}</span>`;
+
                 wrapper.appendChild(titleBar);
-                wrapper.appendChild(chartContainer);
+                wrapper.appendChild(chartAxisRow);
+                wrapper.appendChild(axisX);
                 container.appendChild(wrapper);
+
+                // Hookear edición inline de etiquetas de ejes
+                _bindEditableAxisLabel(i, 'x');
+                _bindEditableAxisLabel(i, 'y');
 
                 // Crear chart
                 createChart(i);
+
+                // Pintar pills de variables (didáctico)
+                updateGraphLegendPills(i);
             }
 
             // Restaurar datos si existen
@@ -8283,7 +8555,10 @@ bluetooth.startIOPinService()</pre>
                         x: {
                             type: 'linear',
                             title: {
-                                display: true,
+                                // Ocultos en pantalla: las etiquetas editables HTML
+                                // (Eje X / Eje Y) cumplen este rol. Se muestran
+                                // temporalmente al exportar como imagen.
+                                display: false,
                                 text: state.graphs[index].xLabel.toUpperCase(),
                                 font: { size: 11, weight: 'bold' },
                                 padding: { top: 4 }
@@ -8305,7 +8580,7 @@ bluetooth.startIOPinService()</pre>
                         y: {
                             type: 'linear',
                             title: {
-                                display: true,
+                                display: false,
                                 text: state.graphs[index].yLabel.toUpperCase(),
                                 font: { size: 11, weight: 'bold' },
                                 padding: { bottom: 4 }
@@ -8413,6 +8688,9 @@ bluetooth.startIOPinService()</pre>
                 await state.port.open({ baudRate: 115200 });
                 state.isConnected = true;
                 state.isBluetooth = false;
+                if (typeof updateGraphLegendPills === 'function') {
+                    for (let i = 0; i < state.numGraphs; i++) updateGraphLegendPills(i);
+                }
 
                 document.getElementById('connectBtn').style.display = 'none';
                 document.getElementById('connectBluetoothBtn').style.display = 'none';
@@ -9427,6 +9705,9 @@ bluetooth.startIOPinService()</pre>
                 state.btCharTx = null;
                 this.btLoopRunning = false;
                 this._stopHealthCheck();
+                if (typeof updateGraphLegendPills === 'function') {
+                    for (let i = 0; i < state.numGraphs; i++) updateGraphLegendPills(i);
+                }
                 this._cleanupNotificationHandlers();
                 syncExpBtButton();
 
@@ -11067,6 +11348,11 @@ bluetooth.startIOPinService()</pre>
                 }
                 updateDataTable();
 
+                // Refrescar pills didácticos (estado live/idle según conexión)
+                if (typeof updateGraphLegendPills === 'function') {
+                    for (let i = 0; i < state.numGraphs; i++) updateGraphLegendPills(i);
+                }
+
                 // Sincronizar slider del modo experimento con los datos actuales
                 if (typeof updateExpTimeline === 'function') {
                     updateExpTimeline();
@@ -12633,35 +12919,58 @@ bluetooth.startIOPinService()</pre>
 
         function saveChartAsImage(index) {
             const chart = state.charts[index];
-            if (!chart) return;
+            const cfg = state.graphs[index];
+            if (!chart || !cfg) return;
 
             const t = translations[currentLanguage];
-            const graphTitle = state.graphs[index].title || `${t.graphDefault} ${index + 1}`;
+            const graphTitle = cfg.title || `${t.graphDefault} ${index + 1}`;
 
-            // Crear canvas de alta resolución (3x para buena calidad de impresión)
-            const scale = 3;
-            const originalCanvas = chart.canvas;
-            const w = originalCanvas.width;
-            const h = originalCanvas.height;
+            // Mostrar temporalmente los títulos de eje en el canvas para que
+            // queden incluidos en la imagen exportada (en pantalla se ocultan
+            // porque se usan las etiquetas HTML editables).
+            const prevXDisp = chart.options.scales.x.title.display;
+            const prevYDisp = chart.options.scales.y.title.display;
+            const prevXText = chart.options.scales.x.title.text;
+            const prevYText = chart.options.scales.y.title.text;
+            chart.options.scales.x.title.display = true;
+            chart.options.scales.y.title.display = true;
+            chart.options.scales.x.title.text = (cfg.xLabel || '').toUpperCase();
+            chart.options.scales.y.title.text = (cfg.yLabel || '').toUpperCase();
+            chart.update('none');
 
-            const exportCanvas = document.createElement('canvas');
-            exportCanvas.width = w * scale;
-            exportCanvas.height = h * scale;
-            const exportCtx = exportCanvas.getContext('2d');
+            try {
+                // Crear canvas de alta resolución (3x para buena calidad de impresión)
+                const scale = 3;
+                const originalCanvas = chart.canvas;
+                const w = originalCanvas.width;
+                const h = originalCanvas.height;
 
-            // Fondo blanco
-            exportCtx.fillStyle = '#ffffff';
-            exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+                const exportCanvas = document.createElement('canvas');
+                exportCanvas.width = w * scale;
+                exportCanvas.height = h * scale;
+                const exportCtx = exportCanvas.getContext('2d');
 
-            // Escalar y dibujar
-            exportCtx.scale(scale, scale);
-            exportCtx.drawImage(originalCanvas, 0, 0);
+                // Fondo blanco
+                exportCtx.fillStyle = '#ffffff';
+                exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
 
-            // Descargar como PNG
-            const link = document.createElement('a');
-            link.download = `${graphTitle.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, '_')}.png`;
-            link.href = exportCanvas.toDataURL('image/png', 1.0);
-            link.click();
+                // Escalar y dibujar
+                exportCtx.scale(scale, scale);
+                exportCtx.drawImage(originalCanvas, 0, 0);
+
+                // Descargar como PNG
+                const link = document.createElement('a');
+                link.download = `${graphTitle.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, '_')}.png`;
+                link.href = exportCanvas.toDataURL('image/png', 1.0);
+                link.click();
+            } finally {
+                // Restaurar estado para no duplicar títulos en pantalla
+                chart.options.scales.x.title.display = prevXDisp;
+                chart.options.scales.y.title.display = prevYDisp;
+                chart.options.scales.x.title.text = prevXText;
+                chart.options.scales.y.title.text = prevYText;
+                chart.update('none');
+            }
         }
 
         function saveAllChartsAsImages() {
