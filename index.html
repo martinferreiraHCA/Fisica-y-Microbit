@@ -3374,8 +3374,12 @@
                     <div id="graph1Config">
                         <h4 id="graph1Title" style="margin-bottom: 8px; font-size: 0.85rem;">GRÁFICA 1</h4>
                         <div class="input-row">
-                            <label id="graph1TitleLabel">Gráfica:</label>
+                            <label id="graph1TitleLabel">Título:</label>
                             <input type="text" id="graph1TitleInput" value="Gráfica 1">
+                        </div>
+                        <div class="checkbox-row">
+                            <input type="checkbox" id="graph1AutoTitle" checked>
+                            <label for="graph1AutoTitle" id="graph1AutoTitleLabel">Título automático (Y vs X)</label>
                         </div>
                         <div class="input-row">
                             <label>Eje X</label>
@@ -3392,10 +3396,12 @@
                         <div class="input-row">
                             <label>Etiqueta Eje X</label>
                             <input type="text" id="graph1XLabel" value="Tiempo (s)">
+                            <button type="button" class="toolbar-btn" id="graph1XLabelReset" title="Auto-generar etiqueta" style="padding:4px 8px;font-size:0.75rem;">↻</button>
                         </div>
                         <div class="input-row">
                             <label>Etiqueta Eje Y</label>
                             <input type="text" id="graph1YLabel" value="Valor">
+                            <button type="button" class="toolbar-btn" id="graph1YLabelReset" title="Auto-generar etiqueta" style="padding:4px 8px;font-size:0.75rem;">↻</button>
                         </div>
                     </div>
 
@@ -3403,8 +3409,12 @@
                     <div id="graph2Config" class="hidden" style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e0e0e0;">
                         <h4 id="graph2Title" style="margin-bottom: 8px; font-size: 0.85rem;">GRÁFICA 2</h4>
                         <div class="input-row">
-                            <label id="graph2TitleLabel">Gráfica:</label>
+                            <label id="graph2TitleLabel">Título:</label>
                             <input type="text" id="graph2TitleInput" value="Gráfica 2">
+                        </div>
+                        <div class="checkbox-row">
+                            <input type="checkbox" id="graph2AutoTitle" checked>
+                            <label for="graph2AutoTitle" id="graph2AutoTitleLabel">Título automático (Y vs X)</label>
                         </div>
                         <div class="input-row">
                             <label>Eje X</label>
@@ -3421,10 +3431,12 @@
                         <div class="input-row">
                             <label>Etiqueta Eje X</label>
                             <input type="text" id="graph2XLabel" value="Tiempo (s)">
+                            <button type="button" class="toolbar-btn" id="graph2XLabelReset" title="Auto-generar etiqueta" style="padding:4px 8px;font-size:0.75rem;">↻</button>
                         </div>
                         <div class="input-row">
                             <label>Etiqueta Eje Y</label>
                             <input type="text" id="graph2YLabel" value="Valor">
+                            <button type="button" class="toolbar-btn" id="graph2YLabelReset" title="Auto-generar etiqueta" style="padding:4px 8px;font-size:0.75rem;">↻</button>
                         </div>
                     </div>
 
@@ -3432,8 +3444,12 @@
                     <div id="graph3Config" class="hidden" style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e0e0e0;">
                         <h4 id="graph3Title" style="margin-bottom: 8px; font-size: 0.85rem;">GRÁFICA 3</h4>
                         <div class="input-row">
-                            <label id="graph3TitleLabel">Gráfica:</label>
+                            <label id="graph3TitleLabel">Título:</label>
                             <input type="text" id="graph3TitleInput" value="Gráfica 3">
+                        </div>
+                        <div class="checkbox-row">
+                            <input type="checkbox" id="graph3AutoTitle" checked>
+                            <label for="graph3AutoTitle" id="graph3AutoTitleLabel">Título automático (Y vs X)</label>
                         </div>
                         <div class="input-row">
                             <label>Eje X</label>
@@ -3450,10 +3466,12 @@
                         <div class="input-row">
                             <label>Etiqueta Eje X</label>
                             <input type="text" id="graph3XLabel" value="Tiempo (s)">
+                            <button type="button" class="toolbar-btn" id="graph3XLabelReset" title="Auto-generar etiqueta" style="padding:4px 8px;font-size:0.75rem;">↻</button>
                         </div>
                         <div class="input-row">
                             <label>Etiqueta Eje Y</label>
                             <input type="text" id="graph3YLabel" value="Valor">
+                            <button type="button" class="toolbar-btn" id="graph3YLabelReset" title="Auto-generar etiqueta" style="padding:4px 8px;font-size:0.75rem;">↻</button>
                         </div>
                     </div>
 
@@ -3740,6 +3758,10 @@
                     <label style="font-size:0.75rem;" id="mtTimeStepLabel">Δt</label>
                     <input type="number" id="mtTimeStep" value="1" step="any" style="font-size:0.75rem; width:70px;">
                     <button class="toolbar-btn" onclick="mtAutoFillTime()" style="font-size:0.75rem; padding: 3px 10px;" id="mtAutoFillBtn">APLICAR</button>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                    <label style="font-size:0.75rem; font-weight:bold; min-width:140px;" id="mtXLabelLabel">Etiqueta del eje X:</label>
+                    <input type="text" id="mtXLabel" value="Tiempo (s)" style="font-size:0.75rem; flex:1;" placeholder="Ej: Tiempo (s), Distancia (m), Frecuencia (Hz)">
                 </div>
                 <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;" id="mtVarNames">
                     <div class="input-row" style="margin:0; flex:1; min-width:120px;">
@@ -4433,6 +4455,10 @@
                 mtLoadData: 'CARGAR DATOS',
                 mtPasteHint: 'Tip: hacé clic en una celda y pegá (Ctrl+V) desde Excel/CSV para cargar múltiples valores.',
                 mtAutoFillDisabled: 'La columna de tiempo está desactivada (desmarcá "Micro:bit envía timestamp" para modo sin tiempo).',
+                mtXLabelLabel: 'Etiqueta del eje X:',
+                autoTitleLabel: 'Título automático (Y vs X)',
+                graphTitleFieldLabel: 'Título:',
+                xLabelResetTitle: 'Auto-generar etiqueta',
             },
             en: {
                 // Toolbar
@@ -4702,6 +4728,10 @@
                 mtLoadData: 'LOAD DATA',
                 mtPasteHint: 'Tip: click a cell and paste (Ctrl+V) from Excel/CSV to fill multiple values.',
                 mtAutoFillDisabled: 'Time column is disabled (uncheck "Micro:bit sends timestamp" for variables-only mode).',
+                mtXLabelLabel: 'X-axis label:',
+                autoTitleLabel: 'Auto title (Y vs X)',
+                graphTitleFieldLabel: 'Title:',
+                xLabelResetTitle: 'Auto-generate label',
             },
             pt: {
                 // Toolbar
@@ -4971,6 +5001,10 @@
                 mtLoadData: 'CARREGAR DADOS',
                 mtPasteHint: 'Dica: clique em uma célula e cole (Ctrl+V) do Excel/CSV para preencher vários valores.',
                 mtAutoFillDisabled: 'A coluna de tempo está desativada (desmarque "Micro:bit envia timestamp" para modo somente variáveis).',
+                mtXLabelLabel: 'Rótulo do eixo X:',
+                autoTitleLabel: 'Título automático (Y vs X)',
+                graphTitleFieldLabel: 'Título:',
+                xLabelResetTitle: 'Gerar rótulo automático',
             }
         };
 
@@ -5289,14 +5323,17 @@
             if (graph3Title) graph3Title.textContent = `${t.graphDefault.toUpperCase()} 3`;
 
             // Labels de título de gráfica
-            const graph1TitleLabel = document.getElementById('graph1TitleLabel');
-            if (graph1TitleLabel) graph1TitleLabel.textContent = t.graphTitle;
-
-            const graph2TitleLabel = document.getElementById('graph2TitleLabel');
-            if (graph2TitleLabel) graph2TitleLabel.textContent = t.graphTitle;
-
-            const graph3TitleLabel = document.getElementById('graph3TitleLabel');
-            if (graph3TitleLabel) graph3TitleLabel.textContent = t.graphTitle;
+            const titleFieldLabel = t.graphTitleFieldLabel || t.graphTitle || 'Título:';
+            for (let g = 1; g <= 3; g++) {
+                const lbl = document.getElementById(`graph${g}TitleLabel`);
+                if (lbl) lbl.textContent = titleFieldLabel;
+                const autoLbl = document.getElementById(`graph${g}AutoTitleLabel`);
+                if (autoLbl) autoLbl.textContent = t.autoTitleLabel || 'Título automático (Y vs X)';
+                const xRes = document.getElementById(`graph${g}XLabelReset`);
+                if (xRes) xRes.title = t.xLabelResetTitle || 'Auto-generar etiqueta';
+                const yRes = document.getElementById(`graph${g}YLabelReset`);
+                if (yRes) yRes.title = t.xLabelResetTitle || 'Auto-generar etiqueta';
+            }
 
             // DATOS A AJUSTAR (encabezado en ajuste de curva)
             document.querySelectorAll('div[style*="font-weight: bold"]').forEach(div => {
@@ -5363,20 +5400,21 @@
                 var3Name.value = `${t.variableDefault} 3`;
             }
 
-            // Valores por defecto - Etiquetas de ejes
+            // Valores por defecto - Etiquetas de ejes (solo si no están personalizadas)
             ['graph1XLabel', 'graph2XLabel', 'graph3XLabel'].forEach((id, idx) => {
                 const input = document.getElementById(id);
-                if (input && state.graphs[idx] && state.graphs[idx].xAxis === 'time') {
+                if (input && state.graphs[idx] && state.graphs[idx].xAxis === 'time' && !state.graphs[idx].xLabelCustom) {
                     const label = typeof getXAxisLabel === 'function' ? getXAxisLabel('time') : t.timeSeconds;
                     input.value = label;
                     state.graphs[idx].xLabel = label;
                 }
             });
 
-            ['graph1YLabel', 'graph2YLabel', 'graph3YLabel'].forEach(id => {
+            ['graph1YLabel', 'graph2YLabel', 'graph3YLabel'].forEach((id, idx) => {
                 const input = document.getElementById(id);
-                if (input && (input.value === 'Valor' || input.value === 'Value')) {
+                if (input && state.graphs[idx] && !state.graphs[idx].yLabelCustom && (input.value === 'Valor' || input.value === 'Value')) {
                     input.value = t.value;
+                    state.graphs[idx].yLabel = t.value;
                 }
             });
 
@@ -7282,9 +7320,9 @@ bluetooth.startIOPinService()</pre>
             // Configuración de gráficas
             numGraphs: 1,
             graphs: [
-                { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor', title: 'Gráfica 1' },
-                { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor', title: 'Gráfica 2' },
-                { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor', title: 'Gráfica 3' }
+                { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor', title: 'Gráfica 1', autoTitle: true, xLabelCustom: false, yLabelCustom: false },
+                { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor', title: 'Gráfica 2', autoTitle: true, xLabelCustom: false, yLabelCustom: false },
+                { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor', title: 'Gráfica 3', autoTitle: true, xLabelCustom: false, yLabelCustom: false }
             ],
             showLines: true,
             // Video
@@ -7435,10 +7473,49 @@ bluetooth.startIOPinService()</pre>
             if (xAxis === 'time') {
                 const unitVal = parseFloat(document.getElementById('timeUnit').value);
                 const unitName = unitVal === 1 ? 'ms' : unitVal === 60000 ? 'min' : 's';
-                return `Tiempo (${unitName})`;
+                const t = translations[currentLanguage] || {};
+                const baseLabel = t.time || 'Tiempo';
+                return `${baseLabel} (${unitName})`;
             }
             const xIdx = parseInt(xAxis.replace('var', ''));
             return state.variables[xIdx] ? state.variables[xIdx].name : 'X';
+        }
+
+        // Genera el título visible de una gráfica: usa el personalizado si autoTitle=false,
+        // o lo construye como "Y vs X" si autoTitle=true.
+        function computeGraphTitle(index) {
+            const g = state.graphs[index];
+            if (!g) return '';
+            if (g.autoTitle === false && g.title) {
+                return g.title.toUpperCase();
+            }
+            const yNames = g.yVars.map(v => state.variables[v] ? state.variables[v].name : '').filter(Boolean).join(', ');
+            return `${(yNames || g.yLabel || '').toUpperCase()} vs ${(g.xLabel || '').toUpperCase()}`;
+        }
+
+        // Genera la etiqueta auto-generada del eje Y basándose en las variables seleccionadas
+        function getYAxisLabel(graphIndex) {
+            const g = state.graphs[graphIndex];
+            if (!g || !g.yVars || g.yVars.length === 0) return 'Valor';
+            const names = g.yVars.map(v => state.variables[v] ? state.variables[v].name : null).filter(Boolean);
+            return names.length ? names.join(', ') : 'Valor';
+        }
+
+        // Etiqueta del eje X para los modos Explorer/LAB: toma la de la primera gráfica
+        // configurada para tiempo (respetando personalización); si ninguna usa tiempo,
+        // usa la auto-generada a partir de timeUnit. Se asume MAYÚSCULAS.
+        function _expXAxisLabel() {
+            for (let g = 0; g < (state.graphs ? state.graphs.length : 0); g++) {
+                const gg = state.graphs[g];
+                if (gg && gg.xAxis === 'time' && gg.xLabel) {
+                    return gg.xLabel.toUpperCase();
+                }
+            }
+            try {
+                return getXAxisLabel('time').toUpperCase();
+            } catch (e) {
+                return 'TIEMPO (s)';
+            }
         }
 
         function onTimestampToggle() {
@@ -7455,25 +7532,34 @@ bluetooth.startIOPinService()</pre>
             const setZeroBtn = document.getElementById('setZeroBtn');
             if (setZeroBtn) setZeroBtn.style.display = isVarsOnly ? 'none' : '';
 
-            // Auto-configure graphs based on timestamp mode
+            // Auto-configure graphs based on timestamp mode.
+            // Respeta etiquetas personalizadas por el usuario (xLabelCustom / yLabelCustom).
             if (isVarsOnly) {
                 for (let g = 0; g < 3; g++) {
                     state.graphs[g].xAxis = 'var0';
-                    state.graphs[g].xLabel = state.variables[0].name;
+                    if (!state.graphs[g].xLabelCustom) {
+                        state.graphs[g].xLabel = state.variables[0].name;
+                    }
                     const yVars = [];
                     for (let i = 1; i < state.numVariables; i++) {
                         if (yVars.length === 0) yVars.push(i);
                     }
                     if (yVars.length === 0) yVars.push(0);
                     state.graphs[g].yVars = yVars;
-                    state.graphs[g].yLabel = state.variables[yVars[0]].name;
+                    if (!state.graphs[g].yLabelCustom) {
+                        state.graphs[g].yLabel = state.variables[yVars[0]].name;
+                    }
                 }
             } else {
                 for (let g = 0; g < 3; g++) {
                     state.graphs[g].xAxis = 'time';
-                    state.graphs[g].xLabel = getXAxisLabel('time');
+                    if (!state.graphs[g].xLabelCustom) {
+                        state.graphs[g].xLabel = getXAxisLabel('time');
+                    }
                     state.graphs[g].yVars = [0];
-                    state.graphs[g].yLabel = state.variables[0].name;
+                    if (!state.graphs[g].yLabelCustom) {
+                        state.graphs[g].yLabel = state.variables[0].name;
+                    }
                 }
             }
 
@@ -7524,9 +7610,13 @@ bluetooth.startIOPinService()</pre>
                         state.graphs[g].xAxis = state.microbitTimestamp ? 'time' : 'var0';
                     }
                 }
-                // Actualizar labels con nombres actuales
-                state.graphs[g].xLabel = getXAxisLabel(state.graphs[g].xAxis);
-                state.graphs[g].yLabel = state.variables[state.graphs[g].yVars[0]].name;
+                // Actualizar labels con nombres actuales, salvo si el usuario los personalizó
+                if (!state.graphs[g].xLabelCustom) {
+                    state.graphs[g].xLabel = getXAxisLabel(state.graphs[g].xAxis);
+                }
+                if (!state.graphs[g].yLabelCustom) {
+                    state.graphs[g].yLabel = state.variables[state.graphs[g].yVars[0]].name;
+                }
             }
 
             // Apply data format (adjusts graph config based on time mode)
@@ -7557,6 +7647,63 @@ bluetooth.startIOPinService()</pre>
         });
 
         document.getElementById('applyGraphConfigBtn').addEventListener('click', applyGraphConfiguration);
+
+        // Listeners para etiquetas y título: marcar como personalizado cuando el usuario edita.
+        // Así el auto-config (cambio de variables, tipo de datos, etc.) no pisa cambios manuales.
+        for (let g = 1; g <= 3; g++) {
+            const gIdx = g - 1;
+            const xLabelInput = document.getElementById(`graph${g}XLabel`);
+            if (xLabelInput) {
+                xLabelInput.addEventListener('input', function() {
+                    state.graphs[gIdx].xLabel = this.value;
+                    state.graphs[gIdx].xLabelCustom = (this.value !== getXAxisLabel(state.graphs[gIdx].xAxis));
+                });
+            }
+            const yLabelInput = document.getElementById(`graph${g}YLabel`);
+            if (yLabelInput) {
+                yLabelInput.addEventListener('input', function() {
+                    state.graphs[gIdx].yLabel = this.value;
+                    state.graphs[gIdx].yLabelCustom = (this.value !== getYAxisLabel(gIdx));
+                });
+            }
+            const titleInput = document.getElementById(`graph${g}TitleInput`);
+            if (titleInput) {
+                titleInput.addEventListener('input', function() {
+                    state.graphs[gIdx].title = this.value;
+                    // Al escribir un título, desactivar "automático" automáticamente
+                    const autoCb = document.getElementById(`graph${g}AutoTitle`);
+                    if (autoCb && autoCb.checked) {
+                        autoCb.checked = false;
+                        state.graphs[gIdx].autoTitle = false;
+                    }
+                });
+            }
+            const autoTitleCb = document.getElementById(`graph${g}AutoTitle`);
+            if (autoTitleCb) {
+                autoTitleCb.addEventListener('change', function() {
+                    state.graphs[gIdx].autoTitle = this.checked;
+                });
+            }
+            // Botón de reset para etiqueta X (vuelve a auto-generada)
+            const xResetBtn = document.getElementById(`graph${g}XLabelReset`);
+            if (xResetBtn) {
+                xResetBtn.addEventListener('click', function() {
+                    const auto = getXAxisLabel(state.graphs[gIdx].xAxis);
+                    state.graphs[gIdx].xLabel = auto;
+                    state.graphs[gIdx].xLabelCustom = false;
+                    if (xLabelInput) xLabelInput.value = auto;
+                });
+            }
+            const yResetBtn = document.getElementById(`graph${g}YLabelReset`);
+            if (yResetBtn) {
+                yResetBtn.addEventListener('click', function() {
+                    const auto = getYAxisLabel(gIdx);
+                    state.graphs[gIdx].yLabel = auto;
+                    state.graphs[gIdx].yLabelCustom = false;
+                    if (yLabelInput) yLabelInput.value = auto;
+                });
+            }
+        }
 
         function initializeConfiguration() {
             updateGraphConfiguration();
@@ -7593,12 +7740,19 @@ bluetooth.startIOPinService()</pre>
                     select.value = 'var0';
                 }
 
-                // Al cambiar eje X, actualizar etiquetas y marcar variable usada en Y
+                // Al cambiar eje X, actualizar etiquetas (si no están personalizadas) y
+                // marcar variable usada en Y
                 select.onchange = (function(graphNum) {
                     return function() {
                         const xVal = this.value;
+                        const gIdx = graphNum - 1;
+                        state.graphs[gIdx].xAxis = xVal;
                         const xLabelInput = document.getElementById(`graph${graphNum}XLabel`);
-                        if (xLabelInput) xLabelInput.value = getXAxisLabel(xVal);
+                        if (xLabelInput && !state.graphs[gIdx].xLabelCustom) {
+                            const auto = getXAxisLabel(xVal);
+                            xLabelInput.value = auto;
+                            state.graphs[gIdx].xLabel = auto;
+                        }
                         updateYVarCheckboxes(graphNum);
                     };
                 })(g);
@@ -7664,15 +7818,17 @@ bluetooth.startIOPinService()</pre>
         }
 
         // Cuando el usuario cambia el eje X, reconstruir Y checkboxes y actualizar label Y
+        // (salvo si el usuario personalizó la etiqueta Y)
         function updateYVarCheckboxes(graphNum) {
             buildYVarCheckboxes(graphNum);
-            // Auto-actualizar label Y con la primera variable checked
+            const gIdx = graphNum - 1;
             const yLabel = document.getElementById(`graph${graphNum}YLabel`);
-            if (yLabel) {
+            if (yLabel && !state.graphs[gIdx].yLabelCustom) {
                 for (let i = 0; i < state.numVariables; i++) {
                     const cb = document.getElementById(`graph${graphNum}Var${i}`);
                     if (cb && cb.checked) {
                         yLabel.value = state.variables[i].name;
+                        state.graphs[gIdx].yLabel = state.variables[i].name;
                         break;
                     }
                 }
@@ -7687,9 +7843,17 @@ bluetooth.startIOPinService()</pre>
             for (let g = 0; g < 3; g++) {
                 const graphNum = g + 1;
                 state.graphs[g].xAxis = document.getElementById(`graph${graphNum}XAxis`).value;
-                state.graphs[g].xLabel = document.getElementById(`graph${graphNum}XLabel`).value;
-                state.graphs[g].yLabel = document.getElementById(`graph${graphNum}YLabel`).value;
+
+                // Leer etiquetas desde la UI; marcar como personalizado si difieren del auto
+                const xLabelInput = document.getElementById(`graph${graphNum}XLabel`).value;
+                const yLabelInput = document.getElementById(`graph${graphNum}YLabel`).value;
+                state.graphs[g].xLabel = xLabelInput;
+                state.graphs[g].yLabel = yLabelInput;
                 state.graphs[g].title = document.getElementById(`graph${graphNum}TitleInput`).value;
+
+                // Leer flag de título automático
+                const autoTitleCb = document.getElementById(`graph${graphNum}AutoTitle`);
+                state.graphs[g].autoTitle = autoTitleCb ? autoTitleCb.checked : true;
 
                 // Obtener variables seleccionadas para eje Y
                 const yVars = [];
@@ -7700,6 +7864,13 @@ bluetooth.startIOPinService()</pre>
                     }
                 }
                 state.graphs[g].yVars = yVars;
+
+                // Re-evaluar si las etiquetas coinciden con la auto-generada.
+                // Si coinciden, desmarcar como personalizado (para que vuelvan a auto-actualizarse).
+                const autoX = getXAxisLabel(state.graphs[g].xAxis);
+                const autoY = getYAxisLabel(g);
+                if (xLabelInput === autoX) state.graphs[g].xLabelCustom = false;
+                if (yLabelInput === autoY) state.graphs[g].yLabelCustom = false;
             }
 
             // Limpiar ajuste de curva ya que la configuración cambió
@@ -7728,8 +7899,7 @@ bluetooth.startIOPinService()</pre>
                 const title = document.createElement('div');
                 title.className = 'graph-title';
                 title.id = `graphTitle${i}`;
-                const yNames = state.graphs[i].yVars.map(v => state.variables[v].name).join(', ');
-                title.textContent = `${(yNames || state.graphs[i].yLabel).toUpperCase()} vs ${state.graphs[i].xLabel.toUpperCase()}`;
+                title.textContent = computeGraphTitle(i);
 
                 const t = translations[currentLanguage];
                 const controls = document.createElement('div');
@@ -10751,10 +10921,8 @@ bluetooth.startIOPinService()</pre>
             const chart = state.charts[index];
             const config = state.graphs[index];
 
-            // Actualizar título: si hay múltiples Y, listarlas
-            const yNames = config.yVars.map(v => state.variables[v].name).join(', ');
-            document.getElementById(`graphTitle${index}`).textContent =
-                `${(yNames || config.yLabel).toUpperCase()} vs ${config.xLabel.toUpperCase()}`;
+            // Actualizar título (auto o personalizado según config.autoTitle)
+            document.getElementById(`graphTitle${index}`).textContent = computeGraphTitle(index);
 
             // Actualizar etiquetas de ejes
             chart.options.scales.x.title.text = config.xLabel.toUpperCase();
@@ -11278,9 +11446,10 @@ bluetooth.startIOPinService()</pre>
         });
 
         document.getElementById('timeUnit').addEventListener('change', function() {
-            // Actualizar labels de eje X en gráficas que usen tiempo
+            // Actualizar labels de eje X en gráficas que usen tiempo (salvo si
+            // el usuario las personalizó)
             for (let g = 0; g < 3; g++) {
-                if (state.graphs[g].xAxis === 'time') {
+                if (state.graphs[g].xAxis === 'time' && !state.graphs[g].xLabelCustom) {
                     state.graphs[g].xLabel = getXAxisLabel('time');
                     const input = document.getElementById(`graph${g + 1}XLabel`);
                     if (input) input.value = state.graphs[g].xLabel;
@@ -11385,6 +11554,17 @@ bluetooth.startIOPinService()</pre>
             document.getElementById('mtNumVars').value = state.numVariables;
             updateMtVarNameInputs();
             buildManualTable();
+            // Precargar el input de etiqueta X con la etiqueta actual de la primera gráfica
+            // que use tiempo (o con la auto-generada)
+            const mtXLabelEl = document.getElementById('mtXLabel');
+            if (mtXLabelEl) {
+                const g0 = state.graphs[0];
+                if (g0 && g0.xAxis === 'time') {
+                    mtXLabelEl.value = g0.xLabelCustom ? g0.xLabel : getXAxisLabel('time');
+                } else {
+                    mtXLabelEl.value = getXAxisLabel('time');
+                }
+            }
             localizeManualTableModal();
         }
 
@@ -11404,6 +11584,7 @@ bluetooth.startIOPinService()</pre>
             setTxt('mtClearBtn', 'mtClear');
             setTxt('mtAutoTimeLabel', 'mtAutoTime');
             setTxt('mtAutoFillBtn', 'mtApply');
+            setTxt('mtXLabelLabel', 'mtXLabelLabel');
             setTxt('mtCancelBtn', 'btPairingCancel');
             setTxt('mtLoadBtn', 'mtLoadData');
             const hint = document.getElementById('mtPasteHint');
@@ -11669,6 +11850,24 @@ bluetooth.startIOPinService()</pre>
             // Add to rawData in chronological order
             state.rawData = state.rawData.concat(imported);
             state.rawData.sort((a, b) => a.time - b.time);
+
+            // Aplicar etiqueta personalizada del eje X al eje tiempo de las gráficas,
+            // si el usuario la modificó respecto al valor auto.
+            const mtXLabelEl = document.getElementById('mtXLabel');
+            if (mtXLabelEl && hasTime) {
+                const userXLabel = mtXLabelEl.value.trim();
+                const autoXLabel = getXAxisLabel('time');
+                if (userXLabel && userXLabel !== autoXLabel) {
+                    for (let g = 0; g < 3; g++) {
+                        if (state.graphs[g].xAxis === 'time') {
+                            state.graphs[g].xLabel = userXLabel;
+                            state.graphs[g].xLabelCustom = true;
+                            const input = document.getElementById(`graph${g + 1}XLabel`);
+                            if (input) input.value = userXLabel;
+                        }
+                    }
+                }
+            }
 
             _rebuildVideoFrameLogIndices();
             updateDisplay();
@@ -12643,6 +12842,26 @@ bluetooth.startIOPinService()</pre>
 
             applyVariableConfiguration();
 
+            // Si el CSV incluye una columna de tiempo con un nombre propio (p. ej.
+            // "t(s)", "Distancia (m)", "Duración (min)"), usarlo como etiqueta del eje X
+            // en todas las gráficas configuradas para tiempo. El usuario puede editarlo
+            // después o pulsar ↻ para volver a la etiqueta auto.
+            if (hasTime && parsed.timeColName) {
+                const importedXLabel = parsed.timeColName;
+                const autoXLabel = getXAxisLabel('time');
+                const isGenericTimeName = importedXLabel.toLowerCase().replace(/\s+/g, '') === autoXLabel.toLowerCase().replace(/\s+/g, '');
+                if (!isGenericTimeName) {
+                    for (let g = 0; g < 3; g++) {
+                        if (state.graphs[g].xAxis === 'time') {
+                            state.graphs[g].xLabel = importedXLabel;
+                            state.graphs[g].xLabelCustom = true;
+                            const input = document.getElementById(`graph${g + 1}XLabel`);
+                            if (input) input.value = importedXLabel;
+                        }
+                    }
+                }
+            }
+
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
             const baseTs = Date.now();
             const importedData = parsed.rows.map((r, i) => {
@@ -13432,7 +13651,7 @@ bluetooth.startIOPinService()</pre>
                             type: 'linear',
                             title: {
                                 display: true,
-                                text: 'TIEMPO (s)',
+                                text: _expXAxisLabel(),
                                 font: { size: 10, weight: 'bold' },
                                 padding: { top: 2 }
                             },
@@ -14639,14 +14858,18 @@ bluetooth.startIOPinService()</pre>
                     values: d.values.slice(),
                 }));
 
-            // Configure graphs
+            // Configure graphs (respeta etiquetas personalizadas)
             state.numGraphs = numGraphs;
             document.getElementById('numGraphs').value = numGraphs;
             for (let g = 0; g < 3; g++) {
                 state.graphs[g].xAxis = xAxis;
-                state.graphs[g].xLabel = getXAxisLabel(xAxis);
+                if (!state.graphs[g].xLabelCustom) {
+                    state.graphs[g].xLabel = getXAxisLabel(xAxis);
+                }
                 state.graphs[g].yVars = (g === 0) ? yVars : [yVars[0]];
-                state.graphs[g].yLabel = state.variables[yVars[0]].name;
+                if (!state.graphs[g].yLabelCustom) {
+                    state.graphs[g].yLabel = state.variables[yVars[0]].name;
+                }
             }
 
             // Apply config and exit
@@ -15137,7 +15360,7 @@ bluetooth.startIOPinService()</pre>
                             type: 'linear',
                             title: {
                                 display: true,
-                                text: 'TIEMPO (s)',
+                                text: _expXAxisLabel(),
                                 font: { size: 12, weight: 'bold' },
                                 padding: { top: 4 }
                             },
