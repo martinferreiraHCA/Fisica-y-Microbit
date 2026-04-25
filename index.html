@@ -241,35 +241,48 @@
             min-height: 0;
             gap: 4px;
         }
+        /* Eje Y: valor (editable) con un sub-rótulo "eje y" pequeño debajo,
+           todo rotado 90° para leerse en vertical. */
         .chart-axis-y {
             display: flex;
             align-items: center;
             justify-content: center;
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
-            padding: 2px 2px;
-            font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+            padding: 4px 2px;
+            min-width: 32px;
+            color: #333;
             user-select: none;
+        }
+        .chart-axis-y-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            transform: rotate(-90deg);
             white-space: nowrap;
-            color: #333;
         }
+        /* Eje X: valor encima, sub-rótulo "eje x" debajo */
         .chart-axis-x {
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
             padding: 6px 0 2px 0;
-            font-size: clamp(0.7rem, 1.5vw, 0.85rem);
-            user-select: none;
             color: #333;
+            user-select: none;
         }
-        .axis-prefix {
-            font-weight: 800;
-            color: #1976d2;
-            margin-right: 6px;
-            letter-spacing: 0.5px;
+        /* Sub-rótulo discreto, opcional (apagable desde la configuración) */
+        .axis-role {
+            font-size: clamp(0.55rem, 1.1vw, 0.62rem);
+            color: #888;
             text-transform: uppercase;
+            letter-spacing: 1.4px;
+            font-weight: 600;
+            line-height: 1;
         }
+        body.no-axis-roles .axis-role { display: none; }
         .axis-value {
             display: inline-block;
-            padding: 2px 8px;
+            padding: 1px 8px;
             border-radius: 5px;
             cursor: text;
             border: 1.5px dashed transparent;
@@ -278,6 +291,8 @@
             min-width: 40px;
             outline: none;
             font-weight: 600;
+            font-size: clamp(0.78rem, 1.6vw, 0.92rem);
+            line-height: 1.25;
         }
         .axis-value:hover {
             background: #fff8d5;
@@ -294,6 +309,27 @@
             color: #aaa;
             font-weight: 400;
             font-style: italic;
+        }
+        /* Título de la gráfica editable inline */
+        .graph-title[contenteditable="true"] {
+            cursor: text;
+            border: 1.5px dashed transparent;
+            border-radius: 5px;
+            padding: 1px 6px;
+            transition: background 0.15s, border-color 0.15s;
+            outline: none;
+        }
+        .graph-title[contenteditable="true"]:hover {
+            background: #fff8d5;
+            border-color: #f0ad4e;
+        }
+        .graph-title[contenteditable="true"]:focus {
+            background: #fff;
+            border-color: #1976d2;
+            border-style: solid;
+            box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.15);
+            text-overflow: clip;
+            overflow: visible;
         }
         /* Indicador didáctico: pills con slot de variable + nombre + estado live */
         .graph-legend-compact {
@@ -3608,6 +3644,11 @@
                         <label for="showLinesToggle">Mostrar Líneas</label>
                     </div>
 
+                    <div class="checkbox-row">
+                        <input type="checkbox" id="showAxisRolesToggle" checked>
+                        <label for="showAxisRolesToggle" id="showAxisRolesLabel">Mostrar sub-rótulo "Eje X/Y"</label>
+                    </div>
+
                     <button class="toolbar-btn primary btn-full" id="applyGraphConfigBtn">
                         APLICAR CONFIGURACIÓN
                     </button>
@@ -4108,16 +4149,18 @@
                 </div>
                 <div class="chart-axis-row" style="flex:1; min-height:0;">
                     <div class="chart-axis-y" id="dlabAxisYWrap">
-                        <span class="axis-prefix" id="dlabAxisYPrefix">Eje Y:</span>
-                        <span class="axis-value" id="dlabAxisValueY" contenteditable="true" spellcheck="false" data-placeholder="click para editar">Variable</span>
+                        <div class="chart-axis-y-inner">
+                            <span class="axis-value" id="dlabAxisValueY" contenteditable="true" spellcheck="false" data-placeholder="click para editar">Variable</span>
+                            <span class="axis-role" id="dlabAxisYRole">Eje Y</span>
+                        </div>
                     </div>
                     <div class="dlab-graph-wrap" id="dlabGraphWrap" style="flex:1; min-height:0; position:relative;">
                         <canvas id="dlabChart"></canvas>
                     </div>
                 </div>
                 <div class="chart-axis-x" id="dlabAxisXWrap">
-                    <span class="axis-prefix" id="dlabAxisXPrefix">Eje X:</span>
                     <span class="axis-value" id="dlabAxisValueX" contenteditable="true" spellcheck="false" data-placeholder="click para editar">Tiempo (s)</span>
+                    <span class="axis-role" id="dlabAxisXRole">Eje X</span>
                 </div>
                 <div class="dlab-bottom-bar">
                     <span class="dlab-point-info" id="dlabPointInfo">--</span>
@@ -4606,6 +4649,8 @@
                 axisClickToEdit: 'click para editar',
                 pillFromBoard: 'desde la placa micro:bit',
                 pillLive: 'datos en vivo',
+                showAxisRolesLabel: 'Mostrar sub-rótulo "Eje X/Y"',
+                titleClickToEdit: 'Click para editar (autoguardado)',
             },
             en: {
                 // Toolbar
@@ -4887,6 +4932,8 @@
                 axisClickToEdit: 'click to edit',
                 pillFromBoard: 'from the micro:bit board',
                 pillLive: 'live data',
+                showAxisRolesLabel: 'Show "X/Y axis" sub-label',
+                titleClickToEdit: 'Click to edit (auto-saves)',
             },
             pt: {
                 // Toolbar
@@ -5168,6 +5215,8 @@
                 axisClickToEdit: 'clique para editar',
                 pillFromBoard: 'da placa micro:bit',
                 pillLive: 'dados ao vivo',
+                showAxisRolesLabel: 'Mostrar subtítulo "Eixo X/Y"',
+                titleClickToEdit: 'Clique para editar (auto-salva)',
             }
         };
 
@@ -5497,6 +5546,8 @@
                 const yRes = document.getElementById(`graph${g}YLabelReset`);
                 if (yRes) yRes.title = t.xLabelResetTitle || 'Auto-generar etiqueta';
             }
+            const showRolesLbl = document.getElementById('showAxisRolesLabel');
+            if (showRolesLbl) showRolesLbl.textContent = t.showAxisRolesLabel || 'Mostrar sub-rótulo "Eje X/Y"';
 
             // DATOS A AJUSTAR (encabezado en ajuste de curva)
             document.querySelectorAll('div[style*="font-weight: bold"]').forEach(div => {
@@ -7494,6 +7545,7 @@ bluetooth.startIOPinService()</pre>
                 { xAxis: 'time', yVars: [0], xLabel: 'Tiempo (s)', yLabel: 'Valor', title: 'Gráfica 3', autoTitle: true, xLabelCustom: false, yLabelCustom: false }
             ],
             showLines: true,
+            showAxisRoles: true,
             // Video
             cameraActive: false,
             mediaStream: null,
@@ -7722,16 +7774,82 @@ bluetooth.startIOPinService()</pre>
             return state.variables[xIdx] ? state.variables[xIdx].name : 'X';
         }
 
-        // Genera el título visible de una gráfica: usa el personalizado si autoTitle=false,
-        // o lo construye como "Y vs X" si autoTitle=true.
+        // Calcula el título auto-generado de una gráfica (sin mayúsculas).
+        function _computeAutoGraphTitle(index) {
+            const g = state.graphs[index];
+            if (!g) return '';
+            const yNames = g.yVars.map(v => state.variables[v] ? state.variables[v].name : '').filter(Boolean).join(', ');
+            return `${yNames || g.yLabel || ''} vs ${g.xLabel || ''}`.trim();
+        }
+
+        // Si la gráfica está en modo "título automático", recalcula el título
+        // y sincroniza el input de la barra lateral. Hace que lo mostrado en el
+        // chart y lo del campo "Título:" coincidan siempre.
+        function _refreshAutoTitle(index) {
+            const g = state.graphs[index];
+            if (!g || g.autoTitle === false) return;
+            const auto = _computeAutoGraphTitle(index);
+            g.title = auto;
+            const inp = document.getElementById(`graph${index + 1}TitleInput`);
+            if (inp && document.activeElement !== inp) inp.value = auto;
+        }
+
+        // Genera el título visible de una gráfica.
+        // - Si está en autoTitle: regenera g.title a partir de variables/etiquetas y lo muestra.
+        // - Si está fijo: muestra g.title tal cual.
         function computeGraphTitle(index) {
             const g = state.graphs[index];
             if (!g) return '';
-            if (g.autoTitle === false && g.title) {
-                return g.title.toUpperCase();
-            }
-            const yNames = g.yVars.map(v => state.variables[v] ? state.variables[v].name : '').filter(Boolean).join(', ');
-            return `${(yNames || g.yLabel || '').toUpperCase()} vs ${(g.xLabel || '').toUpperCase()}`;
+            _refreshAutoTitle(index);
+            return (g.title || '').toUpperCase();
+        }
+
+        // Activa la edición inline del título de la gráfica (click → editable,
+        // Enter o blur guarda, Escape cancela). Al editar se desactiva el modo
+        // automático y se refleja en el input de la barra lateral.
+        function _bindEditableGraphTitle(index) {
+            const el = document.getElementById(`graphTitle${index}`);
+            if (!el || el.dataset.bound === '1') return;
+            el.dataset.bound = '1';
+            el.contentEditable = 'true';
+            el.spellcheck = false;
+            const tr2 = translations[currentLanguage] || {};
+            el.title = tr2.titleClickToEdit || 'Click para editar (autoguardado)';
+
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+                else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    el.textContent = computeGraphTitle(index);
+                    el.blur();
+                }
+            });
+            el.addEventListener('focus', () => {
+                try {
+                    const range = document.createRange();
+                    range.selectNodeContents(el);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                } catch (_) {}
+            });
+            el.addEventListener('blur', () => {
+                const txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+                const cb = document.getElementById(`graph${index + 1}AutoTitle`);
+                const inp = document.getElementById(`graph${index + 1}TitleInput`);
+                if (!txt) {
+                    // Si se vacía, volver a título automático
+                    state.graphs[index].autoTitle = true;
+                    if (cb) cb.checked = true;
+                    _refreshAutoTitle(index);
+                } else {
+                    state.graphs[index].autoTitle = false;
+                    state.graphs[index].title = txt;
+                    if (cb) cb.checked = false;
+                    if (inp) inp.value = txt;
+                }
+                if (typeof syncChartLabelsAndTitles === 'function') syncChartLabelsAndTitles();
+            });
         }
 
         // Genera la etiqueta auto-generada del eje Y basándose en las variables seleccionadas
@@ -7864,7 +7982,8 @@ bluetooth.startIOPinService()</pre>
             // Títulos visibles de cada gráfica
             for (let i = 0; i < (state.charts || []).length; i++) {
                 const titleEl = document.getElementById(`graphTitle${i}`);
-                if (titleEl) titleEl.textContent = computeGraphTitle(i);
+                // No pisar si el usuario está editando el título inline
+                if (titleEl && document.activeElement !== titleEl) titleEl.textContent = computeGraphTitle(i);
                 const chart = state.charts[i];
                 const cfg = state.graphs[i];
                 if (chart && cfg) {
@@ -8067,6 +8186,11 @@ bluetooth.startIOPinService()</pre>
             updateAllCharts();
         });
 
+        document.getElementById('showAxisRolesToggle').addEventListener('change', function() {
+            state.showAxisRoles = this.checked;
+            document.body.classList.toggle('no-axis-roles', !this.checked);
+        });
+
         document.getElementById('applyGraphConfigBtn').addEventListener('click', applyGraphConfiguration);
 
         // Listeners para etiquetas y título: marcar como personalizado cuando el usuario
@@ -8137,6 +8261,14 @@ bluetooth.startIOPinService()</pre>
             updateGraphConfiguration();
             updateFitVariableOptions();
             updateFitGraphOptions();
+            // Sembrar el título de cada gráfica con el valor auto-generado y
+            // sincronizar el input "Título:". Así el sidebar y la gráfica
+            // siempre arrancan mostrando lo mismo (no "Gráfica 1" vs "VARIABLE 1 vs TIEMPO (S)").
+            for (let g = 0; g < state.graphs.length; g++) {
+                _refreshAutoTitle(g);
+            }
+            // Aplicar el toggle global de sub-rótulos de eje
+            document.body.classList.toggle('no-axis-roles', !state.showAxisRoles);
         }
 
         function updateGraphConfiguration() {
@@ -8360,7 +8492,11 @@ bluetooth.startIOPinService()</pre>
 
                 const axisY = document.createElement('div');
                 axisY.className = 'chart-axis-y';
-                axisY.innerHTML = `<span class="axis-prefix">${_escHtml(t.axisYPrefix || 'Eje Y')}:</span><span class="axis-value" id="axisValueY${i}" contenteditable="true" spellcheck="false" data-graph="${i}" data-axis="y" data-placeholder="${_escHtml(t.axisClickToEdit || 'click para editar')}">${_escHtml(state.graphs[i].yLabel || '')}</span>`;
+                axisY.innerHTML =
+                    `<div class="chart-axis-y-inner">` +
+                        `<span class="axis-value" id="axisValueY${i}" contenteditable="true" spellcheck="false" data-graph="${i}" data-axis="y" data-placeholder="${_escHtml(t.axisClickToEdit || 'click para editar')}">${_escHtml(state.graphs[i].yLabel || '')}</span>` +
+                        `<span class="axis-role">${_escHtml(t.axisYPrefix || 'Eje Y')}</span>` +
+                    `</div>`;
 
                 const chartContainer = document.createElement('div');
                 chartContainer.className = 'chart-container';
@@ -8374,16 +8510,19 @@ bluetooth.startIOPinService()</pre>
 
                 const axisX = document.createElement('div');
                 axisX.className = 'chart-axis-x';
-                axisX.innerHTML = `<span class="axis-prefix">${_escHtml(t.axisXPrefix || 'Eje X')}:</span><span class="axis-value" id="axisValueX${i}" contenteditable="true" spellcheck="false" data-graph="${i}" data-axis="x" data-placeholder="${_escHtml(t.axisClickToEdit || 'click para editar')}">${_escHtml(state.graphs[i].xLabel || '')}</span>`;
+                axisX.innerHTML =
+                    `<span class="axis-value" id="axisValueX${i}" contenteditable="true" spellcheck="false" data-graph="${i}" data-axis="x" data-placeholder="${_escHtml(t.axisClickToEdit || 'click para editar')}">${_escHtml(state.graphs[i].xLabel || '')}</span>` +
+                    `<span class="axis-role">${_escHtml(t.axisXPrefix || 'Eje X')}</span>`;
 
                 wrapper.appendChild(titleBar);
                 wrapper.appendChild(chartAxisRow);
                 wrapper.appendChild(axisX);
                 container.appendChild(wrapper);
 
-                // Hookear edición inline de etiquetas de ejes
+                // Hookear edición inline de etiquetas de ejes y del título
                 _bindEditableAxisLabel(i, 'x');
                 _bindEditableAxisLabel(i, 'y');
+                _bindEditableGraphTitle(i);
 
                 // Crear chart
                 createChart(i);
@@ -11415,8 +11554,10 @@ bluetooth.startIOPinService()</pre>
             const chart = state.charts[index];
             const config = state.graphs[index];
 
-            // Actualizar título (auto o personalizado según config.autoTitle)
-            document.getElementById(`graphTitle${index}`).textContent = computeGraphTitle(index);
+            // Actualizar título (auto o personalizado según config.autoTitle).
+            // Si el usuario está editándolo inline, no pisar.
+            const _gt = document.getElementById(`graphTitle${index}`);
+            if (_gt && document.activeElement !== _gt) _gt.textContent = computeGraphTitle(index);
 
             // Actualizar etiquetas de ejes
             chart.options.scales.x.title.text = config.xLabel.toUpperCase();
@@ -16152,10 +16293,11 @@ bluetooth.startIOPinService()</pre>
         // Refresca las etiquetas editables HTML del LAB con el estado actual
         function _refreshDlabAxisLabels() {
             const t = translations[currentLanguage] || {};
-            const yPrefEl = document.getElementById('dlabAxisYPrefix');
-            const xPrefEl = document.getElementById('dlabAxisXPrefix');
-            if (yPrefEl) yPrefEl.textContent = (t.axisYPrefix || 'Eje Y') + ':';
-            if (xPrefEl) xPrefEl.textContent = (t.axisXPrefix || 'Eje X') + ':';
+            // Sub-rótulos: ahora son sólo "Eje X" / "Eje Y" sin dos puntos
+            const yRoleEl = document.getElementById('dlabAxisYRole');
+            const xRoleEl = document.getElementById('dlabAxisXRole');
+            if (yRoleEl) yRoleEl.textContent = t.axisYPrefix || 'Eje Y';
+            if (xRoleEl) xRoleEl.textContent = t.axisXPrefix || 'Eje X';
             const yEl = document.getElementById('dlabAxisValueY');
             const xEl = document.getElementById('dlabAxisValueX');
             if (yEl && document.activeElement !== yEl) {
@@ -16164,16 +16306,18 @@ bluetooth.startIOPinService()</pre>
                     : 'Variable';
             }
             if (xEl && document.activeElement !== xEl) {
-                xEl.textContent = _expXAxisLabel().toLowerCase()
-                    .replace(/\b\w/g, c => c.toUpperCase());
-                // Para mantener un look consistente con el panel principal, usamos
-                // la etiqueta cruda del estado si existe (no en mayúsculas).
+                // Usar la etiqueta cruda del estado si existe (sin mayúsculas)
+                let xText = '';
                 for (let g = 0; g < 3; g++) {
                     if (state.graphs[g] && state.graphs[g].xAxis === 'time' && state.graphs[g].xLabel) {
-                        xEl.textContent = state.graphs[g].xLabel;
+                        xText = state.graphs[g].xLabel;
                         break;
                     }
                 }
+                if (!xText) {
+                    try { xText = getXAxisLabel('time'); } catch (e) { xText = 'Tiempo (s)'; }
+                }
+                xEl.textContent = xText;
             }
         }
 
