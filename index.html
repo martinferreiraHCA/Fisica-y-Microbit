@@ -8903,6 +8903,73 @@ bluetooth.startIOPinService()</pre>
         // Registrar plugin globalmente
         Chart.register(samplingRatePlugin);
 
+        // ── Plugin: puntas de flecha en los ejes ──
+        // Dibuja un triángulo en el extremo derecho del eje X y otro en el extremo
+        // superior del eje Y, para reforzar visualmente la dirección positiva
+        // (estilo gráfica de pizarrón).
+        function _getScaleBorderColor(chart, axis, fallback) {
+            try {
+                const c = chart.options.scales[axis].border.color;
+                if (c) return c;
+            } catch (_) {}
+            return fallback || '#333';
+        }
+        const axisArrowsPlugin = {
+            id: 'axisArrows',
+            afterDatasetsDraw(chart) {
+                const { ctx, chartArea } = chart;
+                if (!chartArea) return;
+
+                ctx.save();
+                const aLen = 9;   // longitud de la flecha
+                const aWid = 7;   // ancho de la base
+                const off = 4;    // distancia del extremo del eje al tip de la flecha
+
+                // Eje X → punta de flecha apuntando a la derecha (sobre la línea inferior)
+                ctx.fillStyle = _getScaleBorderColor(chart, 'x', '#333');
+                const xTipX = chartArea.right + off;
+                const xTipY = chartArea.bottom;
+                ctx.beginPath();
+                ctx.moveTo(xTipX, xTipY);
+                ctx.lineTo(xTipX - aLen, xTipY - aWid / 2);
+                ctx.lineTo(xTipX - aLen, xTipY + aWid / 2);
+                ctx.closePath();
+                ctx.fill();
+
+                // Eje Y → punta de flecha apuntando hacia arriba (sobre la línea izquierda)
+                ctx.fillStyle = _getScaleBorderColor(chart, 'y', '#333');
+                const yTipX = chartArea.left;
+                const yTipY = chartArea.top - off;
+                ctx.beginPath();
+                ctx.moveTo(yTipX, yTipY);
+                ctx.lineTo(yTipX - aWid / 2, yTipY + aLen);
+                ctx.lineTo(yTipX + aWid / 2, yTipY + aLen);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            }
+        };
+        Chart.register(axisArrowsPlugin);
+
+        // Callback de ticks que oculta el "0" del eje X cuando el eje Y también
+        // muestra 0 (en ese caso ya hay un cero en la esquina inferior izquierda).
+        // Para usar como `ticks.callback` en el eje X de una gráfica.
+        function _xTickHideSharedZero(value, index, ticks) {
+            // `this` es la escala X (Chart.js)
+            try {
+                if (value === 0) {
+                    const yScale = this.chart && this.chart.scales && this.chart.scales.y;
+                    if (yScale && yScale.min <= 0 && yScale.max >= 0) {
+                        return '';
+                    }
+                }
+            } catch (_) {}
+            // Formato por defecto: el valor tal cual (Chart.js lo formatea como tick
+            // cuando se devuelve un número o string).
+            return value;
+        }
+
         function createChart(index) {
             const canvas = document.getElementById(`chart${index}`);
             const ctx = canvas.getContext('2d');
@@ -8917,6 +8984,11 @@ bluetooth.startIOPinService()</pre>
                     maintainAspectRatio: false,
                     animation: false,
                     onClick: (evt) => handleChartClick(evt, index),
+                    layout: {
+                        // Espacio extra arriba y a la derecha para las puntas de
+                        // flecha de los ejes (axisArrowsPlugin)
+                        padding: { top: 12, right: 14 }
+                    },
                     plugins: {
                         legend: {
                             display: state.graphs[index].yVars.length > 1,
@@ -8992,7 +9064,10 @@ bluetooth.startIOPinService()</pre>
                             ticks: {
                                 font: { size: 10 },
                                 maxRotation: 0,
-                                autoSkipPadding: 10
+                                autoSkipPadding: 10,
+                                // Oculta el "0" del eje X cuando ya se muestra en el eje Y
+                                // (origen compartido en la esquina inferior izquierda).
+                                callback: _xTickHideSharedZero
                             }
                         },
                         y: {
@@ -14656,6 +14731,9 @@ bluetooth.startIOPinService()</pre>
                     maintainAspectRatio: false,
                     animation: false,
                     onClick: (evt) => handleExpChartClick(evt),
+                    layout: {
+                        padding: { top: 12, right: 14 }
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -14694,7 +14772,7 @@ bluetooth.startIOPinService()</pre>
                             },
                             grid: { color: 'rgba(0,0,0,0.05)', lineWidth: 0.5 },
                             border: { color: '#999', width: 1 },
-                            ticks: { font: { size: 9 }, maxRotation: 0 }
+                            ticks: { font: { size: 9 }, maxRotation: 0, callback: _xTickHideSharedZero }
                         },
                         y: {
                             type: 'linear',
@@ -16414,6 +16492,9 @@ bluetooth.startIOPinService()</pre>
                     maintainAspectRatio: false,
                     animation: false,
                     onClick: (evt) => dlabHandleChartClick(evt),
+                    layout: {
+                        padding: { top: 12, right: 14 }
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -16447,7 +16528,7 @@ bluetooth.startIOPinService()</pre>
                             },
                             grid: { color: 'rgba(0,0,0,0.06)', lineWidth: 0.5 },
                             border: { color: '#999', width: 1 },
-                            ticks: { font: { size: 10 }, maxRotation: 0 }
+                            ticks: { font: { size: 10 }, maxRotation: 0, callback: _xTickHideSharedZero }
                         },
                         y: {
                             type: 'linear',
