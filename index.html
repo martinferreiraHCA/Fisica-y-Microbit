@@ -3882,6 +3882,11 @@
                         </div>
                     </div>
 
+                    <div class="input-row" style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                        <label id="fitColorLabel" style="margin:0; flex:1;">Color de la línea de ajuste</label>
+                        <input type="color" id="fitColorInput" value="#d32f2f" style="width:36px; height:28px; padding:0; border:1px solid #ccc; cursor:pointer;" title="Cambiar color">
+                    </div>
+
                     <button class="toolbar-btn primary btn-full" id="performFitBtn" disabled>
                         REALIZAR AJUSTE
                     </button>
@@ -4820,6 +4825,7 @@
                 tipSave: 'Guardar como imagen',
                 showDropLinesLabel: 'Líneas punteadas a los ejes',
                 pillClickColor: 'Click para cambiar el color',
+                fitColorLabel: 'Color de la línea de ajuste',
             },
             en: {
                 // Toolbar
@@ -5119,6 +5125,7 @@
                 tipSave: 'Save as image',
                 showDropLinesLabel: 'Dashed projection lines to axes',
                 pillClickColor: 'Click to change color',
+                fitColorLabel: 'Fit line color',
             },
             pt: {
                 // Toolbar
@@ -5418,6 +5425,7 @@
                 tipSave: 'Salvar como imagem',
                 showDropLinesLabel: 'Linhas pontilhadas aos eixos',
                 pillClickColor: 'Clique para mudar a cor',
+                fitColorLabel: 'Cor da linha de ajuste',
             }
         };
 
@@ -5751,6 +5759,8 @@
             if (showRolesLbl) showRolesLbl.textContent = t.showAxisRolesLabel || 'Mostrar sub-rótulo "Eje X/Y"';
             const showDropLbl = document.getElementById('showDropLinesLabel');
             if (showDropLbl) showDropLbl.textContent = t.showDropLinesLabel || 'Líneas punteadas a los ejes';
+            const fitColorLbl = document.getElementById('fitColorLabel');
+            if (fitColorLbl) fitColorLbl.textContent = t.fitColorLabel || 'Color de la línea de ajuste';
             // Paleta de caracteres especiales
             const scpHint = document.getElementById('specialCharHint');
             if (scpHint) {
@@ -7782,6 +7792,7 @@ bluetooth.startIOPinService()</pre>
             charts: [],
             // Curve Fitting
             fitResult: null,  // {type, coeffs, equation, r2, graphIndex, varIndex, dataPoints}
+            fitColor: '#d32f2f',  // color de la línea de ajuste (editable)
             // Sensor mode photos
             sensorPhotos: []  // [{pointId, photoDataURL, time, values}]
         };
@@ -8548,10 +8559,7 @@ bluetooth.startIOPinService()</pre>
                 if (!dot) return false;
                 const idx = parseInt(dot.getAttribute('data-var-color'));
                 if (isNaN(idx)) return false;
-                const colorInput = document.getElementById(`var${idx + 1}Color`);
-                if (colorInput) {
-                    try { colorInput.click(); } catch (_) { colorInput.focus(); }
-                }
+                openVariableColorPicker(idx);
                 return true;
             };
             document.addEventListener('click', (e) => {
@@ -8561,6 +8569,51 @@ bluetooth.startIOPinService()</pre>
                 if (e.key !== 'Enter' && e.key !== ' ') return;
                 if (handleColorDotActivation(e.target)) e.preventDefault();
             });
+        }
+
+        // ── Color picker global flotante para variables ──
+        // El input <input type="color"> de la sección VARIABLES puede estar
+        // colapsado (display:none), lo que impide abrirlo programáticamente.
+        // Mantenemos un input flotante siempre presente para el cambio de color
+        // desde las pills u otros lugares.
+        var _pickerVarIdx = null;
+        function _ensureGlobalColorPicker() {
+            let inp = document.getElementById('_globalVarColorPicker');
+            if (inp) return inp;
+            inp = document.createElement('input');
+            inp.type = 'color';
+            inp.id = '_globalVarColorPicker';
+            inp.style.cssText = 'position:fixed; left:-100px; top:-100px; width:1px; height:1px; opacity:0; pointer-events:none;';
+            document.body.appendChild(inp);
+            inp.addEventListener('input', function() {
+                if (_pickerVarIdx == null || !state.variables[_pickerVarIdx]) return;
+                state.variables[_pickerVarIdx].color = this.value;
+                _syncVariableColor(_pickerVarIdx, this.value);
+            });
+            return inp;
+        }
+        function _syncVariableColor(idx, color) {
+            // Sincronizar input de la sección "Variables" + preview + borde
+            const visInp = document.getElementById(`var${idx + 1}Color`);
+            const preview = document.getElementById(`var${idx + 1}ColorPreview`);
+            const card = document.getElementById(`var${idx + 1}Config`);
+            if (visInp) visInp.value = color;
+            if (preview) preview.style.background = color;
+            if (card) card.style.borderLeftColor = color;
+            if (typeof updateAllCharts === 'function') updateAllCharts();
+            // Refrescar pills para que cambien de color al instante
+            if (state.charts) {
+                for (let i = 0; i < state.charts.length; i++) {
+                    if (typeof updateGraphLegendPills === 'function') updateGraphLegendPills(i);
+                }
+            }
+        }
+        function openVariableColorPicker(idx) {
+            if (idx < 0 || !state.variables[idx]) return;
+            const inp = _ensureGlobalColorPicker();
+            _pickerVarIdx = idx;
+            inp.value = state.variables[idx].color || '#000000';
+            try { inp.click(); } catch (_) {}
         }
 
         function _setSpecialCharButtonsEnabled(enabled) {
@@ -8656,6 +8709,9 @@ bluetooth.startIOPinService()</pre>
             // Sincronizar el checkbox de líneas punteadas a los ejes con el estado
             const dropLinesCb = document.getElementById('showDropLinesToggle');
             if (dropLinesCb) dropLinesCb.checked = !!state.showDropLines;
+            // Sincronizar el input de color del ajuste con el estado
+            const fitColorInp = document.getElementById('fitColorInput');
+            if (fitColorInp && state.fitColor) fitColorInp.value = state.fitColor;
             // Pintar la paleta de caracteres especiales y arrancar tracking de foco
             _buildSpecialCharPalette();
             _initSpecialCharFocusTracking();
@@ -12185,7 +12241,7 @@ bluetooth.startIOPinService()</pre>
                 chart.data.datasets.push({
                     label: `Ajuste: ${state.fitResult.equation}`,
                     data: fitData,
-                    borderColor: '#d32f2f', /* red per design spec Rule 6 */
+                    borderColor: state.fitColor || '#d32f2f',
                     backgroundColor: 'transparent',
                     borderWidth: 2.5,
                     borderDash: [6, 3],
@@ -13424,6 +13480,8 @@ bluetooth.startIOPinService()</pre>
                 option.textContent = state.variables[i].name;
                 select.appendChild(option);
             }
+            // Pre-seleccionar la variable Y de la gráfica actualmente elegida
+            _syncFitVariableToSelectedGraph();
         }
 
         function updateFitGraphOptions() {
@@ -13433,8 +13491,31 @@ bluetooth.startIOPinService()</pre>
             for (let i = 0; i < state.numGraphs; i++) {
                 const option = document.createElement('option');
                 option.value = i;
-                option.textContent = `${t.graphDefault} ${i + 1}`;
+                // Usar el título de la gráfica si está disponible
+                const g = state.graphs[i];
+                const customTitle = (g && g.title) ? g.title : `${t.graphDefault} ${i + 1}`;
+                option.textContent = customTitle;
                 select.appendChild(option);
+            }
+            // Pre-seleccionar la variable Y de la gráfica recién elegida
+            _syncFitVariableToSelectedGraph();
+        }
+
+        // Selecciona automáticamente en fitVariable la primera variable Y de
+        // la gráfica elegida en fitGraphSelect. Útil para que al abrir Ajuste
+        // de curva el usuario tenga ya pre-seleccionada la variable mostrada.
+        function _syncFitVariableToSelectedGraph() {
+            const gSel = document.getElementById('fitGraphSelect');
+            const vSel = document.getElementById('fitVariable');
+            if (!gSel || !vSel) return;
+            const gIdx = parseInt(gSel.value);
+            if (isNaN(gIdx) || !state.graphs[gIdx]) return;
+            const yVars = state.graphs[gIdx].yVars || [];
+            if (yVars.length === 0) return;
+            // Tomar la primera variable Y disponible que exista en el select
+            for (const v of yVars) {
+                const opt = vSel.querySelector(`option[value="${v}"]`);
+                if (opt) { vSel.value = String(v); return; }
             }
         }
 
@@ -13451,6 +13532,23 @@ bluetooth.startIOPinService()</pre>
         // Actualizar botones cuando cambien los inputs de rango
         document.getElementById('fitRangeFrom').addEventListener('input', updateCurveFitButtons);
         document.getElementById('fitRangeTo').addEventListener('input', updateCurveFitButtons);
+
+        // Color de la línea de ajuste — cambia en vivo si hay un fit activo
+        const _fitColorInput = document.getElementById('fitColorInput');
+        if (_fitColorInput) {
+            _fitColorInput.addEventListener('input', function() {
+                state.fitColor = this.value;
+                if (state.fitResult && typeof updateAllCharts === 'function') {
+                    updateAllCharts();
+                }
+            });
+        }
+
+        // Al cambiar la gráfica de referencia, sugerir la variable mostrada
+        const _fitGraphSelect = document.getElementById('fitGraphSelect');
+        if (_fitGraphSelect) {
+            _fitGraphSelect.addEventListener('change', _syncFitVariableToSelectedGraph);
+        }
 
         document.getElementById('performFitBtn').addEventListener('click', () => {
             try {
