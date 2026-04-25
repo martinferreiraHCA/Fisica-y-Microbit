@@ -9589,8 +9589,15 @@ bluetooth.startIOPinService()</pre>
                 ctx.lineWidth = 1;
 
                 chart.data.datasets.forEach(ds => {
-                    // Saltar datasets de ajuste de curva
-                    if (ds.label && /^Ajuste:/i.test(ds.label)) return;
+                    // Saltar datasets DERIVADOS (no son datos medidos): las
+                    // líneas punteadas son auxiliares para indicar la posición
+                    // de los puntos REALES, no para graficar otros artefactos.
+                    if (ds.label) {
+                        if (/^Ajuste:/i.test(ds.label)) return;          // curva de ajuste
+                        if (ds.label === '∫ Área') return;                // área bajo la curva
+                    }
+                    // Marca explícita opcional: ds._dropLinesSkip = true
+                    if (ds._dropLinesSkip) return;
                     const color = ds.borderColor || '#666';
                     ctx.strokeStyle = _hexToRgba(color, 0.45);
 
@@ -14058,7 +14065,11 @@ bluetooth.startIOPinService()</pre>
                 // order: -1 hace que Chart.js lo dibuje ANTES que los demás
                 // datasets (queda atrás), de modo que la línea de la variable
                 // y los puntos quedan visibles encima del relleno.
-                order: -1
+                order: -1,
+                // Flag para que dropLinesPlugin no trace líneas punteadas
+                // desde los 200+ puntos del smoothPath (sería un bosque que
+                // tapa el área).
+                _dropLinesSkip: true
             });
 
             chart.update('none');
