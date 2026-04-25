@@ -331,6 +331,71 @@
             text-overflow: clip;
             overflow: visible;
         }
+        /* ── Paleta de caracteres especiales (μ, Δ, °, ², ...) ── */
+        .special-char-panel {
+            margin: 8px 0 4px 0;
+            padding: 8px 10px;
+            background: #fafafa;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+        .special-char-hint {
+            font-size: 0.7rem;
+            color: #666;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+        .special-char-hint .scp-target {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 1px 5px;
+            font-family: monospace;
+            font-size: 0.95em;
+            color: #1976d2;
+            font-weight: 600;
+        }
+        .special-char-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 3px;
+        }
+        .special-char-btn {
+            background: #fff;
+            border: 1.5px solid #ccc;
+            padding: 4px 0;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.12s;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            line-height: 1.1;
+            user-select: none;
+            color: #333;
+        }
+        .special-char-btn:hover {
+            background: #1976d2;
+            color: #fff;
+            border-color: #1976d2;
+            transform: scale(1.08);
+        }
+        .special-char-btn:active {
+            transform: scale(0.96);
+        }
+        .special-char-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .special-char-group-label {
+            font-size: 0.6rem;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin: 6px 0 3px 0;
+        }
+        .special-char-group-label:first-of-type { margin-top: 0; }
         /* Indicador didáctico: pills con slot de variable + nombre + estado live */
         .graph-legend-compact {
             display: flex;
@@ -3649,6 +3714,20 @@
                         <label for="showAxisRolesToggle" id="showAxisRolesLabel">Mostrar sub-rótulo "Eje X/Y"</label>
                     </div>
 
+                    <!-- Paleta de caracteres especiales para nombres y títulos -->
+                    <div class="special-char-panel">
+                        <div class="special-char-hint" id="specialCharHint">
+                            Click sobre un símbolo para insertarlo en el último campo editado.
+                            <span style="display:block; margin-top:3px;">Activo: <span class="scp-target" id="specialCharTargetName">—</span></span>
+                        </div>
+                        <div class="special-char-group-label" id="specialCharGroupGreek">Griegas</div>
+                        <div class="special-char-grid" id="specialCharGridGreek"></div>
+                        <div class="special-char-group-label" id="specialCharGroupMath">Matemáticas</div>
+                        <div class="special-char-grid" id="specialCharGridMath"></div>
+                        <div class="special-char-group-label" id="specialCharGroupExpSub">Sub/Super-índices</div>
+                        <div class="special-char-grid" id="specialCharGridExpSub"></div>
+                    </div>
+
                     <button class="toolbar-btn primary btn-full" id="applyGraphConfigBtn">
                         APLICAR CONFIGURACIÓN
                     </button>
@@ -4651,6 +4730,13 @@
                 pillLive: 'datos en vivo',
                 showAxisRolesLabel: 'Mostrar sub-rótulo "Eje X/Y"',
                 titleClickToEdit: 'Click para editar (autoguardado)',
+                specialCharHint: 'Click sobre un símbolo para insertarlo en el último campo editado.',
+                specialCharActive: 'Activo',
+                specialCharNoTarget: 'Hacé click primero en un campo de texto (variable, título, eje)',
+                specialCharGroupGreek: 'Griegas',
+                specialCharGroupMath: 'Matemáticas',
+                specialCharGroupExpSub: 'Sub/Super-índices',
+                specialCharInsert: 'Insertar',
             },
             en: {
                 // Toolbar
@@ -4934,6 +5020,13 @@
                 pillLive: 'live data',
                 showAxisRolesLabel: 'Show "X/Y axis" sub-label',
                 titleClickToEdit: 'Click to edit (auto-saves)',
+                specialCharHint: 'Click a symbol to insert it into the last edited field.',
+                specialCharActive: 'Active',
+                specialCharNoTarget: 'First click on a text field (variable, title, axis)',
+                specialCharGroupGreek: 'Greek',
+                specialCharGroupMath: 'Math',
+                specialCharGroupExpSub: 'Sub/Super-script',
+                specialCharInsert: 'Insert',
             },
             pt: {
                 // Toolbar
@@ -5217,6 +5310,13 @@
                 pillLive: 'dados ao vivo',
                 showAxisRolesLabel: 'Mostrar subtítulo "Eixo X/Y"',
                 titleClickToEdit: 'Clique para editar (auto-salva)',
+                specialCharHint: 'Clique em um símbolo para inseri-lo no último campo editado.',
+                specialCharActive: 'Ativo',
+                specialCharNoTarget: 'Clique primeiro em um campo de texto (variável, título, eixo)',
+                specialCharGroupGreek: 'Gregas',
+                specialCharGroupMath: 'Matemática',
+                specialCharGroupExpSub: 'Sub/Sobre-índices',
+                specialCharInsert: 'Inserir',
             }
         };
 
@@ -5548,6 +5648,23 @@
             }
             const showRolesLbl = document.getElementById('showAxisRolesLabel');
             if (showRolesLbl) showRolesLbl.textContent = t.showAxisRolesLabel || 'Mostrar sub-rótulo "Eje X/Y"';
+            // Paleta de caracteres especiales
+            const scpHint = document.getElementById('specialCharHint');
+            if (scpHint) {
+                const activeLbl = t.specialCharActive || 'Activo';
+                const noTarget = t.specialCharNoTarget || 'Hacé click primero en un campo de texto';
+                const targetName = _lastEditableTargetLabel || ('— ' + noTarget);
+                const safeName = String(targetName).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]);
+                const intro = t.specialCharHint || 'Click sobre un símbolo para insertarlo en el último campo editado.';
+                scpHint.innerHTML = intro +
+                    `<span style="display:block; margin-top:3px;">${activeLbl}: <span class="scp-target" id="specialCharTargetName">${safeName}</span></span>`;
+            }
+            const scpGG = document.getElementById('specialCharGroupGreek');
+            if (scpGG) scpGG.textContent = t.specialCharGroupGreek || 'Griegas';
+            const scpGM = document.getElementById('specialCharGroupMath');
+            if (scpGM) scpGM.textContent = t.specialCharGroupMath || 'Matemáticas';
+            const scpGS = document.getElementById('specialCharGroupExpSub');
+            if (scpGS) scpGS.textContent = t.specialCharGroupExpSub || 'Sub/Super-índices';
 
             // DATOS A AJUSTAR (encabezado en ajuste de curva)
             document.querySelectorAll('div[style*="font-weight: bold"]').forEach(div => {
@@ -8257,6 +8374,136 @@ bluetooth.startIOPinService()</pre>
             }
         }
 
+        // ── Paleta de caracteres especiales (μ, Δ, °, ², ...) ──
+        // Recordamos el último input/contenteditable enfocado para insertar el
+        // carácter en la posición del cursor. La paleta es útil para nombres de
+        // variables, títulos de gráfica y etiquetas de eje.
+        let _lastEditableTarget = null;
+        let _lastEditableTargetLabel = '';
+
+        function _isEditableTarget(el) {
+            if (!el) return false;
+            const tag = el.tagName;
+            if (tag === 'INPUT' && (!el.type || el.type === 'text' || el.type === 'search')) return true;
+            if (tag === 'TEXTAREA') return true;
+            if (el.isContentEditable) return true;
+            return false;
+        }
+
+        function _describeEditableTarget(el) {
+            if (!el) return '—';
+            const id = el.id || '';
+            // Mapear ids conocidos a etiquetas amigables
+            if (/^var(\d)Name$/.test(id)) return `Variable ${id.match(/\d/)[0]}`;
+            if (/^graph(\d)TitleInput$/.test(id)) return `Título Gráfica ${id.match(/\d/)[0]}`;
+            if (/^graph(\d)XLabel$/.test(id)) return `Etiqueta Eje X · Gráfica ${id.match(/\d/)[0]}`;
+            if (/^graph(\d)YLabel$/.test(id)) return `Etiqueta Eje Y · Gráfica ${id.match(/\d/)[0]}`;
+            if (/^axisValueX(\d)$/.test(id)) return `Eje X (en gráfica ${parseInt(id.match(/\d/)[0]) + 1})`;
+            if (/^axisValueY(\d)$/.test(id)) return `Eje Y (en gráfica ${parseInt(id.match(/\d/)[0]) + 1})`;
+            if (/^graphTitle(\d)$/.test(id)) return `Título Gráfica ${parseInt(id.match(/\d/)[0]) + 1}`;
+            if (id === 'dlabAxisValueX') return 'Eje X (LAB)';
+            if (id === 'dlabAxisValueY') return 'Eje Y (LAB)';
+            if (/^smVarName(\d)$/.test(id)) return `Variable ${parseInt(id.match(/\d/)[0]) + 1} (Sensores)`;
+            if (id === 'mtXLabel') return 'Etiqueta X (Tabla manual)';
+            // Fallback genérico
+            const placeholder = el.getAttribute && el.getAttribute('placeholder');
+            return placeholder || (id ? id : 'campo de texto');
+        }
+
+        function _initSpecialCharFocusTracking() {
+            if (_initSpecialCharFocusTracking._done) return;
+            _initSpecialCharFocusTracking._done = true;
+            document.addEventListener('focusin', (e) => {
+                if (_isEditableTarget(e.target)) {
+                    _lastEditableTarget = e.target;
+                    _lastEditableTargetLabel = _describeEditableTarget(e.target);
+                    const tgt = document.getElementById('specialCharTargetName');
+                    if (tgt) tgt.textContent = _lastEditableTargetLabel;
+                    _setSpecialCharButtonsEnabled(true);
+                }
+            });
+            // Inicialmente sin objetivo — botones deshabilitados
+            _setSpecialCharButtonsEnabled(false);
+        }
+
+        function _setSpecialCharButtonsEnabled(enabled) {
+            document.querySelectorAll('.special-char-btn').forEach(b => {
+                b.disabled = !enabled;
+            });
+        }
+
+        function insertSpecialChar(ch) {
+            const el = _lastEditableTarget;
+            if (!el || !document.body.contains(el)) {
+                return;
+            }
+            // Volver a enfocar; algunos navegadores pierden foco al hacer click en el botón
+            try { el.focus({ preventScroll: true }); } catch (_) { el.focus(); }
+
+            if (el.isContentEditable) {
+                // Insertar en la posición del cursor del contenteditable
+                let inserted = false;
+                try {
+                    inserted = document.execCommand('insertText', false, ch);
+                } catch (_) { inserted = false; }
+                if (!inserted) {
+                    // Fallback: append al final
+                    el.textContent = (el.textContent || '') + ch;
+                }
+                // Disparar el evento input para que los listeners reaccionen
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                return;
+            }
+
+            // INPUT/TEXTAREA: insertar en cursor + disparar 'input'
+            const start = el.selectionStart != null ? el.selectionStart : el.value.length;
+            const end = el.selectionEnd != null ? el.selectionEnd : el.value.length;
+            const v = el.value || '';
+            el.value = v.slice(0, start) + ch + v.slice(end);
+            const newPos = start + ch.length;
+            try { el.setSelectionRange(newPos, newPos); } catch (_) {}
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function _buildSpecialCharPalette() {
+            // Tres grupos curados para uso científico común
+            const groups = {
+                Greek: ['α','β','γ','δ','Δ','ε','ζ','η','θ','λ','μ','ν','π','ρ','σ','Σ','τ','φ','Φ','χ','ψ','ω','Ω','Π'],
+                Math:  ['°','±','×','÷','·','√','∑','∫','∂','∞','≈','≠','≤','≥','→','←','↑','↓','π','ℏ'],
+                ExpSub:['⁰','¹','²','³','⁴','⁵','⁻¹','⁻²','⁻³','₀','₁','₂','₃','₄','₅','½','¼','¾','‰']
+            };
+            const map = {
+                Greek: 'specialCharGridGreek',
+                Math: 'specialCharGridMath',
+                ExpSub: 'specialCharGridExpSub'
+            };
+            Object.keys(groups).forEach(group => {
+                const grid = document.getElementById(map[group]);
+                if (!grid) return;
+                grid.innerHTML = '';
+                groups[group].forEach(ch => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'special-char-btn';
+                    btn.textContent = ch;
+                    btn.title = `Insertar ${ch}`;
+                    btn.disabled = !_lastEditableTarget;
+                    // mousedown + preventDefault evita que el input pierda el foco
+                    btn.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        insertSpecialChar(ch);
+                    });
+                    // Soporte táctil: emular el comportamiento
+                    btn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        insertSpecialChar(ch);
+                    }, { passive: false });
+                    grid.appendChild(btn);
+                });
+            });
+        }
+
         function initializeConfiguration() {
             updateGraphConfiguration();
             updateFitVariableOptions();
@@ -8269,6 +8516,9 @@ bluetooth.startIOPinService()</pre>
             }
             // Aplicar el toggle global de sub-rótulos de eje
             document.body.classList.toggle('no-axis-roles', !state.showAxisRoles);
+            // Pintar la paleta de caracteres especiales y arrancar tracking de foco
+            _buildSpecialCharPalette();
+            _initSpecialCharFocusTracking();
         }
 
         function updateGraphConfiguration() {
