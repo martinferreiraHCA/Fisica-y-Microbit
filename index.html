@@ -3928,6 +3928,22 @@
                         <label for="showDropLinesToggle" id="showDropLinesLabel">Líneas punteadas a los ejes</label>
                     </div>
 
+                    <!-- Formato numérico (cifras significativas + notación científica) -->
+                    <div style="margin-top:10px; padding:8px 10px; background:#fafafa; border:1px solid #e0e0e0; border-radius:4px;">
+                        <div style="font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.4px; color:#1565c0; margin-bottom:6px;" id="numFormatTitle">Formato numérico</div>
+                        <div class="input-row" style="display:flex; align-items:center; gap:8px; margin:0 0 6px 0;">
+                            <label style="margin:0; flex:1; font-size:0.78rem;" id="numSigFigsLabel">Cifras significativas</label>
+                            <input type="number" id="numSigFigsInput" value="4" min="1" max="10" step="1" style="width:60px; font-size:0.78rem; padding:3px 6px;">
+                        </div>
+                        <div class="checkbox-row" style="margin:0;">
+                            <input type="checkbox" id="numScientificToggle">
+                            <label for="numScientificToggle" id="numScientificLabel">Notación científica (1,234×10³)</label>
+                        </div>
+                        <div style="font-size:0.7rem; color:#607d8b; margin-top:5px; font-style:italic;" id="numFormatHint">
+                            Aplica a ejes, tooltips, tabla y resultados (delta, integral, ajuste).
+                        </div>
+                    </div>
+
                     <!-- Paleta de caracteres especiales para nombres y títulos -->
                     <div class="special-char-panel">
                         <div class="special-char-hint" id="specialCharHint">
@@ -4994,6 +5010,10 @@
                 showDropLinesLabel: 'Líneas punteadas a los ejes',
                 pillClickColor: 'Click para cambiar el color',
                 fitColorLabel: 'Color de la línea de ajuste',
+                numFormatTitle: 'Formato numérico',
+                numSigFigsLabel: 'Cifras significativas',
+                numScientificLabel: 'Notación científica (1,234×10³)',
+                numFormatHint: 'Aplica a ejes, tooltips, tabla y resultados (delta, integral, ajuste).',
             },
             en: {
                 // Toolbar
@@ -5294,6 +5314,10 @@
                 showDropLinesLabel: 'Dashed projection lines to axes',
                 pillClickColor: 'Click to change color',
                 fitColorLabel: 'Fit line color',
+                numFormatTitle: 'Number format',
+                numSigFigsLabel: 'Significant figures',
+                numScientificLabel: 'Scientific notation (1.234×10³)',
+                numFormatHint: 'Applies to axes, tooltips, table and results (delta, integral, fit).',
             },
             pt: {
                 // Toolbar
@@ -5594,6 +5618,10 @@
                 showDropLinesLabel: 'Linhas pontilhadas aos eixos',
                 pillClickColor: 'Clique para mudar a cor',
                 fitColorLabel: 'Cor da linha de ajuste',
+                numFormatTitle: 'Formato numérico',
+                numSigFigsLabel: 'Algarismos significativos',
+                numScientificLabel: 'Notação científica (1,234×10³)',
+                numFormatHint: 'Aplica-se aos eixos, tooltips, tabela e resultados (delta, integral, ajuste).',
             }
         };
 
@@ -5929,6 +5957,14 @@
             if (showDropLbl) showDropLbl.textContent = t.showDropLinesLabel || 'Líneas punteadas a los ejes';
             const fitColorLbl = document.getElementById('fitColorLabel');
             if (fitColorLbl) fitColorLbl.textContent = t.fitColorLabel || 'Color de la línea de ajuste';
+            const nfTitle = document.getElementById('numFormatTitle');
+            if (nfTitle) nfTitle.textContent = t.numFormatTitle || 'Formato numérico';
+            const nfSig = document.getElementById('numSigFigsLabel');
+            if (nfSig) nfSig.textContent = t.numSigFigsLabel || 'Cifras significativas';
+            const nfSci = document.getElementById('numScientificLabel');
+            if (nfSci) nfSci.textContent = t.numScientificLabel || 'Notación científica (1,234×10³)';
+            const nfHint = document.getElementById('numFormatHint');
+            if (nfHint) nfHint.textContent = t.numFormatHint || 'Aplica a ejes, tooltips, tabla y resultados.';
             // Paleta de caracteres especiales
             const scpHint = document.getElementById('specialCharHint');
             if (scpHint) {
@@ -7945,6 +7981,8 @@ bluetooth.startIOPinService()</pre>
             showLines: true,
             showAxisRoles: true,
             showDropLines: false,
+            // Formato numérico para ejes, tooltips, tabla y readouts didácticos
+            numberFormat: { mode: 'decimal', sigFigs: 4 },
             // Video
             cameraActive: false,
             mediaStream: null,
@@ -8605,6 +8643,27 @@ bluetooth.startIOPinService()</pre>
             if (typeof dlabChart !== 'undefined' && dlabChart) dlabChart.update('none');
         });
 
+        // ── Formato numérico: cifras significativas + notación científica ──
+        function _applyNumberFormat() {
+            (state.charts || []).forEach(c => { if (c) c.update('none'); });
+            if (typeof expChart !== 'undefined' && expChart) expChart.update('none');
+            if (typeof dlabChart !== 'undefined' && dlabChart) dlabChart.update('none');
+            if (typeof updateDataTable === 'function') updateDataTable();
+            if (typeof updateInlineStats === 'function') updateInlineStats();
+            if (typeof updateDeltaInfo === 'function') updateDeltaInfo();
+            if (typeof dlabUpdateDiffContent === 'function') dlabUpdateDiffContent();
+            if (typeof dlabUpdateTable === 'function') dlabUpdateTable();
+        }
+        document.getElementById('numSigFigsInput').addEventListener('input', function() {
+            const v = parseInt(this.value) || 4;
+            state.numberFormat.sigFigs = Math.max(1, Math.min(10, v));
+            _applyNumberFormat();
+        });
+        document.getElementById('numScientificToggle').addEventListener('change', function() {
+            state.numberFormat.mode = this.checked ? 'scientific' : 'decimal';
+            _applyNumberFormat();
+        });
+
         document.getElementById('applyGraphConfigBtn').addEventListener('click', applyGraphConfiguration);
 
         // Listeners para etiquetas y título: marcar como personalizado cuando el usuario
@@ -8914,6 +8973,11 @@ bluetooth.startIOPinService()</pre>
             // Sincronizar el input de color del ajuste con el estado
             const fitColorInp = document.getElementById('fitColorInput');
             if (fitColorInp && state.fitColor) fitColorInp.value = state.fitColor;
+            // Sincronizar inputs de formato numérico con el estado
+            const sigFigsInp = document.getElementById('numSigFigsInput');
+            if (sigFigsInp) sigFigsInp.value = state.numberFormat.sigFigs;
+            const sciCb = document.getElementById('numScientificToggle');
+            if (sciCb) sciCb.checked = state.numberFormat.mode === 'scientific';
             // Pintar la paleta de caracteres especiales y arrancar tracking de foco
             _buildSpecialCharPalette();
             _initSpecialCharFocusTracking();
@@ -9367,6 +9431,43 @@ bluetooth.startIOPinService()</pre>
         // Cuando state.showDropLines está activo, traza una línea punteada
         // vertical desde cada punto hasta el eje X y otra horizontal hasta el
         // eje Y. Útil para leer coordenadas a simple vista.
+        // ── Formato numérico configurable (cifras significativas + científica) ──
+        // Convierte una mantisa+exponente exponencial ("1.234e+5") a una forma
+        // tipográfica con superíndices Unicode: "1.234×10⁵".
+        function _prettyScientific(eStr) {
+            const m = String(eStr).match(/^(-?[\d.]+)e([+-]?\d+)$/);
+            if (!m) return eStr;
+            const mantissa = m[1];
+            const exp = parseInt(m[2], 10);
+            if (exp === 0) return mantissa;
+            const supDigits = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+            const sup = String(Math.abs(exp)).split('').map(c => supDigits[+c] || c).join('');
+            const sign = exp < 0 ? '⁻' : '';
+            return `${mantissa}×10${sign}${sup}`;
+        }
+        // Formato principal: respeta state.numberFormat.
+        // - mode 'scientific': siempre devuelve "x.yyy×10ⁿ"
+        // - mode 'decimal': N cifras significativas; si el número es muy grande
+        //   o muy pequeño cae a notación científica para no perder información.
+        function fmtNum(v) {
+            if (v == null) return '';
+            const n = typeof v === 'number' ? v : parseFloat(v);
+            if (!isFinite(n)) return String(v);
+            const fmt = (state && state.numberFormat) || { mode: 'decimal', sigFigs: 4 };
+            const sig = Math.max(1, Math.min(10, parseInt(fmt.sigFigs) || 4));
+            if (fmt.mode === 'scientific') {
+                return _prettyScientific(n.toExponential(sig - 1));
+            }
+            if (n === 0) return '0';
+            const abs = Math.abs(n);
+            if (abs < 1e-4 || abs >= 1e7) {
+                return _prettyScientific(n.toExponential(sig - 1));
+            }
+            // toPrecision puede devolver "1.234e+3"; lo convertimos a número
+            // y de vuelta a string para mantener formato decimal limpio.
+            return Number(n.toPrecision(sig)).toString();
+        }
+
         function _hexToRgba(hex, alpha) {
             try {
                 if (!hex) return `rgba(102,102,102,${alpha})`;
@@ -9430,7 +9531,8 @@ bluetooth.startIOPinService()</pre>
 
         // Callback de ticks que oculta el "0" del eje X cuando el eje Y también
         // muestra 0 (en ese caso ya hay un cero en la esquina inferior izquierda).
-        // Para usar como `ticks.callback` en el eje X de una gráfica.
+        // Además aplica el formato numérico configurable (cifras significativas
+        // o notación científica). Para usar como `ticks.callback` en el eje X.
         function _xTickHideSharedZero(value, index, ticks) {
             // `this` es la escala X (Chart.js)
             try {
@@ -9441,9 +9543,11 @@ bluetooth.startIOPinService()</pre>
                     }
                 }
             } catch (_) {}
-            // Formato por defecto: el valor tal cual (Chart.js lo formatea como tick
-            // cuando se devuelve un número o string).
-            return value;
+            return fmtNum(value);
+        }
+        // Callback genérica para el eje Y: aplica formato numérico configurable.
+        function _yTickFmt(value, index, ticks) {
+            return fmtNum(value);
         }
 
         function createChart(index) {
@@ -9486,8 +9590,8 @@ bluetooth.startIOPinService()</pre>
                             displayColors: true,
                             callbacks: {
                                 label: function(context) {
-                                    const xLabel = context.parsed.x.toFixed(4);
-                                    const yLabel = context.parsed.y.toFixed(4);
+                                    const xLabel = fmtNum(context.parsed.x);
+                                    const yLabel = fmtNum(context.parsed.y);
                                     return `${context.dataset.label}: (${xLabel}, ${yLabel})`;
                                 }
                             }
@@ -9564,7 +9668,8 @@ bluetooth.startIOPinService()</pre>
                             },
                             ticks: {
                                 font: { size: 10 },
-                                autoSkipPadding: 6
+                                autoSkipPadding: 6,
+                                callback: _yTickFmt
                             }
                         }
                     },
@@ -12270,7 +12375,7 @@ bluetooth.startIOPinService()</pre>
             }
             return `
                 <b>Modelo:</b> ${model}<br>
-                <b>R² = ${r2.toFixed(4)}</b> (${r2Quality}). R² ∈ [0,1] mide qué fracción de la varianza de los datos explica el modelo. R² = 1 es ajuste perfecto.<br>
+                <b>R² = ${fmtNum(r2)}</b> (${r2Quality}). R² ∈ [0,1] mide qué fracción de la varianza de los datos explica el modelo. R² = 1 es ajuste perfecto.<br>
                 <b>± error estándar</b> de cada parámetro: estimado a partir de la matriz de covarianza del ajuste por mínimos cuadrados — indica el rango plausible del parámetro asumiendo que los residuos son ruido aleatorio gaussiano.
             `;
         }
@@ -12332,12 +12437,12 @@ bluetooth.startIOPinService()</pre>
                     <div style="margin-bottom:8px;">
                         <div style="font-weight:700; font-size:0.74rem; color:#455a64; margin-bottom:3px;">${_escHtml(paramNames[idx])}</div>
                         <div class="didactic-compare">
-                            <div><div class="compare-label">Teórico</div><div class="compare-value">${teorico.toFixed(6)}</div></div>
-                            <div><div class="compare-label">Experimental</div><div class="compare-value">${exp.toFixed(6)}</div></div>
+                            <div><div class="compare-label">Teórico</div><div class="compare-value">${fmtNum(teorico)}</div></div>
+                            <div><div class="compare-label">Experimental</div><div class="compare-value">${fmtNum(exp)}</div></div>
                         </div>
                         <div class="didactic-formula" style="display:block; margin-top:4px;">
-                            |Δ| = |${exp.toFixed(4)} − ${teorico.toFixed(4)}| = <b>${absErr.toFixed(6)}</b><br>
-                            error % = (|Δ| / |teórico|) × 100 = <b class="${pctCls}">${isNaN(pctErr) ? 'N/A (teórico = 0)' : pctErr.toFixed(3) + ' %'}</b>
+                            |Δ| = |${fmtNum(exp)} − ${fmtNum(teorico)}| = <b>${fmtNum(absErr)}</b><br>
+                            error % = (|Δ| / |teórico|) × 100 = <b class="${pctCls}">${isNaN(pctErr) ? 'N/A (teórico = 0)' : fmtNum(pctErr) + ' %'}</b>
                         </div>
                     </div>
                 `;
@@ -12632,7 +12737,7 @@ bluetooth.startIOPinService()</pre>
                     `;
                 }
 
-                const timeCell = state.microbitTimestamp ? `<td>${adjustedTime.toFixed(3)}</td>` : '';
+                const timeCell = state.microbitTimestamp ? `<td>${fmtNum(adjustedTime)}</td>` : '';
                 return `
                     <tr class="${state.selectedPoints.has(d.id) ? 'selected' : ''}" data-id="${d.id}" onclick="toggleSelect('${d.id}')">
                         <td>${originalIdx + 1}</td>
@@ -13512,13 +13617,13 @@ bluetooth.startIOPinService()</pre>
                     <div class="didactic-section">
                         <div class="didactic-row"><span class="lbl">Variable integrada (y):</span><span class="val">${_escHtml(yName)}</span></div>
                         <div class="didactic-row"><span class="lbl">Variable integradora (x):</span><span class="val">${_escHtml(xName)}</span></div>
-                        <div class="didactic-row"><span class="lbl">Rango [${_escHtml(xName)}₁, ${_escHtml(xName)}₂]:</span><span class="val">[${xMin.toFixed(4)}, ${xMax.toFixed(4)}]</span></div>
-                        <div class="didactic-row"><span class="lbl">Δ${_escHtml(xName)} total:</span><span class="val">${(xMax - xMin).toFixed(4)}</span></div>
+                        <div class="didactic-row"><span class="lbl">Rango [${_escHtml(xName)}₁, ${_escHtml(xName)}₂]:</span><span class="val">[${fmtNum(xMin)}, ${fmtNum(xMax)}]</span></div>
+                        <div class="didactic-row"><span class="lbl">Δ${_escHtml(xName)} total:</span><span class="val">${fmtNum(xMax - xMin)}</span></div>
                         <div class="didactic-row"><span class="lbl">Puntos usados:</span><span class="val">${pairs.length}${usingSelection ? ' (seleccionados manualmente)' : ''}</span></div>
                     </div>
                     <div class="didactic-section" style="text-align:center;">
                         <div style="font-size:0.7rem; color:#607d8b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Resultado</div>
-                        <div class="didactic-result-big">∫ ${_escHtml(yName)} d${_escHtml(xName)} = ${integral.toFixed(6)}</div>
+                        <div class="didactic-result-big">∫ ${_escHtml(yName)} d${_escHtml(xName)} = ${fmtNum(integral)}</div>
                     </div>
                     <div class="didactic-explain">
                         <b>¿Cómo se calcula?</b> Cada par de puntos consecutivos define un trapecio
@@ -13657,10 +13762,10 @@ bluetooth.startIOPinService()</pre>
                         <div class="didactic-title">Modo Δ — paso 1 de 2</div>
                         <div class="didactic-row point-a">
                             <span class="lbl">Punto A · #${deltaPointA + 1}</span>
-                            <span class="val">t = ${tA.toFixed(4)}</span>
+                            <span class="val">t = ${fmtNum(tA)}</span>
                         </div>`;
                 for (let v = 0; v < state.numVariables; v++) {
-                    html += `<div class="didactic-row point-a"><span class="lbl">${_escHtml(state.variables[v].name)}</span><span class="val">${dA.values[v].toFixed(4)}</span></div>`;
+                    html += `<div class="didactic-row point-a"><span class="lbl">${_escHtml(state.variables[v].name)}</span><span class="val">${fmtNum(dA.values[v])}</span></div>`;
                 }
                 html += `
                         <div class="didactic-explain">Ahora seleccioná un segundo punto (B) en la tabla o gráfica para calcular la diferencia.</div>
@@ -13675,21 +13780,21 @@ bluetooth.startIOPinService()</pre>
 
             let html = `<div class="didactic-block">
                 <div class="didactic-title">Modo Δ — diferencia entre puntos</div>
-                <div class="didactic-row point-a"><span class="lbl">A · #${deltaPointA + 1}</span><span class="val">t = ${tA.toFixed(4)}</span></div>`;
+                <div class="didactic-row point-a"><span class="lbl">A · #${deltaPointA + 1}</span><span class="val">t = ${fmtNum(tA)}</span></div>`;
             for (let v = 0; v < state.numVariables; v++) {
-                html += `<div class="didactic-row point-a"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${dA.values[v].toFixed(4)}</span></div>`;
+                html += `<div class="didactic-row point-a"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${fmtNum(dA.values[v])}</span></div>`;
             }
-            html += `<div class="didactic-row point-b"><span class="lbl">B · #${deltaPointB + 1}</span><span class="val">t = ${tB.toFixed(4)}</span></div>`;
+            html += `<div class="didactic-row point-b"><span class="lbl">B · #${deltaPointB + 1}</span><span class="val">t = ${fmtNum(tB)}</span></div>`;
             for (let v = 0; v < state.numVariables; v++) {
-                html += `<div class="didactic-row point-b"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${dB.values[v].toFixed(4)}</span></div>`;
+                html += `<div class="didactic-row point-b"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${fmtNum(dB.values[v])}</span></div>`;
             }
             html += `<div class="didactic-section">
                 <div style="font-weight:700; font-size:0.72rem; color:#1565c0; margin-bottom:4px;">Δ (B − A)</div>
-                <div class="didactic-formula">Δt = t<sub>B</sub> − t<sub>A</sub> = ${tB.toFixed(4)} − ${tA.toFixed(4)} = <b>${dt.toFixed(4)}</b></div>`;
+                <div class="didactic-formula">Δt = t<sub>B</sub> − t<sub>A</sub> = ${fmtNum(tB)} − ${fmtNum(tA)} = <b>${fmtNum(dt)}</b></div>`;
             for (let v = 0; v < state.numVariables; v++) {
                 const delta = dB.values[v] - dA.values[v];
                 const name = _escHtml(state.variables[v].name);
-                html += `<br><div class="didactic-formula">Δ${name} = ${dB.values[v].toFixed(4)} − ${dA.values[v].toFixed(4)} = <b>${delta.toFixed(4)}</b></div>`;
+                html += `<br><div class="didactic-formula">Δ${name} = ${fmtNum(dB.values[v])} − ${fmtNum(dA.values[v])} = <b>${fmtNum(delta)}</b></div>`;
             }
             html += `</div>`;
             if (dt !== 0) {
@@ -13699,7 +13804,7 @@ bluetooth.startIOPinService()</pre>
                     const delta = dB.values[v] - dA.values[v];
                     const rate = delta / dt;
                     const name = _escHtml(state.variables[v].name);
-                    html += `<div class="didactic-formula">Δ${name} / Δt = ${delta.toFixed(4)} / ${dt.toFixed(4)} = <b>${rate.toFixed(4)}</b></div><br>`;
+                    html += `<div class="didactic-formula">Δ${name} / Δt = ${fmtNum(delta)} / ${fmtNum(dt)} = <b>${fmtNum(rate)}</b></div><br>`;
                 }
                 html += `<div class="didactic-explain">La tasa de cambio Δy/Δt aproxima la <b>derivada</b> (pendiente) entre los dos puntos. Cuanto más cercanos estén A y B, mejor será la aproximación de la derivada en ese intervalo.</div></div>`;
             }
@@ -13995,7 +14100,7 @@ bluetooth.startIOPinService()</pre>
                 document.getElementById('fitEquation').textContent = fitResult.equation;
                 const r2 = fitResult.r2;
                 const r2El = document.getElementById('fitR2');
-                r2El.textContent = r2.toFixed(6);
+                r2El.textContent = fmtNum(r2);
                 // Color según calidad del R²
                 r2El.classList.remove('didactic-error-good','didactic-error-warn','didactic-error-bad');
                 if (r2 >= 0.98) r2El.classList.add('didactic-error-good');
@@ -14011,8 +14116,8 @@ bluetooth.startIOPinService()</pre>
                     const name = paramNames[i] || `p${i}`;
                     const val = fitResult.coeffs[i];
                     const err = (fitResult.errors && fitResult.errors[i] != null) ? fitResult.errors[i] : NaN;
-                    const errStr = isNaN(err) ? 'N/A' : err.toFixed(6);
-                    errHtml += `<div class="didactic-row"><span class="lbl">${_escHtml(name)}</span><span class="val">${val.toFixed(6)} ± ${errStr}</span></div>`;
+                    const errStr = isNaN(err) ? 'N/A' : fmtNum(err);
+                    errHtml += `<div class="didactic-row"><span class="lbl">${_escHtml(name)}</span><span class="val">${fmtNum(val)} ± ${errStr}</span></div>`;
                 }
                 errorsDiv.innerHTML = errHtml;
 
@@ -15423,7 +15528,7 @@ bluetooth.startIOPinService()</pre>
                             padding: 8,
                             callbacks: {
                                 label: (ctx) => {
-                                    return `(${ctx.parsed.x.toFixed(3)}, ${ctx.parsed.y.toFixed(3)})`;
+                                    return `(${fmtNum(ctx.parsed.x)}, ${fmtNum(ctx.parsed.y)})`;
                                 }
                             }
                         },
@@ -15463,7 +15568,7 @@ bluetooth.startIOPinService()</pre>
                             },
                             grid: { color: 'rgba(0,0,0,0.05)', lineWidth: 0.5 },
                             border: { color: '#999', width: 1 },
-                            ticks: { font: { size: 9 } }
+                            ticks: { font: { size: 9 }, callback: _yTickFmt }
                         }
                     },
                     elements: {
@@ -16562,9 +16667,9 @@ bluetooth.startIOPinService()</pre>
             tbody.innerHTML = smState.registeredData.map((d, idx) => {
                 let html = `<tr>`;
                 html += `<td>${idx + 1}</td>`;
-                if (isTimeBased) html += `<td>${d.time.toFixed(3)}</td>`;
+                if (isTimeBased) html += `<td>${fmtNum(d.time)}</td>`;
                 for (let i = 0; i < state.numVariables; i++) {
-                    html += `<td>${d.values[i] !== undefined ? d.values[i].toFixed(4) : '--'}</td>`;
+                    html += `<td>${d.values[i] !== undefined ? fmtNum(d.values[i]) : '--'}</td>`;
                 }
                 html += `<td>${d.photoDataURL
                     ? `<img class="sm-photo-thumb" src="${d.photoDataURL}" onclick="smShowPhoto(${idx})">`
@@ -17183,7 +17288,7 @@ bluetooth.startIOPinService()</pre>
                             bodyFont: { size: 11 },
                             padding: 10,
                             callbacks: {
-                                label: (ctx) => `(${ctx.parsed.x.toFixed(4)}, ${ctx.parsed.y.toFixed(4)})`
+                                label: (ctx) => `(${fmtNum(ctx.parsed.x)}, ${fmtNum(ctx.parsed.y)})`
                             }
                         },
                         zoom: {
@@ -17219,7 +17324,7 @@ bluetooth.startIOPinService()</pre>
                             },
                             grid: { color: 'rgba(0,0,0,0.06)', lineWidth: 0.5 },
                             border: { color: '#999', width: 1 },
-                            ticks: { font: { size: 10 } }
+                            ticks: { font: { size: 10 }, callback: _yTickFmt }
                         }
                     },
                     elements: {
@@ -17615,7 +17720,7 @@ bluetooth.startIOPinService()</pre>
                 return `
                     <tr class="${rowClass}" data-idx="${originalIdx}" onclick="dlabRowClick(${originalIdx}, event)">
                         <td>${originalIdx + 1}</td>
-                        <td>${adjustedTime.toFixed(3)}</td>
+                        <td>${fmtNum(adjustedTime)}</td>
                         ${valuesHtml}
                         ${photoCell}
                         <td><button class="delete-btn" onclick="dlabDeletePoint('${d.id}'); event.stopPropagation()">×</button></td>
@@ -17797,9 +17902,9 @@ bluetooth.startIOPinService()</pre>
             if (dlabDiffPointB === null) {
                 let html = `<div class="didactic-block">
                     <div class="didactic-title">Modo Δ — paso 1 de 2</div>
-                    <div class="didactic-row point-a"><span class="lbl">Punto A · #${dlabDiffPointA + 1}</span><span class="val">t = ${tA.toFixed(4)}</span></div>`;
+                    <div class="didactic-row point-a"><span class="lbl">Punto A · #${dlabDiffPointA + 1}</span><span class="val">t = ${fmtNum(tA)}</span></div>`;
                 for (let v = 0; v < state.numVariables; v++) {
-                    html += `<div class="didactic-row point-a"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${dA.values[v].toFixed(4)}</span></div>`;
+                    html += `<div class="didactic-row point-a"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${fmtNum(dA.values[v])}</span></div>`;
                 }
                 html += `<div class="didactic-explain">${_escHtml(t.dlabDiffSelectB || 'Ahora selecciona el punto B.')}</div></div>`;
                 container.innerHTML = html;
@@ -17812,21 +17917,21 @@ bluetooth.startIOPinService()</pre>
 
             let html = `<div class="didactic-block">
                 <div class="didactic-title">Modo Δ — diferencia entre puntos</div>
-                <div class="didactic-row point-a"><span class="lbl">A · #${dlabDiffPointA + 1}</span><span class="val">t = ${tA.toFixed(4)}</span></div>`;
+                <div class="didactic-row point-a"><span class="lbl">A · #${dlabDiffPointA + 1}</span><span class="val">t = ${fmtNum(tA)}</span></div>`;
             for (let v = 0; v < state.numVariables; v++) {
-                html += `<div class="didactic-row point-a"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${dA.values[v].toFixed(4)}</span></div>`;
+                html += `<div class="didactic-row point-a"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${fmtNum(dA.values[v])}</span></div>`;
             }
-            html += `<div class="didactic-row point-b"><span class="lbl">B · #${dlabDiffPointB + 1}</span><span class="val">t = ${tB.toFixed(4)}</span></div>`;
+            html += `<div class="didactic-row point-b"><span class="lbl">B · #${dlabDiffPointB + 1}</span><span class="val">t = ${fmtNum(tB)}</span></div>`;
             for (let v = 0; v < state.numVariables; v++) {
-                html += `<div class="didactic-row point-b"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${dB.values[v].toFixed(4)}</span></div>`;
+                html += `<div class="didactic-row point-b"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${fmtNum(dB.values[v])}</span></div>`;
             }
             html += `<div class="didactic-section">
                 <div style="font-weight:700; font-size:0.72rem; color:#1565c0; margin-bottom:4px;">Δ (B − A)</div>
-                <div class="didactic-formula">Δt = t<sub>B</sub> − t<sub>A</sub> = ${tB.toFixed(4)} − ${tA.toFixed(4)} = <b>${dt.toFixed(4)}</b></div>`;
+                <div class="didactic-formula">Δt = t<sub>B</sub> − t<sub>A</sub> = ${fmtNum(tB)} − ${fmtNum(tA)} = <b>${fmtNum(dt)}</b></div>`;
             for (let v = 0; v < state.numVariables; v++) {
                 const delta = dB.values[v] - dA.values[v];
                 const name = _escHtml(state.variables[v].name);
-                html += `<br><div class="didactic-formula">Δ${name} = ${dB.values[v].toFixed(4)} − ${dA.values[v].toFixed(4)} = <b>${delta.toFixed(4)}</b></div>`;
+                html += `<br><div class="didactic-formula">Δ${name} = ${fmtNum(dB.values[v])} − ${fmtNum(dA.values[v])} = <b>${fmtNum(delta)}</b></div>`;
             }
             html += `</div>`;
             if (dt !== 0) {
@@ -17836,7 +17941,7 @@ bluetooth.startIOPinService()</pre>
                     const delta = dB.values[v] - dA.values[v];
                     const rate = delta / dt;
                     const name = _escHtml(state.variables[v].name);
-                    html += `<div class="didactic-formula">Δ${name} / Δt = ${delta.toFixed(4)} / ${dt.toFixed(4)} = <b>${rate.toFixed(4)}</b></div><br>`;
+                    html += `<div class="didactic-formula">Δ${name} / Δt = ${fmtNum(delta)} / ${fmtNum(dt)} = <b>${fmtNum(rate)}</b></div><br>`;
                 }
                 html += `<div class="didactic-explain">La tasa Δy/Δt es la <b>pendiente promedio</b> de la curva entre A y B (aproximación de la derivada).</div></div>`;
             }
