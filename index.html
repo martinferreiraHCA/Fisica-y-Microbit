@@ -13643,7 +13643,20 @@ bluetooth.startIOPinService()</pre>
             // Trapecio simple (siempre lo calculamos para informar comparación)
             const trapVal = _trapezoidIntegrate(pairs);
             if (pairs.length < 4) {
-                return { value: trapVal, method: 'trapezoid', smoothPath: pairs.slice(), trapezoidValue: trapVal };
+                // Densificar con interpolación lineal entre puntos para que el
+                // shading no muestre triángulos ásperos.
+                const dense = [];
+                const subSteps = 40;
+                for (let i = 0; i < pairs.length - 1; i++) {
+                    const x0 = pairs[i].x, y0 = pairs[i].y;
+                    const x1 = pairs[i + 1].x, y1 = pairs[i + 1].y;
+                    for (let k = 0; k < subSteps; k++) {
+                        const s = k / subSteps;
+                        dense.push({ x: x0 + s * (x1 - x0), y: y0 + s * (y1 - y0) });
+                    }
+                }
+                dense.push({ x: pairs[pairs.length - 1].x, y: pairs[pairs.length - 1].y });
+                return { value: trapVal, method: 'trapezoid', smoothPath: dense, trapezoidValue: trapVal };
             }
             const tangents = _fritschCarlsonTangents(pairs);
             const splineVal = _splineHermiteIntegrate(pairs, tangents);
@@ -13654,8 +13667,12 @@ bluetooth.startIOPinService()</pre>
                 const h = pairs[i + 1].x - pairs[i].x;
                 const m0 = tangents[i], m1 = tangents[i + 1];
                 const p0 = pairs[i].y, p1 = pairs[i + 1].y;
-                const stepsHere = Math.max(2, Math.ceil(N / (pairs.length - 1)));
-                for (let k = 0; k < stepsHere; k++) {
+                const stepsHere = Math.max(20, Math.ceil(N / (pairs.length - 1)));
+                // En i=0 incluimos s=0 (el primer nodo). En los siguientes
+                // intervalos saltamos s=0 porque ya quedó como s=1 del intervalo
+                // anterior (mismo x, misma y por continuidad del spline).
+                const startK = (i === 0) ? 0 : 1;
+                for (let k = startK; k <= stepsHere; k++) {
                     const s = k / stepsHere;
                     path.push({
                         x: pairs[i].x + s * h,
@@ -13663,8 +13680,6 @@ bluetooth.startIOPinService()</pre>
                     });
                 }
             }
-            // Asegurar último punto exacto
-            path.push({ x: pairs[pairs.length - 1].x, y: pairs[pairs.length - 1].y });
             return {
                 value: splineVal,
                 method: 'spline',
@@ -13884,7 +13899,16 @@ bluetooth.startIOPinService()</pre>
                 // fill: { value: 0 } → el área se cierra contra y=0 (eje X
                 // matemático). 'origin' equivale, pero es más explícito así.
                 fill: { value: 0 },
-                tension: 0,        // smoothPath ya está pre-interpolado
+                // OJO: el chart principal tiene tension:0.35 + cubicInterpolationMode:'monotone'
+                // a nivel global (elements.line). Eso re-suaviza el smoothPath
+                // ya interpolado, distorsionando el área (se ven "triángulos"
+                // o curvas raras). Forzamos los dos a default+0 para que el
+                // dataset trace EXACTAMENTE los puntos del smoothPath.
+                tension: 0,
+                cubicInterpolationMode: 'default',
+                stepped: false,
+                borderCapStyle: 'butt',
+                borderJoinStyle: 'miter',
                 spanGaps: false,
                 // order: -1 hace que Chart.js lo dibuje ANTES que los demás
                 // datasets (queda atrás), de modo que la línea de la variable
