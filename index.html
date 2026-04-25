@@ -396,6 +396,65 @@
             margin: 6px 0 3px 0;
         }
         .special-char-group-label:first-of-type { margin-top: 0; }
+        /* ── Tooltip personalizado rápido (data-tip="...") ──
+           Aparece a los ~250 ms (más rápido que el title nativo) y desaparece
+           al sacar el mouse. Se posiciona arriba del elemento con flecha. */
+        [data-tip] {
+            position: relative;
+        }
+        [data-tip]::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(34, 34, 34, 0.96);
+            color: #fff;
+            padding: 4px 9px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            z-index: 2000;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+            transition: opacity 0.15s ease, visibility 0s linear 0.4s;
+            text-transform: none;
+        }
+        [data-tip]::before {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 1px);
+            left: 50%;
+            transform: translateX(-50%);
+            border: 4px solid transparent;
+            border-top-color: rgba(34, 34, 34, 0.96);
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s ease, visibility 0s linear 0.4s;
+        }
+        [data-tip]:hover::after,
+        [data-tip]:hover::before {
+            opacity: 1;
+            visibility: visible;
+            transition-delay: 0.25s, 0s;
+        }
+        /* Variantes con tooltip "abajo" para elementos pegados al borde superior */
+        [data-tip-pos="bottom"]::after {
+            bottom: auto;
+            top: calc(100% + 6px);
+        }
+        [data-tip-pos="bottom"]::before {
+            bottom: auto;
+            top: calc(100% + 1px);
+            border-top-color: transparent;
+            border-bottom-color: rgba(34, 34, 34, 0.96);
+        }
+
         /* Indicador didáctico: pills con slot de variable + nombre + estado live */
         .graph-legend-compact {
             display: flex;
@@ -4737,6 +4796,13 @@
                 specialCharGroupMath: 'Matemáticas',
                 specialCharGroupExpSub: 'Sub/Super-índices',
                 specialCharInsert: 'Insertar',
+                tipDragSelect: 'Seleccionar arrastrando',
+                tipClearSelection: 'Quitar selección',
+                tipZoomIn: 'Acercar',
+                tipZoomOut: 'Alejar',
+                tipFit: 'Encuadrar datos',
+                tipResetZoom: 'Restablecer zoom',
+                tipSave: 'Guardar como imagen',
             },
             en: {
                 // Toolbar
@@ -5027,6 +5093,13 @@
                 specialCharGroupMath: 'Math',
                 specialCharGroupExpSub: 'Sub/Super-script',
                 specialCharInsert: 'Insert',
+                tipDragSelect: 'Drag-select points',
+                tipClearSelection: 'Clear selection',
+                tipZoomIn: 'Zoom in',
+                tipZoomOut: 'Zoom out',
+                tipFit: 'Fit all data',
+                tipResetZoom: 'Reset zoom',
+                tipSave: 'Save as image',
             },
             pt: {
                 // Toolbar
@@ -5317,6 +5390,13 @@
                 specialCharGroupMath: 'Matemática',
                 specialCharGroupExpSub: 'Sub/Sobre-índices',
                 specialCharInsert: 'Inserir',
+                tipDragSelect: 'Selecionar arrastando',
+                tipClearSelection: 'Limpar seleção',
+                tipZoomIn: 'Aproximar',
+                tipZoomOut: 'Afastar',
+                tipFit: 'Enquadrar dados',
+                tipResetZoom: 'Restaurar zoom',
+                tipSave: 'Salvar como imagem',
             }
         };
 
@@ -7931,7 +8011,9 @@ bluetooth.startIOPinService()</pre>
             el.contentEditable = 'true';
             el.spellcheck = false;
             const tr2 = translations[currentLanguage] || {};
-            el.title = tr2.titleClickToEdit || 'Click para editar (autoguardado)';
+            // Tooltip CSS rápido (vía data-tip) en lugar de title nativo
+            el.setAttribute('data-tip', tr2.titleClickToEdit || 'Click para editar (autoguardado)');
+            el.setAttribute('data-tip-pos', 'bottom');
 
             el.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
@@ -8011,9 +8093,9 @@ bluetooth.startIOPinService()</pre>
                 const v = state.variables[p.idx];
                 const slot = `V${p.idx + 1}`;
                 const liveCls = isLive ? ' live' : '';
-                const liveIco = isLive ? `<span class="var-pill-live" title="${_escHtml(liveTxt)}">📡</span>` : '';
+                const liveIco = isLive ? `<span class="var-pill-live" data-tip-pos="bottom" data-tip="${_escHtml(liveTxt)}">📡</span>` : '';
                 const tip = `${p.role === 'X' ? 'Eje X · ' : 'Eje Y · '}${slot} ${fromBoardTxt}`;
-                return `<span class="var-pill${liveCls}" style="--c:${_escHtml(v.color)}" title="${_escHtml(tip)}">` +
+                return `<span class="var-pill${liveCls}" style="--c:${_escHtml(v.color)}" data-tip-pos="bottom" data-tip="${_escHtml(tip)}">` +
                     `<span class="var-pill-slot">${slot}</span>` +
                     `<span class="var-pill-dot"></span>` +
                     `<span class="var-pill-name">${_escHtml(v.name)}</span>` +
@@ -8722,16 +8804,18 @@ bluetooth.startIOPinService()</pre>
 
                 const controls = document.createElement('div');
                 controls.className = 'graph-controls';
+                // Cada botón usa data-tip para el tooltip CSS rápido y aria-label
+                // para accesibilidad. Los textos vienen de las traducciones (t.tip*).
                 controls.innerHTML = `
-                    <button class="graph-ctrl-sel drag-select-btn" id="dragSelectBtn${i}" onclick="toggleDragSelectMode()" title="Selección por arrastre">⬚</button>
-                    <button class="graph-ctrl-sel" onclick="clearAllSelection()" title="Limpiar selección" id="clearSelBtn${i}" disabled>✕</button>
+                    <button class="graph-ctrl-sel drag-select-btn" id="dragSelectBtn${i}" onclick="toggleDragSelectMode()" data-tip="${_escHtml(t.tipDragSelect || 'Seleccionar puntos arrastrando')}" aria-label="${_escHtml(t.tipDragSelect || 'Seleccionar puntos arrastrando')}">⬚</button>
+                    <button class="graph-ctrl-sel" onclick="clearAllSelection()" data-tip="${_escHtml(t.tipClearSelection || 'Quitar la selección')}" aria-label="${_escHtml(t.tipClearSelection || 'Quitar la selección')}" id="clearSelBtn${i}" disabled>✕</button>
                     <span class="graph-sel-count" id="graphSelCount${i}"></span>
                     <span class="graph-controls-sep"></span>
-                    <button onclick="zoomChart(${i}, 'in')" title="${t.zoomIn}">+</button>
-                    <button onclick="zoomChart(${i}, 'out')" title="${t.zoomOut}">&minus;</button>
-                    <button onclick="fitChartToData(${i})" title="${t.fitChart}">⊡</button>
-                    <button onclick="resetChartZoom(${i})" title="${t.resetZoom}">&#8634;</button>
-                    <button onclick="saveChartAsImage(${i})" title="${t.saveGraphAs}">&#128190;</button>
+                    <button onclick="zoomChart(${i}, 'in')" data-tip="${_escHtml(t.tipZoomIn || 'Acercar')}" aria-label="${_escHtml(t.tipZoomIn || 'Acercar')}">+</button>
+                    <button onclick="zoomChart(${i}, 'out')" data-tip="${_escHtml(t.tipZoomOut || 'Alejar')}" aria-label="${_escHtml(t.tipZoomOut || 'Alejar')}">&minus;</button>
+                    <button onclick="fitChartToData(${i})" data-tip="${_escHtml(t.tipFit || 'Encuadrar todos los datos')}" aria-label="${_escHtml(t.tipFit || 'Encuadrar todos los datos')}">⊡</button>
+                    <button onclick="resetChartZoom(${i})" data-tip="${_escHtml(t.tipResetZoom || 'Restablecer zoom')}" aria-label="${_escHtml(t.tipResetZoom || 'Restablecer zoom')}">&#8634;</button>
+                    <button onclick="saveChartAsImage(${i})" data-tip="${_escHtml(t.tipSave || 'Guardar como imagen')}" aria-label="${_escHtml(t.tipSave || 'Guardar como imagen')}">&#128190;</button>
                 `;
 
                 titleBar.appendChild(title);
@@ -13510,13 +13594,18 @@ bluetooth.startIOPinService()</pre>
 
             if (!isFinite(xMin) || !isFinite(yMin)) return;
 
-            // Agregar 5% de margen
+            // Margen sólo del lado opuesto al origen para que el primer punto
+            // quede alineado con el inicio del gráfico (no "corrido"). Si los
+            // datos no incluyen valores negativos, anclar el origen en 0 para
+            // que el (0,0) de los ejes coincida con el comienzo de los datos.
             const xRange = xMax - xMin || 1;
             const yRange = yMax - yMin || 1;
-            xMin -= xRange * 0.05;
             xMax += xRange * 0.05;
-            yMin -= yRange * 0.05;
             yMax += yRange * 0.05;
+            if (xMin >= 0) xMin = 0;
+            else xMin -= xRange * 0.05;
+            if (yMin >= 0) yMin = 0;
+            else yMin -= yRange * 0.05;
 
             // Resetear zoom primero, luego aplicar bounds
             chart.resetZoom();
