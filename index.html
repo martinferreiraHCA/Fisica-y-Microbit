@@ -8378,8 +8378,10 @@ bluetooth.startIOPinService()</pre>
         // Recordamos el último input/contenteditable enfocado para insertar el
         // carácter en la posición del cursor. La paleta es útil para nombres de
         // variables, títulos de gráfica y etiquetas de eje.
-        let _lastEditableTarget = null;
-        let _lastEditableTargetLabel = '';
+        // (var en lugar de let para evitar TDZ — initializeConfiguration() se
+        //  llama antes de esta línea en el flujo del script.)
+        var _lastEditableTarget = null;
+        var _lastEditableTargetLabel = '';
 
         function _isEditableTarget(el) {
             if (!el) return false;
