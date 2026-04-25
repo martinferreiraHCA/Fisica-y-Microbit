@@ -487,8 +487,9 @@
             letter-spacing: 0.3px;
         }
         .var-pill .var-pill-dot {
-            width: 11px;
-            height: 11px;
+            position: relative;
+            width: 13px;
+            height: 13px;
             border-radius: 50%;
             background: var(--c, #666);
             box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
@@ -499,7 +500,24 @@
             transform: scale(1.25);
             box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15), 0 0 0 2px rgba(255,255,255,0.85);
         }
-        .var-pill .var-pill-dot:focus-visible {
+        /* Input <type="color"> nativo encima del dot, transparente. Captura
+           el click directamente (es un user-gesture nativo, así Safari/Chrome
+           abren siempre el color picker, sin necesidad de .click() programático). */
+        .var-pill-color-input {
+            position: absolute;
+            inset: -3px;
+            width: calc(100% + 6px);
+            height: calc(100% + 6px);
+            opacity: 0;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            border-radius: 50%;
+        }
+        .var-pill-color-input:focus-visible + .var-pill-dot,
+        .var-pill .var-pill-dot:focus-within {
             outline: 2px solid #1976d2;
             outline-offset: 1px;
         }
@@ -8131,9 +8149,12 @@ bluetooth.startIOPinService()</pre>
                 const liveCls = isLive ? ' live' : '';
                 const liveIco = isLive ? `<span class="var-pill-live" data-tip-pos="bottom" data-tip="${_escHtml(liveTxt)}">📡</span>` : '';
                 const tip = `${p.role === 'X' ? 'Eje X · ' : 'Eje Y · '}${slot} ${fromBoardTxt}`;
+                // Input de color nativo encima del dot — el click nativo abre
+                // el picker sin requerir .click() programático.
+                const colorInputHtml = `<input type="color" class="var-pill-color-input" value="${_escHtml(v.color)}" data-pill-color-var="${p.idx}" aria-label="${_escHtml(colorTip)}" title="${_escHtml(colorTip)}">`;
                 return `<span class="var-pill${liveCls}" style="--c:${_escHtml(v.color)}" data-tip-pos="bottom" data-tip="${_escHtml(tip)}">` +
                     `<span class="var-pill-slot">${slot}</span>` +
-                    `<span class="var-pill-dot" data-var-color="${p.idx}" data-tip-pos="bottom" data-tip="${_escHtml(colorTip)}" role="button" tabindex="0" aria-label="${_escHtml(colorTip)}"></span>` +
+                    `<span class="var-pill-dot" data-tip-pos="bottom" data-tip="${_escHtml(colorTip)}">${colorInputHtml}</span>` +
                     `<span class="var-pill-name">${_escHtml(v.name)}</span>` +
                     liveIco +
                 `</span>`;
@@ -8553,7 +8574,11 @@ bluetooth.startIOPinService()</pre>
             // Inicialmente sin objetivo — botones deshabilitados
             _setSpecialCharButtonsEnabled(false);
 
-            // Click sobre el "dot" de una pill abre el color picker de la variable
+            // Click sobre el "dot" de una pill abre el color picker de la variable.
+            // Hay dos rutas:
+            //  1) Input <type="color"> nativo embebido en el dot — captura el click
+            //     directamente (event 'input' delegado más abajo). Funciona siempre.
+            //  2) Fallback por data-var-color (versiones cacheadas) usando el picker global.
             const handleColorDotActivation = (target) => {
                 const dot = target.closest && target.closest('[data-var-color]');
                 if (!dot) return false;
@@ -8568,6 +8593,16 @@ bluetooth.startIOPinService()</pre>
             document.addEventListener('keydown', (e) => {
                 if (e.key !== 'Enter' && e.key !== ' ') return;
                 if (handleColorDotActivation(e.target)) e.preventDefault();
+            });
+            // Listener delegado para los inputs de color embebidos en cada pill.
+            // El propio input nativo abre el picker; aquí sólo procesamos el cambio.
+            document.addEventListener('input', (e) => {
+                const t = e.target;
+                if (!t || !t.classList || !t.classList.contains('var-pill-color-input')) return;
+                const idx = parseInt(t.getAttribute('data-pill-color-var'));
+                if (isNaN(idx) || !state.variables[idx]) return;
+                state.variables[idx].color = t.value;
+                _syncVariableColor(idx, t.value);
             });
         }
 
@@ -8593,20 +8628,32 @@ bluetooth.startIOPinService()</pre>
             return inp;
         }
         function _syncVariableColor(idx, color) {
-            // Sincronizar input de la sección "Variables" + preview + borde
+            // 1) Sincronizar input de la sección "Variables" + preview + borde
             const visInp = document.getElementById(`var${idx + 1}Color`);
             const preview = document.getElementById(`var${idx + 1}ColorPreview`);
             const card = document.getElementById(`var${idx + 1}Config`);
-            if (visInp) visInp.value = color;
+            if (visInp && visInp.value !== color) visInp.value = color;
             if (preview) preview.style.background = color;
             if (card) card.style.borderLeftColor = color;
+
+            // 2) Actualizar el color de las pills EN SITIO (sin reconstruir HTML).
+            //    Reconstruir innerHTML mientras el usuario arrastra en el color
+            //    picker destruiría el <input> y cancelaría la interacción.
+            //    Buscamos por el atributo data-pill-color-var y actualizamos
+            //    el CSS var --c del pill padre y el value del input.
+            document.querySelectorAll(`.var-pill-color-input[data-pill-color-var="${idx}"]`)
+                .forEach(inp => {
+                    if (inp !== document.activeElement && inp.value !== color) {
+                        inp.value = color;
+                    }
+                    const pill = inp.closest('.var-pill');
+                    if (pill) pill.style.setProperty('--c', color);
+                });
+
+            // 3) Re-pintar charts con el nuevo color (rebuild de datasets ok,
+            //    no afecta al input embebido en pills porque vive en el DOM
+            //    de la barra de título, no en el canvas).
             if (typeof updateAllCharts === 'function') updateAllCharts();
-            // Refrescar pills para que cambien de color al instante
-            if (state.charts) {
-                for (let i = 0; i < state.charts.length; i++) {
-                    if (typeof updateGraphLegendPills === 'function') updateGraphLegendPills(i);
-                }
-            }
         }
         function openVariableColorPicker(idx) {
             if (idx < 0 || !state.variables[idx]) return;
