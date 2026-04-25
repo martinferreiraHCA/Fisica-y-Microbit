@@ -4132,11 +4132,11 @@
 
                     <div style="border-top: 1px solid #e0e0e0; margin: 8px 0;"></div>
 
-                    <!-- Integral -->
+                    <!-- Área debajo del gráfico de la función aproximada -->
                     <div style="margin-bottom: 12px;">
-                        <div style="font-weight:700; font-size:0.8rem; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px;">Integral numérica</div>
-                        <div class="info-box" style="font-size:0.75rem; margin-bottom:6px;">
-                            Calcula el área bajo la curva (método trapezoidal). Si hay puntos seleccionados, integra solo esa región.
+                        <div style="font-weight:700; font-size:0.8rem; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px;" id="areaUnderTitle">Área bajo el gráfico de la función aproximada</div>
+                        <div class="info-box" style="font-size:0.75rem; margin-bottom:6px;" id="areaUnderInfo">
+                            Calcula el área entre la curva y el eje X usando un spline cúbico monotónico (cálculo infinitesimal). Si hay puntos seleccionados, calcula solo esa región.
                         </div>
                         <div class="input-row">
                             <label style="font-size:0.78rem;">Variable</label>
@@ -4151,12 +4151,26 @@
                             </select>
                         </div>
                         <button class="toolbar-btn primary btn-full" id="computeIntegralBtn" disabled>
-                            CALCULAR INTEGRAL
+                            CALCULAR ÁREA BAJO EL GRÁFICO
                         </button>
-                        <div id="integralResult" style="display:none; margin-top: 8px; padding: 8px; background: #e3f2fd; border-radius: 4px; font-family: monospace; font-size: 0.78rem; border-left: 3px solid #1976d2;">
+                        <div id="integralResult" style="display:none; margin-top: 8px;">
                         </div>
                     </div>
 
+                </div>
+            </div>
+
+            <!-- Conjuntos de datos para comparar (CSVs extra) — visible sólo si hay alguno -->
+            <div class="panel-section" id="extraDataSetsPanel" style="display:none;">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span id="extraDataSetsHeader">CONJUNTOS DE COMPARACIÓN</span> <span>▶</span>
+                </div>
+                <div class="section-content">
+                    <div class="info-box" style="font-size:0.72rem; margin-bottom:6px;" id="extraDataSetsInfo">
+                        CSVs cargados como capas extra. Cada uno se dibuja como una curva discontinua en sus gráficas, con su propio color y nombre. Útil para contrastar varias mediciones a la vez.
+                    </div>
+                    <div id="extraDataSetsList"></div>
+                    <button type="button" class="toolbar-btn btn-full" onclick="openImportDialog()" id="extraDataSetsAddBtn" style="margin-top:6px;">+ AÑADIR OTRO CSV</button>
                 </div>
             </div>
 
@@ -4339,6 +4353,28 @@
                 <div style="font-size:0.75rem; font-weight:bold; margin-bottom:4px;" id="importPreviewLabel">Vista previa:</div>
                 <pre id="importPreview" style="background:#f5f5f5; border:1px solid #ddd; padding:8px; font-size:0.7rem; max-height:140px; overflow:auto; margin:0; border-radius:4px; white-space:pre-wrap; word-break:break-all;"></pre>
                 <div id="importDetectedInfo" style="margin-top:6px; font-size:0.75rem; color:#0066cc;"></div>
+            </div>
+            <!-- Modo de importación: reemplazar o agregar como conjunto de comparación -->
+            <div id="importModeContainer" style="margin-bottom:12px; padding:8px 10px; background:#fafafa; border:1px solid #e0e0e0; border-radius:4px;">
+                <div style="font-size:0.75rem; font-weight:700; margin-bottom:6px;" id="importModeTitle">¿Qué hacer con los datos?</div>
+                <label style="display:flex; gap:6px; padding:5px 0; cursor:pointer; align-items:flex-start;">
+                    <input type="radio" name="importMode" value="replace" checked style="margin-top:2px;">
+                    <div style="flex:1;">
+                        <div style="font-size:0.78rem; font-weight:600;" id="importModeReplaceTitle">Reemplazar datos actuales</div>
+                        <div style="font-size:0.7rem; color:#666;" id="importModeReplaceDesc">Borra los datos existentes y carga los del CSV.</div>
+                    </div>
+                </label>
+                <label style="display:flex; gap:6px; padding:5px 0; cursor:pointer; align-items:flex-start;">
+                    <input type="radio" name="importMode" value="compare" style="margin-top:2px;">
+                    <div style="flex:1;">
+                        <div style="font-size:0.78rem; font-weight:600;" id="importModeCompareTitle">Añadir como conjunto de comparación</div>
+                        <div style="font-size:0.7rem; color:#666;" id="importModeCompareDesc">Mantiene los datos actuales y dibuja el CSV como una curva extra (otro color y nombre) en las gráficas, para contrastar.</div>
+                    </div>
+                </label>
+                <div style="margin-top:6px; padding-top:6px; border-top:1px dashed #ccc; display:flex; gap:6px; align-items:center;">
+                    <label style="font-size:0.75rem; flex:1;" id="importNameLabel">Nombre del conjunto:</label>
+                    <input type="text" id="importSetName" placeholder="Auto" style="flex:0 0 160px; font-size:0.75rem; padding:3px 6px;">
+                </div>
             </div>
             <div style="display: flex; gap: 8px; margin-top: 12px;">
                 <button class="toolbar-btn" onclick="closeImportDialog()" style="flex:1;" id="importCancelBtn">CANCELAR</button>
@@ -5014,6 +5050,19 @@
                 numSigFigsLabel: 'Cifras significativas',
                 numScientificLabel: 'Notación científica (1,234×10³)',
                 numFormatHint: 'Aplica a ejes, tooltips, tabla y resultados (delta, integral, ajuste).',
+                areaUnderTitle: 'Área bajo el gráfico de la función aproximada',
+                areaUnderInfo: 'Calcula el área entre la curva y el eje X usando un spline cúbico monotónico (cálculo infinitesimal). Si hay puntos seleccionados, calcula solo esa región.',
+                areaUnderBtn: 'CALCULAR ÁREA BAJO EL GRÁFICO',
+                importModeTitle: '¿Qué hacer con los datos?',
+                importModeReplaceTitle: 'Reemplazar datos actuales',
+                importModeReplaceDesc: 'Borra los datos existentes y carga los del CSV.',
+                importModeCompareTitle: 'Añadir como conjunto de comparación',
+                importModeCompareDesc: 'Mantiene los datos actuales y dibuja el CSV como una curva extra (otro color y nombre) en las gráficas, para contrastar.',
+                importNameLabel: 'Nombre del conjunto:',
+                extraDataSetsHeader: 'CONJUNTOS DE COMPARACIÓN',
+                extraDataSetsInfo: 'CSVs cargados como capas extra. Cada uno se dibuja como una curva discontinua en sus gráficas, con su propio color y nombre. Útil para contrastar varias mediciones a la vez.',
+                extraDataSetsAdd: '+ AÑADIR OTRO CSV',
+                alertExtraDataSetAdded: 'Conjunto añadido: {name} ({count} puntos)',
             },
             en: {
                 // Toolbar
@@ -5318,6 +5367,19 @@
                 numSigFigsLabel: 'Significant figures',
                 numScientificLabel: 'Scientific notation (1.234×10³)',
                 numFormatHint: 'Applies to axes, tooltips, table and results (delta, integral, fit).',
+                areaUnderTitle: 'Area under the approximated function graph',
+                areaUnderInfo: 'Computes the area between the curve and the X axis using a monotone cubic spline (infinitesimal calculus). If points are selected, only that region is integrated.',
+                areaUnderBtn: 'COMPUTE AREA UNDER GRAPH',
+                importModeTitle: 'What to do with the data?',
+                importModeReplaceTitle: 'Replace current data',
+                importModeReplaceDesc: 'Deletes existing data and loads the CSV.',
+                importModeCompareTitle: 'Add as comparison set',
+                importModeCompareDesc: 'Keeps current data and draws the CSV as an extra curve (different color and name) in the charts, for comparison.',
+                importNameLabel: 'Set name:',
+                extraDataSetsHeader: 'COMPARISON SETS',
+                extraDataSetsInfo: 'Extra CSVs loaded as additional layers. Each one is drawn as a dashed curve in its charts, with its own color and name. Useful for contrasting multiple measurements at once.',
+                extraDataSetsAdd: '+ ADD ANOTHER CSV',
+                alertExtraDataSetAdded: 'Set added: {name} ({count} points)',
             },
             pt: {
                 // Toolbar
@@ -5622,6 +5684,19 @@
                 numSigFigsLabel: 'Algarismos significativos',
                 numScientificLabel: 'Notação científica (1,234×10³)',
                 numFormatHint: 'Aplica-se aos eixos, tooltips, tabela e resultados (delta, integral, ajuste).',
+                areaUnderTitle: 'Área sob o gráfico da função aproximada',
+                areaUnderInfo: 'Calcula a área entre a curva e o eixo X usando um spline cúbico monotônico (cálculo infinitesimal). Se há pontos selecionados, calcula apenas essa região.',
+                areaUnderBtn: 'CALCULAR ÁREA SOB O GRÁFICO',
+                importModeTitle: 'O que fazer com os dados?',
+                importModeReplaceTitle: 'Substituir dados atuais',
+                importModeReplaceDesc: 'Apaga os dados existentes e carrega os do CSV.',
+                importModeCompareTitle: 'Adicionar como conjunto de comparação',
+                importModeCompareDesc: 'Mantém os dados atuais e desenha o CSV como uma curva extra (outra cor e nome) nos gráficos, para contrastar.',
+                importNameLabel: 'Nome do conjunto:',
+                extraDataSetsHeader: 'CONJUNTOS DE COMPARAÇÃO',
+                extraDataSetsInfo: 'CSVs carregados como camadas extras. Cada um é desenhado como uma curva tracejada em seus gráficos, com sua própria cor e nome. Útil para comparar várias medições ao mesmo tempo.',
+                extraDataSetsAdd: '+ ADICIONAR OUTRO CSV',
+                alertExtraDataSetAdded: 'Conjunto adicionado: {name} ({count} pontos)',
             }
         };
 
@@ -5965,6 +6040,18 @@
             if (nfSci) nfSci.textContent = t.numScientificLabel || 'Notación científica (1,234×10³)';
             const nfHint = document.getElementById('numFormatHint');
             if (nfHint) nfHint.textContent = t.numFormatHint || 'Aplica a ejes, tooltips, tabla y resultados.';
+            const auTitle = document.getElementById('areaUnderTitle');
+            if (auTitle) auTitle.textContent = t.areaUnderTitle || 'Área bajo el gráfico de la función aproximada';
+            const auInfo = document.getElementById('areaUnderInfo');
+            if (auInfo) auInfo.textContent = t.areaUnderInfo || '';
+            const auBtn = document.getElementById('computeIntegralBtn');
+            if (auBtn) auBtn.textContent = t.areaUnderBtn || 'CALCULAR ÁREA BAJO EL GRÁFICO';
+            const eds = document.getElementById('extraDataSetsHeader');
+            if (eds) eds.textContent = t.extraDataSetsHeader || 'CONJUNTOS DE COMPARACIÓN';
+            const edsInfo = document.getElementById('extraDataSetsInfo');
+            if (edsInfo) edsInfo.textContent = t.extraDataSetsInfo || '';
+            const edsAdd = document.getElementById('extraDataSetsAddBtn');
+            if (edsAdd) edsAdd.textContent = t.extraDataSetsAdd || '+ AÑADIR OTRO CSV';
             // Paleta de caracteres especiales
             const scpHint = document.getElementById('specialCharHint');
             if (scpHint) {
@@ -7999,6 +8086,12 @@ bluetooth.startIOPinService()</pre>
             // Curve Fitting
             fitResult: null,  // {type, coeffs, equation, r2, graphIndex, varIndex, dataPoints}
             fitColor: '#d32f2f',  // color de la línea de ajuste (editable)
+            // Conjuntos de datos adicionales (CSV importados para comparar
+            // con la corrida principal). Cada uno se dibuja como una línea
+            // extra en cada gráfica, con su propio color y nombre.
+            // [{ id, name, color, points: [{time, values:[]}], visible: true,
+            //    numVariables, varNames }]
+            extraDataSets: [],
             // Sensor mode photos
             sensorPhotos: []  // [{pointId, photoDataURL, time, values}]
         };
@@ -12672,6 +12765,58 @@ bluetooth.startIOPinService()</pre>
                 });
             }
 
+            // Conjuntos de datos adicionales (CSVs extra cargados para comparar).
+            // Cada conjunto se dibuja como línea discontinua en su color, para
+            // cada una de las variables Y de esta gráfica.
+            (state.extraDataSets || []).forEach(set => {
+                if (!set.visible || !set.points || set.points.length === 0) return;
+                config.yVars.forEach((varIdx, idx) => {
+                    if (varIdx >= set.numVariables) return;
+                    const baseTs = set.points[0].time; // alinear contra el inicio del set
+                    const data = set.points.map(p => {
+                        let xVal;
+                        if (config.xAxis === 'time') {
+                            // Reusar el offset relativo al inicio del propio set
+                            xVal = (p.time - baseTs) / timeUnitValue;
+                        } else {
+                            const xVarIdx = parseInt(config.xAxis.replace('var', ''));
+                            if (xVarIdx >= set.numVariables) return null;
+                            xVal = p.values[xVarIdx];
+                        }
+                        const yVal = p.values[varIdx];
+                        if (xVal == null || yVal == null) return null;
+                        return { x: xVal, y: yVal };
+                    }).filter(p => p !== null);
+                    if (data.length === 0) return;
+                    // Patrón de guiones distinto por cada variable Y del mismo set
+                    // así el usuario distingue al instante: línea continua = run principal,
+                    // línea discontinua = conjunto extra.
+                    const dashPattern = idx === 0 ? [6, 4] : (idx === 1 ? [3, 3] : [10, 4, 2, 4]);
+                    const seriesLabel = set.name + (config.yVars.length > 1 ? ' · ' + (set.varNames[varIdx] || 'var ' + (varIdx + 1)) : '');
+                    chart.data.datasets.push({
+                        type: 'line',
+                        label: seriesLabel,
+                        data: data,
+                        borderColor: set.color,
+                        backgroundColor: 'transparent',
+                        fill: false,
+                        borderWidth: 2,
+                        borderDash: dashPattern,
+                        borderCapStyle: 'round',
+                        showLine: state.showLines,
+                        tension: 0.3,
+                        cubicInterpolationMode: 'monotone',
+                        pointRadius: 1.8,
+                        pointHoverRadius: 5,
+                        pointHitRadius: 8,
+                        pointBackgroundColor: set.color,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 1,
+                        order: 1   // detrás del fit pero delante del área de integral
+                    });
+                });
+            });
+
             chart.update('none');
         }
 
@@ -13747,7 +13892,7 @@ bluetooth.startIOPinService()</pre>
             resultDiv.innerHTML = `
                 <div class="didactic-block">
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                        <div class="didactic-title" style="border:none; padding:0; margin:0;">∫ Integral numérica</div>
+                        <div class="didactic-title" style="border:none; padding:0; margin:0;">∫ Área bajo el gráfico</div>
                         <button type="button" onclick="clearIntegralResultUI()" class="toolbar-btn" style="padding:2px 8px; font-size:0.7rem;" data-tip="Quitar el área del gráfico">✕ Quitar área</button>
                     </div>
                     <div style="border-bottom:2px solid #1976d2; margin-bottom:6px;"></div>
@@ -14616,6 +14761,14 @@ bluetooth.startIOPinService()</pre>
             document.getElementById('importConfirmBtn').disabled = true;
             const autoRadio = document.querySelector('input[name="importFormat"][value="auto"]');
             if (autoRadio) autoRadio.checked = true;
+            // Si ya hay datos cargados, sugerir "compare" por defecto. Si no,
+            // "replace" (es lo que necesita un primer import).
+            const hasMainData = state.rawData && state.rawData.length > 0;
+            const defaultMode = hasMainData ? 'compare' : 'replace';
+            const modeRadio = document.querySelector(`input[name="importMode"][value="${defaultMode}"]`);
+            if (modeRadio) modeRadio.checked = true;
+            const setNameInput = document.getElementById('importSetName');
+            if (setNameInput) setNameInput.value = '';
             localizeImportDialog();
             document.getElementById('importModal').classList.add('active');
         }
@@ -14647,6 +14800,12 @@ bluetooth.startIOPinService()</pre>
             setTxt('importPreviewLabel', 'importPreviewLabel');
             setTxt('importCancelBtn', 'btPairingCancel');
             setTxt('importConfirmBtn', 'importCSV');
+            setTxt('importModeTitle', 'importModeTitle');
+            setTxt('importModeReplaceTitle', 'importModeReplaceTitle');
+            setTxt('importModeReplaceDesc', 'importModeReplaceDesc');
+            setTxt('importModeCompareTitle', 'importModeCompareTitle');
+            setTxt('importModeCompareDesc', 'importModeCompareDesc');
+            setTxt('importNameLabel', 'importNameLabel');
         }
 
         // Genera y descarga un CSV de ejemplo para cada formato soportado.
@@ -14957,17 +15116,111 @@ bluetooth.startIOPinService()</pre>
         function confirmImportCSV() {
             if (!_pendingImportText) return;
             const format = (document.querySelector('input[name="importFormat"]:checked') || {}).value || 'auto';
+            const mode = (document.querySelector('input[name="importMode"]:checked') || {}).value || 'replace';
             try {
                 const parsed = parseCSVForImport(_pendingImportText, format);
                 if (parsed.rows.length === 0) {
                     alert(tr('alertImportFail'));
                     return;
                 }
-                _applyImportedData(parsed);
+                if (mode === 'compare') {
+                    const customName = (document.getElementById('importSetName').value || '').trim();
+                    const setName = customName || (_pendingImportName ? _pendingImportName.replace(/\.[^.]+$/, '') : 'Conjunto ' + (state.extraDataSets.length + 1));
+                    _addExtraDataSet(parsed, setName);
+                } else {
+                    _applyImportedData(parsed);
+                }
                 closeImportDialog();
             } catch (err) {
                 alert(tr('alertImportError') + err.message);
             }
+        }
+
+        // Paleta de colores para conjuntos extra (cyclic)
+        const _EXTRA_COLORS = [
+            '#9c27b0', '#00897b', '#ef6c00', '#5e35b1', '#00838f',
+            '#7cb342', '#d81b60', '#3949ab', '#fb8c00', '#43a047'
+        ];
+        function _nextExtraColor() {
+            return _EXTRA_COLORS[state.extraDataSets.length % _EXTRA_COLORS.length];
+        }
+        function _addExtraDataSet(parsed, name) {
+            const numVars = parsed.numVars;
+            const hasTime = parsed.hasTime;
+            const baseTs = Date.now();
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            const points = parsed.rows.map((r, i) => {
+                let timestamp;
+                if (hasTime) {
+                    timestamp = baseTs + (r.time * timeUnitValue);
+                } else {
+                    timestamp = baseTs + i;
+                }
+                return { time: timestamp, values: r.values };
+            });
+            const setObj = {
+                id: 'extra-' + baseTs + '-' + Math.random().toString(36).substr(2, 6),
+                name: name,
+                color: _nextExtraColor(),
+                visible: true,
+                points: points,
+                hasTime: hasTime,
+                numVariables: numVars,
+                varNames: parsed.varNames.slice()
+            };
+            state.extraDataSets.push(setObj);
+            _renderExtraDataSetsPanel();
+            updateAllCharts();
+            alert(tr('alertExtraDataSetAdded', { name: name, count: points.length }) || ('Conjunto añadido: ' + name + ' (' + points.length + ' puntos)'));
+        }
+        function _removeExtraDataSet(id) {
+            state.extraDataSets = state.extraDataSets.filter(s => s.id !== id);
+            _renderExtraDataSetsPanel();
+            updateAllCharts();
+        }
+        function _toggleExtraDataSetVisibility(id) {
+            const s = state.extraDataSets.find(s => s.id === id);
+            if (!s) return;
+            s.visible = !s.visible;
+            _renderExtraDataSetsPanel();
+            updateAllCharts();
+        }
+        function _renameExtraDataSet(id, newName) {
+            const s = state.extraDataSets.find(s => s.id === id);
+            if (!s) return;
+            s.name = (newName || '').trim() || s.name;
+            updateAllCharts();
+        }
+        function _setExtraDataSetColor(id, color) {
+            const s = state.extraDataSets.find(s => s.id === id);
+            if (!s) return;
+            s.color = color;
+            // Actualizar la pastilla de color en el panel sin reconstruir
+            const pill = document.querySelector(`.extra-set-row[data-id="${id}"] .extra-set-color`);
+            if (pill) pill.style.background = color;
+            updateAllCharts();
+        }
+        function _renderExtraDataSetsPanel() {
+            const panel = document.getElementById('extraDataSetsPanel');
+            const list = document.getElementById('extraDataSetsList');
+            if (!panel || !list) return;
+            if (state.extraDataSets.length === 0) {
+                panel.style.display = 'none';
+                list.innerHTML = '';
+                return;
+            }
+            panel.style.display = '';
+            list.innerHTML = state.extraDataSets.map(s => `
+                <div class="extra-set-row" data-id="${_escHtml(s.id)}" style="display:flex; align-items:center; gap:6px; padding:6px; margin-bottom:4px; background:#fff; border:1px solid #e0e0e0; border-radius:4px;">
+                    <input type="checkbox" ${s.visible ? 'checked' : ''} onchange="_toggleExtraDataSetVisibility('${_escHtml(s.id)}')" data-tip="Mostrar/ocultar en las gráficas" style="width:auto;">
+                    <span class="extra-set-color color-preview" style="width:18px; height:18px; margin:0; background:${_escHtml(s.color)}; border-radius:3px; border:2px solid #333; position:relative;">
+                        <input type="color" value="${_escHtml(s.color)}" oninput="_setExtraDataSetColor('${_escHtml(s.id)}', this.value)" style="position:absolute; inset:-2px; width:calc(100% + 4px); height:calc(100% + 4px); opacity:0; cursor:pointer; padding:0; margin:0; border:none;">
+                    </span>
+                    <input type="text" value="${_escHtml(s.name)}" oninput="_renameExtraDataSet('${_escHtml(s.id)}', this.value)" style="flex:1; font-size:0.78rem; padding:2px 6px;">
+                    <span style="font-size:0.7rem; color:#777; white-space:nowrap;">${s.points.length} pts</span>
+                    <button type="button" class="toolbar-btn" onclick="_removeExtraDataSet('${_escHtml(s.id)}')" data-tip="Quitar conjunto" style="padding:2px 8px; font-size:0.75rem;">✕</button>
+                </div>
+            `).join('');
         }
 
         function _applyImportedData(parsed) {
@@ -15081,6 +15334,11 @@ bluetooth.startIOPinService()</pre>
                 document.getElementById('pointInfo').style.display = 'none';
                 // También quitar área de integral si quedaba dibujada
                 if (typeof clearIntegralResultUI === 'function') clearIntegralResultUI();
+                // Quitar conjuntos extra de comparación
+                if (state.extraDataSets && state.extraDataSets.length) {
+                    state.extraDataSets = [];
+                    if (typeof _renderExtraDataSetsPanel === 'function') _renderExtraDataSetsPanel();
+                }
                 updateDisplay();
             }
         });
