@@ -13552,6 +13552,127 @@ bluetooth.startIOPinService()</pre>
         updateIntegralVarOptions();
         updateIntegralGraphOptions();
 
+        // ── Integración numérica de alta precisión ──
+        // Estrategia adaptativa:
+        //   1) Si hay >= 4 puntos, ajustamos un spline cúbico monotónico
+        //      (Fritsch-Carlson) entre los datos. Es exactamente la misma
+        //      curva que dibuja Chart.js con cubicInterpolationMode:'monotone',
+        //      por lo que el área visible coincide con el cálculo.
+        //   2) Integramos el spline analíticamente en cada intervalo y
+        //      sumamos. Para cubic Hermite con tangentes m_i, m_{i+1},
+        //      la integral en [x_i, x_{i+1}] de un Hermite cúbico es:
+        //         h * ( y_i/2 + y_{i+1}/2 + (m_i - m_{i+1}) * h / 12 )
+        //      donde h = x_{i+1} - x_i. Esta fórmula es exacta para el
+        //      polinomio cúbico Hermite definido por los datos y tangentes.
+        //   3) Con < 4 puntos caemos a regla del trapecio.
+        // Devuelve { value, method, smoothPath: [{x,y},...] }.
+        function _fritschCarlsonTangents(pairs) {
+            const n = pairs.length;
+            if (n < 2) return [];
+            const dx = new Array(n - 1);
+            const dy = new Array(n - 1);
+            const m = new Array(n - 1); // pendiente secante
+            for (let i = 0; i < n - 1; i++) {
+                dx[i] = pairs[i + 1].x - pairs[i].x;
+                dy[i] = pairs[i + 1].y - pairs[i].y;
+                m[i] = dx[i] !== 0 ? dy[i] / dx[i] : 0;
+            }
+            const t = new Array(n).fill(0);
+            t[0] = m[0];
+            t[n - 1] = m[n - 2];
+            for (let i = 1; i < n - 1; i++) {
+                if (m[i - 1] * m[i] <= 0) {
+                    t[i] = 0;
+                } else {
+                    const w1 = 2 * dx[i] + dx[i - 1];
+                    const w2 = dx[i] + 2 * dx[i - 1];
+                    t[i] = (w1 + w2) / (w1 / m[i - 1] + w2 / m[i]);
+                }
+            }
+            // Step de monotonicidad de Fritsch-Carlson
+            for (let i = 0; i < n - 1; i++) {
+                if (m[i] === 0) {
+                    t[i] = 0;
+                    t[i + 1] = 0;
+                    continue;
+                }
+                const a = t[i] / m[i];
+                const b = t[i + 1] / m[i];
+                const h2 = a * a + b * b;
+                if (h2 > 9) {
+                    const tau = 3 / Math.sqrt(h2);
+                    t[i] = tau * a * m[i];
+                    t[i + 1] = tau * b * m[i];
+                }
+            }
+            return t;
+        }
+        function _evalHermite(p0, p1, m0, m1, h, s) {
+            // s ∈ [0, 1]; cubic Hermite básico
+            const s2 = s * s;
+            const s3 = s2 * s;
+            return (2 * s3 - 3 * s2 + 1) * p0
+                + (s3 - 2 * s2 + s) * h * m0
+                + (-2 * s3 + 3 * s2) * p1
+                + (s3 - s2) * h * m1;
+        }
+        function _trapezoidIntegrate(pairs) {
+            let total = 0;
+            for (let i = 1; i < pairs.length; i++) {
+                total += (pairs[i].x - pairs[i - 1].x) * (pairs[i].y + pairs[i - 1].y) / 2;
+            }
+            return total;
+        }
+        function _splineHermiteIntegrate(pairs, tangents) {
+            // Integral analítica del Hermite cúbico:
+            //   ∫_0^1 Hermite(s) ds = 1/2*(p0+p1) + (1/12)*h*(m0 - m1)
+            // Multiplicar por h para integrar respecto a x.
+            let total = 0;
+            for (let i = 0; i < pairs.length - 1; i++) {
+                const h = pairs[i + 1].x - pairs[i].x;
+                const p0 = pairs[i].y, p1 = pairs[i + 1].y;
+                const m0 = tangents[i], m1 = tangents[i + 1];
+                total += h * ((p0 + p1) / 2 + h * (m0 - m1) / 12);
+            }
+            return total;
+        }
+        function computeIntegral(pairs) {
+            if (!pairs || pairs.length < 2) {
+                return { value: 0, method: 'none', smoothPath: [] };
+            }
+            // Trapecio simple (siempre lo calculamos para informar comparación)
+            const trapVal = _trapezoidIntegrate(pairs);
+            if (pairs.length < 4) {
+                return { value: trapVal, method: 'trapezoid', smoothPath: pairs.slice(), trapezoidValue: trapVal };
+            }
+            const tangents = _fritschCarlsonTangents(pairs);
+            const splineVal = _splineHermiteIntegrate(pairs, tangents);
+            // Generar puntos densos del spline para shading visual continuo
+            const N = Math.min(800, Math.max(200, pairs.length * 20));
+            const path = [];
+            for (let i = 0; i < pairs.length - 1; i++) {
+                const h = pairs[i + 1].x - pairs[i].x;
+                const m0 = tangents[i], m1 = tangents[i + 1];
+                const p0 = pairs[i].y, p1 = pairs[i + 1].y;
+                const stepsHere = Math.max(2, Math.ceil(N / (pairs.length - 1)));
+                for (let k = 0; k < stepsHere; k++) {
+                    const s = k / stepsHere;
+                    path.push({
+                        x: pairs[i].x + s * h,
+                        y: _evalHermite(p0, p1, m0, m1, h, s)
+                    });
+                }
+            }
+            // Asegurar último punto exacto
+            path.push({ x: pairs[pairs.length - 1].x, y: pairs[pairs.length - 1].y });
+            return {
+                value: splineVal,
+                method: 'spline',
+                smoothPath: path,
+                trapezoidValue: trapVal
+            };
+        }
+
         document.getElementById('computeIntegralBtn').addEventListener('click', () => {
             const varIdx = parseInt(document.getElementById('integralVarSelect').value);
             const graphIdx = parseInt(document.getElementById('integralGraphSelect').value);
@@ -13586,13 +13707,14 @@ bluetooth.startIOPinService()</pre>
             // Sort by x
             pairs.sort((a, b) => a.x - b.x);
 
-            // Trapezoidal integration
-            let integral = 0;
-            for (let i = 1; i < pairs.length; i++) {
-                const dx = pairs[i].x - pairs[i - 1].x;
-                const avgY = (pairs[i].y + pairs[i - 1].y) / 2;
-                integral += dx * avgY;
-            }
+            // Cálculo de la integral con estrategia adaptativa
+            const result = computeIntegral(pairs);
+            const integral = result.value;
+            const method = result.method;
+            const trapezoidValue = result.trapezoidValue;
+            // Estimación del error: diferencia entre spline y trapecio
+            const errorEstimate = (method === 'spline' && trapezoidValue != null)
+                ? Math.abs(integral - trapezoidValue) : null;
 
             const xMin = pairs[0].x;
             const xMax = pairs[pairs.length - 1].x;
@@ -13600,19 +13722,23 @@ bluetooth.startIOPinService()</pre>
             const resultDiv = document.getElementById('integralResult');
             const yName = state.variables[varIdx].name;
             const xName = graphConfig.xAxis === 'time' ? 't' : (graphConfig.xLabel || 'x');
-            const xUnit = graphConfig.xAxis === 'time' ? '' : '';
+            const isSpline = (method === 'spline');
+            const methodName = isSpline ? 'Spline cúbico (Hermite monotónico)' : 'Regla del trapecio';
+            const errEstHtml = (errorEstimate != null)
+                ? `<div class="didactic-row"><span class="lbl">Δ trapecio − spline (error de discretización):</span><span class="val">${fmtNum(errorEstimate)}</span></div>`
+                : '';
+
             resultDiv.style.display = 'block';
             resultDiv.innerHTML = `
                 <div class="didactic-block">
                     <div class="didactic-title">∫ Integral numérica</div>
                     <div style="margin-bottom:6px;">
-                        Aproximación del área bajo la curva mediante el
-                        <b>método del trapecio</b>:
+                        Área entre la curva <b>${_escHtml(yName)}(${_escHtml(xName)})</b> y el eje
+                        ${_escHtml(xName)} = 0, calculada con <b>${_escHtml(methodName)}</b>:
                     </div>
                     <div class="didactic-formula">
                         ∫<sub>${_escHtml(xName)}₁</sub><sup>${_escHtml(xName)}₂</sup>
-                        ${_escHtml(yName)} d${_escHtml(xName)}
-                        ≈ Σᵢ ½·(yᵢ + yᵢ₊₁)·Δ${_escHtml(xName)}ᵢ
+                        ${_escHtml(yName)}(${_escHtml(xName)}) d${_escHtml(xName)}
                     </div>
                     <div class="didactic-section">
                         <div class="didactic-row"><span class="lbl">Variable integrada (y):</span><span class="val">${_escHtml(yName)}</span></div>
@@ -13620,45 +13746,83 @@ bluetooth.startIOPinService()</pre>
                         <div class="didactic-row"><span class="lbl">Rango [${_escHtml(xName)}₁, ${_escHtml(xName)}₂]:</span><span class="val">[${fmtNum(xMin)}, ${fmtNum(xMax)}]</span></div>
                         <div class="didactic-row"><span class="lbl">Δ${_escHtml(xName)} total:</span><span class="val">${fmtNum(xMax - xMin)}</span></div>
                         <div class="didactic-row"><span class="lbl">Puntos usados:</span><span class="val">${pairs.length}${usingSelection ? ' (seleccionados manualmente)' : ''}</span></div>
+                        ${(isSpline && trapezoidValue != null) ? `<div class="didactic-row"><span class="lbl">Trapecio (referencia):</span><span class="val">${fmtNum(trapezoidValue)}</span></div>` : ''}
+                        ${errEstHtml}
                     </div>
                     <div class="didactic-section" style="text-align:center;">
                         <div style="font-size:0.7rem; color:#607d8b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Resultado</div>
                         <div class="didactic-result-big">∫ ${_escHtml(yName)} d${_escHtml(xName)} = ${fmtNum(integral)}</div>
                     </div>
-                    <div class="didactic-explain">
-                        <b>¿Cómo se calcula?</b> Cada par de puntos consecutivos define un trapecio
-                        de base Δ${_escHtml(xName)}ᵢ y alturas (yᵢ, yᵢ₊₁). El área del trapecio es
-                        ½·(yᵢ + yᵢ₊₁)·Δ${_escHtml(xName)}ᵢ. Sumando todos los trapecios obtenemos
-                        una aproximación del área total. Cuantos más puntos haya, menor será el
-                        error de discretización.
-                    </div>
+                    <details class="didactic-strategy" style="margin-top:8px;">
+                        <summary style="cursor:pointer; font-weight:700; font-size:0.78rem; color:#1565c0; padding:4px 0;">
+                            ▸ Ver estrategia de cálculo
+                        </summary>
+                        <div class="didactic-explain" style="margin-top:6px;">
+                            <b>1) Modelo continuo de los datos.</b> Los datos llegan como un conjunto
+                            discreto {(${_escHtml(xName)}ᵢ, ${_escHtml(yName)}ᵢ)}. Para integrar
+                            necesitamos una <i>función continua</i> ${_escHtml(yName)}(${_escHtml(xName)}).
+                            ${isSpline
+                                ? `Construimos un <b>spline cúbico Hermite monotónico (Fritsch–Carlson)</b>:
+                                   en cada intervalo [${_escHtml(xName)}ᵢ, ${_escHtml(xName)}ᵢ₊₁] usamos
+                                   un polinomio de grado 3 que pasa exactamente por los dos puntos y
+                                   tiene tangentes calculadas para evitar oscilaciones. Es la misma
+                                   curva que ves trazada en el gráfico.`
+                                : `Con menos de 4 puntos no es seguro hacer un spline; usamos
+                                   <b>interpolación lineal</b> (recta entre datos consecutivos).`}
+                            <br><br>
+                            <b>2) Integración analítica de cada tramo.</b>
+                            ${isSpline
+                                ? `La integral de un Hermite cúbico H(s) en s ∈ [0,1] tiene forma cerrada:
+                                   <span class="didactic-formula">∫₀¹ H(s) ds = ½(p₀+p₁) + (h/12)(m₀ − m₁)</span>
+                                   donde h es el ancho del intervalo y m₀, m₁ las tangentes.
+                                   Multiplicando por h e iterando obtenemos la integral total.
+                                   Esto es <i>análisis infinitesimal exacto sobre el modelo</i>:
+                                   no hay error de discretización del polinomio interpolador.`
+                                : `La integral de una recta en [a, b] es el área del trapecio:
+                                   <span class="didactic-formula">∫ₐᵇ y dx = (b − a) · ½ · (y(a) + y(b))</span>`}
+                            <br><br>
+                            <b>3) Suma de tramos.</b> Sumamos las integrales de cada intervalo:
+                            <span class="didactic-formula">∫ ${_escHtml(yName)} d${_escHtml(xName)}
+                                = Σᵢ ∫ᵢ₍tramo₎</span>
+                            ${(isSpline && trapezoidValue != null)
+                                ? `<br><br><b>4) Estimación del error.</b> Comparamos con el método del
+                                   trapecio: <span class="didactic-formula">|spline − trapecio| = ${fmtNum(errorEstimate)}</span>
+                                   Si los dos métodos coinciden, los datos están finamente muestreados.
+                                   Si el spline difiere mucho del trapecio, los datos tienen curvatura
+                                   significativa entre puntos consecutivos.`
+                                : ''}
+                        </div>
+                    </details>
                 </div>
             `;
 
-            // Shade the area on the chart
-            shadeIntegralArea(graphIdx, varIdx, pairs);
+            // Pintar el área bajo la curva en el gráfico (path denso para suavidad)
+            shadeIntegralArea(graphIdx, varIdx, pairs, result.smoothPath);
         });
 
-        function shadeIntegralArea(graphIdx, varIdx, pairs) {
+        function shadeIntegralArea(graphIdx, varIdx, pairs, smoothPath) {
             const chart = state.charts[graphIdx];
             if (!chart) return;
 
-            // Add a fill dataset to show the integrated area
-            const fillData = pairs.map(p => ({ x: p.x, y: p.y }));
-
-            // Check if we already have an integral dataset and remove it
+            // Quitar dataset de integral previo si existía
             chart.data.datasets = chart.data.datasets.filter(ds => ds.label !== '∫ Área');
 
+            // 1) Dataset principal: el path denso (spline) — mismo trazado que la
+            //    curva visible, con relleno hasta y=0 para mostrar el área completa.
+            const fillData = (smoothPath && smoothPath.length >= 2) ? smoothPath : pairs.slice();
             chart.data.datasets.push({
                 label: '∫ Área',
                 data: fillData,
-                borderColor: 'rgba(25, 118, 210, 0.7)',
-                backgroundColor: 'rgba(25, 118, 210, 0.15)',
+                borderColor: 'rgba(25, 118, 210, 0.85)',
+                backgroundColor: 'rgba(25, 118, 210, 0.22)',
                 fill: 'origin',
                 borderWidth: 1.5,
                 pointRadius: 0,
+                pointHoverRadius: 0,
                 showLine: true,
-                tension: 0.3
+                tension: 0,             // ya viene suavizado en smoothPath
+                spanGaps: false,
+                order: 99               // dibujar detrás de los puntos reales
             });
 
             chart.update('none');
