@@ -13731,7 +13731,11 @@ bluetooth.startIOPinService()</pre>
             resultDiv.style.display = 'block';
             resultDiv.innerHTML = `
                 <div class="didactic-block">
-                    <div class="didactic-title">∫ Integral numérica</div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                        <div class="didactic-title" style="border:none; padding:0; margin:0;">∫ Integral numérica</div>
+                        <button type="button" onclick="clearIntegralResultUI()" class="toolbar-btn" style="padding:2px 8px; font-size:0.7rem;" data-tip="Quitar el área del gráfico">✕ Quitar área</button>
+                    </div>
+                    <div style="border-bottom:2px solid #1976d2; margin-bottom:6px;"></div>
                     <div style="margin-bottom:6px;">
                         Área entre la curva <b>${_escHtml(yName)}(${_escHtml(xName)})</b> y el eje
                         ${_escHtml(xName)} = 0, calculada con <b>${_escHtml(methodName)}</b>:
@@ -13800,29 +13804,92 @@ bluetooth.startIOPinService()</pre>
             shadeIntegralArea(graphIdx, varIdx, pairs, result.smoothPath);
         });
 
+        // Limpia el dataset de área de la integral y restaura el rango Y
+        // original que el chart tenía antes de auto-incluir el 0.
+        function clearIntegralArea(graphIdx) {
+            const charts = (graphIdx == null)
+                ? (state.charts || [])
+                : [state.charts[graphIdx]];
+            charts.forEach(chart => {
+                if (!chart) return;
+                const had = chart.data.datasets.some(ds => ds.label === '∫ Área');
+                if (!had) return;
+                chart.data.datasets = chart.data.datasets.filter(ds => ds.label !== '∫ Área');
+                if (chart._integralYBackup) {
+                    chart.options.scales.y.min = chart._integralYBackup.min;
+                    chart.options.scales.y.max = chart._integralYBackup.max;
+                    delete chart._integralYBackup;
+                }
+                chart.update('none');
+            });
+        }
+
+        // Botón "Quitar área" en el panel del resultado: limpia overlay y oculta el bloque
+        function clearIntegralResultUI() {
+            clearIntegralArea(null);
+            const resultDiv = document.getElementById('integralResult');
+            if (resultDiv) {
+                resultDiv.style.display = 'none';
+                resultDiv.innerHTML = '';
+            }
+        }
+
         function shadeIntegralArea(graphIdx, varIdx, pairs, smoothPath) {
             const chart = state.charts[graphIdx];
             if (!chart) return;
 
-            // Quitar dataset de integral previo si existía
-            chart.data.datasets = chart.data.datasets.filter(ds => ds.label !== '∫ Área');
+            // Quitar dataset de integral previo si existía (en este o en otros charts)
+            clearIntegralArea(null);
 
-            // 1) Dataset principal: el path denso (spline) — mismo trazado que la
-            //    curva visible, con relleno hasta y=0 para mostrar el área completa.
             const fillData = (smoothPath && smoothPath.length >= 2) ? smoothPath : pairs.slice();
+
+            // El "área entre la gráfica y el eje x" tiene sentido sólo si el
+            // valor 0 del eje Y está en el rango visible. Si los datos son
+            // todos positivos (ej. y ∈ [5, 20]), Chart.js dejaría el 0 fuera
+            // del canvas y el fill: 'origin' no se vería. Forzamos que el 0
+            // entre en el rango antes de dibujar.
+            const ys = fillData.map(p => p.y);
+            const dataMin = Math.min.apply(null, ys);
+            const dataMax = Math.max.apply(null, ys);
+            const range = (dataMax - dataMin) || 1;
+            const pad = range * 0.05;
+            chart._integralYBackup = {
+                min: chart.options.scales.y.min,
+                max: chart.options.scales.y.max
+            };
+            if (dataMin > 0) {
+                chart.options.scales.y.min = 0;
+                chart.options.scales.y.max = dataMax + pad;
+            } else if (dataMax < 0) {
+                chart.options.scales.y.max = 0;
+                chart.options.scales.y.min = dataMin - pad;
+            }
+            // (si los datos cruzan 0, el rango por defecto ya lo incluye)
+
+            // Dataset del área. Usamos type:'line' explícitamente (aunque la
+            // gráfica sea scatter) para garantizar que el fill funciona como
+            // se espera. Sin borde propio (borderWidth:0) — la curva visible
+            // es la del dataset de la variable, encima.
             chart.data.datasets.push({
+                type: 'line',
                 label: '∫ Área',
                 data: fillData,
-                borderColor: 'rgba(25, 118, 210, 0.85)',
-                backgroundColor: 'rgba(25, 118, 210, 0.22)',
-                fill: 'origin',
-                borderWidth: 1.5,
+                backgroundColor: 'rgba(25, 118, 210, 0.28)',
+                borderColor: 'rgba(25, 118, 210, 0.55)',
+                borderWidth: 1,
                 pointRadius: 0,
                 pointHoverRadius: 0,
+                pointHitRadius: 0,
                 showLine: true,
-                tension: 0,             // ya viene suavizado en smoothPath
+                // fill: { value: 0 } → el área se cierra contra y=0 (eje X
+                // matemático). 'origin' equivale, pero es más explícito así.
+                fill: { value: 0 },
+                tension: 0,        // smoothPath ya está pre-interpolado
                 spanGaps: false,
-                order: 99               // dibujar detrás de los puntos reales
+                // order: -1 hace que Chart.js lo dibuje ANTES que los demás
+                // datasets (queda atrás), de modo que la línea de la variable
+                // y los puntos quedan visibles encima del relleno.
+                order: -1
             });
 
             chart.update('none');
@@ -14988,6 +15055,8 @@ bluetooth.startIOPinService()</pre>
                     initializeChartDatasets();
                 }
                 document.getElementById('pointInfo').style.display = 'none';
+                // También quitar área de integral si quedaba dibujada
+                if (typeof clearIntegralResultUI === 'function') clearIntegralResultUI();
                 updateDisplay();
             }
         });
