@@ -396,6 +396,107 @@
             margin: 6px 0 3px 0;
         }
         .special-char-group-label:first-of-type { margin-top: 0; }
+        /* ── Bloques didácticos de delta / integral / ajuste ── */
+        .didactic-block {
+            background: #fafbfc;
+            border: 1px solid #e0e6ed;
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-size: 0.78rem;
+            line-height: 1.45;
+        }
+        .didactic-title {
+            font-weight: 700;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #1565c0;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 2px solid #1976d2;
+        }
+        .didactic-formula {
+            font-family: 'Cambria Math', 'Latin Modern Math', Georgia, serif;
+            font-style: italic;
+            background: #fff;
+            border: 1px solid #d6dde5;
+            border-radius: 4px;
+            padding: 6px 8px;
+            margin: 4px 0;
+            display: inline-block;
+            color: #222;
+        }
+        .didactic-row {
+            display: grid;
+            grid-template-columns: max-content 1fr;
+            gap: 4px 10px;
+            align-items: baseline;
+            margin: 2px 0;
+        }
+        .didactic-row .lbl { font-weight: 600; color: #455a64; }
+        .didactic-row .val {
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #0d47a1;
+            font-weight: 600;
+        }
+        .didactic-row.point-a .lbl { color: #2e7d32; }
+        .didactic-row.point-b .lbl { color: #ef6c00; }
+        .didactic-section {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #cfd8dc;
+        }
+        .didactic-explain {
+            font-size: 0.72rem;
+            color: #546e7a;
+            font-style: italic;
+            margin-top: 6px;
+            line-height: 1.4;
+            background: #f5f9fd;
+            padding: 6px 8px;
+            border-left: 3px solid #1976d2;
+            border-radius: 3px;
+        }
+        .didactic-result-big {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0d47a1;
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: #e3f2fd;
+            padding: 6px 12px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .didactic-compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .didactic-compare > div {
+            background: #fff;
+            border: 1px solid #d6dde5;
+            border-radius: 4px;
+            padding: 6px 8px;
+            text-align: center;
+        }
+        .didactic-compare .compare-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #607d8b;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+        .didactic-compare .compare-value {
+            font-family: 'Consolas', monospace;
+            font-weight: 700;
+            color: #0d47a1;
+        }
+        .didactic-error-good { color: #2e7d32; }
+        .didactic-error-warn { color: #ef6c00; }
+        .didactic-error-bad  { color: #c62828; }
+
         /* ── Tooltip personalizado rápido (data-tip="...") ──
            Aparece a los ~250 ms (más rápido que el title nativo) y desaparece
            al sacar el mouse. Se posiciona arriba del elemento con flecha. */
@@ -765,11 +866,32 @@
 
         .color-preview {
             display: inline-block;
+            position: relative;
             width: 20px;
             height: 20px;
             border: 2px solid black;
             vertical-align: middle;
             margin-left: 8px;
+            cursor: pointer;
+            transition: transform 0.12s, box-shadow 0.12s;
+        }
+        .color-preview:hover {
+            transform: scale(1.18);
+            box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.25);
+        }
+        /* Input <type="color"> nativo invisible sobre el cuadradito de color
+           — captura el click de forma nativa y abre el picker siempre. */
+        .color-preview > input[type="color"] {
+            position: absolute;
+            inset: -2px;
+            width: calc(100% + 4px);
+            height: calc(100% + 4px);
+            opacity: 0;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
         }
 
         /* Tabla minimalista */
@@ -3913,12 +4035,40 @@
                         LIMPIAR AJUSTE
                     </button>
 
-                    <div id="fitResults" style="margin-top: 12px; padding: 12px; background: #f0f0f0; border-radius: 4px; font-family: monospace; font-size: 12px; display: none;">
-                        <div style="margin-bottom: 8px;"><strong>Ecuación:</strong></div>
-                        <div id="fitEquation" style="margin-bottom: 12px; color: #0066cc;"></div>
-                        <div style="margin-bottom: 4px;"><strong>Coeficiente R²:</strong> <span id="fitR2"></span></div>
-                        <div style="margin-bottom: 4px;"><strong>Puntos usados:</strong> <span id="fitPoints"></span></div>
-                        <div id="fitParamErrors" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;"></div>
+                    <div id="fitResults" style="display: none; margin-top: 12px;">
+                        <!-- Resultado y explicación didáctica -->
+                        <div class="didactic-block" id="fitResultsBlock">
+                            <div class="didactic-title" id="fitResultsTitle">Resultado del ajuste</div>
+                            <div style="margin-bottom:6px;">Ecuación obtenida:</div>
+                            <div id="fitEquationBox" class="didactic-formula" style="display:block; max-width:100%; word-break:break-all;"><span id="fitEquation"></span></div>
+                            <div class="didactic-section">
+                                <div class="didactic-row"><span class="lbl">R² (calidad del ajuste)</span><span class="val" id="fitR2"></span></div>
+                                <div class="didactic-row"><span class="lbl">Puntos usados</span><span class="val" id="fitPoints"></span></div>
+                            </div>
+                            <div class="didactic-section">
+                                <div style="font-weight:700; font-size:0.72rem; color:#1565c0; margin-bottom:4px;" id="fitParamsTitle">Parámetros del modelo</div>
+                                <div id="fitParamErrors"></div>
+                            </div>
+                            <div class="didactic-explain" id="fitExplain"></div>
+                        </div>
+
+                        <!-- Comparación teórico vs experimental -->
+                        <div class="didactic-block" style="margin-top:10px;">
+                            <div class="didactic-title" id="fitTheoryTitle">Comparación teórico vs experimental</div>
+                            <div style="font-size:0.72rem; color:#546e7a; margin-bottom:6px;" id="fitTheoryHint">
+                                Ingresá los valores teóricos esperados (de la teoría/literatura) para ver el error porcentual.
+                            </div>
+                            <div id="fitTheoryInputs" style="display:flex; flex-direction:column; gap:4px;"></div>
+                            <div id="fitTheoryCompare" style="margin-top:8px;"></div>
+                            <div class="didactic-explain" id="fitErrorExplain" style="display:none;">
+                                <b>Cálculo del error:</b><br>
+                                • <b>Error absoluto</b> = |valor experimental − valor teórico|<br>
+                                • <b>Error relativo</b> = error absoluto / |valor teórico|<br>
+                                • <b>Error porcentual</b> = error relativo × 100 %<br>
+                                <br>
+                                Como referencia: &lt; 5 % es bueno, 5–15 % es aceptable, &gt; 15 % indica que algún parámetro experimental difiere notablemente del valor teórico.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -8636,11 +8786,10 @@ bluetooth.startIOPinService()</pre>
             if (preview) preview.style.background = color;
             if (card) card.style.borderLeftColor = color;
 
-            // 2) Actualizar el color de las pills EN SITIO (sin reconstruir HTML).
-            //    Reconstruir innerHTML mientras el usuario arrastra en el color
-            //    picker destruiría el <input> y cancelaría la interacción.
-            //    Buscamos por el atributo data-pill-color-var y actualizamos
-            //    el CSS var --c del pill padre y el value del input.
+            // 2) Actualizar el color de las pills y de los color-preview de
+            //    los checkboxes EN SITIO (sin reconstruir HTML). Reconstruir
+            //    innerHTML mientras el usuario arrastra en el color picker
+            //    destruiría el <input> y cancelaría la interacción.
             document.querySelectorAll(`.var-pill-color-input[data-pill-color-var="${idx}"]`)
                 .forEach(inp => {
                     if (inp !== document.activeElement && inp.value !== color) {
@@ -8648,7 +8797,13 @@ bluetooth.startIOPinService()</pre>
                     }
                     const pill = inp.closest('.var-pill');
                     if (pill) pill.style.setProperty('--c', color);
+                    const cp = inp.closest('.color-preview');
+                    if (cp) cp.style.background = color;
                 });
+            // También sincronizar cualquier color-preview que use data-var-idx
+            // (por si no tuvo input embebido por alguna razón)
+            document.querySelectorAll(`.color-preview[data-var-idx="${idx}"]`)
+                .forEach(sp => { sp.style.background = color; });
 
             // 3) Re-pintar charts con el nuevo color (rebuild de datasets ok,
             //    no afecta al input embebido en pills porque vive en el DOM
@@ -8862,6 +9017,17 @@ bluetooth.startIOPinService()</pre>
                 const colorSpan = document.createElement('span');
                 colorSpan.className = 'color-preview';
                 colorSpan.style.background = state.variables[i].color;
+                colorSpan.setAttribute('data-var-idx', String(i));
+                colorSpan.title = (translations[currentLanguage] && translations[currentLanguage].pillClickColor) || 'Click para cambiar el color';
+                // Input nativo invisible para abrir el color picker al hacer click
+                const colorInp = document.createElement('input');
+                colorInp.type = 'color';
+                colorInp.value = state.variables[i].color;
+                // Reutilizamos la clase + delegación existente para pills
+                colorInp.className = 'var-pill-color-input';
+                colorInp.setAttribute('data-pill-color-var', String(i));
+                colorInp.setAttribute('aria-label', colorSpan.title);
+                colorSpan.appendChild(colorInp);
 
                 div.appendChild(checkbox);
                 div.appendChild(label);
@@ -12085,6 +12251,106 @@ bluetooth.startIOPinService()</pre>
             }
         }
 
+        // Devuelve un texto didáctico según el tipo de ajuste, explicando el
+        // significado físico de los parámetros y cómo se calculó el error.
+        function _explainFitType(type, fitResult) {
+            const r2 = fitResult.r2;
+            const r2Quality = r2 >= 0.98 ? 'excelente' : (r2 >= 0.9 ? 'aceptable' : 'pobre');
+            let model = '';
+            switch (type) {
+                case 'linear': model = '<b>y = m·x + b</b> &nbsp;(m: pendiente, b: ordenada al origen)'; break;
+                case 'quadratic': model = '<b>y = a·x² + b·x + c</b>'; break;
+                case 'cubic': model = '<b>y = a·x³ + b·x² + c·x + d</b>'; break;
+                case 'exponential': model = '<b>y = a·e^(b·x)</b> &nbsp;(crecimiento/decaimiento exponencial)'; break;
+                case 'power': model = '<b>y = a·x^b</b> &nbsp;(ley de potencias)'; break;
+                case 'logarithmic': model = '<b>y = a·ln(x) + b</b>'; break;
+                case 'inverse': model = '<b>y = a/x + b</b>'; break;
+                case 'sinusoidal': model = '<b>y = A·sin(ω·x + φ) + C</b>'; break;
+                default: model = '';
+            }
+            return `
+                <b>Modelo:</b> ${model}<br>
+                <b>R² = ${r2.toFixed(4)}</b> (${r2Quality}). R² ∈ [0,1] mide qué fracción de la varianza de los datos explica el modelo. R² = 1 es ajuste perfecto.<br>
+                <b>± error estándar</b> de cada parámetro: estimado a partir de la matriz de covarianza del ajuste por mínimos cuadrados — indica el rango plausible del parámetro asumiendo que los residuos son ruido aleatorio gaussiano.
+            `;
+        }
+
+        // Construye los inputs para que el usuario ingrese valores teóricos
+        // y muestra el contraste con los valores experimentales (con error %).
+        function _buildTheoryComparisonInputs(type, paramNames, coeffs) {
+            const wrap = document.getElementById('fitTheoryInputs');
+            const compare = document.getElementById('fitTheoryCompare');
+            const errExplain = document.getElementById('fitErrorExplain');
+            if (!wrap) return;
+            wrap.innerHTML = '';
+            compare.innerHTML = '';
+            if (errExplain) errExplain.style.display = 'none';
+
+            for (let i = 0; i < paramNames.length; i++) {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex; gap:6px; align-items:center;';
+                const lbl = document.createElement('label');
+                lbl.style.cssText = 'flex:1; font-size:0.78rem; font-weight:600; color:#455a64;';
+                lbl.textContent = `${paramNames[i]} (teórico)`;
+                const inp = document.createElement('input');
+                inp.type = 'number';
+                inp.step = 'any';
+                inp.placeholder = 'Sin valor teórico';
+                inp.style.cssText = 'flex:0 0 110px; font-size:0.78rem; padding:3px 6px;';
+                inp.dataset.paramIdx = String(i);
+                inp.addEventListener('input', () => _renderTheoryComparison(paramNames, coeffs));
+                row.appendChild(lbl);
+                row.appendChild(inp);
+                wrap.appendChild(row);
+            }
+        }
+
+        function _renderTheoryComparison(paramNames, coeffs) {
+            const wrap = document.getElementById('fitTheoryInputs');
+            const out = document.getElementById('fitTheoryCompare');
+            const errExplain = document.getElementById('fitErrorExplain');
+            if (!wrap || !out) return;
+            const inputs = wrap.querySelectorAll('input[data-param-idx]');
+            let any = false;
+            let html = '';
+            inputs.forEach(inp => {
+                const idx = parseInt(inp.dataset.paramIdx);
+                const txt = inp.value.trim();
+                if (txt === '') return;
+                const teorico = parseFloat(txt.replace(',', '.'));
+                if (isNaN(teorico)) return;
+                any = true;
+                const exp = coeffs[idx];
+                const absErr = Math.abs(exp - teorico);
+                const relErr = teorico !== 0 ? absErr / Math.abs(teorico) : NaN;
+                const pctErr = isNaN(relErr) ? NaN : relErr * 100;
+                let pctCls = 'didactic-error-good';
+                if (isNaN(pctErr)) pctCls = '';
+                else if (pctErr > 15) pctCls = 'didactic-error-bad';
+                else if (pctErr > 5) pctCls = 'didactic-error-warn';
+                html += `
+                    <div style="margin-bottom:8px;">
+                        <div style="font-weight:700; font-size:0.74rem; color:#455a64; margin-bottom:3px;">${_escHtml(paramNames[idx])}</div>
+                        <div class="didactic-compare">
+                            <div><div class="compare-label">Teórico</div><div class="compare-value">${teorico.toFixed(6)}</div></div>
+                            <div><div class="compare-label">Experimental</div><div class="compare-value">${exp.toFixed(6)}</div></div>
+                        </div>
+                        <div class="didactic-formula" style="display:block; margin-top:4px;">
+                            |Δ| = |${exp.toFixed(4)} − ${teorico.toFixed(4)}| = <b>${absErr.toFixed(6)}</b><br>
+                            error % = (|Δ| / |teórico|) × 100 = <b class="${pctCls}">${isNaN(pctErr) ? 'N/A (teórico = 0)' : pctErr.toFixed(3) + ' %'}</b>
+                        </div>
+                    </div>
+                `;
+            });
+            if (!any) {
+                out.innerHTML = '';
+                if (errExplain) errExplain.style.display = 'none';
+                return;
+            }
+            out.innerHTML = html;
+            if (errExplain) errExplain.style.display = '';
+        }
+
         function performCurveFit(fitType, xData, yData) {
             if (xData.length < 2 || yData.length < 2 || xData.length !== yData.length) {
                 throw new Error('Datos insuficientes o inconsistentes para ajuste');
@@ -13227,12 +13493,41 @@ bluetooth.startIOPinService()</pre>
             const xMax = pairs[pairs.length - 1].x;
 
             const resultDiv = document.getElementById('integralResult');
+            const yName = state.variables[varIdx].name;
+            const xName = graphConfig.xAxis === 'time' ? 't' : (graphConfig.xLabel || 'x');
+            const xUnit = graphConfig.xAxis === 'time' ? '' : '';
             resultDiv.style.display = 'block';
             resultDiv.innerHTML = `
-                <strong>∫ ${state.variables[varIdx].name} d(${graphConfig.xAxis === 'time' ? 't' : graphConfig.xLabel})</strong><br>
-                <strong>Resultado:</strong> ${integral.toFixed(6)}<br>
-                <strong>Rango:</strong> [${xMin.toFixed(4)}, ${xMax.toFixed(4)}]<br>
-                <strong>Puntos:</strong> ${pairs.length}${usingSelection ? ' (seleccionados)' : ''}
+                <div class="didactic-block">
+                    <div class="didactic-title">∫ Integral numérica</div>
+                    <div style="margin-bottom:6px;">
+                        Aproximación del área bajo la curva mediante el
+                        <b>método del trapecio</b>:
+                    </div>
+                    <div class="didactic-formula">
+                        ∫<sub>${_escHtml(xName)}₁</sub><sup>${_escHtml(xName)}₂</sup>
+                        ${_escHtml(yName)} d${_escHtml(xName)}
+                        ≈ Σᵢ ½·(yᵢ + yᵢ₊₁)·Δ${_escHtml(xName)}ᵢ
+                    </div>
+                    <div class="didactic-section">
+                        <div class="didactic-row"><span class="lbl">Variable integrada (y):</span><span class="val">${_escHtml(yName)}</span></div>
+                        <div class="didactic-row"><span class="lbl">Variable integradora (x):</span><span class="val">${_escHtml(xName)}</span></div>
+                        <div class="didactic-row"><span class="lbl">Rango [${_escHtml(xName)}₁, ${_escHtml(xName)}₂]:</span><span class="val">[${xMin.toFixed(4)}, ${xMax.toFixed(4)}]</span></div>
+                        <div class="didactic-row"><span class="lbl">Δ${_escHtml(xName)} total:</span><span class="val">${(xMax - xMin).toFixed(4)}</span></div>
+                        <div class="didactic-row"><span class="lbl">Puntos usados:</span><span class="val">${pairs.length}${usingSelection ? ' (seleccionados manualmente)' : ''}</span></div>
+                    </div>
+                    <div class="didactic-section" style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#607d8b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Resultado</div>
+                        <div class="didactic-result-big">∫ ${_escHtml(yName)} d${_escHtml(xName)} = ${integral.toFixed(6)}</div>
+                    </div>
+                    <div class="didactic-explain">
+                        <b>¿Cómo se calcula?</b> Cada par de puntos consecutivos define un trapecio
+                        de base Δ${_escHtml(xName)}ᵢ y alturas (yᵢ, yᵢ₊₁). El área del trapecio es
+                        ½·(yᵢ + yᵢ₊₁)·Δ${_escHtml(xName)}ᵢ. Sumando todos los trapecios obtenemos
+                        una aproximación del área total. Cuantos más puntos haya, menor será el
+                        error de discretización.
+                    </div>
+                </div>
             `;
 
             // Shade the area on the chart
@@ -13357,39 +13652,56 @@ bluetooth.startIOPinService()</pre>
             const tA = (dA.time - state.timeZeroOffset) / timeUnitValue;
 
             if (deltaPointB === null) {
-                let html = `<div style="color:#2e7d32; font-weight:bold;">Punto A (#${deltaPointA + 1}): t=${tA.toFixed(4)}`;
+                let html = `
+                    <div class="didactic-block">
+                        <div class="didactic-title">Modo Δ — paso 1 de 2</div>
+                        <div class="didactic-row point-a">
+                            <span class="lbl">Punto A · #${deltaPointA + 1}</span>
+                            <span class="val">t = ${tA.toFixed(4)}</span>
+                        </div>`;
                 for (let v = 0; v < state.numVariables; v++) {
-                    html += `, ${state.variables[v].name}=${dA.values[v].toFixed(4)}`;
+                    html += `<div class="didactic-row point-a"><span class="lbl">${_escHtml(state.variables[v].name)}</span><span class="val">${dA.values[v].toFixed(4)}</span></div>`;
                 }
-                html += `</div><div style="color:#555; margin-top:4px;">Ahora selecciona el punto B.</div>`;
+                html += `
+                        <div class="didactic-explain">Ahora seleccioná un segundo punto (B) en la tabla o gráfica para calcular la diferencia.</div>
+                    </div>`;
                 info.innerHTML = html;
                 return;
             }
 
             const dB = state.rawData[deltaPointB];
             const tB = (dB.time - state.timeZeroOffset) / timeUnitValue;
+            const dt = tB - tA;
 
-            let html = '';
-            html += `<div style="color:#2e7d32; font-weight:600;">A (#${deltaPointA + 1}): t=${tA.toFixed(4)}`;
-            for (let v = 0; v < state.numVariables; v++) html += `, ${state.variables[v].name}=${dA.values[v].toFixed(4)}`;
-            html += `</div>`;
-            html += `<div style="color:#ff9800; font-weight:600;">B (#${deltaPointB + 1}): t=${tB.toFixed(4)}`;
-            for (let v = 0; v < state.numVariables; v++) html += `, ${state.variables[v].name}=${dB.values[v].toFixed(4)}`;
-            html += `</div>`;
-            html += `<div style="border-top:1px solid #ccc; margin-top:6px; padding-top:6px;">`;
-            html += `<div><strong>Δt (B−A):</strong> ${(tB - tA).toFixed(4)}</div>`;
+            let html = `<div class="didactic-block">
+                <div class="didactic-title">Modo Δ — diferencia entre puntos</div>
+                <div class="didactic-row point-a"><span class="lbl">A · #${deltaPointA + 1}</span><span class="val">t = ${tA.toFixed(4)}</span></div>`;
+            for (let v = 0; v < state.numVariables; v++) {
+                html += `<div class="didactic-row point-a"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${dA.values[v].toFixed(4)}</span></div>`;
+            }
+            html += `<div class="didactic-row point-b"><span class="lbl">B · #${deltaPointB + 1}</span><span class="val">t = ${tB.toFixed(4)}</span></div>`;
+            for (let v = 0; v < state.numVariables; v++) {
+                html += `<div class="didactic-row point-b"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${dB.values[v].toFixed(4)}</span></div>`;
+            }
+            html += `<div class="didactic-section">
+                <div style="font-weight:700; font-size:0.72rem; color:#1565c0; margin-bottom:4px;">Δ (B − A)</div>
+                <div class="didactic-formula">Δt = t<sub>B</sub> − t<sub>A</sub> = ${tB.toFixed(4)} − ${tA.toFixed(4)} = <b>${dt.toFixed(4)}</b></div>`;
             for (let v = 0; v < state.numVariables; v++) {
                 const delta = dB.values[v] - dA.values[v];
-                html += `<div><strong>Δ${state.variables[v].name}:</strong> ${delta.toFixed(4)}</div>`;
+                const name = _escHtml(state.variables[v].name);
+                html += `<br><div class="didactic-formula">Δ${name} = ${dB.values[v].toFixed(4)} − ${dA.values[v].toFixed(4)} = <b>${delta.toFixed(4)}</b></div>`;
             }
-            if (tB - tA !== 0) {
-                html += `<div style="margin-top:4px; border-top:1px dashed #ccc; padding-top:4px;">`;
+            html += `</div>`;
+            if (dt !== 0) {
+                html += `<div class="didactic-section">
+                    <div style="font-weight:700; font-size:0.72rem; color:#1565c0; margin-bottom:4px;">Tasa de cambio</div>`;
                 for (let v = 0; v < state.numVariables; v++) {
                     const delta = dB.values[v] - dA.values[v];
-                    const rate = delta / (tB - tA);
-                    html += `<div><strong>Δ${state.variables[v].name}/Δt:</strong> ${rate.toFixed(4)}</div>`;
+                    const rate = delta / dt;
+                    const name = _escHtml(state.variables[v].name);
+                    html += `<div class="didactic-formula">Δ${name} / Δt = ${delta.toFixed(4)} / ${dt.toFixed(4)} = <b>${rate.toFixed(4)}</b></div><br>`;
                 }
-                html += `</div>`;
+                html += `<div class="didactic-explain">La tasa de cambio Δy/Δt aproxima la <b>derivada</b> (pendiente) entre los dos puntos. Cuanto más cercanos estén A y B, mejor será la aproximación de la derivada en ese intervalo.</div></div>`;
             }
             html += `</div>`;
             info.innerHTML = html;
@@ -13681,25 +13993,35 @@ bluetooth.startIOPinService()</pre>
                 // Mostrar resultados
                 document.getElementById('fitResults').style.display = 'block';
                 document.getElementById('fitEquation').textContent = fitResult.equation;
-                document.getElementById('fitR2').textContent = fitResult.r2.toFixed(6);
+                const r2 = fitResult.r2;
+                const r2El = document.getElementById('fitR2');
+                r2El.textContent = r2.toFixed(6);
+                // Color según calidad del R²
+                r2El.classList.remove('didactic-error-good','didactic-error-warn','didactic-error-bad');
+                if (r2 >= 0.98) r2El.classList.add('didactic-error-good');
+                else if (r2 >= 0.9) r2El.classList.add('didactic-error-warn');
+                else r2El.classList.add('didactic-error-bad');
                 document.getElementById('fitPoints').textContent = dataToFit.length;
 
-                // Mostrar errores de parámetros
+                // Mostrar parámetros con sus errores estándar
                 const errorsDiv = document.getElementById('fitParamErrors');
-                if (fitResult.errors && fitResult.errors.length > 0) {
-                    const paramNames = getParamNames(fitResult.type);
-                    let errHtml = '<div style="margin-bottom:4px;"><strong>Parámetros ± error estándar:</strong></div>';
-                    for (let i = 0; i < fitResult.coeffs.length; i++) {
-                        const name = paramNames[i] || `p${i}`;
-                        const val = fitResult.coeffs[i];
-                        const err = fitResult.errors[i];
-                        const errStr = isNaN(err) ? 'N/A' : err.toFixed(6);
-                        errHtml += `<div>${name} = ${val.toFixed(6)} ± ${errStr}</div>`;
-                    }
-                    errorsDiv.innerHTML = errHtml;
-                } else {
-                    errorsDiv.innerHTML = '';
+                const paramNames = getParamNames(fitResult.type);
+                let errHtml = '';
+                for (let i = 0; i < fitResult.coeffs.length; i++) {
+                    const name = paramNames[i] || `p${i}`;
+                    const val = fitResult.coeffs[i];
+                    const err = (fitResult.errors && fitResult.errors[i] != null) ? fitResult.errors[i] : NaN;
+                    const errStr = isNaN(err) ? 'N/A' : err.toFixed(6);
+                    errHtml += `<div class="didactic-row"><span class="lbl">${_escHtml(name)}</span><span class="val">${val.toFixed(6)} ± ${errStr}</span></div>`;
                 }
+                errorsDiv.innerHTML = errHtml;
+
+                // Construir inputs de "valor teórico" para cada parámetro
+                _buildTheoryComparisonInputs(fitResult.type, paramNames, fitResult.coeffs);
+
+                // Texto de explicación (depende del tipo de ajuste)
+                const explainEl = document.getElementById('fitExplain');
+                explainEl.innerHTML = _explainFitType(fitResult.type, fitResult);
 
                 // Actualizar gráfico con la curva de ajuste
                 updateAllCharts();
@@ -17465,7 +17787,7 @@ bluetooth.startIOPinService()</pre>
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
 
             if (dlabDiffPointA === null) {
-                container.innerHTML = `<p style="font-size: 0.78rem; color: #555;">${t.dlabDiffSelectHint || 'Selecciona el punto A haciendo clic en la tabla o gráfica.'}</p>`;
+                container.innerHTML = `<div class="didactic-block"><div class="didactic-explain">${_escHtml(t.dlabDiffSelectHint || 'Selecciona el punto A haciendo clic en la tabla o gráfica.')}</div></div>`;
                 return;
             }
 
@@ -17473,50 +17795,52 @@ bluetooth.startIOPinService()</pre>
             const tA = (dA.time - state.timeZeroOffset) / timeUnitValue;
 
             if (dlabDiffPointB === null) {
-                let html = `<div class="dlab-diff-row"><span class="dlab-diff-label">Punto A (#${dlabDiffPointA + 1}):</span> <span class="dlab-diff-value">t=${tA.toFixed(4)}`;
+                let html = `<div class="didactic-block">
+                    <div class="didactic-title">Modo Δ — paso 1 de 2</div>
+                    <div class="didactic-row point-a"><span class="lbl">Punto A · #${dlabDiffPointA + 1}</span><span class="val">t = ${tA.toFixed(4)}</span></div>`;
                 for (let v = 0; v < state.numVariables; v++) {
-                    html += `, ${state.variables[v].name}=${dA.values[v].toFixed(4)}`;
+                    html += `<div class="didactic-row point-a"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${dA.values[v].toFixed(4)}</span></div>`;
                 }
-                html += `</span></div>`;
-                html += `<p style="font-size: 0.78rem; color: #555; margin-top:4px;">${t.dlabDiffSelectB || 'Ahora selecciona el punto B.'}</p>`;
+                html += `<div class="didactic-explain">${_escHtml(t.dlabDiffSelectB || 'Ahora selecciona el punto B.')}</div></div>`;
                 container.innerHTML = html;
                 return;
             }
 
             const dB = state.rawData[dlabDiffPointB];
             const tB = (dB.time - state.timeZeroOffset) / timeUnitValue;
+            const dt = tB - tA;
 
-            let html = '';
-            // Point A
-            html += `<div class="dlab-diff-row"><span class="dlab-diff-label" style="color:#2e7d32;">A (#${dlabDiffPointA + 1}):</span> <span class="dlab-diff-value">t=${tA.toFixed(4)}`;
+            let html = `<div class="didactic-block">
+                <div class="didactic-title">Modo Δ — diferencia entre puntos</div>
+                <div class="didactic-row point-a"><span class="lbl">A · #${dlabDiffPointA + 1}</span><span class="val">t = ${tA.toFixed(4)}</span></div>`;
             for (let v = 0; v < state.numVariables; v++) {
-                html += `, ${state.variables[v].name}=${dA.values[v].toFixed(4)}`;
+                html += `<div class="didactic-row point-a"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${dA.values[v].toFixed(4)}</span></div>`;
             }
-            html += `</span></div>`;
-            // Point B
-            html += `<div class="dlab-diff-row"><span class="dlab-diff-label" style="color:#ff9800;">B (#${dlabDiffPointB + 1}):</span> <span class="dlab-diff-value">t=${tB.toFixed(4)}`;
+            html += `<div class="didactic-row point-b"><span class="lbl">B · #${dlabDiffPointB + 1}</span><span class="val">t = ${tB.toFixed(4)}</span></div>`;
             for (let v = 0; v < state.numVariables; v++) {
-                html += `, ${state.variables[v].name}=${dB.values[v].toFixed(4)}`;
+                html += `<div class="didactic-row point-b"><span class="lbl">→ ${_escHtml(state.variables[v].name)}</span><span class="val">${dB.values[v].toFixed(4)}</span></div>`;
             }
-            html += `</span></div>`;
-            // Difference
-            html += `<div style="border-top:1px solid #2e7d32; margin-top:4px; padding-top:4px;">`;
-            html += `<div class="dlab-diff-row"><span class="dlab-diff-label">Δt (B−A):</span> <span class="dlab-diff-value">${(tB - tA).toFixed(4)}</span></div>`;
+            html += `<div class="didactic-section">
+                <div style="font-weight:700; font-size:0.72rem; color:#1565c0; margin-bottom:4px;">Δ (B − A)</div>
+                <div class="didactic-formula">Δt = t<sub>B</sub> − t<sub>A</sub> = ${tB.toFixed(4)} − ${tA.toFixed(4)} = <b>${dt.toFixed(4)}</b></div>`;
             for (let v = 0; v < state.numVariables; v++) {
                 const delta = dB.values[v] - dA.values[v];
-                html += `<div class="dlab-diff-row"><span class="dlab-diff-label">Δ${state.variables[v].name} (B−A):</span> <span class="dlab-diff-value">${delta.toFixed(4)}</span></div>`;
-            }
-            // Also show absolute value and ratio if nonzero
-            if (tB - tA !== 0) {
-                for (let v = 0; v < state.numVariables; v++) {
-                    const delta = dB.values[v] - dA.values[v];
-                    const deltaT = tB - tA;
-                    const rate = delta / deltaT;
-                    html += `<div class="dlab-diff-row"><span class="dlab-diff-label">Δ${state.variables[v].name}/Δt:</span> <span class="dlab-diff-value">${rate.toFixed(4)}</span></div>`;
-                }
+                const name = _escHtml(state.variables[v].name);
+                html += `<br><div class="didactic-formula">Δ${name} = ${dB.values[v].toFixed(4)} − ${dA.values[v].toFixed(4)} = <b>${delta.toFixed(4)}</b></div>`;
             }
             html += `</div>`;
-
+            if (dt !== 0) {
+                html += `<div class="didactic-section">
+                    <div style="font-weight:700; font-size:0.72rem; color:#1565c0; margin-bottom:4px;">Tasa de cambio (Δy/Δt)</div>`;
+                for (let v = 0; v < state.numVariables; v++) {
+                    const delta = dB.values[v] - dA.values[v];
+                    const rate = delta / dt;
+                    const name = _escHtml(state.variables[v].name);
+                    html += `<div class="didactic-formula">Δ${name} / Δt = ${delta.toFixed(4)} / ${dt.toFixed(4)} = <b>${rate.toFixed(4)}</b></div><br>`;
+                }
+                html += `<div class="didactic-explain">La tasa Δy/Δt es la <b>pendiente promedio</b> de la curva entre A y B (aproximación de la derivada).</div></div>`;
+            }
+            html += `</div>`;
             container.innerHTML = html;
         }
 
