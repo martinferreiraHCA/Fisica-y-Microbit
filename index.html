@@ -18969,6 +18969,13 @@ bluetooth.startIOPinService()</pre>
           // pulsa "● Iniciar captura". Si quedó isCapturing=true de una
           // sesión anterior (cerró y abrió el panel sin pausar), reanudamos.
           if (this.isCapturing) this._startPolling();
+          // Si es la primera apertura de la sesión y hay autosave con datos
+          // medidos, ofrecemos restaurar. Solo una vez por carga de página
+          // para no marear al usuario que cierra/abre el panel varias veces.
+          if (!this._restorePromptShown) {
+            this._restorePromptShown = true;
+            this._checkAutosaveOnOpen();
+          }
         }
         close() {
           this.panel.classList.remove('open');
@@ -19003,6 +19010,20 @@ bluetooth.startIOPinService()</pre>
               <button class="mapeo-btn" id="mp-mc">Código MakeCode</button>
               <div class="mapeo-info" id="mp-conn"></div>
             </div>
+
+            <div class="section">
+              <div class="section-title">Sesiones</div>
+              <button class="mapeo-btn" id="mp-sess-save">Guardar como…</button>
+              <select id="mp-sess-list" style="margin-top:6px;"></select>
+              <div style="display:flex; gap:6px; margin-top:6px;">
+                <button class="mapeo-btn" id="mp-sess-load"   style="flex:1;">Cargar</button>
+                <button class="mapeo-btn" id="mp-sess-rename" style="flex:1;">Renombrar</button>
+                <button class="mapeo-btn danger" id="mp-sess-delete" style="flex:1;">Eliminar</button>
+              </div>
+              <div class="mapeo-info" id="mp-sess-info">
+                Autosave activo: tu trabajo se guarda solo. Al cerrar y abrir MAPEO, podés restaurar lo último.
+              </div>
+            </div>
           `;
           const $ = (id) => this.sidebar.querySelector('#' + id);
           this._inputs = { w:$('mp-w'), h:$('mp-h'), sx:$('mp-sx'), sy:$('mp-sy'), shape:$('mp-shape') };
@@ -19026,7 +19047,12 @@ bluetooth.startIOPinService()</pre>
             else                  this._stopPolling();
           });
           $('mp-erase').addEventListener('click', () => {
-            if (this.activePoint) { this.activePoint.value = null; this._updateInfo(); this._draw(); }
+            if (this.activePoint) {
+              this.activePoint.value = null;
+              this._updateInfo();
+              this._draw();
+              this._scheduleAutosave();
+            }
           });
           $('mp-deselect').addEventListener('click', () => {
             this.activePoint = null; this._draw();
@@ -19067,6 +19093,25 @@ bluetooth.startIOPinService()</pre>
           // para detectar cambios de transporte iniciados desde la toolbar.
           this._connTimer = setInterval(this._refreshConnIndicator, 1000);
 
+          // Binds de la sección Sesiones
+          $('mp-sess-save').addEventListener('click', () => this._saveAsNamed());
+          $('mp-sess-load').addEventListener('click', () => {
+            const name = $('mp-sess-list').value;
+            if (!name) { this._toast('Elegí una sesión primero'); return; }
+            this._loadNamed(name);
+          });
+          $('mp-sess-rename').addEventListener('click', () => {
+            const name = $('mp-sess-list').value;
+            if (!name) { this._toast('Elegí una sesión primero'); return; }
+            this._renameNamed(name);
+          });
+          $('mp-sess-delete').addEventListener('click', () => {
+            const name = $('mp-sess-list').value;
+            if (!name) { this._toast('Elegí una sesión primero'); return; }
+            this._deleteNamed(name);
+          });
+          this._refreshSessionList();
+
           this._regenerateGrid();
         }
 
@@ -19087,6 +19132,7 @@ bluetooth.startIOPinService()</pre>
           this.activePoint = null;
           this._updateInfo();
           this._draw();
+          this._scheduleAutosave();
         }
 
         // Cursor: id del último dato consumido. null = nada consumido todavía.
@@ -19164,6 +19210,7 @@ bluetooth.startIOPinService()</pre>
           // El punto activo NO cambia. El usuario decide el siguiente con un click.
           this._updateInfo();
           this._draw();
+          this._scheduleAutosave();
         }
 
         _toast(msg) {
@@ -19264,11 +19311,247 @@ bluetooth.startIOPinService()</pre>
           this._consumeDataPoint(dp);
         }
 
+        // ===== Persistencia =====
+        static AUTOSAVE_KEY = 'fisicabit_mapeo_autosave';
+        static SESSION_PREFIX = 'fisicabit_mapeo_session__';
+        static SCHEMA_VERSION = 1;
+        static AUTOSAVE_DEBOUNCE_MS = 1000;
+
+        _serializeGrid() {
+          if (!this.grid) return null;
+          // Versionado para futuras migraciones. NO incluimos activePoint ni
+          // isCapturing — son estado de sesión, no de grilla.
+          return {
+            schema: MapeoController.SCHEMA_VERSION,
+            savedAt: Date.now(),
+            widthCm: this.grid.widthCm,
+            heightCm: this.grid.heightCm,
+            stepXCm: this.grid.stepXCm,
+            stepYCm: this.grid.stepYCm,
+            nx: this.grid.nx,
+            ny: this.grid.ny,
+            // Solo persistimos el array de valores, no el de objetos completos
+            // (las coordenadas son redundantes — se reconstruyen del paso/dim).
+            // Esto reduce el blob ~3x.
+            values: this.grid.points.map(p => p.value)
+          };
+        }
+
+        _deserializeGrid(blob) {
+          if (!blob || typeof blob !== 'object') return false;
+          if (blob.schema !== MapeoController.SCHEMA_VERSION) {
+            // Migración futura iría acá. Por ahora rechazamos schemas distintos.
+            this._toast('Sesión de versión incompatible');
+            return false;
+          }
+          // Reconstruimos los inputs y regeneramos la grilla, después llenamos valores.
+          this._inputs.w.value  = blob.widthCm;
+          this._inputs.h.value  = blob.heightCm;
+          this._inputs.sx.value = blob.stepXCm;
+          this._inputs.sy.value = blob.stepYCm;
+          this._regenerateGrid(); // crea this.grid.points con value=null
+          if (Array.isArray(blob.values) && blob.values.length === this.grid.points.length) {
+            for (let i = 0; i < blob.values.length; i++) {
+              const v = blob.values[i];
+              this.grid.points[i].value = (typeof v === 'number' && Number.isFinite(v)) ? v : null;
+            }
+          }
+          this.activePoint = null;
+          this._updateInfo();
+          this._draw();
+          return true;
+        }
+
+        // ===== Autosave =====
+
+        _scheduleAutosave() {
+          // Debounce: si llega otro cambio antes del timeout, lo cancelamos.
+          if (this._autosaveTimer) clearTimeout(this._autosaveTimer);
+          this._autosaveTimer = setTimeout(() => {
+            this._autosaveNow();
+            this._autosaveTimer = null;
+          }, MapeoController.AUTOSAVE_DEBOUNCE_MS);
+        }
+
+        _autosaveNow() {
+          const blob = this._serializeGrid();
+          if (!blob) return;
+          try {
+            localStorage.setItem(MapeoController.AUTOSAVE_KEY, JSON.stringify(blob));
+          } catch (e) {
+            // QuotaExceededError u otro: no rompemos la captura, solo avisamos.
+            if (e && e.name === 'QuotaExceededError') {
+              this._toast('Sin espacio para autosave. Borrá sesiones viejas.');
+            }
+            // Cualquier otro error lo silenciamos: el autosave no es crítico.
+          }
+        }
+
+        _checkAutosaveOnOpen() {
+          let blob;
+          try {
+            const raw = localStorage.getItem(MapeoController.AUTOSAVE_KEY);
+            if (!raw) return;
+            blob = JSON.parse(raw);
+          } catch { return; }
+          if (!blob || blob.schema !== MapeoController.SCHEMA_VERSION) return;
+          // ¿Tiene datos medidos? Si no, no vale la pena ofrecer restaurar.
+          const measured = (blob.values || []).filter(v => v !== null).length;
+          if (measured === 0) return;
+          // Edad del autosave
+          const ageMin = Math.floor((Date.now() - (blob.savedAt || 0)) / 60000);
+          const ageStr = ageMin < 1 ? 'hace menos de un minuto'
+                       : ageMin < 60 ? `hace ${ageMin} min`
+                       : ageMin < 1440 ? `hace ${Math.floor(ageMin/60)} h`
+                       : `hace ${Math.floor(ageMin/1440)} días`;
+          // Toast con dos botones (restaurar / descartar)
+          this._showRestorePrompt(measured, ageStr, blob);
+        }
+
+        _showRestorePrompt(nMeasured, ageStr, blob) {
+          // Usamos un toast extendido con botones, no el _toast simple.
+          let el = document.getElementById('mapeo-restore-prompt');
+          if (el) el.remove();
+          el = document.createElement('div');
+          el.id = 'mapeo-restore-prompt';
+          el.style.cssText = `
+            position:absolute; bottom:24px; left:50%; transform:translateX(-50%);
+            background:#000; color:#fff; padding:14px 18px;
+            border:1px solid #444; font-size:12px; line-height:1.5;
+            max-width:480px; z-index:20;
+          `;
+          el.innerHTML = `
+            <div style="margin-bottom:10px;">
+              Hay un autosave con <strong style="color:#fff;">${nMeasured}</strong> punto(s) medido(s) (${ageStr}).
+            </div>
+            <button class="mapeo-btn" id="mapeo-restore-yes" style="display:inline-block;width:auto;margin-right:8px;">Restaurar</button>
+            <button class="mapeo-btn" id="mapeo-restore-no"  style="display:inline-block;width:auto;">Descartar</button>
+          `;
+          this.panel.querySelector('.mapeo-stage').appendChild(el);
+
+          const cleanup = () => { el.remove(); clearTimeout(autoCloseT); };
+          const autoCloseT = setTimeout(cleanup, 8000);
+          el.querySelector('#mapeo-restore-yes').addEventListener('click', () => {
+            cleanup();
+            if (this._deserializeGrid(blob)) {
+              this._toast('Autosave restaurado');
+            }
+          });
+          el.querySelector('#mapeo-restore-no').addEventListener('click', () => {
+            cleanup();
+            try { localStorage.removeItem(MapeoController.AUTOSAVE_KEY); } catch {}
+          });
+        }
+
+        // ===== Sesiones nombradas =====
+
+        _listSavedSessions() {
+          const out = [];
+          try {
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (k && k.startsWith(MapeoController.SESSION_PREFIX)) {
+                out.push(k.slice(MapeoController.SESSION_PREFIX.length));
+              }
+            }
+          } catch {}
+          out.sort();
+          return out;
+        }
+
+        _saveAsNamed() {
+          const proposed = (this._lastSessionName || '').trim()
+                        || `Sesión ${new Date().toLocaleString('es-UY', { dateStyle:'short', timeStyle:'short' })}`;
+          const name = (window.prompt('Nombre de la sesión:', proposed) || '').trim();
+          if (!name) return;
+          if (name.length > 80) { this._toast('Nombre demasiado largo (máx 80)'); return; }
+          const key = MapeoController.SESSION_PREFIX + name;
+          // Si ya existe, confirmar sobrescritura
+          if (localStorage.getItem(key) !== null) {
+            if (!window.confirm(`Ya existe "${name}". ¿Sobrescribir?`)) return;
+          }
+          const blob = this._serializeGrid();
+          if (!blob) { this._toast('Nada que guardar'); return; }
+          try {
+            localStorage.setItem(key, JSON.stringify(blob));
+            this._lastSessionName = name;
+            this._refreshSessionList();
+            this._toast(`Guardado como "${name}"`);
+          } catch (e) {
+            if (e && e.name === 'QuotaExceededError') {
+              this._toast('Sin espacio. Borrá sesiones viejas.');
+            } else {
+              this._toast('Error al guardar');
+            }
+          }
+        }
+
+        _loadNamed(name) {
+          if (!name) return;
+          const key = MapeoController.SESSION_PREFIX + name;
+          let blob;
+          try {
+            const raw = localStorage.getItem(key);
+            if (!raw) { this._toast(`No existe "${name}"`); return; }
+            blob = JSON.parse(raw);
+          } catch { this._toast('Error al leer sesión'); return; }
+          if (this._deserializeGrid(blob)) {
+            this._lastSessionName = name;
+            this._toast(`Cargada "${name}"`);
+          }
+        }
+
+        _renameNamed(oldName) {
+          if (!oldName) return;
+          const newName = (window.prompt(`Nuevo nombre para "${oldName}":`, oldName) || '').trim();
+          if (!newName || newName === oldName) return;
+          if (newName.length > 80) { this._toast('Nombre demasiado largo (máx 80)'); return; }
+          const oldKey = MapeoController.SESSION_PREFIX + oldName;
+          const newKey = MapeoController.SESSION_PREFIX + newName;
+          try {
+            const raw = localStorage.getItem(oldKey);
+            if (raw === null) { this._toast(`No existe "${oldName}"`); return; }
+            if (localStorage.getItem(newKey) !== null) {
+              if (!window.confirm(`Ya existe "${newName}". ¿Sobrescribir?`)) return;
+            }
+            localStorage.setItem(newKey, raw);
+            localStorage.removeItem(oldKey);
+            if (this._lastSessionName === oldName) this._lastSessionName = newName;
+            this._refreshSessionList();
+            this._toast(`Renombrada a "${newName}"`);
+          } catch { this._toast('Error al renombrar'); }
+        }
+
+        _deleteNamed(name) {
+          if (!name) return;
+          if (!window.confirm(`¿Eliminar la sesión "${name}"?`)) return;
+          try {
+            localStorage.removeItem(MapeoController.SESSION_PREFIX + name);
+            if (this._lastSessionName === name) this._lastSessionName = null;
+            this._refreshSessionList();
+            this._toast(`Eliminada "${name}"`);
+          } catch { this._toast('Error al eliminar'); }
+        }
+
+        _refreshSessionList() {
+          const sel = this.sidebar.querySelector('#mp-sess-list');
+          if (!sel) return;
+          const names = this._listSavedSessions();
+          const prev = sel.value;
+          sel.innerHTML = names.length === 0
+            ? '<option value="">— sin sesiones guardadas —</option>'
+            : '<option value="">— elegir sesión —</option>' +
+              names.map(n => `<option value="${n.replace(/"/g, '&quot;')}">${n}</option>`).join('');
+          // Restaurar selección si aún existe
+          if (prev && names.includes(prev)) sel.value = prev;
+        }
+
         _clearValues() {
           if (!this.grid) return;
           this.grid.points.forEach(p => p.value = null);
           this._updateInfo();
           this._draw();
+          this._scheduleAutosave();
         }
 
         _updateInfo() {
