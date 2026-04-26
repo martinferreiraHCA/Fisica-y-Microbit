@@ -18869,7 +18869,66 @@ bluetooth.startIOPinService()</pre>
         }
         open()  { this.panel.classList.add('open'); this._resize(); this._draw(); this._updateStatus(); }
         close() { this.panel.classList.remove('open'); }
-        _buildUI()      { /* TODO PROMPT 2 */ }
+        _buildUI() {
+          this.sidebar.innerHTML = `
+            <h2>MAPEO</h2>
+
+            <div class="section">
+              <div class="section-title">Dimensiones</div>
+              <label>Ancho (cm)<input type="number" id="mp-w"  value="14" min="1" max="200" step="0.1"></label>
+              <label>Alto (cm) <input type="number" id="mp-h"  value="10" min="1" max="200" step="0.1"></label>
+              <label>Paso X (cm)<input type="number" id="mp-sx" value="1"  min="0.1" step="0.1"></label>
+              <label>Paso Y (cm)<input type="number" id="mp-sy" value="1"  min="0.1" step="0.1"></label>
+              <label>Forma
+                <select id="mp-shape"><option value="rect">Rectangular</option></select>
+              </label>
+              <button class="mapeo-btn" id="mp-gen">Generar grilla</button>
+              <button class="mapeo-btn danger" id="mp-clear">Limpiar valores</button>
+              <div class="mapeo-info" id="mp-info"></div>
+            </div>
+          `;
+          const $ = (id) => this.sidebar.querySelector('#' + id);
+          this._inputs = { w:$('mp-w'), h:$('mp-h'), sx:$('mp-sx'), sy:$('mp-sy'), shape:$('mp-shape') };
+          this._info = $('mp-info');
+          $('mp-gen').addEventListener('click',   () => this._regenerateGrid());
+          $('mp-clear').addEventListener('click', () => this._clearValues());
+          this._regenerateGrid();
+        }
+
+        _regenerateGrid() {
+          const w  = parseFloat(this._inputs.w.value);
+          const h  = parseFloat(this._inputs.h.value);
+          const sx = parseFloat(this._inputs.sx.value);
+          const sy = parseFloat(this._inputs.sy.value);
+          const nx = Math.floor(w / sx) + 1;
+          const ny = Math.floor(h / sy) + 1;
+          const points = [];
+          for (let j = 0; j < ny; j++) {
+            for (let i = 0; i < nx; i++) {
+              points.push({ x: i*sx, y: j*sy, value: null });
+            }
+          }
+          this.grid = { widthCm:w, heightCm:h, stepXCm:sx, stepYCm:sy, nx, ny, points };
+          this.activePoint = null;
+          this._updateInfo();
+          this._draw();
+        }
+
+        _clearValues() {
+          if (!this.grid) return;
+          this.grid.points.forEach(p => p.value = null);
+          this._updateInfo();
+          this._draw();
+        }
+
+        _updateInfo() {
+          if (!this.grid) return;
+          const total = this.grid.points.length;
+          const done  = this.grid.points.filter(p => p.value !== null).length;
+          this._info.innerHTML =
+            `Puntos: <strong style="color:#fff;">${this.grid.nx} × ${this.grid.ny} = ${total}</strong><br>` +
+            `Medidos: <strong style="color:#fff;">${done}</strong>`;
+        }
         _draw()         { /* TODO PROMPT 3 */ }
         _updateStatus() { /* TODO PROMPT 4 */ }
         _resize() {
