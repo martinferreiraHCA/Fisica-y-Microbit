@@ -10644,7 +10644,12 @@ bluetooth.startIOPinService()</pre>
                     const lines = this.btBuffer.split('\n');
                     this.btBuffer = lines.pop();
 
-                    if (!state.isCollecting) return;
+                    // MAPEO puede capturar aunque la captura PRINCIPAL esté
+                    // apagada. Parseamos las líneas para entregárselas, pero
+                    // más abajo NO contaminamos state.rawData ni los buffers
+                    // de la gráfica principal cuando solo MAPEO está activo.
+                    const _mapeoActive = !!(window.__mapeoCtrl && window.__mapeoCtrl.isCapturing && window.__mapeoCtrl.panel && window.__mapeoCtrl.panel.classList.contains('open'));
+                    if (!state.isCollecting && !_mapeoActive) return;
 
                     const numVars = state.numVariables;
                     const batchTime = Date.now();
@@ -10737,14 +10742,25 @@ bluetooth.startIOPinService()</pre>
                             onDataPoint(dataPoint);
                         }
 
-                        state.rawData.push(dataPoint);
-                        pendingChartPoints.push(dataPoint);
-                        sampleTimestamps.push(batchTime);
-                        this.stats.dataPoints++;
+                        // Push a state.rawData / buffers de gráfica solo si la
+                        // captura PRINCIPAL está activa. Si solo MAPEO captura
+                        // (modo C), no contaminamos la gráfica ni dispara fotos.
+                        if (state.isCollecting) {
+                            state.rawData.push(dataPoint);
+                            pendingChartPoints.push(dataPoint);
+                            sampleTimestamps.push(batchTime);
+                            this.stats.dataPoints++;
 
-                        // Photo on data capture
-                        if (photoCaptureState.mode === 'onData' && state.cameraActive) {
-                            capturePhoto();
+                            // Photo on data capture
+                            if (photoCaptureState.mode === 'onData' && state.cameraActive) {
+                                capturePhoto();
+                            }
+                        }
+
+                        // Entrega directa a MAPEO. Reemplaza al polling cuando
+                        // ambos paths estarían activos (cursor evita duplicar).
+                        if (_mapeoActive) {
+                            window.__mapeoCtrl.onLiveData(dataPoint);
                         }
 
                         if (this.stats.dataPoints <= 5 || this.stats.dataPoints % 100 === 0) {
@@ -11913,8 +11929,13 @@ bluetooth.startIOPinService()</pre>
                     const lines = buffer.split('\n');
                     buffer = lines.pop();
 
-                    // Modo drain: leer y descartar para vaciar buffer serial
-                    if (!state.isCollecting) continue;
+                    // MAPEO puede capturar aunque la captura PRINCIPAL esté
+                    // apagada. Parseamos las líneas para entregárselas, pero
+                    // más abajo NO contaminamos state.rawData ni los buffers
+                    // de la gráfica principal cuando solo MAPEO está activo.
+                    const _mapeoActive = !!(window.__mapeoCtrl && window.__mapeoCtrl.isCapturing && window.__mapeoCtrl.panel && window.__mapeoCtrl.panel.classList.contains('open'));
+                    // Modo drain: si nadie captura, leer y descartar para vaciar buffer serial
+                    if (!state.isCollecting && !_mapeoActive) continue;
 
                     // Leer config actual por batch (permite cambios en caliente)
                     const numVars = state.numVariables;
@@ -12011,13 +12032,24 @@ bluetooth.startIOPinService()</pre>
                             id: 'd' + (++_dataPointCounter)
                         };
 
-                        state.rawData.push(dataPoint);
-                        pendingChartPoints.push(dataPoint);
-                        sampleTimestamps.push(batchTime);
+                        // Push a state.rawData / buffers de gráfica solo si la
+                        // captura PRINCIPAL está activa. Si solo MAPEO captura
+                        // (modo C), no contaminamos la gráfica ni dispara fotos.
+                        if (state.isCollecting) {
+                            state.rawData.push(dataPoint);
+                            pendingChartPoints.push(dataPoint);
+                            sampleTimestamps.push(batchTime);
 
-                        // Photo on data capture (serial)
-                        if (photoCaptureState.mode === 'onData' && state.cameraActive) {
-                            capturePhoto();
+                            // Photo on data capture (serial)
+                            if (photoCaptureState.mode === 'onData' && state.cameraActive) {
+                                capturePhoto();
+                            }
+                        }
+
+                        // Entrega directa a MAPEO. Reemplaza al polling cuando
+                        // ambos paths estarían activos (cursor evita duplicar).
+                        if (_mapeoActive) {
+                            window.__mapeoCtrl.onLiveData(dataPoint);
                         }
                     }
                     _lastBatchWallTime = batchTime;
@@ -19215,6 +19247,21 @@ bluetooth.startIOPinService()</pre>
           const sensors = this._makecodeSensors();
           document.getElementById('mapeo-mc-code').textContent = this._makecodeCode(this._mcSelected, this._mcTransport);
           document.getElementById('mapeo-mc-note').textContent = sensors[this._mcSelected].note;
+        }
+
+        // Entrega directa desde los handlers BLE/serial cuando solo MAPEO
+        // está capturando (state.isCollecting=false). Llamado desde los gates
+        // modificados en líneas ~10647 (BLE) y ~11917 (serial).
+        // Actualiza el cursor para evitar doble procesamiento si en paralelo
+        // estuviera corriendo el polling (cuando isCollecting también es true,
+        // ambos paths se disparan; el cursor garantiza single-delivery).
+        onLiveData(dp) {
+          if (!this.panel.classList.contains('open')) return;
+          if (!this.isCapturing) return;
+          if (!dp || typeof dp.id !== 'string') return;
+          if (dp.id === this._lastSeenId) return;
+          this._lastSeenId = dp.id;
+          this._consumeDataPoint(dp);
         }
 
         _clearValues() {
