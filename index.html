@@ -19024,6 +19024,20 @@ bluetooth.startIOPinService()</pre>
                 Autosave activo: tu trabajo se guarda solo. Al cerrar y abrir MAPEO, podés restaurar lo último.
               </div>
             </div>
+
+            <div class="section">
+              <div class="section-title">Datos</div>
+              <button class="mapeo-btn" id="mp-export-matrix">Exportar matriz CSV</button>
+              <button class="mapeo-btn" id="mp-export-list">Exportar lista CSV</button>
+              <button class="mapeo-btn" id="mp-import-csv">Importar CSV</button>
+              <input type="file" id="mp-import-file" accept=".csv,.txt" style="display:none;">
+              <div class="mapeo-info" style="font-size:10px; line-height:1.4;">
+                La matriz es compatible con load() de MATLAB.
+                La lista (x,y,valor) abre directo en Excel.
+                El import autodetecta el formato.
+                Para pandas: pd.read_csv(file, comment='%').
+              </div>
+            </div>
           `;
           const $ = (id) => this.sidebar.querySelector('#' + id);
           this._inputs = { w:$('mp-w'), h:$('mp-h'), sx:$('mp-sx'), sy:$('mp-sy'), shape:$('mp-shape') };
@@ -19111,6 +19125,16 @@ bluetooth.startIOPinService()</pre>
             this._deleteNamed(name);
           });
           this._refreshSessionList();
+
+          // Binds de la sección Datos
+          $('mp-export-matrix').addEventListener('click', () => this._exportMatrixCSV());
+          $('mp-export-list').addEventListener('click',   () => this._exportListCSV());
+          $('mp-import-csv').addEventListener('click', () => $('mp-import-file').click());
+          $('mp-import-file').addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (file) this._importCSV(file);
+            e.target.value = ''; // reset para poder re-importar el mismo archivo
+          });
 
           this._regenerateGrid();
         }
@@ -19309,6 +19333,209 @@ bluetooth.startIOPinService()</pre>
           if (dp.id === this._lastSeenId) return;
           this._lastSeenId = dp.id;
           this._consumeDataPoint(dp);
+        }
+
+        // ===== Export / Import CSV =====
+
+        _exportMatrixCSV() {
+          if (!this.grid) { this._toast('Generá una grilla primero'); return; }
+          const { widthCm, heightCm, stepXCm, stepYCm, nx, ny, points } = this.grid;
+          // Prefijo "%": MATLAB load() acepta solo este caracter como comentario
+          // (no acepta "#"). Octave acepta ambos. Para pandas: comment='%'.
+          const lines = [
+            '% fisicabit-mapeo v1',
+            `% widthCm,${widthCm}`,
+            `% heightCm,${heightCm}`,
+            `% stepXCm,${stepXCm}`,
+            `% stepYCm,${stepYCm}`,
+            `% nx,${nx}`,
+            `% ny,${ny}`,
+            '% fila 0 = y minimo (abajo); columna 0 = x minimo (izquierda); NaN = sin medir'
+          ];
+          for (let j = 0; j < ny; j++) {
+            const row = [];
+            for (let i = 0; i < nx; i++) {
+              const v = points[j * nx + i].value;
+              row.push(v === null ? 'NaN' : (+v).toFixed(6));
+            }
+            lines.push(row.join(','));
+          }
+          this._downloadFile(lines.join('\n'), 'matriz');
+        }
+
+        _exportListCSV() {
+          if (!this.grid) { this._toast('Generá una grilla primero'); return; }
+          const { widthCm, heightCm, stepXCm, stepYCm, points } = this.grid;
+          const lines = [
+            '% fisicabit-mapeo v1 (lista)',
+            `% widthCm,${widthCm}`,
+            `% heightCm,${heightCm}`,
+            `% stepXCm,${stepXCm}`,
+            `% stepYCm,${stepYCm}`,
+            'x_cm,y_cm,valor'
+          ];
+          // Solo puntos medidos. Si querés los NaN incluidos, exportá la matriz.
+          points.forEach(p => {
+            if (p.value !== null) {
+              lines.push(`${p.x.toFixed(3)},${p.y.toFixed(3)},${(+p.value).toFixed(6)}`);
+            }
+          });
+          this._downloadFile(lines.join('\n'), 'lista');
+        }
+
+        _downloadFile(content, suffix) {
+          try {
+            const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            // Timestamp local YYYYMMDD-HHMMSS (legible, ordenable, sin separadores raros).
+            const d = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            const ts = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+            a.href = url;
+            a.download = `mapeo_${suffix}_${ts}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            this._toast(`Exportado mapeo_${suffix}_${ts}.csv`);
+          } catch (e) {
+            this._toast('Error al exportar');
+          }
+        }
+
+        _importCSV(file) {
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onerror = () => this._toast('Error al leer el archivo');
+          reader.onload = () => {
+            try {
+              const text = String(reader.result || '');
+              // Parseo en dos fases: metadatos (líneas % o #) y datos (resto).
+              // Aceptamos ambos prefijos para compatibilidad backward (archivos
+              // viejos con # o editados a mano).
+              const meta = {};
+              const dataLines = [];
+              text.split(/\r?\n/).forEach(line => {
+                if (!line.trim()) return;
+                const m = line.match(/^[%#]\s*(\w+)\s*,\s*(.+?)\s*$/);
+                if (m) {
+                  meta[m[1]] = m[2];
+                } else if (!line.startsWith('%') && !line.startsWith('#')) {
+                  dataLines.push(line);
+                }
+              });
+              if (dataLines.length === 0) throw new Error('Archivo vacío o sin datos');
+              // Detectar formato: si la primera línea de datos tiene letras
+              // (encabezado o nombres de columna), es formato lista.
+              const firstDataLine = dataLines[0];
+              const isList = /[a-zA-Z_]/.test(firstDataLine);
+              if (isList) this._importListCSV(meta, dataLines);
+              else        this._importMatrixCSV(meta, dataLines);
+            } catch (e) {
+              this._toast('Error al importar: ' + e.message);
+            }
+          };
+          reader.readAsText(file);
+        }
+
+        _importMatrixCSV(meta, dataLines) {
+          const widthCm  = parseFloat(meta.widthCm);
+          const heightCm = parseFloat(meta.heightCm);
+          const stepXCm  = parseFloat(meta.stepXCm);
+          const stepYCm  = parseFloat(meta.stepYCm);
+          const nx       = parseInt(meta.nx, 10);
+          const ny       = parseInt(meta.ny, 10);
+          if (![widthCm, heightCm, stepXCm, stepYCm, nx, ny].every(Number.isFinite)) {
+            throw new Error('Metadatos de grilla incompletos en el header');
+          }
+          if (dataLines.length !== ny) {
+            throw new Error(`Esperaba ${ny} filas, encontré ${dataLines.length}`);
+          }
+          // Reconstruir grilla en limpio
+          this._inputs.w.value  = widthCm;
+          this._inputs.h.value  = heightCm;
+          this._inputs.sx.value = stepXCm;
+          this._inputs.sy.value = stepYCm;
+          this._regenerateGrid();
+          // Sanity check post-regenerate
+          if (this.grid.nx !== nx || this.grid.ny !== ny) {
+            throw new Error('La grilla regenerada no coincide con la importada');
+          }
+          // Llenar valores
+          let filled = 0;
+          dataLines.forEach((line, j) => {
+            const cells = line.split(',');
+            if (cells.length !== nx) {
+              throw new Error(`Fila ${j} tiene ${cells.length} columnas, esperaba ${nx}`);
+            }
+            cells.forEach((cell, i) => {
+              const trimmed = cell.trim();
+              const v = parseFloat(trimmed);
+              const point = this.grid.points[j * nx + i];
+              if (Number.isFinite(v) && trimmed.toLowerCase() !== 'nan') {
+                point.value = v;
+                filled++;
+              } else {
+                point.value = null;
+              }
+            });
+          });
+          this.activePoint = null;
+          this._updateInfo();
+          this._draw();
+          this._scheduleAutosave();
+          this._toast(`Importados ${filled} puntos (matriz ${nx}×${ny})`);
+        }
+
+        _importListCSV(meta, dataLines) {
+          const widthCm  = parseFloat(meta.widthCm);
+          const heightCm = parseFloat(meta.heightCm);
+          const stepXCm  = parseFloat(meta.stepXCm);
+          const stepYCm  = parseFloat(meta.stepYCm);
+          if (![widthCm, heightCm, stepXCm, stepYCm].every(Number.isFinite)) {
+            throw new Error('Metadatos de grilla incompletos en el header');
+          }
+          // Detectar línea de encabezado (la primera con letras)
+          let headerIdx = -1;
+          for (let i = 0; i < dataLines.length; i++) {
+            if (/[a-zA-Z_]/.test(dataLines[i])) { headerIdx = i; break; }
+          }
+          const valueLines = (headerIdx >= 0)
+            ? dataLines.slice(headerIdx + 1)
+            : dataLines;
+          // Reconstruir grilla
+          this._inputs.w.value  = widthCm;
+          this._inputs.h.value  = heightCm;
+          this._inputs.sx.value = stepXCm;
+          this._inputs.sy.value = stepYCm;
+          this._regenerateGrid();
+          const { nx, ny, stepXCm: sx, stepYCm: sy, points } = this.grid;
+          // Llenar valores buscando el punto de la grilla más cercano
+          let filled = 0;
+          let skipped = 0;
+          valueLines.forEach(line => {
+            const parts = line.split(',');
+            if (parts.length < 3) { skipped++; return; }
+            const x = parseFloat(parts[0]);
+            const y = parseFloat(parts[1]);
+            const v = parseFloat(parts[2]);
+            if (![x, y, v].every(Number.isFinite)) { skipped++; return; }
+            // Mapear (x, y) en cm al índice (i, j) de la grilla, snap al más cercano.
+            const i = Math.round(x / sx);
+            const j = Math.round(y / sy);
+            if (i < 0 || i >= nx || j < 0 || j >= ny) { skipped++; return; }
+            points[j * nx + i].value = v;
+            filled++;
+          });
+          this.activePoint = null;
+          this._updateInfo();
+          this._draw();
+          this._scheduleAutosave();
+          const msg = skipped > 0
+            ? `Importados ${filled} puntos (${skipped} descartados)`
+            : `Importados ${filled} puntos`;
+          this._toast(msg);
         }
 
         // ===== Persistencia =====
