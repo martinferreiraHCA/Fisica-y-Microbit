@@ -3490,6 +3490,99 @@
                 padding: 4px 8px;
             }
         }
+
+        /* ===== MAPEO STYLES START ===== */
+        .mapeo-panel {
+          display:none; position:fixed; inset:0; z-index:9000;
+          background:#1a1d23; color:#e0e0e0;
+          font-family:-apple-system,'Segoe UI',sans-serif;
+        }
+        .mapeo-panel.open { display:flex; }
+
+        .mapeo-sidebar {
+          width:280px; background:#23272e;
+          border-right:1px solid #2b303b;
+          padding:16px; overflow-y:auto;
+        }
+        .mapeo-sidebar h2 {
+          margin:0 0 14px 0; font-size:12px; font-weight:700;
+          letter-spacing:2px; color:#fff;
+        }
+        .mapeo-sidebar .section {
+          border-top:1px solid #2b303b;
+          padding:12px 0; margin-top:4px;
+        }
+        .mapeo-sidebar .section:first-of-type { border-top:none; padding-top:0; }
+        .mapeo-sidebar .section-title {
+          font-size:10px; font-weight:600; letter-spacing:1.5px;
+          color:#9e9e9e; text-transform:uppercase; margin-bottom:8px;
+        }
+
+        .mapeo-sidebar label {
+          display:block; font-size:11px; color:#9e9e9e;
+          margin-bottom:8px;
+        }
+        .mapeo-sidebar input,
+        .mapeo-sidebar select {
+          display:block; width:100%; margin-top:4px; padding:6px 8px;
+          background:#1a1d23; color:#e0e0e0;
+          border:1px solid #444; border-radius:0;
+          font-family:inherit; font-size:12px;
+        }
+        .mapeo-sidebar input:focus,
+        .mapeo-sidebar select:focus { outline:none; border-color:#fff; }
+
+        .mapeo-btn {
+          display:block; width:100%; padding:8px 10px; margin-top:6px;
+          background:#000; color:#fff; border:1px solid #444; border-radius:0;
+          font-size:11px; font-weight:600; letter-spacing:1px;
+          text-transform:uppercase; cursor:pointer; font-family:inherit;
+        }
+        .mapeo-btn:hover { background:#1a1d23; }
+        .mapeo-btn.active { background:#fff; color:#000; border-color:#fff; }
+        .mapeo-btn.danger { color:#ef5350; border-color:#ef5350; }
+        .mapeo-btn.danger:hover { background:#ef5350; color:#000; }
+        .mapeo-btn.recording { background:#ef5350; color:#000; border-color:#ef5350; }
+
+        .mapeo-info {
+          font-size:11px; color:#9e9e9e; padding:8px;
+          background:#1a1d23; border:1px solid #2b303b;
+          margin-top:8px; line-height:1.5;
+        }
+
+        .mapeo-stage { flex:1; position:relative; background:#1a1d23; }
+        .mapeo-canvas { width:100%; height:100%; display:block; cursor:crosshair; }
+
+        .mapeo-close {
+          position:absolute; top:12px; right:12px;
+          background:#000; color:#fff; border:1px solid #444;
+          padding:6px 14px; cursor:pointer; font-size:11px;
+          letter-spacing:1px; font-weight:600;
+        }
+        .mapeo-close:hover { background:#1a1d23; }
+
+        .mapeo-status {
+          position:absolute; top:12px; left:12px;
+          display:flex; gap:16px; align-items:center;
+          font-size:11px; font-weight:600; letter-spacing:1px;
+        }
+        .mapeo-status .live {
+          display:inline-flex; align-items:center; gap:6px;
+          color:#ef5350;
+        }
+        .mapeo-status .live::before {
+          content:''; width:8px; height:8px; background:#ef5350;
+          border-radius:50%; animation: mapeo-blink 1s infinite;
+        }
+        @keyframes mapeo-blink { 50% { opacity:0.3; } }
+
+        .mapeo-toast {
+          position:absolute; bottom:24px; left:50%; transform:translateX(-50%);
+          background:#000; color:#fff; padding:10px 18px;
+          border:1px solid #444; font-size:12px; letter-spacing:0.5px;
+          opacity:0; transition:opacity 0.3s; pointer-events:none;
+        }
+        /* ===== MAPEO STYLES END ===== */
     </style>
 </head>
 <body>
@@ -3513,6 +3606,7 @@
         <!-- Mode buttons for desktop -->
         <button id="sensorModeBtn" class="toolbar-btn" style="background: #2e7d32; color: white; border-color: #2e7d32;" onclick="enterSensorMode()">SENSORES</button>
         <button id="desktopLabBtn" class="toolbar-btn" style="background: #1976d2; color: white; border-color: #1976d2;" onclick="enterExperimentMode()">LAB</button>
+        <button id="btn-mapeo" class="toolbar-btn">MAPEO</button>
 
         <!-- Secondary actions: hidden in hamburger on mobile -->
         <span class="toolbar-secondary">
@@ -18747,5 +18841,60 @@ bluetooth.startIOPinService()</pre>
             });
         });
     </script>
+
+    <!-- ===== MAPEO PANEL START ===== -->
+    <div id="mapeo-panel" class="mapeo-panel">
+      <aside class="mapeo-sidebar" id="mapeo-sidebar"></aside>
+      <main class="mapeo-stage">
+        <div class="mapeo-status" id="mapeo-status"></div>
+        <button class="mapeo-close" id="mapeo-close">CERRAR</button>
+        <canvas id="mapeo-canvas" class="mapeo-canvas"></canvas>
+        <div class="mapeo-toast" id="mapeo-toast"></div>
+      </main>
+    </div>
+    <script>
+    /* ===== MAPEO MODULE START ===== */
+    (function(){
+      'use strict';
+      class MapeoController {
+        constructor(panel, canvas, sidebar) {
+          this.panel = panel;
+          this.canvas = canvas;
+          this.sidebar = sidebar;
+          this.ctx = canvas.getContext('2d');
+          this.grid = null;
+          this.activePoint = null;
+          this.isCapturing = false;
+          this._buildUI();
+        }
+        open()  { this.panel.classList.add('open'); this._resize(); this._draw(); this._updateStatus(); }
+        close() { this.panel.classList.remove('open'); }
+        _buildUI()      { /* TODO PROMPT 2 */ }
+        _draw()         { /* TODO PROMPT 3 */ }
+        _updateStatus() { /* TODO PROMPT 4 */ }
+        _resize() {
+          const r = this.canvas.parentElement.getBoundingClientRect();
+          this.canvas.width = r.width; this.canvas.height = r.height;
+        }
+      }
+
+      window.addEventListener('DOMContentLoaded', () => {
+        const panel    = document.getElementById('mapeo-panel');
+        const canvas   = document.getElementById('mapeo-canvas');
+        const sidebar  = document.getElementById('mapeo-sidebar');
+        const btn      = document.getElementById('btn-mapeo');
+        const closeBtn = document.getElementById('mapeo-close');
+        const ctrl = new MapeoController(panel, canvas, sidebar);
+        window.__mapeoCtrl = ctrl;
+        btn.addEventListener('click', () => ctrl.open());
+        closeBtn.addEventListener('click', () => ctrl.close());
+        window.addEventListener('resize', () => {
+          if (panel.classList.contains('open')) { ctrl._resize(); ctrl._draw(); }
+        });
+      });
+    })();
+    /* ===== MAPEO MODULE END ===== */
+    </script>
+    <!-- ===== MAPEO PANEL END ===== -->
 </body>
 </html>
