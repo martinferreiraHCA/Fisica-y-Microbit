@@ -18887,8 +18887,14 @@ bluetooth.startIOPinService()</pre>
           <div class="mapeo-modal-content">
             <h3>CÓDIGO MAKECODE PARA TU MICRO:BIT</h3>
             <div class="mapeo-modal-help">
-              Elegí un sensor, copiá el código en la vista JavaScript de MakeCode y descargá el .hex a tu micro:bit. Al presionar <strong style="color:#fff;">A</strong>, el valor del sensor se envía a MAPEO.
+              Elegí transporte y sensor, copiá el código en la vista JavaScript de MakeCode y descargá el .hex a tu micro:bit. Al presionar <strong style="color:#fff;">A</strong>, el valor del sensor se envía a MAPEO.
             </div>
+            <div style="font-size:10px;font-weight:600;letter-spacing:1.5px;color:#9e9e9e;text-transform:uppercase;margin-bottom:6px;">Transporte</div>
+            <div class="mapeo-mc-sensors">
+              <button class="mapeo-btn active" data-transport="ble">Bluetooth (BLE)</button>
+              <button class="mapeo-btn" data-transport="serial">USB · Serial</button>
+            </div>
+            <div style="font-size:10px;font-weight:600;letter-spacing:1.5px;color:#9e9e9e;text-transform:uppercase;margin-bottom:6px;">Sensor</div>
             <div class="mapeo-mc-sensors">
               <button class="mapeo-btn active" data-sensor="light">Luz</button>
               <button class="mapeo-btn" data-sensor="magnet">Imán</button>
@@ -19145,19 +19151,21 @@ bluetooth.startIOPinService()</pre>
           };
         }
 
-        _makecodeCode(sensorKey) {
+        _makecodeCode(sensorKey, transportKey) {
           const s = this._makecodeSensors()[sensorKey];
-          return [
-            'bluetooth.startUartService()',
-            'basic.showIcon(IconNames.Heart)',
-            'input.onButtonPressed(Button.A, function () {',
-            '    let valor = ' + s.sensor,
-            '    bluetooth.uartWriteLine("" + input.runningTime() + "," + valor)',
-            '    basic.showIcon(IconNames.Yes)',
-            '    basic.pause(200)',
-            '    basic.clearScreen()',
-            '})'
-          ].join('\n');
+          const isSerial = (transportKey === 'serial');
+          const writeLine = isSerial ? 'serial.writeLine' : 'bluetooth.uartWriteLine';
+          const lines = [];
+          if (!isSerial) lines.push('bluetooth.startUartService()');
+          lines.push('basic.showIcon(IconNames.Heart)');
+          lines.push('input.onButtonPressed(Button.A, function () {');
+          lines.push('    let valor = ' + s.sensor);
+          lines.push('    ' + writeLine + '("" + input.runningTime() + "," + valor)');
+          lines.push('    basic.showIcon(IconNames.Yes)');
+          lines.push('    basic.pause(200)');
+          lines.push('    basic.clearScreen()');
+          lines.push('})');
+          return lines.join('\n');
         }
 
         _openMakeCodeModal() {
@@ -19165,6 +19173,14 @@ bluetooth.startIOPinService()</pre>
           if (!modal) return;
           modal.classList.add('open');
           this._mcSelected = this._mcSelected || 'light';
+          // Default de transporte: si ya hay conexión, copiamos lo que el usuario
+          // eligió en la toolbar principal. Si no hay nada, BLE (lo más común
+          // en el aula con Chrome/Edge).
+          if (!this._mcTransport) {
+            const connected = (typeof state !== 'undefined') && state.isConnected;
+            const isBLE = connected ? !!state.isBluetooth : true;
+            this._mcTransport = isBLE ? 'ble' : 'serial';
+          }
           this._renderMakeCodeModal();
 
           modal.querySelectorAll('[data-sensor]').forEach(btn => {
@@ -19176,9 +19192,18 @@ bluetooth.startIOPinService()</pre>
               this._renderMakeCodeModal();
             };
           });
+          modal.querySelectorAll('[data-transport]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.transport === this._mcTransport);
+            btn.onclick = () => {
+              this._mcTransport = btn.dataset.transport;
+              modal.querySelectorAll('[data-transport]').forEach(b => b.classList.remove('active'));
+              btn.classList.add('active');
+              this._renderMakeCodeModal();
+            };
+          });
           document.getElementById('mapeo-mc-close').onclick = () => modal.classList.remove('open');
           document.getElementById('mapeo-mc-copy').onclick = () => {
-            const code = this._makecodeCode(this._mcSelected);
+            const code = this._makecodeCode(this._mcSelected, this._mcTransport);
             navigator.clipboard.writeText(code).then(
               () => this._toast('Código copiado al portapapeles'),
               () => this._toast('No se pudo copiar — seleccioná manualmente')
@@ -19188,7 +19213,7 @@ bluetooth.startIOPinService()</pre>
 
         _renderMakeCodeModal() {
           const sensors = this._makecodeSensors();
-          document.getElementById('mapeo-mc-code').textContent = this._makecodeCode(this._mcSelected);
+          document.getElementById('mapeo-mc-code').textContent = this._makecodeCode(this._mcSelected, this._mcTransport);
           document.getElementById('mapeo-mc-note').textContent = sensors[this._mcSelected].note;
         }
 
