@@ -3582,6 +3582,39 @@
           border:1px solid #444; font-size:12px; letter-spacing:0.5px;
           opacity:0; transition:opacity 0.3s; pointer-events:none;
         }
+
+        .mapeo-modal {
+          position:absolute; inset:0; z-index:100;
+          background:rgba(0,0,0,0.75);
+          display:none; align-items:center; justify-content:center;
+        }
+        .mapeo-modal.open { display:flex; }
+        .mapeo-modal-content {
+          background:#23272e; border:1px solid #2b303b;
+          padding:24px; max-width:600px; width:90%;
+          max-height:80vh; overflow-y:auto;
+          font-family:-apple-system,'Segoe UI',sans-serif; color:#e0e0e0;
+        }
+        .mapeo-modal-content h3 {
+          margin:0 0 10px 0; font-size:13px; font-weight:700;
+          letter-spacing:1.5px; color:#fff;
+        }
+        .mapeo-modal-help {
+          font-size:11px; color:#9e9e9e; margin-bottom:14px; line-height:1.5;
+        }
+        .mapeo-mc-sensors { display:flex; gap:6px; margin-bottom:14px; }
+        .mapeo-mc-sensors .mapeo-btn { flex:1; margin-top:0; }
+        .mapeo-mc-code {
+          background:#1a1d23; border:1px solid #444; color:#e0e0e0;
+          padding:12px; font-family:Consolas,'SF Mono',monospace; font-size:11px;
+          line-height:1.5; overflow:auto; white-space:pre;
+          margin-bottom:6px; max-height:260px;
+        }
+        .mapeo-mc-note {
+          font-size:10px; color:#9e9e9e; margin-bottom:12px; font-style:italic;
+        }
+        .mapeo-mc-actions { display:flex; gap:6px; }
+        .mapeo-mc-actions .mapeo-btn { flex:1; margin-top:0; text-decoration:none; text-align:center; }
         /* ===== MAPEO STYLES END ===== */
     </style>
 </head>
@@ -18850,6 +18883,27 @@ bluetooth.startIOPinService()</pre>
         <button class="mapeo-close" id="mapeo-close">CERRAR</button>
         <canvas id="mapeo-canvas" class="mapeo-canvas"></canvas>
         <div class="mapeo-toast" id="mapeo-toast"></div>
+        <div id="mapeo-mc-modal" class="mapeo-modal">
+          <div class="mapeo-modal-content">
+            <h3>CÓDIGO MAKECODE PARA TU MICRO:BIT</h3>
+            <div class="mapeo-modal-help">
+              Elegí un sensor, copiá el código en la vista JavaScript de MakeCode y descargá el .hex a tu micro:bit. Al presionar <strong style="color:#fff;">A</strong>, el valor del sensor se envía a MAPEO.
+            </div>
+            <div class="mapeo-mc-sensors">
+              <button class="mapeo-btn active" data-sensor="light">Luz</button>
+              <button class="mapeo-btn" data-sensor="magnet">Imán</button>
+              <button class="mapeo-btn" data-sensor="sound">Sonido</button>
+              <button class="mapeo-btn" data-sensor="temp">Temperatura</button>
+            </div>
+            <pre class="mapeo-mc-code" id="mapeo-mc-code"></pre>
+            <div class="mapeo-mc-note" id="mapeo-mc-note"></div>
+            <div class="mapeo-mc-actions">
+              <button class="mapeo-btn" id="mapeo-mc-copy">Copiar código</button>
+              <a class="mapeo-btn" href="https://makecode.microbit.org/" target="_blank" rel="noopener">Abrir MakeCode ↗</a>
+              <button class="mapeo-btn" id="mapeo-mc-close">Cerrar</button>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
     <script>
@@ -18908,6 +18962,7 @@ bluetooth.startIOPinService()</pre>
               <button class="mapeo-btn" id="mp-cap">● Iniciar captura</button>
               <button class="mapeo-btn danger" id="mp-erase">Borrar valor del activo</button>
               <button class="mapeo-btn" id="mp-deselect">Deseleccionar punto</button>
+              <button class="mapeo-btn" id="mp-mc">Código MakeCode</button>
               <div class="mapeo-info" id="mp-conn"></div>
             </div>
           `;
@@ -18938,6 +18993,7 @@ bluetooth.startIOPinService()</pre>
           $('mp-deselect').addEventListener('click', () => {
             this.activePoint = null; this._draw();
           });
+          $('mp-mc').addEventListener('click', () => this._openMakeCodeModal());
 
           // Indicador de transporte. Tres estados:
           //   - desconectado → rojo + mensaje pedagógico
@@ -19078,6 +19134,62 @@ bluetooth.startIOPinService()</pre>
           t.textContent = msg; t.style.opacity = '1';
           clearTimeout(this._toastT);
           this._toastT = setTimeout(() => t.style.opacity = '0', 1800);
+        }
+
+        _makecodeSensors() {
+          return {
+            light:  { label:'Luz', sensor:'input.lightLevel()', note:'Devuelve 0-255 (0 oscuridad, 255 luz directa). Funciona en V1 y V2.' },
+            magnet: { label:'Imán', sensor:'input.magneticForce(Dimension.Strength)', note:'Devuelve µT (microteslas). Calibrar la primera vez moviendo la micro:bit en círculo.' },
+            sound:  { label:'Sonido', sensor:'input.soundLevel()', note:'Devuelve 0-255. Solo micro:bit V2 (tiene micrófono).' },
+            temp:   { label:'Temperatura', sensor:'input.temperature()', note:'Devuelve °C del CPU (NO temperatura ambiente — está sesgada hacia arriba por autocalentamiento).' }
+          };
+        }
+
+        _makecodeCode(sensorKey) {
+          const s = this._makecodeSensors()[sensorKey];
+          return [
+            'bluetooth.startUartService()',
+            'basic.showIcon(IconNames.Heart)',
+            'input.onButtonPressed(Button.A, function () {',
+            '    let valor = ' + s.sensor,
+            '    bluetooth.uartWriteLine("" + input.runningTime() + "," + valor)',
+            '    basic.showIcon(IconNames.Yes)',
+            '    basic.pause(200)',
+            '    basic.clearScreen()',
+            '})'
+          ].join('\n');
+        }
+
+        _openMakeCodeModal() {
+          const modal = document.getElementById('mapeo-mc-modal');
+          if (!modal) return;
+          modal.classList.add('open');
+          this._mcSelected = this._mcSelected || 'light';
+          this._renderMakeCodeModal();
+
+          modal.querySelectorAll('[data-sensor]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.sensor === this._mcSelected);
+            btn.onclick = () => {
+              this._mcSelected = btn.dataset.sensor;
+              modal.querySelectorAll('[data-sensor]').forEach(b => b.classList.remove('active'));
+              btn.classList.add('active');
+              this._renderMakeCodeModal();
+            };
+          });
+          document.getElementById('mapeo-mc-close').onclick = () => modal.classList.remove('open');
+          document.getElementById('mapeo-mc-copy').onclick = () => {
+            const code = this._makecodeCode(this._mcSelected);
+            navigator.clipboard.writeText(code).then(
+              () => this._toast('Código copiado al portapapeles'),
+              () => this._toast('No se pudo copiar — seleccioná manualmente')
+            );
+          };
+        }
+
+        _renderMakeCodeModal() {
+          const sensors = this._makecodeSensors();
+          document.getElementById('mapeo-mc-code').textContent = this._makecodeCode(this._mcSelected);
+          document.getElementById('mapeo-mc-note').textContent = sensors[this._mcSelected].note;
         }
 
         _clearValues() {
