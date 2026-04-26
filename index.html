@@ -18948,6 +18948,224 @@ bluetooth.startIOPinService()</pre>
     /* ===== MAPEO MODULE START ===== */
     (function(){
       'use strict';
+
+      // ===== Utilidades de visualización =====
+      // Operan sobre matrices densas interpoladas. Sin estado, sin librerías.
+      // Diseñadas para reproducir imagesc/contour/quiver de MATLAB.
+      const MapeoViz = {
+
+        // Interpolación bilineal: convierte la grilla de puntos medidos
+        // (con posibles huecos null) en una matriz densa de 'dense × dense'
+        // celdas. Donde no hay datos suficientes para interpolar, devuelve NaN.
+        interpolate(grid, dense = 80) {
+          const { nx, ny, points } = grid;
+          if (nx < 2 || ny < 2) return null;
+          const M = [];
+          for (let j = 0; j < dense; j++) {
+            const row = new Array(dense);
+            // fy ∈ [0, ny-1] mapea j ∈ [0, dense-1]
+            const fy = (j / (dense - 1)) * (ny - 1);
+            const j0 = Math.floor(fy);
+            const j1 = Math.min(ny - 1, j0 + 1);
+            const ty = fy - j0;
+            for (let i = 0; i < dense; i++) {
+              const fx = (i / (dense - 1)) * (nx - 1);
+              const i0 = Math.floor(fx);
+              const i1 = Math.min(nx - 1, i0 + 1);
+              const tx = fx - i0;
+              const v00 = points[j0 * nx + i0].value;
+              const v10 = points[j0 * nx + i1].value;
+              const v01 = points[j1 * nx + i0].value;
+              const v11 = points[j1 * nx + i1].value;
+              const known = [v00, v10, v01, v11].filter(v => v !== null);
+              if (known.length === 0) {
+                row[i] = NaN;
+              } else if (known.length < 4) {
+                // Interpolación parcial: promedio de los conocidos.
+                // No es ideal pero evita huecos enormes en grillas a medias.
+                row[i] = known.reduce((a, b) => a + b, 0) / known.length;
+              } else {
+                row[i] = (1 - tx) * (1 - ty) * v00
+                       +      tx  * (1 - ty) * v10
+                       + (1 - tx) *      ty  * v01
+                       +      tx  *      ty  * v11;
+              }
+            }
+            M.push(row);
+          }
+          return M;
+        },
+
+        // Calcula min/max de una matriz densa, ignorando NaN.
+        range(M) {
+          let vmin = Infinity, vmax = -Infinity;
+          for (const row of M) {
+            for (const v of row) {
+              if (Number.isFinite(v)) {
+                if (v < vmin) vmin = v;
+                if (v > vmax) vmax = v;
+              }
+            }
+          }
+          return Number.isFinite(vmin) ? { vmin, vmax } : null;
+        },
+
+        // imagesc: heatmap pixel a pixel.
+        drawHeatmap(ctx, M, scale, valueToColor) {
+          const r = this.range(M);
+          if (!r) return;
+          const { ox, oy, s, widthCm, heightCm } = scale;
+          const dense = M.length;
+          const cellW = (widthCm * s) / dense;
+          const cellH = (heightCm * s) / dense;
+          for (let j = 0; j < dense; j++) {
+            for (let i = 0; i < dense; i++) {
+              const v = M[j][i];
+              if (!Number.isFinite(v)) continue;
+              ctx.fillStyle = valueToColor(v, r.vmin, r.vmax);
+              // y crece hacia arriba en el sistema MAPEO; canvas hacia abajo.
+              const px = ox + i * cellW;
+              const py = oy - (j + 1) * cellH;
+              ctx.fillRect(px, py, cellW + 1, cellH + 1);
+            }
+          }
+        },
+
+        // contour: marching squares clásico, una pasada por nivel.
+        // Convención de saddles: dos diagonales separadas (sin equis cruzada).
+        drawContours(ctx, M, scale, nLevels = 20, color = '#ffffff') {
+          const r = this.range(M);
+          if (!r) return;
+          const { ox, oy, s, widthCm, heightCm } = scale;
+          const dense = M.length;
+          const cellW = (widthCm * s) / (dense - 1);
+          const cellH = (heightCm * s) / (dense - 1);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (let k = 1; k < nLevels; k++) {
+            const L = r.vmin + (r.vmax - r.vmin) * (k / nLevels);
+            for (let j = 0; j < dense - 1; j++) {
+              for (let i = 0; i < dense - 1; i++) {
+                const v00 = M[j][i],     v10 = M[j][i + 1];
+                const v01 = M[j + 1][i], v11 = M[j + 1][i + 1];
+                if (![v00, v10, v01, v11].every(Number.isFinite)) continue;
+                const idx = (v00 > L ? 1 : 0)
+                          | (v10 > L ? 2 : 0)
+                          | (v11 > L ? 4 : 0)
+                          | (v01 > L ? 8 : 0);
+                if (idx === 0 || idx === 15) continue;
+                const x0 = ox + i * cellW,       x1 = ox + (i + 1) * cellW;
+                const y0 = oy - j * cellH,       y1 = oy - (j + 1) * cellH;
+                const lerp = (a, b) => (L - a) / (b - a);
+                const top    = () => [x0 + lerp(v00, v10) * cellW, y0];
+                const bottom = () => [x0 + lerp(v01, v11) * cellW, y1];
+                const left   = () => [x0, y0 + lerp(v00, v01) * (y1 - y0)];
+                const right  = () => [x1, y0 + lerp(v10, v11) * (y1 - y0)];
+                const seg = (a, b) => { ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); };
+                switch (idx) {
+                  case 1: case 14: seg(left(), top()); break;
+                  case 2: case 13: seg(top(), right()); break;
+                  case 3: case 12: seg(left(), right()); break;
+                  case 4: case 11: seg(bottom(), right()); break;
+                  case 5:  seg(left(), top()); seg(bottom(), right()); break;
+                  case 6: case 9: seg(top(), bottom()); break;
+                  case 7: case 8: seg(left(), bottom()); break;
+                  case 10: seg(left(), bottom()); seg(top(), right()); break;
+                }
+              }
+            }
+          }
+          ctx.stroke();
+        },
+
+        // quiver: campo vectorial -∇V con flechas. Diferencias centradas para
+        // gradiente, normalizado al máximo módulo del campo.
+        drawQuiver(ctx, M, scale, step = 6, color = '#ffffff') {
+          const { ox, oy, s, widthCm, heightCm } = scale;
+          const dense = M.length;
+          const cellW = (widthCm * s) / (dense - 1);
+          const cellH = (heightCm * s) / (dense - 1);
+          // Primera pasada: calcular vectores y módulo máximo.
+          const vec = [];
+          let maxMag = 0;
+          for (let j = 1; j < dense - 1; j++) {
+            for (let i = 1; i < dense - 1; i++) {
+              if (j % step !== 0 || i % step !== 0) continue;
+              const c = M[j][i];
+              if (!Number.isFinite(c)) continue;
+              const dvdx = (M[j][i + 1] - M[j][i - 1]) / 2;
+              const dvdy = (M[j + 1][i] - M[j - 1][i]) / 2;
+              if (!Number.isFinite(dvdx) || !Number.isFinite(dvdy)) continue;
+              const ex = -dvdx;
+              const ey = -dvdy;
+              const mag = Math.hypot(ex, ey);
+              if (mag > maxMag) maxMag = mag;
+              vec.push({ i, j, ex, ey, mag });
+            }
+          }
+          if (maxMag === 0) return;
+          // Segunda pasada: dibujar.
+          const arrowMaxPx = step * Math.min(cellW, cellH) * 0.85;
+          ctx.strokeStyle = color;
+          ctx.fillStyle = color;
+          ctx.lineWidth = 1.2;
+          for (const v of vec) {
+            const len = (v.mag / maxMag) * arrowMaxPx;
+            const ux = v.ex / v.mag;
+            const uy = v.ey / v.mag;
+            const x0 = ox + v.i * cellW;
+            const y0 = oy - v.j * cellH;
+            // canvas y invertido respecto al sistema MAPEO
+            const x1 = x0 + ux * len;
+            const y1 = y0 - uy * len;
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x1, y1);
+            ctx.stroke();
+            // Cabeza de flecha
+            const ang = Math.atan2(-(y1 - y0), x1 - x0);
+            const ah = 5;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x1 - ah * Math.cos(ang - 0.4), y1 + ah * Math.sin(ang - 0.4));
+            ctx.lineTo(x1 - ah * Math.cos(ang + 0.4), y1 + ah * Math.sin(ang + 0.4));
+            ctx.closePath();
+            ctx.fill();
+          }
+        },
+
+        // Colorbar vertical con escala jet, alineado a la derecha del canvas.
+        drawColorbar(ctx, canvasW, canvasH, vmin, vmax, valueToColor) {
+          const cbW = 14;
+          const cbH = canvasH * 0.5;
+          const cbX = canvasW - 60;
+          const cbY = (canvasH - cbH) / 2;
+          // Banda de color
+          for (let py = 0; py < cbH; py++) {
+            // py=0 arriba (vmax), py=cbH-1 abajo (vmin)
+            const t = 1 - py / (cbH - 1);
+            const v = vmin + t * (vmax - vmin);
+            ctx.fillStyle = valueToColor(v, vmin, vmax);
+            ctx.fillRect(cbX, cbY + py, cbW, 1);
+          }
+          // Borde
+          ctx.strokeStyle = '#666';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(cbX, cbY, cbW, cbH);
+          // Etiquetas (vmax arriba, medio, vmin abajo)
+          ctx.fillStyle = '#e0e0e0';
+          ctx.font = '10px -apple-system,Segoe UI,sans-serif';
+          ctx.textAlign = 'left';
+          const fmt = v => Math.abs(v) >= 1000 || (Math.abs(v) < 0.01 && v !== 0)
+                        ? v.toExponential(2)
+                        : v.toFixed(3);
+          ctx.fillText(fmt(vmax), cbX + cbW + 4, cbY + 4);
+          ctx.fillText(fmt((vmin + vmax) / 2), cbX + cbW + 4, cbY + cbH / 2 + 4);
+          ctx.fillText(fmt(vmin), cbX + cbW + 4, cbY + cbH);
+        }
+      };
+
       class MapeoController {
         constructor(panel, canvas, sidebar) {
           this.panel = panel;
@@ -19037,6 +19255,26 @@ bluetooth.startIOPinService()</pre>
                 El import autodetecta el formato.
                 Para pandas: pd.read_csv(file, comment='%').
               </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">Visualización</div>
+              <label>Modo
+                <select id="mp-viz-mode">
+                  <option value="points">Puntos</option>
+                  <option value="heat">Mapa de calor</option>
+                  <option value="contour">Equipotenciales</option>
+                  <option value="quiver">Campo (-∇V)</option>
+                  <option value="contourquiver">Equipotenciales + Campo</option>
+                  <option value="all">Todo (heatmap + equipot. + campo)</option>
+                </select>
+              </label>
+              <label>N° equipotenciales
+                <input type="number" id="mp-viz-nlev" value="20" min="5" max="60" step="1">
+              </label>
+              <label>Espaciado de flechas
+                <input type="number" id="mp-viz-step" value="6" min="2" max="15" step="1">
+              </label>
             </div>
           `;
           const $ = (id) => this.sidebar.querySelector('#' + id);
@@ -19134,6 +19372,13 @@ bluetooth.startIOPinService()</pre>
             const file = e.target.files && e.target.files[0];
             if (file) this._importCSV(file);
             e.target.value = ''; // reset para poder re-importar el mismo archivo
+          });
+
+          // Binds de Visualización. Cualquier cambio dispara un redraw.
+          ['mp-viz-mode', 'mp-viz-nlev', 'mp-viz-step'].forEach(id => {
+            const el = $(id);
+            if (el) el.addEventListener('change', () => this._draw());
+            if (el) el.addEventListener('input',  () => this._draw());
           });
 
           this._regenerateGrid();
@@ -19838,6 +20083,42 @@ bluetooth.startIOPinService()</pre>
           const vals = this.grid.points.filter(p => p.value !== null).map(p => p.value);
           const vmin = vals.length ? Math.min(...vals) : 0;
           const vmax = vals.length ? Math.max(...vals) : 1;
+
+          // ===== Capas de visualización =====
+          // Solo si hay datos suficientes y un modo distinto de "Puntos".
+          const vizMode = this.sidebar.querySelector('#mp-viz-mode')?.value || 'points';
+          const measuredCount = this.grid.points.filter(p => p.value !== null).length;
+          if (vizMode !== 'points' && measuredCount >= 3 && this.grid.nx >= 2 && this.grid.ny >= 2) {
+            const M = MapeoViz.interpolate(this.grid, 80);
+            if (M) {
+              const scale = {
+                ox, oy, s,
+                widthCm: this.grid.widthCm,
+                heightCm: this.grid.heightCm
+              };
+              const nLev = parseInt(this.sidebar.querySelector('#mp-viz-nlev').value, 10) || 20;
+              const stp  = parseInt(this.sidebar.querySelector('#mp-viz-step').value, 10) || 6;
+              const colorFn = this._valueToColor.bind(this);
+
+              const showHeat    = (vizMode === 'heat'    || vizMode === 'all');
+              const showContour = (vizMode === 'contour' || vizMode === 'contourquiver' || vizMode === 'all');
+              const showQuiver  = (vizMode === 'quiver'  || vizMode === 'contourquiver' || vizMode === 'all');
+
+              if (showHeat)    MapeoViz.drawHeatmap(ctx, M, scale, colorFn);
+              if (showContour) MapeoViz.drawContours(ctx, M, scale, nLev, '#ffffff');
+              if (showQuiver)  MapeoViz.drawQuiver(ctx, M, scale, stp, '#ffffff');
+
+              // Colorbar solo en modos con heatmap (los otros no tienen escala visual).
+              if (showHeat) {
+                const r = MapeoViz.range(M);
+                if (r) MapeoViz.drawColorbar(ctx, W, H, r.vmin, r.vmax, colorFn);
+              }
+            }
+          } else if (vizMode !== 'points' && !this._vizWarned) {
+            // Aviso una sola vez por carga de página: necesitan más datos.
+            this._vizWarned = true;
+            this._toast('Necesitás al menos 3 puntos para visualizar');
+          }
 
           // Pelotitas
           this.grid.points.forEach(p => {
