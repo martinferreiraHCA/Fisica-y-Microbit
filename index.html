@@ -18868,8 +18868,23 @@ bluetooth.startIOPinService()</pre>
           this._buildUI();
           this.canvas.addEventListener('click', (e) => this._onCanvasClick(e));
         }
-        open()  { this.panel.classList.add('open'); this._resize(); this._draw(); this._updateStatus(); }
-        close() { this.panel.classList.remove('open'); }
+        open()  {
+          this.panel.classList.add('open');
+          this._resize();
+          this._draw();
+          this._updateStatus();
+          // El polling NO arranca con open(): arranca cuando el usuario
+          // pulsa "● Iniciar captura". Si quedó isCapturing=true de una
+          // sesión anterior (cerró y abrió el panel sin pausar), reanudamos.
+          if (this.isCapturing) this._startPolling();
+        }
+        close() {
+          this.panel.classList.remove('open');
+          this._stopPolling();
+          // No reseteamos isCapturing — si el usuario reabre, queda como
+          // lo dejó. Tampoco reseteamos _lastSeenId — si reanuda, queremos
+          // seguir descartando backlog desde el momento de la pausa.
+        }
         _buildUI() {
           this.sidebar.innerHTML = `
             <h2>MAPEO</h2>
@@ -18887,12 +18902,77 @@ bluetooth.startIOPinService()</pre>
               <button class="mapeo-btn danger" id="mp-clear">Limpiar valores</button>
               <div class="mapeo-info" id="mp-info"></div>
             </div>
+
+            <div class="section">
+              <div class="section-title">Captura</div>
+              <button class="mapeo-btn" id="mp-cap">● Iniciar captura</button>
+              <button class="mapeo-btn danger" id="mp-erase">Borrar valor del activo</button>
+              <button class="mapeo-btn" id="mp-deselect">Deseleccionar punto</button>
+              <div class="mapeo-info" id="mp-conn"></div>
+            </div>
           `;
           const $ = (id) => this.sidebar.querySelector('#' + id);
           this._inputs = { w:$('mp-w'), h:$('mp-h'), sx:$('mp-sx'), sy:$('mp-sy'), shape:$('mp-shape') };
           this._info = $('mp-info');
           $('mp-gen').addEventListener('click',   () => this._regenerateGrid());
           $('mp-clear').addEventListener('click', () => this._clearValues());
+
+          $('mp-cap').addEventListener('click', () => {
+            if (!this.isCapturing) {
+              // Chequeo amistoso (no bloqueante). Vale para serial Y BLE:
+              // state.isConnected sin más es suficiente para "hay algún transporte".
+              const connected = (typeof state !== 'undefined') && state.isConnected;
+              if (!connected) this._toast('Atención: no hay conexión activa con la micro:bit');
+            }
+            this.isCapturing = !this.isCapturing;
+            const btn = $('mp-cap');
+            btn.textContent = this.isCapturing ? '■ Pausar captura' : '● Iniciar captura';
+            btn.classList.toggle('recording', this.isCapturing);
+            this._updateStatus();
+            if (this.isCapturing) this._startPolling();
+            else                  this._stopPolling();
+          });
+          $('mp-erase').addEventListener('click', () => {
+            if (this.activePoint) { this.activePoint.value = null; this._updateInfo(); this._draw(); }
+          });
+          $('mp-deselect').addEventListener('click', () => {
+            this.activePoint = null; this._draw();
+          });
+
+          // Indicador de transporte. Tres estados:
+          //   - desconectado → rojo + mensaje pedagógico
+          //   - BLE conectado → verde + etiqueta "BLE"
+          //   - serial conectado → verde + etiqueta "USB · SERIAL"
+          // Justifica el rojo #ef5350 / verde #66bb6a de la paleta — uso semántico.
+          this._refreshConnIndicator = () => {
+            const el = $('mp-conn');
+            if (!el) return;
+            if (typeof state === 'undefined') { el.textContent = ''; return; }
+
+            if (!state.isConnected) {
+              el.innerHTML =
+                '<div style="color:#ef5350;font-weight:600;margin-bottom:6px;">○ Sin conexión</div>' +
+                '<div style="color:#9e9e9e;font-size:10px;line-height:1.4;">' +
+                  'Conectá la micro:bit desde la toolbar principal antes de capturar.' +
+                '</div>';
+              return;
+            }
+
+            if (state.isBluetooth) {
+              el.innerHTML =
+                '<div style="color:#66bb6a;font-weight:600;">● Conectado</div>' +
+                '<div style="color:#9e9e9e;font-size:10px;letter-spacing:1px;margin-top:2px;">BLE</div>';
+            } else {
+              el.innerHTML =
+                '<div style="color:#66bb6a;font-weight:600;">● Conectado</div>' +
+                '<div style="color:#9e9e9e;font-size:10px;letter-spacing:1px;margin-top:2px;">USB · SERIAL</div>';
+            }
+          };
+          this._refreshConnIndicator();
+          // Refresco periódico discreto (1 vez por segundo). Barato y suficiente
+          // para detectar cambios de transporte iniciados desde la toolbar.
+          this._connTimer = setInterval(this._refreshConnIndicator, 1000);
+
           this._regenerateGrid();
         }
 
@@ -18913,6 +18993,91 @@ bluetooth.startIOPinService()</pre>
           this.activePoint = null;
           this._updateInfo();
           this._draw();
+        }
+
+        // Cursor: id del último dato consumido. null = nada consumido todavía.
+        // Usamos id (string 'dN') porque es globalmente único y monotónico.
+        // _dataPointCounter (línea ~11786) es global y compartido entre serial
+        // y BLE, así que el cursor es robusto a cualquier reasignación de
+        // state.rawData (LIMPIAR, import, filter, splice, sync video, etc.).
+        _lastSeenId = null;
+
+        _startPolling() {
+          if (this._pollHandle) return;
+          // Snapshot al arrancar: ignoramos el backlog que ya estaba antes de
+          // pulsar "Iniciar captura". Solo procesaremos datos cuyos ids sean
+          // posteriores al último presente en este momento.
+          const buf = this._getDataBuffer();
+          this._lastSeenId = (buf.length > 0) ? buf[buf.length - 1].id : null;
+
+          const tick = () => {
+            if (!this.isCapturing || !this.panel.classList.contains('open')) {
+              this._pollHandle = null;
+              return;
+            }
+            this._pollOnce();
+            this._pollHandle = requestAnimationFrame(tick);
+          };
+          this._pollHandle = requestAnimationFrame(tick);
+        }
+
+        _stopPolling() {
+          if (this._pollHandle) {
+            cancelAnimationFrame(this._pollHandle);
+            this._pollHandle = null;
+          }
+        }
+
+        _getDataBuffer() {
+          // 'state' es global directo (let en ~línea 8131).
+          return (typeof state !== 'undefined' && Array.isArray(state.rawData))
+            ? state.rawData
+            : [];
+        }
+
+        _pollOnce() {
+          const buf = this._getDataBuffer();
+          if (buf.length === 0) return;
+          const last = buf[buf.length - 1];
+          if (!last || typeof last.id !== 'string') return;
+          // Mismo id que la última vez: nada nuevo, salimos.
+          if (last.id === this._lastSeenId) return;
+          // Dato nuevo. Avanzamos el cursor y lo procesamos.
+          // Si entre ticks (~16 ms) llegaron varios datos, los intermedios
+          // se descartan y solo procesamos el último — coherente con sensor
+          // mode (~17039) y correcto para mapeo manual con A.
+          this._lastSeenId = last.id;
+          this._consumeDataPoint(last);
+        }
+
+        // Consumidor único — todo lo que dependa de "llegó un dato" pasa por acá.
+        // Si en el futuro alguien arregla el wiring del BLE pasando un callback
+        // real, basta con reemplazar _pollOnce por un wrapper sobre el callback
+        // que llame a _consumeDataPoint. El resto del módulo no se entera.
+        _consumeDataPoint(dp) {
+          if (!dp || !Array.isArray(dp.values) || dp.values.length === 0) return;
+          // Por defecto tomamos el primer canal. Si en el futuro hay un selector
+          // de canal en el sidebar, leerlo de this._inputs.channel.value.
+          const v = +dp.values[0];
+          if (!Number.isFinite(v)) return;
+
+          if (!this.activePoint) {
+            this._toast('Seleccioná un punto antes de capturar');
+            return;
+          }
+          this.activePoint.value = v;
+          this._toast(`Valor ${v.toFixed(3)} guardado en (${this.activePoint.x.toFixed(1)}, ${this.activePoint.y.toFixed(1)}) cm`);
+          // El punto activo NO cambia. El usuario decide el siguiente con un click.
+          this._updateInfo();
+          this._draw();
+        }
+
+        _toast(msg) {
+          const t = document.getElementById('mapeo-toast');
+          if (!t) return;
+          t.textContent = msg; t.style.opacity = '1';
+          clearTimeout(this._toastT);
+          this._toastT = setTimeout(() => t.style.opacity = '0', 1800);
         }
 
         _clearValues() {
@@ -19040,7 +19205,13 @@ bluetooth.startIOPinService()</pre>
           this.activePoint = (best === this.activePoint) ? null : best;
           this._draw();
         }
-        _updateStatus() { /* TODO PROMPT 4 */ }
+        _updateStatus() {
+          const el = document.getElementById('mapeo-status');
+          if (!el) return;
+          el.innerHTML = this.isCapturing
+            ? '<span class="live">CAPTURANDO</span>'
+            : '';
+        }
         _resize() {
           const r = this.canvas.parentElement.getBoundingClientRect();
           this.canvas.width = r.width; this.canvas.height = r.height;
