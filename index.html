@@ -12,6 +12,9 @@
     <!-- regression-js: Librería para ajuste de curvas por mínimos cuadrados -->
     <!-- Autor: Tom Alexander - https://github.com/Tom-Alexander/regression-js -->
     <script src="https://cdn.jsdelivr.net/npm/regression@2.0.1/dist/regression.min.js"></script>
+    <!-- Plotly.js para modo Análisis profesional de MAPEO -->
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer
+            onerror="window.__plotlyFailed=true;"></script>
     <style>
         * {
             margin: 0;
@@ -3615,6 +3618,53 @@
         }
         .mapeo-mc-actions { display:flex; gap:6px; }
         .mapeo-mc-actions .mapeo-btn { flex:1; margin-top:0; text-decoration:none; text-align:center; }
+        /* ===== MAPEO PRO START ===== */
+        .mapeo-pro {
+          display: none; position: fixed; inset: 0; z-index: 9100;
+          background: #1a1d23; color: #e0e0e0;
+          flex-direction: column;
+        }
+        .mapeo-pro.open { display: flex; }
+        .mapeo-pro-header {
+          padding: 12px 16px;
+          background: #23272e;
+          border-bottom: 1px solid #2b303b;
+          display: flex; gap: 12px; align-items: center;
+          flex-wrap: wrap;
+        }
+        .mapeo-pro-header h3 {
+          margin: 0; font-size: 12px; letter-spacing: 2px;
+          color: #fff; font-weight: 700;
+        }
+        .mapeo-pro-header .spacer { flex: 1; }
+        .mapeo-pro-header label {
+          font-size: 11px; color: #9e9e9e; display: flex; align-items: center; gap: 6px;
+        }
+        .mapeo-pro-header select,
+        .mapeo-pro-header input[type=number] {
+          padding: 4px 8px; background: #1a1d23; color: #e0e0e0;
+          border: 1px solid #444; font-family: inherit; font-size: 11px;
+        }
+        .mapeo-pro-stage {
+          flex: 1; position: relative;
+          background: #1a1d23;
+        }
+        .mapeo-pro-plot {
+          position: absolute; inset: 0;
+        }
+        .mapeo-pro-loading {
+          position: absolute; inset: 0;
+          display: flex; align-items: center; justify-content: center;
+          color: #9e9e9e; font-size: 12px;
+        }
+        .mapeo-pro-error {
+          position: absolute; inset: 0;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          color: #ef5350; font-size: 12px;
+          padding: 32px; text-align: center; line-height: 1.6;
+        }
+        /* ===== MAPEO PRO END ===== */
         /* ===== MAPEO STYLES END ===== */
     </style>
 </head>
@@ -19166,6 +19216,143 @@ bluetooth.startIOPinService()</pre>
         }
       };
 
+      // ===== MapeoPro: utilidades para análisis profesional =====
+      // Bicubic interpolation (Catmull-Rom), gradiente continuo, RK4 streamlines.
+      const MapeoPro = {
+
+        // Catmull-Rom 1D (suaviza entre 4 puntos consecutivos)
+        _crSpline1D(p0, p1, p2, p3, t) {
+          const t2 = t * t;
+          const t3 = t2 * t;
+          return 0.5 * (
+            (2 * p1) +
+            (-p0 + p2) * t +
+            (2*p0 - 5*p1 + 4*p2 - p3) * t2 +
+            (-p0 + 3*p1 - 3*p2 + p3) * t3
+          );
+        },
+
+        // Bicubic interpolation: evalúa M en (x, y) reales con 0 ≤ x ≤ 1, 0 ≤ y ≤ 1
+        // del rectángulo cubierto por la matriz densa M.
+        bicubicAt(M, fx, fy) {
+          const dense = M.length;
+          const x = fx * (dense - 1);
+          const y = fy * (dense - 1);
+          const i = Math.floor(x);
+          const j = Math.floor(y);
+          const tx = x - i;
+          const ty = y - j;
+          const safe = (jj, ii) => {
+            jj = Math.max(0, Math.min(dense - 1, jj));
+            ii = Math.max(0, Math.min(dense - 1, ii));
+            const v = M[jj][ii];
+            return Number.isFinite(v) ? v : NaN;
+          };
+          const col = (jj) => this._crSpline1D(
+            safe(jj, i - 1), safe(jj, i), safe(jj, i + 1), safe(jj, i + 2), tx
+          );
+          const c0 = col(j - 1);
+          const c1 = col(j);
+          const c2 = col(j + 1);
+          const c3 = col(j + 2);
+          if (![c0, c1, c2, c3].every(Number.isFinite)) return NaN;
+          return this._crSpline1D(c0, c1, c2, c3, ty);
+        },
+
+        // Gradiente del campo escalar M en (fx, fy). Diferencias centradas
+        // sobre la interpolación bicúbica → C⁰ continuo en derivadas.
+        gradientAt(M, fx, fy) {
+          const eps = 1 / (M.length * 4); // step ~1/4 de celda
+          const ex = (this.bicubicAt(M, fx + eps, fy) - this.bicubicAt(M, fx - eps, fy)) / (2 * eps);
+          const ey = (this.bicubicAt(M, fx, fy + eps) - this.bicubicAt(M, fx, fy - eps)) / (2 * eps);
+          return { gx: ex, gy: ey };
+        },
+
+        // Una streamline: integra el campo E = -∇V con RK4 desde (fx0, fy0).
+        traceStreamline(M, widthCm, heightCm, fx0, fy0, opts = {}) {
+          const maxSteps = opts.maxSteps || 400;
+          const dt = opts.dt || 0.005;
+          const minMag = opts.minMag || 1e-6;
+          const sign = opts.forward === false ? -1 : 1;
+          const xs = [];
+          const ys = [];
+          let fx = fx0;
+          let fy = fy0;
+          for (let step = 0; step < maxSteps; step++) {
+            if (fx < 0 || fx > 1 || fy < 0 || fy > 1) break;
+            xs.push(fx * widthCm);
+            ys.push(fy * heightCm);
+            // RK4 sobre E = -∇V
+            const k1 = this.gradientAt(M, fx, fy);
+            if (!Number.isFinite(k1.gx)) break;
+            const m1 = Math.hypot(k1.gx, k1.gy);
+            if (m1 < minMag) break;
+            const ex1 = -k1.gx, ey1 = -k1.gy;
+            const k2 = this.gradientAt(M, fx + sign * dt * ex1 / 2, fy + sign * dt * ey1 / 2);
+            if (!Number.isFinite(k2.gx)) break;
+            const ex2 = -k2.gx, ey2 = -k2.gy;
+            const k3 = this.gradientAt(M, fx + sign * dt * ex2 / 2, fy + sign * dt * ey2 / 2);
+            if (!Number.isFinite(k3.gx)) break;
+            const ex3 = -k3.gx, ey3 = -k3.gy;
+            const k4 = this.gradientAt(M, fx + sign * dt * ex3, fy + sign * dt * ey3);
+            if (!Number.isFinite(k4.gx)) break;
+            const ex4 = -k4.gx, ey4 = -k4.gy;
+            const dx = (ex1 + 2*ex2 + 2*ex3 + ex4) / 6;
+            const dy = (ey1 + 2*ey2 + 2*ey3 + ey4) / 6;
+            fx += sign * dt * dx;
+            fy += sign * dt * dy;
+          }
+          return { x: xs, y: ys };
+        },
+
+        // Genera todas las streamlines: semillas en grilla regular + RK4 forward y backward.
+        buildStreamlines(M, widthCm, heightCm, density) {
+          const lines = [];
+          for (let j = 0; j < density; j++) {
+            for (let i = 0; i < density; i++) {
+              const fx0 = (i + 0.5) / density;
+              const fy0 = (j + 0.5) / density;
+              const fwd = this.traceStreamline(M, widthCm, heightCm, fx0, fy0, { forward: true });
+              const bwd = this.traceStreamline(M, widthCm, heightCm, fx0, fy0, { forward: false });
+              const xs = bwd.x.slice().reverse().concat(fwd.x.slice(1));
+              const ys = bwd.y.slice().reverse().concat(fwd.y.slice(1));
+              if (xs.length > 3) lines.push({ x: xs, y: ys });
+            }
+          }
+          return lines;
+        },
+
+        // Ejes en cm para usar como x/y de heatmap/contour de Plotly.
+        axisVectors(grid, dense) {
+          const xs = new Array(dense);
+          const ys = new Array(dense);
+          for (let i = 0; i < dense; i++) {
+            xs[i] = (i / (dense - 1)) * grid.widthCm;
+            ys[i] = (i / (dense - 1)) * grid.heightCm;
+          }
+          return { xs, ys };
+        },
+
+        // Tema oscuro Plotly coherente con fisicabit.
+        darkTheme() {
+          return {
+            paper_bgcolor: '#1a1d23',
+            plot_bgcolor: '#23272e',
+            font: { color: '#e0e0e0', family: '-apple-system, Segoe UI, sans-serif' },
+            xaxis: {
+              gridcolor: '#2b303b', linecolor: '#444', zerolinecolor: '#444',
+              title: { text: 'x (cm)' }
+            },
+            yaxis: {
+              gridcolor: '#2b303b', linecolor: '#444', zerolinecolor: '#444',
+              scaleanchor: 'x', scaleratio: 1,
+              title: { text: 'y (cm)' }
+            },
+            margin: { l: 60, r: 40, t: 30, b: 50 }
+          };
+        }
+      };
+
       class MapeoController {
         constructor(panel, canvas, sidebar) {
           this.panel = panel;
@@ -19201,6 +19388,14 @@ bluetooth.startIOPinService()</pre>
           // No reseteamos isCapturing — si el usuario reabre, queda como
           // lo dejó. Tampoco reseteamos _lastSeenId — si reanuda, queremos
           // seguir descartando backlog desde el momento de la pausa.
+          // Cerrar overlays internos.
+          const help = document.getElementById('mapeo-help-modal');
+          if (help) help.remove();
+          const pro = document.getElementById('mapeo-pro');
+          if (pro && pro.classList.contains('open')) {
+            pro.classList.remove('open');
+            try { Plotly.purge(document.getElementById('mapeo-pro-plot')); } catch {}
+          }
         }
         _buildUI() {
           this.sidebar.innerHTML = `
@@ -19275,6 +19470,15 @@ bluetooth.startIOPinService()</pre>
               <label>Espaciado de flechas
                 <input type="number" id="mp-viz-step" value="6" min="2" max="15" step="1">
               </label>
+            </div>
+
+            <div class="section">
+              <div class="section-title">Análisis avanzado</div>
+              <button class="mapeo-btn" id="mp-open-pro">Análisis profesional</button>
+              <div class="mapeo-info" style="font-size:10px; line-height:1.4; margin-top:6px;">
+                Visualizaciones publicables: equipotenciales con etiquetas, streamlines,
+                superficie 3D interactiva. Exportación SVG/PNG en alta resolución.
+              </div>
             </div>
           `;
           const $ = (id) => this.sidebar.querySelector('#' + id);
@@ -19381,6 +19585,15 @@ bluetooth.startIOPinService()</pre>
             if (el) el.addEventListener('input',  () => this._draw());
           });
 
+          // Modo Análisis Profesional
+          $('mp-open-pro').addEventListener('click', () => this._openPro());
+          document.getElementById('mp-pro-back').addEventListener('click', () => this._closePro());
+          document.getElementById('mp-pro-viz').addEventListener('change', () => this._renderPro());
+          document.getElementById('mp-pro-dense').addEventListener('change', () => this._renderPro());
+          document.getElementById('mp-pro-stream-density').addEventListener('change', () => this._renderPro());
+          document.getElementById('mp-pro-export-png').addEventListener('click', () => this._exportProImage('png'));
+          document.getElementById('mp-pro-export-svg').addEventListener('click', () => this._exportProImage('svg'));
+
           this._regenerateGrid();
         }
 
@@ -19457,6 +19670,196 @@ bluetooth.startIOPinService()</pre>
           // mode (~17039) y correcto para mapeo manual con A.
           this._lastSeenId = last.id;
           this._consumeDataPoint(last);
+        }
+
+        // ===== Modo Análisis Profesional (Plotly) =====
+
+        _openPro() {
+          const pro = document.getElementById('mapeo-pro');
+          const loading = document.getElementById('mapeo-pro-loading');
+          const error = document.getElementById('mapeo-pro-error');
+
+          if (!this.grid || this.grid.points.filter(p => p.value !== null).length < 4) {
+            this._toast('Necesitás al menos 4 puntos medidos para análisis profesional');
+            return;
+          }
+
+          pro.classList.add('open');
+          loading.style.display = 'flex';
+          error.style.display = 'none';
+
+          // Esperar que Plotly esté disponible (el script tiene defer).
+          const tryRender = (retry = 0) => {
+            if (window.__plotlyFailed) {
+              loading.style.display = 'none';
+              error.style.display = 'flex';
+              return;
+            }
+            if (typeof Plotly === 'undefined') {
+              if (retry > 50) {  // 5 segundos
+                loading.style.display = 'none';
+                error.style.display = 'flex';
+                return;
+              }
+              setTimeout(() => tryRender(retry + 1), 100);
+              return;
+            }
+            loading.style.display = 'none';
+            this._renderPro();
+          };
+          tryRender();
+        }
+
+        _closePro() {
+          const pro = document.getElementById('mapeo-pro');
+          pro.classList.remove('open');
+          // Plotly deja DOM colgado; lo limpiamos para que la próxima
+          // apertura sea una creación nueva.
+          const plot = document.getElementById('mapeo-pro-plot');
+          try { Plotly.purge(plot); } catch {}
+        }
+
+        _renderPro() {
+          const viz = document.getElementById('mp-pro-viz').value;
+          const dense = parseInt(document.getElementById('mp-pro-dense').value, 10) || 120;
+          const streamDensity = parseInt(document.getElementById('mp-pro-stream-density').value, 10) || 12;
+          const plot = document.getElementById('mapeo-pro-plot');
+          const M = MapeoViz.interpolate(this.grid, dense);
+          if (!M) { this._toast('No se pudo interpolar'); return; }
+          const r = MapeoViz.range(M);
+          if (!r) { this._toast('Sin datos válidos para visualizar'); return; }
+          const { xs, ys } = MapeoPro.axisVectors(this.grid, dense);
+          const theme = MapeoPro.darkTheme();
+
+          let traces = [];
+          let layout = { ...theme };
+
+          const mkHeatmap = () => ({
+            type: 'heatmap', x: xs, y: ys, z: M,
+            colorscale: 'Jet', zsmooth: 'best',
+            colorbar: { title: { text: 'Valor', side: 'right' }, tickfont: { color: '#e0e0e0' } },
+            hovertemplate: 'x=%{x:.2f} cm<br>y=%{y:.2f} cm<br>v=%{z:.4f}<extra></extra>'
+          });
+
+          const mkContour = (withLabels = true, fillEnabled = false) => ({
+            type: 'contour', x: xs, y: ys, z: M,
+            colorscale: fillEnabled ? 'Jet' : [[0, '#fff'], [1, '#fff']],
+            contours: {
+              coloring: fillEnabled ? 'heatmap' : 'lines',
+              showlabels: withLabels,
+              labelfont: { color: '#fff', size: 10 },
+              start: r.vmin, end: r.vmax,
+              size: (r.vmax - r.vmin) / 20
+            },
+            line: { color: fillEnabled ? undefined : '#fff', width: 1 },
+            showscale: fillEnabled,
+            colorbar: fillEnabled ? { title: { text: 'V', side: 'right' }, tickfont: { color: '#e0e0e0' } } : undefined,
+            hovertemplate: 'x=%{x:.2f} cm<br>y=%{y:.2f} cm<br>v=%{z:.4f}<extra></extra>'
+          });
+
+          const mkPoints = () => {
+            const pxs = [], pys = [], pvs = [];
+            this.grid.points.forEach(p => {
+              if (p.value !== null) { pxs.push(p.x); pys.push(p.y); pvs.push(p.value); }
+            });
+            return {
+              type: 'scatter', mode: 'markers',
+              x: pxs, y: pys,
+              marker: {
+                size: 6, color: pvs, colorscale: 'Jet',
+                line: { color: '#000', width: 1 }, showscale: false,
+                cmin: r.vmin, cmax: r.vmax
+              },
+              hovertemplate: 'Medido<br>x=%{x:.2f} cm<br>y=%{y:.2f} cm<br>v=%{marker.color:.4f}<extra></extra>',
+              showlegend: false
+            };
+          };
+
+          const mkStreamlines = () => {
+            const lines = MapeoPro.buildStreamlines(M, this.grid.widthCm, this.grid.heightCm, streamDensity);
+            const xs2 = [], ys2 = [];
+            lines.forEach((l, i) => {
+              if (i > 0) { xs2.push(NaN); ys2.push(NaN); }
+              xs2.push(...l.x);
+              ys2.push(...l.y);
+            });
+            return {
+              type: 'scatter', mode: 'lines',
+              x: xs2, y: ys2,
+              line: { color: '#fff', width: 0.8 },
+              hoverinfo: 'skip',
+              showlegend: false
+            };
+          };
+
+          if (viz === 'heatmap') {
+            traces = [mkHeatmap(), mkPoints()];
+          } else if (viz === 'contour') {
+            traces = [mkContour(true, false), mkPoints()];
+            layout.plot_bgcolor = '#1a1d23';
+          } else if (viz === 'streamlines') {
+            traces = [mkStreamlines(), mkPoints()];
+            layout.plot_bgcolor = '#1a1d23';
+          } else if (viz === 'surface3d') {
+            traces = [{
+              type: 'surface', x: xs, y: ys, z: M,
+              colorscale: 'Jet',
+              colorbar: { title: { text: 'V', side: 'right' }, tickfont: { color: '#e0e0e0' } },
+              hovertemplate: 'x=%{x:.2f} cm<br>y=%{y:.2f} cm<br>v=%{z:.4f}<extra></extra>',
+              contours: {
+                z: { show: true, usecolormap: true, project: { z: true }, width: 2 }
+              }
+            }];
+            layout = {
+              paper_bgcolor: '#1a1d23',
+              font: { color: '#e0e0e0', family: '-apple-system, Segoe UI, sans-serif' },
+              margin: { l: 0, r: 0, t: 0, b: 0 },
+              scene: {
+                xaxis: { title: 'x (cm)', gridcolor: '#2b303b', backgroundcolor: '#1a1d23', showbackground: true },
+                yaxis: { title: 'y (cm)', gridcolor: '#2b303b', backgroundcolor: '#1a1d23', showbackground: true },
+                zaxis: { title: 'V',      gridcolor: '#2b303b', backgroundcolor: '#1a1d23', showbackground: true },
+                camera: { eye: { x: 1.6, y: -1.6, z: 1.0 } }
+              }
+            };
+          } else if (viz === 'combined') {
+            traces = [
+              mkContour(true, true),
+              mkStreamlines(),
+              mkPoints()
+            ];
+          }
+
+          // Mostrar/ocultar el control de densidad de streamlines
+          const streamWrap = document.getElementById('mp-pro-stream-density-wrap');
+          streamWrap.style.display = (viz === 'streamlines' || viz === 'combined') ? 'flex' : 'none';
+
+          const config = {
+            responsive: true,
+            displayModeBar: true,
+            displaylogo: false,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+            toImageButtonOptions: {
+              format: 'png',
+              filename: `mapeo_${viz}_${new Date().toISOString().slice(0,10)}`,
+              scale: 2
+            }
+          };
+
+          Plotly.newPlot(plot, traces, layout, config);
+        }
+
+        _exportProImage(format) {
+          const plot = document.getElementById('mapeo-pro-plot');
+          if (!plot || typeof Plotly === 'undefined') return;
+          const viz = document.getElementById('mp-pro-viz').value;
+          Plotly.downloadImage(plot, {
+            format: format,
+            width: format === 'svg' ? 1600 : 2400,
+            height: format === 'svg' ? 1200 : 1800,
+            filename: `mapeo_${viz}_${new Date().toISOString().slice(0,10)}`,
+            scale: format === 'svg' ? 1 : 2
+          });
+          this._toast(`Exportado como ${format.toUpperCase()}`);
         }
 
         // Consumidor único — todo lo que dependa de "llegó un dato" pasa por acá.
@@ -20252,6 +20655,41 @@ bluetooth.startIOPinService()</pre>
     })();
     /* ===== MAPEO MODULE END ===== */
     </script>
+    <!-- ===== MAPEO PRO PANEL START ===== -->
+    <div id="mapeo-pro" class="mapeo-pro">
+      <div class="mapeo-pro-header">
+        <h3>ANÁLISIS PROFESIONAL</h3>
+        <button class="mapeo-btn" id="mp-pro-back" style="width:auto;">← Volver</button>
+        <span style="color:#444;">|</span>
+        <label>Visualización
+          <select id="mp-pro-viz">
+            <option value="heatmap">Heatmap interpolado</option>
+            <option value="contour">Equipotenciales (con etiquetas)</option>
+            <option value="streamlines">Streamlines del campo</option>
+            <option value="surface3d">Superficie 3D</option>
+            <option value="combined" selected>Combinado (publicable)</option>
+          </select>
+        </label>
+        <label>Densidad interp.
+          <input type="number" id="mp-pro-dense" value="120" min="40" max="240" step="10">
+        </label>
+        <label id="mp-pro-stream-density-wrap">Densidad streamlines
+          <input type="number" id="mp-pro-stream-density" value="12" min="4" max="30" step="1">
+        </label>
+        <span class="spacer"></span>
+        <button class="mapeo-btn" id="mp-pro-export-png" style="width:auto;">PNG</button>
+        <button class="mapeo-btn" id="mp-pro-export-svg" style="width:auto;">SVG</button>
+      </div>
+      <div class="mapeo-pro-stage">
+        <div class="mapeo-pro-plot" id="mapeo-pro-plot"></div>
+        <div class="mapeo-pro-loading" id="mapeo-pro-loading">Cargando análisis…</div>
+        <div class="mapeo-pro-error" id="mapeo-pro-error" style="display:none;">
+          <div style="font-size:14px; margin-bottom:8px;">Plotly no se cargó</div>
+          <div>Necesitás conexión a internet la primera vez para cachear la librería.</div>
+        </div>
+      </div>
+    </div>
+    <!-- ===== MAPEO PRO PANEL END ===== -->
     <!-- ===== MAPEO PANEL END ===== -->
 </body>
 </html>
