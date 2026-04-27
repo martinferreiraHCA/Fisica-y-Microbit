@@ -19316,14 +19316,14 @@ bluetooth.startIOPinService()</pre>
         },
 
         // Colorbar vertical con escala jet, alineado a la derecha del canvas.
-        drawColorbar(ctx, canvasW, canvasH, vmin, vmax, valueToColor) {
+        // 'title' opcional aparece arriba en vertical (rotado).
+        drawColorbar(ctx, canvasW, canvasH, vmin, vmax, valueToColor, title) {
           const cbW = 14;
           const cbH = canvasH * 0.5;
           const cbX = canvasW - 60;
           const cbY = (canvasH - cbH) / 2;
           // Banda de color
           for (let py = 0; py < cbH; py++) {
-            // py=0 arriba (vmax), py=cbH-1 abajo (vmin)
             const t = 1 - py / (cbH - 1);
             const v = vmin + t * (vmax - vmin);
             ctx.fillStyle = valueToColor(v, vmin, vmax);
@@ -19343,6 +19343,14 @@ bluetooth.startIOPinService()</pre>
           ctx.fillText(fmt(vmax), cbX + cbW + 4, cbY + 4);
           ctx.fillText(fmt((vmin + vmax) / 2), cbX + cbW + 4, cbY + cbH / 2 + 4);
           ctx.fillText(fmt(vmin), cbX + cbW + 4, cbY + cbH);
+          // Título encima del colorbar (centrado horizontalmente)
+          if (title) {
+            ctx.font = '11px -apple-system,Segoe UI,sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(title, cbX + cbW / 2, cbY - 8);
+            ctx.textAlign = 'left';
+          }
         }
       };
 
@@ -19463,6 +19471,18 @@ bluetooth.startIOPinService()</pre>
           return { xs, ys };
         },
 
+        // ===== Presets de magnitud =====
+        // Los nombres y unidades por default según el sensor de la micro:bit
+        // o el experimento. El usuario puede sobrescribir manualmente.
+        magPresets: {
+          voltage:     { name: 'Voltaje',         unit: 'V'   },
+          magnetic:    { name: 'Campo magnético', unit: 'µT'  },
+          temperature: { name: 'Temperatura',     unit: '°C'  },
+          light:       { name: 'Iluminación',     unit: ''    },
+          sound:       { name: 'Nivel de sonido', unit: ''    },
+          custom:      { name: 'Valor',           unit: ''    }
+        },
+
         // ===== Templates de modelos teóricos =====
         modelTemplates: {
           linear: {
@@ -19470,6 +19490,34 @@ bluetooth.startIOPinService()</pre>
             params: [
               { name: 'a', value: 1, fit: true },
               { name: 'b', value: 0, fit: true }
+            ]
+          },
+          gaussian: {
+            // Util para picos de luz, distribución de un imán cercano,
+            // densidad alrededor de una fuente puntual.
+            expr: 'A * exp(-(x - x0)^2 / (2 * sigma^2)) + C',
+            params: [
+              { name: 'A',     value: 1,   fit: true },
+              { name: 'x0',    value: 7,   fit: true },
+              { name: 'sigma', value: 2,   fit: true },
+              { name: 'C',     value: 0,   fit: true }
+            ]
+          },
+          expdecay: {
+            // Atenuación de luz/calor con la distancia, descarga RC.
+            expr: 'A * exp(-x / tau) + C',
+            params: [
+              { name: 'A',   value: 1, fit: true },
+              { name: 'tau', value: 5, fit: true },
+              { name: 'C',   value: 0, fit: true }
+            ]
+          },
+          invsq: {
+            // Iluminación de fuente puntual, ley de Coulomb 3D.
+            expr: 'k / (x - x0)^2',
+            params: [
+              { name: 'k',  value: 10, fit: true },
+              { name: 'x0', value: 0,  fit: true }
             ]
           },
           parallel: {
@@ -19777,13 +19825,13 @@ bluetooth.startIOPinService()</pre>
                 <select id="mp-viz-mode">
                   <option value="points">Puntos</option>
                   <option value="heat">Mapa de calor</option>
-                  <option value="contour">Equipotenciales</option>
-                  <option value="quiver">Campo (-∇V)</option>
-                  <option value="contourquiver">Equipotenciales + Campo</option>
-                  <option value="all">Todo (heatmap + equipot. + campo)</option>
+                  <option value="contour">Isolíneas</option>
+                  <option value="quiver">Gradiente</option>
+                  <option value="contourquiver">Isolíneas + Gradiente</option>
+                  <option value="all">Todo (heatmap + isolíneas + gradiente)</option>
                 </select>
               </label>
-              <label>N° equipotenciales
+              <label>N° isolíneas
                 <input type="number" id="mp-viz-nlev" value="20" min="5" max="60" step="1">
               </label>
               <label>Espaciado de flechas
@@ -19795,7 +19843,7 @@ bluetooth.startIOPinService()</pre>
               <div class="section-title">Análisis avanzado</div>
               <button class="mapeo-btn" id="mp-open-pro">Análisis profesional</button>
               <div class="mapeo-info" style="font-size:10px; line-height:1.4; margin-top:6px;">
-                Visualizaciones publicables: equipotenciales con etiquetas, streamlines,
+                Visualizaciones publicables: isolíneas con etiquetas, streamlines,
                 superficie 3D interactiva. Exportación SVG/PNG en alta resolución.
               </div>
             </div>
@@ -19803,6 +19851,25 @@ bluetooth.startIOPinService()</pre>
             <details class="mapeo-details">
               <summary>Configuración</summary>
               <div class="mapeo-details-body">
+                <div class="mapeo-subsection">
+                  <div class="section-title">Magnitud medida</div>
+                  <label>Tipo
+                    <select id="mp-mag-preset">
+                      <option value="voltage">Voltaje</option>
+                      <option value="magnetic">Campo magnético</option>
+                      <option value="temperature">Temperatura</option>
+                      <option value="light">Iluminación</option>
+                      <option value="sound">Sonido</option>
+                      <option value="custom">— Personalizada —</option>
+                    </select>
+                  </label>
+                  <label>Nombre <input type="text" id="mp-mag-name" value="Voltaje"></label>
+                  <label>Unidad <input type="text" id="mp-mag-unit" value="V"></label>
+                  <div class="mapeo-info" style="font-size:10px; line-height:1.4;">
+                    Etiqueta los ejes, colorbars y tooltips de toda la app. La matemática es la misma para cualquier campo escalar (luz, temperatura, voltaje, etc.).
+                  </div>
+                </div>
+
                 <div class="mapeo-subsection">
                   <div class="section-title">Dimensiones</div>
                   <label>Ancho (cm)<input type="number" id="mp-w"  value="14" min="1" max="200" step="0.1"></label>
@@ -19907,6 +19974,22 @@ bluetooth.startIOPinService()</pre>
             if (!Number.isFinite(v)) { this._toast('Ingresá un offset numérico'); return; }
             this._addOffset(v);
           });
+
+          // Binds de Magnitud
+          $('mp-mag-preset').addEventListener('change', (e) => {
+            this._loadMagnitudePreset(e.target.value);
+          });
+          ['mp-mag-name', 'mp-mag-unit'].forEach(id => {
+            $(id).addEventListener('input', () => {
+              // Switchear preset a "custom" si el usuario edita libremente.
+              const presetEl = $('mp-mag-preset');
+              if (presetEl && presetEl.value !== 'custom') presetEl.value = 'custom';
+              this._readMagnitudeFromInputs();
+              this._draw();
+            });
+          });
+          // Inicializar magnitud desde inputs (default: Voltaje / V)
+          this._readMagnitudeFromInputs();
 
           // Indicador de transporte. Tres estados:
           //   - desconectado → rojo + mensaje pedagógico
@@ -20173,6 +20256,9 @@ bluetooth.startIOPinService()</pre>
           if (!r) { this._toast('Sin datos válidos para visualizar'); return; }
           const { xs, ys } = MapeoPro.axisVectors(this.grid, dense);
           const theme = MapeoPro.darkTheme();
+          // Etiquetas dinámicas según la magnitud configurada por el usuario.
+          const magLabel = this._getMagLabel();
+          const magSym = this._getMagSymbol();
 
           let traces = [];
           let layout = { ...theme };
@@ -20180,8 +20266,8 @@ bluetooth.startIOPinService()</pre>
           const mkHeatmap = () => ({
             type: 'heatmap', x: xs, y: ys, z: M,
             colorscale: 'Jet', zsmooth: 'best',
-            colorbar: { title: { text: 'Valor', side: 'right' }, tickfont: { color: '#e0e0e0' } },
-            hovertemplate: 'x=%{x:.2f} cm<br>y=%{y:.2f} cm<br>v=%{z:.4f}<extra></extra>'
+            colorbar: { title: { text: magLabel, side: 'right' }, tickfont: { color: '#e0e0e0' } },
+            hovertemplate: 'x=%{x:.2f} cm<br>y=%{y:.2f} cm<br>' + magSym + '=%{z:.4f}<extra></extra>'
           });
 
           const mkContour = (withLabels = true, fillEnabled = false) => ({
@@ -20196,8 +20282,8 @@ bluetooth.startIOPinService()</pre>
             },
             line: { color: fillEnabled ? undefined : '#fff', width: 1 },
             showscale: fillEnabled,
-            colorbar: fillEnabled ? { title: { text: 'V', side: 'right' }, tickfont: { color: '#e0e0e0' } } : undefined,
-            hovertemplate: 'x=%{x:.2f} cm<br>y=%{y:.2f} cm<br>v=%{z:.4f}<extra></extra>'
+            colorbar: fillEnabled ? { title: { text: magLabel, side: 'right' }, tickfont: { color: '#e0e0e0' } } : undefined,
+            hovertemplate: 'x=%{x:.2f} cm<br>y=%{y:.2f} cm<br>' + magSym + '=%{z:.4f}<extra></extra>'
           });
 
           const mkPoints = () => {
@@ -20213,7 +20299,7 @@ bluetooth.startIOPinService()</pre>
                 line: { color: '#000', width: 1 }, showscale: false,
                 cmin: r.vmin, cmax: r.vmax
               },
-              hovertemplate: 'Medido<br>x=%{x:.2f} cm<br>y=%{y:.2f} cm<br>v=%{marker.color:.4f}<extra></extra>',
+              hovertemplate: 'Medido<br>x=%{x:.2f} cm<br>y=%{y:.2f} cm<br>' + magSym + '=%{marker.color:.4f}<extra></extra>',
               showlegend: false
             };
           };
@@ -20247,8 +20333,8 @@ bluetooth.startIOPinService()</pre>
             traces = [{
               type: 'surface', x: xs, y: ys, z: M,
               colorscale: 'Jet',
-              colorbar: { title: { text: 'V', side: 'right' }, tickfont: { color: '#e0e0e0' } },
-              hovertemplate: 'x=%{x:.2f} cm<br>y=%{y:.2f} cm<br>v=%{z:.4f}<extra></extra>',
+              colorbar: { title: { text: magLabel, side: 'right' }, tickfont: { color: '#e0e0e0' } },
+              hovertemplate: 'x=%{x:.2f} cm<br>y=%{y:.2f} cm<br>' + magSym + '=%{z:.4f}<extra></extra>',
               contours: {
                 z: { show: true, usecolormap: true, project: { z: true }, width: 2 }
               }
@@ -20260,7 +20346,7 @@ bluetooth.startIOPinService()</pre>
               scene: {
                 xaxis: { title: 'x (cm)', gridcolor: '#2b303b', backgroundcolor: '#1a1d23', showbackground: true },
                 yaxis: { title: 'y (cm)', gridcolor: '#2b303b', backgroundcolor: '#1a1d23', showbackground: true },
-                zaxis: { title: 'V',      gridcolor: '#2b303b', backgroundcolor: '#1a1d23', showbackground: true },
+                zaxis: { title: magLabel, gridcolor: '#2b303b', backgroundcolor: '#1a1d23', showbackground: true },
                 camera: { eye: { x: 1.6, y: -1.6, z: 1.0 } }
               }
             };
@@ -20442,6 +20528,8 @@ bluetooth.startIOPinService()</pre>
         _plotCut(cut, fit) {
           const plot = document.getElementById('mapeo-1d-plot');
           const theme = MapeoPro.darkTheme();
+          const magLabel = this._getMagLabel();
+          const magSym = this._getMagSymbol();
 
           const traces = [];
           traces.push({
@@ -20450,7 +20538,7 @@ bluetooth.startIOPinService()</pre>
             marker: { color: '#5dade2', size: 5 },
             name: 'Datos',
             xaxis: 'x', yaxis: 'y',
-            hovertemplate: 's=%{x:.2f} cm<br>v=%{y:.4f}<extra></extra>'
+            hovertemplate: 's=%{x:.2f} cm<br>' + magSym + '=%{y:.4f}<extra></extra>'
           });
           if (fit && fit.modelXs && fit.modelYs) {
             traces.push({
@@ -20483,7 +20571,7 @@ bluetooth.startIOPinService()</pre>
             ...theme,
             grid: fit ? { rows: 2, columns: 1, rowheights: [0.7, 0.3], pattern: 'independent' } : undefined,
             xaxis: { ...theme.xaxis, title: { text: fit ? '' : 'posición a lo largo del corte (cm)' }, scaleanchor: undefined, scaleratio: undefined },
-            yaxis: { ...theme.yaxis, title: { text: 'valor' }, scaleanchor: undefined, scaleratio: undefined },
+            yaxis: { ...theme.yaxis, title: { text: magLabel }, scaleanchor: undefined, scaleratio: undefined },
             xaxis2: fit ? { gridcolor: '#2b303b', linecolor: '#444', title: { text: 'posición (cm)' } } : undefined,
             yaxis2: fit ? { gridcolor: '#2b303b', linecolor: '#444', title: { text: 'residuo' } } : undefined,
             showlegend: true,
@@ -20678,6 +20766,46 @@ bluetooth.startIOPinService()</pre>
           this._toastT = setTimeout(() => t.style.opacity = '0', 1800);
         }
 
+        // ===== Magnitud medida (etiquetas dinámicas) =====
+        // Estado: this._magnitude = { name, unit }. Default: Voltaje (V)
+        // por compat con el demo de cuba. El usuario lo cambia en la UI.
+
+        // Etiqueta completa para colorbars y ejes: "Temperatura (°C)" o solo
+        // "Temperatura" si no hay unidad.
+        _getMagLabel() {
+          const m = this._magnitude || { name: 'Valor', unit: '' };
+          if (m.unit && m.unit.trim()) return `${m.name} (${m.unit.trim()})`;
+          return m.name;
+        }
+
+        // Símbolo corto para hover tooltips: primera letra del nombre,
+        // mayúscula. "v" si nada.
+        _getMagSymbol() {
+          const m = this._magnitude || { name: 'Valor', unit: '' };
+          const ch = (m.name || 'v').trim().charAt(0);
+          return ch ? ch.toUpperCase() : 'v';
+        }
+
+        _loadMagnitudePreset(presetKey) {
+          const preset = MapeoPro.magPresets[presetKey];
+          if (!preset) return;
+          this._magnitude = { name: preset.name, unit: preset.unit };
+          const nameEl = this.sidebar.querySelector('#mp-mag-name');
+          const unitEl = this.sidebar.querySelector('#mp-mag-unit');
+          if (nameEl) nameEl.value = preset.name;
+          if (unitEl) unitEl.value = preset.unit;
+          this._draw();
+        }
+
+        _readMagnitudeFromInputs() {
+          const nameEl = this.sidebar.querySelector('#mp-mag-name');
+          const unitEl = this.sidebar.querySelector('#mp-mag-unit');
+          this._magnitude = {
+            name: (nameEl && nameEl.value.trim()) || 'Valor',
+            unit: (unitEl && unitEl.value.trim()) || ''
+          };
+        }
+
         _makecodeSensors() {
           return {
             light:  { label:'Luz', sensor:'input.lightLevel()', note:'Devuelve 0-255 (0 oscuridad, 255 luz directa). Funciona en V1 y V2.' },
@@ -20775,6 +20903,7 @@ bluetooth.startIOPinService()</pre>
           const { widthCm, heightCm, stepXCm, stepYCm, nx, ny, points } = this.grid;
           // Prefijo "%": MATLAB load() acepta solo este caracter como comentario
           // (no acepta "#"). Octave acepta ambos. Para pandas: comment='%'.
+          const mag = this._magnitude || { name: 'Valor', unit: '' };
           const lines = [
             '% fisicabit-mapeo v1',
             `% widthCm,${widthCm}`,
@@ -20783,6 +20912,8 @@ bluetooth.startIOPinService()</pre>
             `% stepYCm,${stepYCm}`,
             `% nx,${nx}`,
             `% ny,${ny}`,
+            `% magnitudName,${mag.name}`,
+            `% magnitudUnit,${mag.unit}`,
             '% fila 0 = y minimo (abajo); columna 0 = x minimo (izquierda); NaN = sin medir'
           ];
           for (let j = 0; j < ny; j++) {
@@ -20799,13 +20930,17 @@ bluetooth.startIOPinService()</pre>
         _exportListCSV() {
           if (!this.grid) { this._toast('Generá una grilla primero'); return; }
           const { widthCm, heightCm, stepXCm, stepYCm, points } = this.grid;
+          const mag = this._magnitude || { name: 'Valor', unit: '' };
+          const valHeader = mag.unit ? `valor_${mag.unit}` : 'valor';
           const lines = [
             '% fisicabit-mapeo v1 (lista)',
             `% widthCm,${widthCm}`,
             `% heightCm,${heightCm}`,
             `% stepXCm,${stepXCm}`,
             `% stepYCm,${stepYCm}`,
-            'x_cm,y_cm,valor'
+            `% magnitudName,${mag.name}`,
+            `% magnitudUnit,${mag.unit}`,
+            `x_cm,y_cm,${valHeader}`
           ];
           // Solo puntos medidos. Si querés los NaN incluidos, exportá la matriz.
           points.forEach(p => {
@@ -20981,6 +21116,7 @@ bluetooth.startIOPinService()</pre>
           if (!this.grid) return null;
           // Versionado para futuras migraciones. NO incluimos activePoint ni
           // isCapturing — son estado de sesión, no de grilla.
+          const mag = this._magnitude || { name: 'Valor', unit: '' };
           return {
             schema: MapeoController.SCHEMA_VERSION,
             savedAt: Date.now(),
@@ -20990,6 +21126,8 @@ bluetooth.startIOPinService()</pre>
             stepYCm: this.grid.stepYCm,
             nx: this.grid.nx,
             ny: this.grid.ny,
+            magnitudeName: mag.name,
+            magnitudeUnit: mag.unit,
             // Solo persistimos el array de valores, no el de objetos completos
             // (las coordenadas son redundantes — se reconstruyen del paso/dim).
             // Esto reduce el blob ~3x.
@@ -21009,6 +21147,16 @@ bluetooth.startIOPinService()</pre>
           this._inputs.h.value  = blob.heightCm;
           this._inputs.sx.value = blob.stepXCm;
           this._inputs.sy.value = blob.stepYCm;
+          // Restaurar magnitud si está presente (backward compat: blobs viejos sin magnitud).
+          if (blob.magnitudeName !== undefined || blob.magnitudeUnit !== undefined) {
+            const nameEl = this.sidebar.querySelector('#mp-mag-name');
+            const unitEl = this.sidebar.querySelector('#mp-mag-unit');
+            const presetEl = this.sidebar.querySelector('#mp-mag-preset');
+            if (nameEl) nameEl.value = blob.magnitudeName || 'Valor';
+            if (unitEl) unitEl.value = blob.magnitudeUnit || '';
+            if (presetEl) presetEl.value = 'custom';
+            this._readMagnitudeFromInputs();
+          }
           this._regenerateGrid(); // crea this.grid.points con value=null
           if (Array.isArray(blob.values) && blob.values.length === this.grid.points.length) {
             for (let i = 0; i < blob.values.length; i++) {
@@ -21467,7 +21615,7 @@ bluetooth.startIOPinService()</pre>
               // Colorbar solo en modos con heatmap (los otros no tienen escala visual).
               if (showHeat) {
                 const r = MapeoViz.range(M);
-                if (r) MapeoViz.drawColorbar(ctx, W, H, r.vmin, r.vmax, colorFn);
+                if (r) MapeoViz.drawColorbar(ctx, W, H, r.vmin, r.vmax, colorFn, this._getMagLabel());
               }
             }
           } else if (vizMode !== 'points' && !this._vizWarned) {
@@ -21618,8 +21766,8 @@ bluetooth.startIOPinService()</pre>
         <label>Visualización
           <select id="mp-pro-viz">
             <option value="heatmap">Heatmap interpolado</option>
-            <option value="contour">Equipotenciales (con etiquetas)</option>
-            <option value="streamlines">Streamlines del campo</option>
+            <option value="contour">Isolíneas (con etiquetas)</option>
+            <option value="streamlines">Streamlines del gradiente</option>
             <option value="surface3d">Superficie 3D</option>
             <option value="combined" selected>Combinado (publicable)</option>
           </select>
@@ -21674,6 +21822,9 @@ bluetooth.startIOPinService()</pre>
               <select id="mp-1d-template">
                 <option value="custom">— Personalizada —</option>
                 <option value="linear">Lineal: a*x + b</option>
+                <option value="gaussian">Gaussiana: A*exp(-(x-x0)²/2σ²)+C</option>
+                <option value="expdecay">Decaimiento exp.: A*exp(-x/τ)+C</option>
+                <option value="invsq">Cuadrado inverso: k/(x-x0)²</option>
                 <option value="parallel">Placas paralelas</option>
                 <option value="point">Carga puntual: k/abs(x-x0)</option>
                 <option value="dipole">Dipolo: k/abs(x-a) - k/abs(x-b)</option>
