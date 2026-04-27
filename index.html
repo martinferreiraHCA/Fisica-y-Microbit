@@ -3589,6 +3589,53 @@
           opacity:0; transition:opacity 0.3s; pointer-events:none;
         }
 
+        /* Sección "Punto activo" — highlight sutil */
+        #mp-active-section {
+          background: linear-gradient(to bottom, rgba(255,255,255,0.04), transparent);
+        }
+        #mp-active-section .section-title { color:#fff; }
+
+        /* Stats inline en posprocesamiento */
+        #mp-stats {
+          font-family: Consolas, 'SF Mono', Menlo, monospace;
+          line-height: 1.7; font-size: 11px;
+        }
+        #mp-stats .label { color:#9e9e9e; }
+        #mp-stats .val   { color:#fff; }
+
+        /* Sección Configuración colapsable */
+        .mapeo-details {
+          margin-top: 4px;
+          border-top: 1px solid #2b303b;
+          padding: 12px 0;
+        }
+        .mapeo-details summary {
+          cursor: pointer;
+          font-size: 10px; font-weight: 600;
+          letter-spacing: 1.5px; color: #9e9e9e;
+          text-transform: uppercase;
+          list-style: none;
+          position: relative;
+          padding-left: 18px;
+          user-select: none;
+        }
+        .mapeo-details summary::-webkit-details-marker { display: none; }
+        .mapeo-details summary::before {
+          content: '▸';
+          position: absolute; left: 4px;
+          transition: transform 0.2s;
+          font-size: 12px;
+        }
+        .mapeo-details[open] summary::before { transform: rotate(90deg); }
+        .mapeo-details-body { padding-top: 12px; }
+        .mapeo-subsection {
+          border-top: 1px solid #2b303b;
+          padding: 12px 0;
+        }
+        .mapeo-subsection:first-child {
+          border-top: none; padding-top: 0;
+        }
+
         .mapeo-modal {
           position:absolute; inset:0; z-index:100;
           background:rgba(0,0,0,0.75);
@@ -19691,54 +19738,36 @@ bluetooth.startIOPinService()</pre>
           this.sidebar.innerHTML = `
             <h2>MAPEO</h2>
 
-            <div class="section">
-              <div class="section-title">Dimensiones</div>
-              <label>Ancho (cm)<input type="number" id="mp-w"  value="14" min="1" max="200" step="0.1"></label>
-              <label>Alto (cm) <input type="number" id="mp-h"  value="10" min="1" max="200" step="0.1"></label>
-              <label>Paso X (cm)<input type="number" id="mp-sx" value="1"  min="0.1" step="0.1"></label>
-              <label>Paso Y (cm)<input type="number" id="mp-sy" value="1"  min="0.1" step="0.1"></label>
-              <label>Forma
-                <select id="mp-shape"><option value="rect">Rectangular</option></select>
+            <div class="section" id="mp-active-section" style="display:none;">
+              <div class="section-title">Punto activo</div>
+              <div id="mp-active-coords" style="font-size:13px;color:#fff;font-weight:600;margin-bottom:8px;"></div>
+              <label>Valor manual
+                <input type="number" id="mp-active-val" step="any" placeholder="(vacío = borrar)">
               </label>
-              <button class="mapeo-btn" id="mp-gen">Generar grilla</button>
-              <button class="mapeo-btn danger" id="mp-clear">Limpiar valores</button>
-              <div class="mapeo-info" id="mp-info"></div>
+              <div style="display:flex;gap:6px;">
+                <button class="mapeo-btn" id="mp-active-set" style="flex:1;">Asignar (Enter)</button>
+                <button class="mapeo-btn danger" id="mp-active-erase" style="flex:1;">Borrar</button>
+              </div>
+              <button class="mapeo-btn" id="mp-active-deselect" style="margin-top:6px;">Deseleccionar</button>
             </div>
 
             <div class="section">
               <div class="section-title">Captura</div>
               <button class="mapeo-btn" id="mp-cap">● Iniciar captura</button>
-              <button class="mapeo-btn danger" id="mp-erase">Borrar valor del activo</button>
-              <button class="mapeo-btn" id="mp-deselect">Deseleccionar punto</button>
               <button class="mapeo-btn" id="mp-mc">Código MakeCode</button>
               <div class="mapeo-info" id="mp-conn"></div>
             </div>
 
             <div class="section">
-              <div class="section-title">Sesiones</div>
-              <button class="mapeo-btn" id="mp-sess-save">Guardar como…</button>
-              <select id="mp-sess-list" style="margin-top:6px;"></select>
-              <div style="display:flex; gap:6px; margin-top:6px;">
-                <button class="mapeo-btn" id="mp-sess-load"   style="flex:1;">Cargar</button>
-                <button class="mapeo-btn" id="mp-sess-rename" style="flex:1;">Renombrar</button>
-                <button class="mapeo-btn danger" id="mp-sess-delete" style="flex:1;">Eliminar</button>
-              </div>
-              <div class="mapeo-info" id="mp-sess-info">
-                Autosave activo: tu trabajo se guarda solo. Al cerrar y abrir MAPEO, podés restaurar lo último.
-              </div>
-            </div>
-
-            <div class="section">
-              <div class="section-title">Datos</div>
-              <button class="mapeo-btn" id="mp-export-matrix">Exportar matriz CSV</button>
-              <button class="mapeo-btn" id="mp-export-list">Exportar lista CSV</button>
-              <button class="mapeo-btn" id="mp-import-csv">Importar CSV</button>
-              <input type="file" id="mp-import-file" accept=".csv,.txt" style="display:none;">
-              <div class="mapeo-info" style="font-size:10px; line-height:1.4;">
-                La matriz es compatible con load() de MATLAB.
-                La lista (x,y,valor) abre directo en Excel.
-                El import autodetecta el formato.
-                Para pandas: pd.read_csv(file, comment='%').
+              <div class="section-title">Posprocesamiento</div>
+              <div class="mapeo-info" id="mp-stats"></div>
+              <button class="mapeo-btn" id="mp-fill">Rellenar huecos</button>
+              <button class="mapeo-btn" id="mp-smooth-3">Suavizar 3×3</button>
+              <button class="mapeo-btn" id="mp-smooth-5">Suavizar 5×5</button>
+              <button class="mapeo-btn" id="mp-sub-min">Restar mínimo</button>
+              <div style="display:flex;gap:6px;margin-top:6px;align-items:stretch;">
+                <input type="number" id="mp-offset-val" placeholder="offset" step="any" style="flex:1;margin:0;">
+                <button class="mapeo-btn" id="mp-add-offset" style="flex:0 0 auto;width:auto;padding:6px 12px;margin-top:0;">Sumar</button>
               </div>
             </div>
 
@@ -19770,17 +19799,57 @@ bluetooth.startIOPinService()</pre>
                 superficie 3D interactiva. Exportación SVG/PNG en alta resolución.
               </div>
             </div>
+
+            <details class="mapeo-details">
+              <summary>Configuración</summary>
+              <div class="mapeo-details-body">
+                <div class="mapeo-subsection">
+                  <div class="section-title">Dimensiones</div>
+                  <label>Ancho (cm)<input type="number" id="mp-w"  value="14" min="1" max="200" step="0.1"></label>
+                  <label>Alto (cm) <input type="number" id="mp-h"  value="10" min="1" max="200" step="0.1"></label>
+                  <label>Paso X (cm)<input type="number" id="mp-sx" value="1"  min="0.1" step="0.1"></label>
+                  <label>Paso Y (cm)<input type="number" id="mp-sy" value="1"  min="0.1" step="0.1"></label>
+                  <button class="mapeo-btn" id="mp-gen">Generar grilla</button>
+                  <button class="mapeo-btn danger" id="mp-clear">Limpiar valores</button>
+                  <div class="mapeo-info" id="mp-info"></div>
+                </div>
+
+                <div class="mapeo-subsection">
+                  <div class="section-title">Sesiones</div>
+                  <button class="mapeo-btn" id="mp-sess-save">Guardar como…</button>
+                  <select id="mp-sess-list" style="margin-top:6px;"></select>
+                  <div style="display:flex; gap:6px; margin-top:6px;">
+                    <button class="mapeo-btn" id="mp-sess-load"   style="flex:1;">Cargar</button>
+                    <button class="mapeo-btn" id="mp-sess-rename" style="flex:1;">Renombrar</button>
+                    <button class="mapeo-btn danger" id="mp-sess-delete" style="flex:1;">Eliminar</button>
+                  </div>
+                  <div class="mapeo-info" id="mp-sess-info">
+                    Autosave activo: tu trabajo se guarda solo. Al cerrar y abrir MAPEO, podés restaurar lo último.
+                  </div>
+                </div>
+
+                <div class="mapeo-subsection">
+                  <div class="section-title">Datos (CSV)</div>
+                  <button class="mapeo-btn" id="mp-export-matrix">Exportar matriz CSV</button>
+                  <button class="mapeo-btn" id="mp-export-list">Exportar lista CSV</button>
+                  <button class="mapeo-btn" id="mp-import-csv">Importar CSV</button>
+                  <input type="file" id="mp-import-file" accept=".csv,.txt" style="display:none;">
+                  <div class="mapeo-info" style="font-size:10px; line-height:1.4;">
+                    Matriz compatible con load() de MATLAB. Lista (x,y,valor) abre en Excel.
+                    Import autodetecta formato. Para pandas: pd.read_csv(file, comment='%').
+                  </div>
+                </div>
+              </div>
+            </details>
           `;
           const $ = (id) => this.sidebar.querySelector('#' + id);
-          this._inputs = { w:$('mp-w'), h:$('mp-h'), sx:$('mp-sx'), sy:$('mp-sy'), shape:$('mp-shape') };
+          this._inputs = { w:$('mp-w'), h:$('mp-h'), sx:$('mp-sx'), sy:$('mp-sy') };
           this._info = $('mp-info');
           $('mp-gen').addEventListener('click',   () => this._regenerateGrid());
           $('mp-clear').addEventListener('click', () => this._clearValues());
 
           $('mp-cap').addEventListener('click', () => {
             if (!this.isCapturing) {
-              // Chequeo amistoso (no bloqueante). Vale para serial Y BLE:
-              // state.isConnected sin más es suficiente para "hay algún transporte".
               const connected = (typeof state !== 'undefined') && state.isConnected;
               if (!connected) this._toast('Atención: no hay conexión activa con la micro:bit');
             }
@@ -19792,18 +19861,52 @@ bluetooth.startIOPinService()</pre>
             if (this.isCapturing) this._startPolling();
             else                  this._stopPolling();
           });
-          $('mp-erase').addEventListener('click', () => {
+          $('mp-mc').addEventListener('click', () => this._openMakeCodeModal());
+
+          // Binds del Punto activo (edición manual)
+          const commitActiveValue = () => {
+            if (!this.activePoint) return;
+            const raw = $('mp-active-val').value.trim();
+            if (raw === '') {
+              this.activePoint.value = null;
+            } else {
+              const v = parseFloat(raw);
+              if (!Number.isFinite(v)) { this._toast('Valor inválido'); return; }
+              this.activePoint.value = v;
+            }
+            this._updateInfo();
+            this._draw();
+            this._scheduleAutosave();
+          };
+          $('mp-active-val').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commitActiveValue(); }
+          });
+          $('mp-active-set').addEventListener('click', commitActiveValue);
+          $('mp-active-erase').addEventListener('click', () => {
             if (this.activePoint) {
               this.activePoint.value = null;
+              $('mp-active-val').value = '';
               this._updateInfo();
               this._draw();
               this._scheduleAutosave();
             }
           });
-          $('mp-deselect').addEventListener('click', () => {
-            this.activePoint = null; this._draw();
+          $('mp-active-deselect').addEventListener('click', () => {
+            this.activePoint = null;
+            this._draw();
+            this._refreshActivePanel();
           });
-          $('mp-mc').addEventListener('click', () => this._openMakeCodeModal());
+
+          // Binds de Posprocesamiento
+          $('mp-fill').addEventListener('click',     () => this._fillGaps());
+          $('mp-smooth-3').addEventListener('click', () => this._smooth(1));   // radio 1 → 3×3
+          $('mp-smooth-5').addEventListener('click', () => this._smooth(2));   // radio 2 → 5×5
+          $('mp-sub-min').addEventListener('click',  () => this._subtractMin());
+          $('mp-add-offset').addEventListener('click', () => {
+            const v = parseFloat($('mp-offset-val').value);
+            if (!Number.isFinite(v)) { this._toast('Ingresá un offset numérico'); return; }
+            this._addOffset(v);
+          });
 
           // Indicador de transporte. Tres estados:
           //   - desconectado → rojo + mensaje pedagógico
@@ -21103,6 +21206,169 @@ bluetooth.startIOPinService()</pre>
           if (prev && names.includes(prev)) sel.value = prev;
         }
 
+        // ===== Panel del punto activo (edición manual) =====
+        _refreshActivePanel() {
+          const sec = this.sidebar.querySelector('#mp-active-section');
+          if (!sec) return;
+          const ap = this.activePoint;
+          if (!ap) {
+            sec.style.display = 'none';
+            return;
+          }
+          sec.style.display = '';
+          const coordsEl = sec.querySelector('#mp-active-coords');
+          const valEl = sec.querySelector('#mp-active-val');
+          if (coordsEl) coordsEl.textContent = `(${ap.x.toFixed(2)}, ${ap.y.toFixed(2)}) cm`;
+          if (valEl && document.activeElement !== valEl) {
+            // No piso lo que el usuario está escribiendo.
+            valEl.value = (ap.value === null || ap.value === undefined) ? '' : ap.value;
+          }
+        }
+
+        // ===== Stats inline =====
+        _computeStats() {
+          if (!this.grid) return null;
+          const total = this.grid.points.length;
+          const vals = this.grid.points.filter(p => p.value !== null).map(p => p.value);
+          const n = vals.length;
+          if (n === 0) return { n: 0, total };
+          let min = Infinity, max = -Infinity, sum = 0;
+          for (const v of vals) {
+            if (v < min) min = v;
+            if (v > max) max = v;
+            sum += v;
+          }
+          const mean = sum / n;
+          let varianceSum = 0;
+          for (const v of vals) varianceSum += (v - mean) ** 2;
+          const std = Math.sqrt(varianceSum / n);
+          return { n, total, min, max, mean, std };
+        }
+
+        _updateStats() {
+          const div = this.sidebar.querySelector('#mp-stats');
+          if (!div) return;
+          const s = this._computeStats();
+          if (!s || s.n === 0) {
+            div.innerHTML = `<span class="label">N: </span><span class="val">0 / ${s ? s.total : 0}</span>`;
+            return;
+          }
+          const fmt = (v) => Math.abs(v) >= 1000 ? v.toFixed(0)
+                          : Math.abs(v) >= 10   ? v.toFixed(2)
+                          :                       v.toFixed(3);
+          div.innerHTML =
+            `<span class="label">N:</span>     <span class="val">${s.n} / ${s.total}</span><br>` +
+            `<span class="label">min:</span>   <span class="val">${fmt(s.min)}</span>` +
+            `&nbsp;&nbsp;<span class="label">max:</span> <span class="val">${fmt(s.max)}</span><br>` +
+            `<span class="label">media:</span> <span class="val">${fmt(s.mean)}</span>` +
+            `&nbsp;&nbsp;<span class="label">σ:</span>   <span class="val">${fmt(s.std)}</span>`;
+        }
+
+        // ===== Posprocesamiento =====
+
+        // Rellena puntos null con interpolación bicubic desde la matriz densa,
+        // que ya incluye la lógica de "no inventar valores donde no hay datos
+        // cercanos" (devuelve NaN si los 4 corners de la celda son null).
+        _fillGaps() {
+          if (!this.grid) { this._toast('Generá una grilla primero'); return; }
+          const { nx, ny, points } = this.grid;
+          const total = points.length;
+          const measured = points.filter(p => p.value !== null).length;
+          if (measured === 0) { this._toast('No hay puntos medidos para interpolar'); return; }
+          if (measured === total) { this._toast('No hay huecos para rellenar'); return; }
+          // Detectar bordes "sin información": filas/columnas completamente null.
+          // Marcamos esos puntos como no-interpolables aunque la matriz densa
+          // dé un valor (sería extrapolación pura).
+          const isRowEmpty = (j) => {
+            for (let i = 0; i < nx; i++) if (points[j*nx+i].value !== null) return false;
+            return true;
+          };
+          const isColEmpty = (i) => {
+            for (let j = 0; j < ny; j++) if (points[j*nx+i].value !== null) return false;
+            return true;
+          };
+          const rowEmpty = []; for (let j = 0; j < ny; j++) rowEmpty.push(isRowEmpty(j));
+          const colEmpty = []; for (let i = 0; i < nx; i++) colEmpty.push(isColEmpty(i));
+          // Matriz densa que contiene los valores interpolados
+          const dense = Math.max(nx, ny) * 4;
+          const M = MapeoViz.interpolate(this.grid, dense);
+          if (!M) { this._toast('No se pudo interpolar (grilla muy chica)'); return; }
+          let filled = 0, skipped = 0;
+          for (let j = 0; j < ny; j++) {
+            for (let i = 0; i < nx; i++) {
+              const p = points[j*nx + i];
+              if (p.value !== null) continue;
+              if (rowEmpty[j] || colEmpty[i]) { skipped++; continue; }
+              const fx = (nx > 1) ? i / (nx - 1) : 0;
+              const fy = (ny > 1) ? j / (ny - 1) : 0;
+              const ix = Math.round(fx * (dense - 1));
+              const iy = Math.round(fy * (dense - 1));
+              const v = M[iy][ix];
+              if (Number.isFinite(v)) { p.value = v; filled++; }
+              else skipped++;
+            }
+          }
+          this._updateInfo();
+          this._draw();
+          this._scheduleAutosave();
+          const msg = skipped > 0
+            ? `Rellenados ${filled} (${skipped} sin info de borde)`
+            : `Rellenados ${filled} puntos`;
+          this._toast(msg);
+        }
+
+        // Suavizado por filtro de media de radio r (3×3 si r=1, 5×5 si r=2).
+        // Solo modifica puntos que ya tenían valor — no inventa donde no había.
+        _smooth(radius) {
+          if (!this.grid) { this._toast('Generá una grilla primero'); return; }
+          const { nx, ny, points } = this.grid;
+          const orig = points.map(p => p.value);
+          let touched = 0;
+          for (let j = 0; j < ny; j++) {
+            for (let i = 0; i < nx; i++) {
+              if (orig[j*nx + i] === null) continue;
+              let sum = 0, n = 0;
+              for (let dj = -radius; dj <= radius; dj++) {
+                for (let di = -radius; di <= radius; di++) {
+                  const ii = i + di, jj = j + dj;
+                  if (ii < 0 || ii >= nx || jj < 0 || jj >= ny) continue;
+                  const v = orig[jj*nx + ii];
+                  if (v === null) continue;
+                  sum += v; n++;
+                }
+              }
+              if (n > 0) { points[j*nx + i].value = sum / n; touched++; }
+            }
+          }
+          this._updateInfo();
+          this._draw();
+          this._scheduleAutosave();
+          this._toast(`Suavizado ${touched} puntos (radio ${radius})`);
+        }
+
+        _subtractMin() {
+          if (!this.grid) { this._toast('Generá una grilla primero'); return; }
+          const vals = this.grid.points.filter(p => p.value !== null).map(p => p.value);
+          if (vals.length === 0) { this._toast('No hay puntos medidos'); return; }
+          const min = Math.min(...vals);
+          this.grid.points.forEach(p => { if (p.value !== null) p.value -= min; });
+          this._updateInfo();
+          this._draw();
+          this._scheduleAutosave();
+          this._toast(`Restado ${min.toFixed(4)} (mín → 0)`);
+        }
+
+        _addOffset(offset) {
+          if (!this.grid) { this._toast('Generá una grilla primero'); return; }
+          const vals = this.grid.points.filter(p => p.value !== null);
+          if (vals.length === 0) { this._toast('No hay puntos medidos'); return; }
+          this.grid.points.forEach(p => { if (p.value !== null) p.value += offset; });
+          this._updateInfo();
+          this._draw();
+          this._scheduleAutosave();
+          this._toast(`Sumado ${offset >= 0 ? '+' : ''}${offset.toFixed(4)}`);
+        }
+
         _clearValues() {
           if (!this.grid) return;
           this.grid.points.forEach(p => p.value = null);
@@ -21115,9 +21381,14 @@ bluetooth.startIOPinService()</pre>
           if (!this.grid) return;
           const total = this.grid.points.length;
           const done  = this.grid.points.filter(p => p.value !== null).length;
-          this._info.innerHTML =
-            `Puntos: <strong style="color:#fff;">${this.grid.nx} × ${this.grid.ny} = ${total}</strong><br>` +
-            `Medidos: <strong style="color:#fff;">${done}</strong>`;
+          if (this._info) {
+            this._info.innerHTML =
+              `Puntos: <strong style="color:#fff;">${this.grid.nx} × ${this.grid.ny} = ${total}</strong><br>` +
+              `Medidos: <strong style="color:#fff;">${done}</strong>`;
+          }
+          // Refrescar también stats inline y panel del punto activo en cada cambio.
+          this._updateStats();
+          this._refreshActivePanel();
         }
         _draw() {
           if (!this.grid) return;
@@ -21303,9 +21574,10 @@ bluetooth.startIOPinService()</pre>
           });
           // Sin toggle: el click siempre selecciona la pelotita más cercana
           // (o la deselecciona si clickeás en zona vacía). Para deseleccionar
-          // explícitamente, usar el botón "Deseleccionar punto" del sidebar.
+          // explícitamente, usar el botón "Deseleccionar" del sidebar.
           this.activePoint = best;
           this._draw();
+          this._refreshActivePanel();
         }
         _updateStatus() {
           const el = document.getElementById('mapeo-status');
