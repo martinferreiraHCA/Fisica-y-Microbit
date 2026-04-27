@@ -3794,6 +3794,122 @@
           margin: 0; display: flex; align-items: center; gap: 4px;
           color: #e0e0e0;
         }
+
+        /* ========== Hamburguesas + backdrop (ocultos en desktop) ========== */
+        .mapeo-menu-toggle, .mapeo-1d-menu-toggle {
+          display: none;
+          position: absolute; top: 12px; left: 12px; z-index: 30;
+          background: #000; color: #fff; border: 1px solid #444;
+          padding: 10px 14px; cursor: pointer;
+          font-size: 16px; line-height: 1;
+          font-family: inherit;
+        }
+        .mapeo-menu-toggle:hover, .mapeo-1d-menu-toggle:hover { background: #1a1d23; }
+        .mapeo-sidebar-backdrop, .mapeo-1d-backdrop {
+          display: none;
+          position: absolute; inset: 0;
+          background: rgba(0,0,0,0.5); z-index: 40;
+        }
+        .mapeo-sidebar-backdrop.open, .mapeo-1d-backdrop.open { display: block; }
+
+        /* ========== Tablet (≤1024px): sidebar más angosto ========== */
+        @media (max-width: 1024px) {
+          .mapeo-sidebar { width: 240px; padding: 12px; }
+          .mapeo-sidebar h2 { font-size: 11px; }
+          .mapeo-1d-controls { width: 280px; padding: 12px; }
+          .mapeo-pro-header { padding: 10px 14px; }
+        }
+
+        /* ========== Mobile (≤768px): drawer + touch targets ========== */
+        @media (max-width: 768px) {
+          /* MAPEO sidebar como drawer slide-in */
+          .mapeo-sidebar {
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            width: 85%; max-width: 340px;
+            transform: translateX(-100%);
+            transition: transform 0.25s ease;
+            z-index: 50;
+            box-shadow: 2px 0 16px rgba(0,0,0,0.6);
+          }
+          .mapeo-sidebar.open { transform: translateX(0); }
+          .mapeo-menu-toggle { display: block; }
+
+          /* Acomodar status y close para no chocar con hamburguesa */
+          .mapeo-status { left: auto; right: 90px; top: 18px; font-size: 10px; }
+          .mapeo-close { padding: 10px 14px; font-size: 12px; }
+
+          /* Touch targets más grandes */
+          .mapeo-btn {
+            padding: 12px 14px;
+            font-size: 12px;
+            min-height: 44px;
+          }
+          .mapeo-sidebar input,
+          .mapeo-sidebar select,
+          .mapeo-sidebar textarea {
+            padding: 10px 8px;
+            min-height: 40px;
+            font-size: 13px;
+          }
+          .mapeo-sidebar h2 { font-size: 13px; margin-bottom: 16px; }
+          .mapeo-sidebar .section-title { font-size: 11px; }
+          .mapeo-sidebar label { font-size: 12px; }
+
+          /* Modal MakeCode full-screen en móvil */
+          .mapeo-modal-content {
+            max-width: 100%;
+            width: 100%;
+            max-height: 100%;
+            height: 100%;
+            padding: 16px;
+            border: none;
+          }
+          .mapeo-mc-sensors { flex-wrap: wrap; }
+          .mapeo-mc-sensors .mapeo-btn { flex: 1 1 calc(50% - 3px); min-width: 0; }
+          .mapeo-mc-actions { flex-wrap: wrap; }
+          .mapeo-mc-actions .mapeo-btn { flex: 1 1 calc(50% - 3px); min-width: 0; }
+          .mapeo-mc-code { font-size: 11px; max-height: 200px; }
+
+          /* Pro header: controles más compactos en móvil */
+          .mapeo-pro-header {
+            padding: 8px 50px 8px 56px;
+            gap: 6px;
+          }
+          .mapeo-pro-header h3 { font-size: 10px; flex: 1 1 100%; }
+          .mapeo-pro-header label { font-size: 10px; gap: 4px; }
+          .mapeo-pro-header select,
+          .mapeo-pro-header input[type=number] {
+            padding: 6px 8px; font-size: 11px;
+          }
+
+          /* Pro mode 1D: controls como drawer */
+          .mapeo-1d { position: relative; }
+          .mapeo-1d-controls {
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            width: 90%; max-width: 340px;
+            transform: translateX(-100%);
+            transition: transform 0.25s ease;
+            z-index: 50;
+            box-shadow: 2px 0 16px rgba(0,0,0,0.6);
+          }
+          .mapeo-1d-controls.open { transform: translateX(0); }
+          .mapeo-1d-menu-toggle { display: block; top: 8px; left: 8px; }
+          .mapeo-1d-results { font-size: 10px; padding: 10px 14px; max-height: 130px; }
+          .mapeo-1d-results h4 { font-size: 9px; }
+          .mapeo-1d-results .metric { display: block; margin-right: 0; margin-bottom: 4px; }
+
+          /* Toasts caben en pantalla angosta */
+          #mapeo-restore-prompt { max-width: calc(100% - 24px); bottom: 16px; padding: 12px 14px; }
+          .mapeo-toast { max-width: calc(100% - 24px); }
+        }
+
+        /* ========== Mobile muy angosto (<480px): aún más compacto ========== */
+        @media (max-width: 480px) {
+          .mapeo-pro-header h3 { display: none; }
+          .mapeo-1d-results .metric { font-size: 10px; }
+        }
         /* ===== MAPEO PRO END ===== */
         /* ===== MAPEO STYLES END ===== */
     </style>
@@ -19089,7 +19205,9 @@ bluetooth.startIOPinService()</pre>
 
     <!-- ===== MAPEO PANEL START ===== -->
     <div id="mapeo-panel" class="mapeo-panel">
+      <button class="mapeo-menu-toggle" id="mapeo-menu-toggle" aria-label="Abrir menú">☰</button>
       <aside class="mapeo-sidebar" id="mapeo-sidebar"></aside>
+      <div class="mapeo-sidebar-backdrop" id="mapeo-sidebar-backdrop"></div>
       <main class="mapeo-stage">
         <div class="mapeo-status" id="mapeo-status"></div>
         <button class="mapeo-close" id="mapeo-close">CERRAR</button>
@@ -20119,6 +20237,43 @@ bluetooth.startIOPinService()</pre>
           // Inicializar template default (cilindro coaxial) + estado de inputs
           updateCutMode();
           this._loadModelTemplate('coaxial');
+
+          // ===== Drawer mobile: hamburguesa + backdrop =====
+          // En desktop estos elementos están ocultos por CSS, los listeners
+          // no causan efecto. En mobile abren/cierran el sidebar como cajón.
+          const menuToggle = document.getElementById('mapeo-menu-toggle');
+          const backdrop   = document.getElementById('mapeo-sidebar-backdrop');
+          this._closeSidebar = () => {
+            this.sidebar.classList.remove('open');
+            if (backdrop) backdrop.classList.remove('open');
+          };
+          this._openSidebar = () => {
+            this.sidebar.classList.add('open');
+            if (backdrop) backdrop.classList.add('open');
+          };
+          if (menuToggle) menuToggle.addEventListener('click', () => {
+            if (this.sidebar.classList.contains('open')) this._closeSidebar();
+            else this._openSidebar();
+          });
+          if (backdrop) backdrop.addEventListener('click', this._closeSidebar);
+
+          // Drawer del modo 1D (idéntico patrón)
+          const menuToggle1d = document.getElementById('mapeo-1d-menu-toggle');
+          const backdrop1d   = document.getElementById('mapeo-1d-backdrop');
+          const controls1d   = document.querySelector('.mapeo-1d-controls');
+          const close1d = () => {
+            if (controls1d) controls1d.classList.remove('open');
+            if (backdrop1d) backdrop1d.classList.remove('open');
+          };
+          const open1d = () => {
+            if (controls1d) controls1d.classList.add('open');
+            if (backdrop1d) backdrop1d.classList.add('open');
+          };
+          if (menuToggle1d) menuToggle1d.addEventListener('click', () => {
+            if (controls1d && controls1d.classList.contains('open')) close1d();
+            else open1d();
+          });
+          if (backdrop1d) backdrop1d.addEventListener('click', close1d);
 
           this._regenerateGrid();
         }
@@ -21726,6 +21881,11 @@ bluetooth.startIOPinService()</pre>
           this.activePoint = best;
           this._draw();
           this._refreshActivePanel();
+          // En móvil, abrir el drawer al seleccionar para que la sección
+          // "Punto activo" sea visible (sino el alumno no la encontraría).
+          if (best && window.innerWidth <= 768 && typeof this._openSidebar === 'function') {
+            this._openSidebar();
+          }
         }
         _updateStatus() {
           const el = document.getElementById('mapeo-status');
@@ -21795,6 +21955,8 @@ bluetooth.startIOPinService()</pre>
         </div>
       </div>
       <div class="mapeo-1d" id="mapeo-1d">
+        <button class="mapeo-1d-menu-toggle" id="mapeo-1d-menu-toggle" aria-label="Abrir controles">☰ Controles</button>
+        <div class="mapeo-1d-backdrop" id="mapeo-1d-backdrop"></div>
         <aside class="mapeo-1d-controls">
           <div class="group">
             <h4>Definir corte</h4>
