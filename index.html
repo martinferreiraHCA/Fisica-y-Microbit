@@ -21701,12 +21701,25 @@ bluetooth.startIOPinService()</pre>
           ctx.fillStyle = '#1a1d23';
           ctx.fillRect(0,0,W,H);
 
-          const margin = 50;
-          const sx = (W - 2*margin) / this.grid.widthCm;
-          const sy = (H - 2*margin) / this.grid.heightCm;
+          // Reservas adaptativas: en pantallas chicas el margen fijo de 50px
+          // se comía 28% del ancho; ahora escala con el viewport pero respeta
+          // mínimos para que las etiquetas y el colorbar quepan.
+          const reserveLeft   = Math.min(60, Math.max(35, W * 0.04));
+          const reserveRight  = Math.min(100, Math.max(70, W * 0.08));
+          const reserveTop    = 20;
+          const reserveBottom = 28;
+          const usableW = Math.max(50, W - reserveLeft - reserveRight);
+          const usableH = Math.max(50, H - reserveTop - reserveBottom);
+          const sx = usableW / this.grid.widthCm;
+          const sy = usableH / this.grid.heightCm;
           const s  = Math.min(sx, sy);
-          const ox = margin;
-          const oy = H - margin;
+          // Centrar la grilla en el área útil (antes estaba anclada a la
+          // esquina inferior izquierda, dejaba mucho espacio vacío arriba
+          // y a la derecha en celulares).
+          const gridW = this.grid.widthCm * s;
+          const gridH = this.grid.heightCm * s;
+          const ox = reserveLeft + (usableW - gridW) / 2;
+          const oy = H - reserveBottom - (usableH - gridH) / 2;
           this._scale = { s, ox, oy, widthCm:this.grid.widthCm, heightCm:this.grid.heightCm };
 
           // Cuadrícula tenue cada cm (líneas finas grises)
@@ -21778,9 +21791,16 @@ bluetooth.startIOPinService()</pre>
             this._toast('Necesitás al menos 3 puntos para visualizar');
           }
 
-          // Pelotitas — radios escalan con touch device para mejor tap target.
-          const dotR = this._isTouch ? 10 : 7;
-          const ringR = dotR + 5;
+          // Pelotitas — radio adaptativo:
+          // - tamaño "ideal" según device (touch=10, desktop=7)
+          // - capeado al 40% del paso de grilla en píxeles, así nunca se
+          //   solapan con vecinas (síntoma típico en celulares con grids
+          //   densas: parecían "pegadas" y eso daba sensación visual de
+          //   no estar equiespaciadas).
+          const stepPxMin = s * Math.min(this.grid.stepXCm, this.grid.stepYCm);
+          const idealR = this._isTouch ? 10 : 7;
+          const dotR = Math.max(2, Math.min(idealR, stepPxMin * 0.4));
+          const ringR = dotR + Math.max(3, dotR * 0.5);
           this.grid.points.forEach(p => {
             const px = ox + p.x*s;
             const py = oy - p.y*s;
