@@ -15,6 +15,9 @@
     <!-- Plotly.js para modo Análisis profesional de MAPEO -->
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer
             onerror="window.__plotlyFailed=true;"></script>
+    <!-- mathjs para parser de expresiones de modelos teóricos en MAPEO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.min.js" defer
+            onerror="window.__mathjsFailed=true;"></script>
     <style>
         * {
             margin: 0;
@@ -3663,6 +3666,86 @@
           align-items: center; justify-content: center;
           color: #ef5350; font-size: 12px;
           padding: 32px; text-align: center; line-height: 1.6;
+        }
+        /* Pestañas del modo pro */
+        .mapeo-pro-tabs {
+          display: flex; gap: 0; padding: 0 16px;
+          background: #1a1d23; border-bottom: 1px solid #2b303b;
+        }
+        .mapeo-pro-tab {
+          padding: 8px 18px; background: transparent; color: #9e9e9e;
+          border: none; border-bottom: 2px solid transparent;
+          cursor: pointer; font: inherit; font-size: 11px;
+          letter-spacing: 1px; text-transform: uppercase;
+        }
+        .mapeo-pro-tab:hover { color: #fff; }
+        .mapeo-pro-tab.active { color: #fff; border-bottom-color: #fff; }
+
+        /* Panel 1D */
+        .mapeo-1d {
+          display: none; flex: 1; flex-direction: row;
+          background: #1a1d23;
+        }
+        .mapeo-1d.active { display: flex; }
+        .mapeo-1d-controls {
+          width: 320px; padding: 16px; overflow-y: auto;
+          background: #23272e; border-right: 1px solid #2b303b;
+          font-size: 11px;
+        }
+        .mapeo-1d-controls h4 {
+          margin: 0 0 8px 0; font-size: 10px; letter-spacing: 1.5px;
+          color: #9e9e9e; text-transform: uppercase; font-weight: 600;
+        }
+        .mapeo-1d-controls .group {
+          border-top: 1px solid #2b303b; padding: 12px 0;
+        }
+        .mapeo-1d-controls .group:first-of-type { border-top: none; padding-top: 0; }
+        .mapeo-1d-controls label {
+          display: block; color: #9e9e9e; margin-bottom: 8px;
+        }
+        .mapeo-1d-controls input,
+        .mapeo-1d-controls select,
+        .mapeo-1d-controls textarea {
+          display: block; width: 100%; margin-top: 4px; padding: 5px 7px;
+          background: #1a1d23; color: #e0e0e0; border: 1px solid #444;
+          font-family: inherit; font-size: 11px;
+        }
+        .mapeo-1d-controls textarea {
+          font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px;
+          resize: vertical; min-height: 50px;
+        }
+        .mapeo-1d-stage {
+          flex: 1; position: relative; display: flex; flex-direction: column;
+        }
+        .mapeo-1d-plot { flex: 1; position: relative; }
+        .mapeo-1d-results {
+          padding: 12px 20px; background: #23272e;
+          border-top: 1px solid #2b303b;
+          font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px;
+          color: #e0e0e0; max-height: 180px; overflow-y: auto;
+          line-height: 1.7;
+        }
+        .mapeo-1d-results h4 {
+          margin: 0 0 6px 0; font-size: 10px; color: #9e9e9e;
+          letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600;
+          font-family: -apple-system, Segoe UI, sans-serif;
+        }
+        .mapeo-1d-results .metric { display: inline-block; margin-right: 24px; }
+        .mapeo-1d-results .param { display: block; margin-left: 16px; }
+        .mapeo-1d-results .param .name { color: #fff; font-weight: 600; }
+        .mapeo-1d-results .param .err { color: #9e9e9e; font-size: 10px; }
+        .mapeo-1d-params-table {
+          display: grid; grid-template-columns: auto 1fr auto auto;
+          gap: 6px 10px; align-items: center; margin-top: 6px;
+          font-size: 11px;
+        }
+        .mapeo-1d-params-table input[type=text],
+        .mapeo-1d-params-table input[type=number] {
+          padding: 3px 6px; font-size: 11px; margin: 0; width: auto;
+        }
+        .mapeo-1d-params-table label {
+          margin: 0; display: flex; align-items: center; gap: 4px;
+          color: #e0e0e0;
         }
         /* ===== MAPEO PRO END ===== */
         /* ===== MAPEO STYLES END ===== */
@@ -19333,6 +19416,213 @@ bluetooth.startIOPinService()</pre>
           return { xs, ys };
         },
 
+        // ===== Templates de modelos teóricos =====
+        modelTemplates: {
+          linear: {
+            expr: 'a * x + b',
+            params: [
+              { name: 'a', value: 1, fit: true },
+              { name: 'b', value: 0, fit: true }
+            ]
+          },
+          parallel: {
+            expr: 'V1 + (V2 - V1) * (x - x1) / d',
+            params: [
+              { name: 'V1', value: 0, fit: false },
+              { name: 'V2', value: 13, fit: false },
+              { name: 'x1', value: 0, fit: true },
+              { name: 'd',  value: 14, fit: true }
+            ]
+          },
+          point: {
+            expr: 'k / abs(x - x0)',
+            params: [
+              { name: 'k',  value: 10, fit: true },
+              { name: 'x0', value: 7,  fit: true }
+            ]
+          },
+          dipole: {
+            expr: 'k / abs(x - a) - k / abs(x - b)',
+            params: [
+              { name: 'k', value: 10, fit: true },
+              { name: 'a', value: 3,  fit: true },
+              { name: 'b', value: 11, fit: true }
+            ]
+          },
+          coaxial: {
+            // El modelo del script MATLAB:
+            // V2 + (V2-V1)/log(d/R - 1) * log((x-x1)/(d-(x-x1)))
+            expr: 'V2 + (V2 - V1) / log(d/R - 1) * log((x - x1) / (d - (x - x1)))',
+            params: [
+              { name: 'V1', value: 0,    fit: false },
+              { name: 'V2', value: 13,   fit: false },
+              { name: 'R',  value: 1,    fit: true  },
+              { name: 'x1', value: 6.5,  fit: true  },
+              { name: 'd',  value: 28,   fit: true  }
+            ]
+          }
+        },
+
+        // ===== Levenberg-Marquardt =====
+        // Ajusta f(x; params) a los datos (xs, ys).
+        // f es función de (x, paramsObj). paramsToFit es array de strings con
+        // los nombres de los parámetros que se ajustan; los demás quedan fijos.
+        // Devuelve { params, errors, chi2, r2, residuals, converged, iterations }.
+        levenbergMarquardt(f, xs, ys, paramsObj, paramsToFit, opts = {}) {
+          const maxIter = opts.maxIter || 200;
+          const tol = opts.tol || 1e-8;
+          const lambdaInit = opts.lambdaInit || 0.001;
+          const N = xs.length;
+          const p = paramsToFit.length;
+          if (p === 0 || N <= p) {
+            return { error: 'No hay suficientes puntos o parámetros para ajustar' };
+          }
+
+          // Vector de parámetros activos
+          let theta = paramsToFit.map(name => paramsObj[name]);
+          const setTheta = (t) => paramsToFit.forEach((name, i) => { paramsObj[name] = t[i]; });
+
+          const computeResidualsAndJacobian = (theta) => {
+            setTheta(theta);
+            const r = new Array(N);
+            const J = []; // N x p
+            for (let i = 0; i < N; i++) {
+              let yi;
+              try { yi = f(xs[i], paramsObj); }
+              catch { yi = NaN; }
+              r[i] = ys[i] - yi;
+              // Jacobiano numérico (diferencias finitas centradas)
+              const row = new Array(p);
+              for (let k = 0; k < p; k++) {
+                const orig = theta[k];
+                const h = Math.max(1e-7, Math.abs(orig) * 1e-7);
+                theta[k] = orig + h; setTheta(theta);
+                let yp; try { yp = f(xs[i], paramsObj); } catch { yp = NaN; }
+                theta[k] = orig - h; setTheta(theta);
+                let ym; try { ym = f(xs[i], paramsObj); } catch { ym = NaN; }
+                theta[k] = orig; setTheta(theta);
+                row[k] = (yp - ym) / (2 * h);
+                if (!Number.isFinite(row[k])) row[k] = 0;
+              }
+              J.push(row);
+            }
+            return { r, J };
+          };
+
+          const norm2 = (v) => v.reduce((a, b) => a + (b || 0) ** 2, 0);
+
+          // Resolver (J^T J + λ diag(J^T J)) δ = J^T r por eliminación gaussiana.
+          const solve = (A, b) => {
+            const n = A.length;
+            const M = A.map((row, i) => row.concat([b[i]]));
+            for (let i = 0; i < n; i++) {
+              let maxRow = i;
+              for (let k = i + 1; k < n; k++) {
+                if (Math.abs(M[k][i]) > Math.abs(M[maxRow][i])) maxRow = k;
+              }
+              [M[i], M[maxRow]] = [M[maxRow], M[i]];
+              if (Math.abs(M[i][i]) < 1e-14) return null;
+              for (let k = i + 1; k < n; k++) {
+                const factor = M[k][i] / M[i][i];
+                for (let j = i; j <= n; j++) M[k][j] -= factor * M[i][j];
+              }
+            }
+            const x = new Array(n);
+            for (let i = n - 1; i >= 0; i--) {
+              let s = M[i][n];
+              for (let j = i + 1; j < n; j++) s -= M[i][j] * x[j];
+              x[i] = s / M[i][i];
+            }
+            return x;
+          };
+
+          let lambda = lambdaInit;
+          let { r, J } = computeResidualsAndJacobian(theta);
+          let chi2 = norm2(r);
+          let iter = 0;
+          let converged = false;
+
+          while (iter < maxIter) {
+            const JtJ = [];
+            const Jtr = new Array(p).fill(0);
+            for (let k = 0; k < p; k++) {
+              const row = new Array(p).fill(0);
+              for (let i = 0; i < N; i++) {
+                for (let l = 0; l < p; l++) row[l] += J[i][k] * J[i][l];
+                Jtr[k] += J[i][k] * r[i];
+              }
+              JtJ.push(row);
+            }
+            const A = JtJ.map((row, k) => row.map((v, l) => k === l ? v * (1 + lambda) : v));
+            const delta = solve(A, Jtr);
+            if (!delta) { lambda *= 10; if (lambda > 1e10) break; iter++; continue; }
+            const thetaNew = theta.map((v, k) => v + delta[k]);
+            setTheta(thetaNew);
+            const { r: rNew, J: JNew } = computeResidualsAndJacobian(thetaNew);
+            const chi2New = norm2(rNew);
+            if (chi2New < chi2) {
+              const improved = (chi2 - chi2New) / chi2;
+              theta = thetaNew;
+              r = rNew;
+              J = JNew;
+              chi2 = chi2New;
+              lambda = Math.max(lambda / 10, 1e-12);
+              if (improved < tol) { converged = true; break; }
+            } else {
+              setTheta(theta);
+              lambda *= 10;
+              if (lambda > 1e10) break;
+            }
+            iter++;
+          }
+
+          // Errores: diagonal de la covarianza ≈ chi2/(N-p) * (J^T J)^-1
+          const dof = Math.max(1, N - p);
+          const sigma2 = chi2 / dof;
+          const errors = new Array(p).fill(NaN);
+          const JtJfinal = [];
+          for (let k = 0; k < p; k++) {
+            const row = new Array(p).fill(0);
+            for (let i = 0; i < N; i++) {
+              for (let l = 0; l < p; l++) row[l] += J[i][k] * J[i][l];
+            }
+            JtJfinal.push(row);
+          }
+          for (let k = 0; k < p; k++) {
+            const e = new Array(p).fill(0); e[k] = 1;
+            const col = solve(JtJfinal.map(r => r.slice()), e);
+            if (col && Number.isFinite(col[k]) && col[k] >= 0) {
+              errors[k] = Math.sqrt(sigma2 * col[k]);
+            }
+          }
+
+          // R²
+          const yMean = ys.reduce((a, b) => a + b, 0) / ys.length;
+          const ssTot = ys.reduce((a, y) => a + (y - yMean) ** 2, 0);
+          const r2 = ssTot > 0 ? 1 - chi2 / ssTot : 0;
+
+          const resultParams = {};
+          const resultErrors = {};
+          paramsToFit.forEach((name, i) => {
+            resultParams[name] = theta[i];
+            resultErrors[name] = errors[i];
+          });
+          Object.keys(paramsObj).forEach(name => {
+            if (!(name in resultParams)) resultParams[name] = paramsObj[name];
+          });
+
+          return {
+            params: resultParams,
+            errors: resultErrors,
+            chi2, dof,
+            chi2Reduced: chi2 / dof,
+            r2,
+            residuals: r,
+            converged,
+            iterations: iter
+          };
+        },
+
         // Tema oscuro Plotly coherente con fisicabit.
         darkTheme() {
           return {
@@ -19594,6 +19884,56 @@ bluetooth.startIOPinService()</pre>
           document.getElementById('mp-pro-export-png').addEventListener('click', () => this._exportProImage('png'));
           document.getElementById('mp-pro-export-svg').addEventListener('click', () => this._exportProImage('svg'));
 
+          // Binds del modo 1D
+          this.panel.querySelectorAll('.mapeo-pro-tab').forEach(tab => {
+            tab.addEventListener('click', () => this._switchProTab(tab.dataset.tab));
+          });
+
+          const updateCutMode = () => {
+            const mode = document.getElementById('mp-1d-mode').value;
+            document.getElementById('mp-1d-y-wrap').style.display = (mode === 'horizontal') ? 'block' : 'none';
+            document.getElementById('mp-1d-x-wrap').style.display = (mode === 'vertical') ? 'block' : 'none';
+            document.getElementById('mp-1d-custom-wrap').style.display = (mode === 'custom') ? 'block' : 'none';
+          };
+          document.getElementById('mp-1d-mode').addEventListener('change', () => { updateCutMode(); this._render1D(); });
+          ['mp-1d-y','mp-1d-x','mp-1d-x1','mp-1d-y1','mp-1d-x2','mp-1d-y2','mp-1d-samples'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => this._render1D());
+          });
+
+          document.getElementById('mp-1d-template').addEventListener('change', (e) => {
+            if (e.target.value !== 'custom') this._loadModelTemplate(e.target.value);
+          });
+          document.getElementById('mp-1d-fit').addEventListener('click', () => this._doFit());
+          document.getElementById('mp-1d-update').addEventListener('click', () => {
+            const cut = this._lastCut || this._sampleCut();
+            if (!cut) return;
+            this._lastCut = cut;
+            const expr = document.getElementById('mp-1d-expr').value;
+            const params = this._readParamsTable();
+            let f;
+            try { f = this._buildModelFunction(expr); } catch (e) { this._toast('Expresión inválida'); return; }
+            const paramsObj = {};
+            params.forEach(p => paramsObj[p.name] = p.value);
+            const sMin = Math.min(...cut.ss), sMax = Math.max(...cut.ss);
+            const NM = 200;
+            const modelXs = [], modelYs = [];
+            for (let i = 0; i < NM; i++) {
+              const s = sMin + (sMax - sMin) * (i / (NM - 1));
+              modelXs.push(s);
+              try { modelYs.push(f(s, paramsObj)); } catch { modelYs.push(NaN); }
+            }
+            const residuals = cut.ss.map((s, i) => {
+              if (!Number.isFinite(cut.vs[i])) return NaN;
+              try { return cut.vs[i] - f(s, paramsObj); } catch { return NaN; }
+            });
+            this._plotCut(cut, { modelXs, modelYs, residuals });
+          });
+          document.getElementById('mp-1d-export-csv').addEventListener('click', () => this._exportCut());
+
+          // Inicializar template default (cilindro coaxial) + estado de inputs
+          updateCutMode();
+          this._loadModelTemplate('coaxial');
+
           this._regenerateGrid();
         }
 
@@ -19846,6 +20186,348 @@ bluetooth.startIOPinService()</pre>
           };
 
           Plotly.newPlot(plot, traces, layout, config);
+        }
+
+        // ===== Modo 1D: cortes y ajuste =====
+
+        _switchProTab(tabName) {
+          this.panel.querySelectorAll('.mapeo-pro-tab').forEach(t => {
+            t.classList.toggle('active', t.dataset.tab === tabName);
+          });
+          const stage2d = document.querySelector('.mapeo-pro-stage');
+          const stage1d = document.getElementById('mapeo-1d');
+          if (tabName === '1d') {
+            stage2d.style.display = 'none';
+            stage1d.classList.add('active');
+            this._render1D();
+          } else {
+            stage2d.style.display = 'block';
+            stage1d.classList.remove('active');
+          }
+        }
+
+        // Sampling del corte: devuelve {ss (posición a lo largo), xs (cm), ys (cm), vs (valores)}
+        _sampleCut() {
+          if (!this.grid) return null;
+          const mode = document.getElementById('mp-1d-mode').value;
+          const N = parseInt(document.getElementById('mp-1d-samples').value, 10) || 100;
+          const W = this.grid.widthCm, H = this.grid.heightCm;
+
+          let x1, y1, x2, y2;
+          if (mode === 'horizontal') {
+            const y = parseFloat(document.getElementById('mp-1d-y').value);
+            x1 = 0; y1 = y; x2 = W; y2 = y;
+          } else if (mode === 'vertical') {
+            const x = parseFloat(document.getElementById('mp-1d-x').value);
+            x1 = x; y1 = 0; x2 = x; y2 = H;
+          } else {
+            x1 = parseFloat(document.getElementById('mp-1d-x1').value);
+            y1 = parseFloat(document.getElementById('mp-1d-y1').value);
+            x2 = parseFloat(document.getElementById('mp-1d-x2').value);
+            y2 = parseFloat(document.getElementById('mp-1d-y2').value);
+          }
+          if (![x1, y1, x2, y2].every(Number.isFinite)) return null;
+
+          const M = MapeoViz.interpolate(this.grid, 120);
+          if (!M) return null;
+          const xs = [], ys = [], vs = [], ss = [];
+          const totalLen = Math.hypot(x2 - x1, y2 - y1);
+          for (let i = 0; i < N; i++) {
+            const t = i / (N - 1);
+            const x = x1 + t * (x2 - x1);
+            const y = y1 + t * (y2 - y1);
+            const fx = x / W, fy = y / H;
+            const v = MapeoPro.bicubicAt(M, fx, fy);
+            xs.push(x); ys.push(y);
+            vs.push(Number.isFinite(v) ? v : NaN);
+            ss.push(t * totalLen);
+          }
+          return { ss, xs, ys, vs, x1, y1, x2, y2 };
+        }
+
+        _loadModelTemplate(name) {
+          const tpl = MapeoPro.modelTemplates[name];
+          if (!tpl) return;
+          document.getElementById('mp-1d-expr').value = tpl.expr;
+          this._renderParamsTable(tpl.params);
+        }
+
+        _renderParamsTable(params) {
+          const div = document.getElementById('mp-1d-params');
+          div.innerHTML = '';
+          this._currentParams = params.map(p => ({ ...p }));
+          this._currentParams.forEach((p, idx) => {
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text'; nameInput.value = p.name;
+            nameInput.style.width = '60px';
+            nameInput.dataset.idx = idx; nameInput.dataset.field = 'name';
+
+            const valInput = document.createElement('input');
+            valInput.type = 'number'; valInput.value = p.value;
+            valInput.step = 'any'; valInput.style.width = '90px';
+            valInput.dataset.idx = idx; valInput.dataset.field = 'value';
+
+            const fitWrap = document.createElement('label');
+            fitWrap.style.cssText = 'display:flex;align-items:center;gap:4px;color:#9e9e9e;font-size:10px;';
+            const fitChk = document.createElement('input');
+            fitChk.type = 'checkbox'; fitChk.checked = p.fit;
+            fitChk.dataset.idx = idx; fitChk.dataset.field = 'fit';
+            fitWrap.appendChild(fitChk);
+            fitWrap.appendChild(document.createTextNode('ajustar'));
+
+            const removeBtn = document.createElement('button');
+            removeBtn.textContent = '×'; removeBtn.className = 'mapeo-btn';
+            removeBtn.style.cssText = 'width:24px;padding:2px;';
+            removeBtn.addEventListener('click', () => {
+              this._currentParams.splice(idx, 1);
+              this._renderParamsTable(this._currentParams);
+            });
+
+            div.appendChild(nameInput);
+            div.appendChild(valInput);
+            div.appendChild(fitWrap);
+            div.appendChild(removeBtn);
+          });
+          const addBtn = document.createElement('button');
+          addBtn.textContent = '+ agregar parámetro';
+          addBtn.className = 'mapeo-btn';
+          addBtn.style.cssText = 'grid-column:1 / -1; margin-top:6px;';
+          addBtn.addEventListener('click', () => {
+            this._currentParams.push({ name: 'p' + this._currentParams.length, value: 1, fit: true });
+            this._renderParamsTable(this._currentParams);
+          });
+          div.appendChild(addBtn);
+        }
+
+        _readParamsTable() {
+          const div = document.getElementById('mp-1d-params');
+          const inputs = div.querySelectorAll('input');
+          const map = {};
+          inputs.forEach(inp => {
+            const idx = inp.dataset.idx;
+            const field = inp.dataset.field;
+            if (idx === undefined || field === undefined) return;
+            if (!map[idx]) map[idx] = {};
+            if (field === 'name')  map[idx].name = inp.value;
+            if (field === 'value') map[idx].value = parseFloat(inp.value);
+            if (field === 'fit')   map[idx].fit = inp.checked;
+          });
+          return Object.values(map).filter(p => p.name && Number.isFinite(p.value));
+        }
+
+        _buildModelFunction(expr) {
+          if (typeof math === 'undefined') {
+            throw new Error('mathjs no está cargado');
+          }
+          const compiled = math.compile(expr);
+          return (x, params) => compiled.evaluate({ x, ...params });
+        }
+
+        _render1D() {
+          if (typeof Plotly === 'undefined') return;
+          const cut = this._sampleCut();
+          if (!cut) {
+            document.getElementById('mapeo-1d-results').innerHTML =
+              '<h4>Resultados</h4><div style="color:#ef5350;">Sin datos suficientes para el corte.</div>';
+            return;
+          }
+          this._lastCut = cut;
+          this._lastFitResult = null;
+          this._plotCut(cut, null);
+        }
+
+        _plotCut(cut, fit) {
+          const plot = document.getElementById('mapeo-1d-plot');
+          const theme = MapeoPro.darkTheme();
+
+          const traces = [];
+          traces.push({
+            type: 'scatter', mode: 'markers',
+            x: cut.ss, y: cut.vs,
+            marker: { color: '#5dade2', size: 5 },
+            name: 'Datos',
+            xaxis: 'x', yaxis: 'y',
+            hovertemplate: 's=%{x:.2f} cm<br>v=%{y:.4f}<extra></extra>'
+          });
+          if (fit && fit.modelXs && fit.modelYs) {
+            traces.push({
+              type: 'scatter', mode: 'lines',
+              x: fit.modelXs, y: fit.modelYs,
+              line: { color: '#fff', width: 2 },
+              name: 'Modelo',
+              xaxis: 'x', yaxis: 'y',
+              hovertemplate: 's=%{x:.2f} cm<br>modelo=%{y:.4f}<extra></extra>'
+            });
+            traces.push({
+              type: 'scatter', mode: 'markers',
+              x: cut.ss, y: fit.residuals,
+              marker: { color: '#ef5350', size: 4 },
+              name: 'Residuos',
+              xaxis: 'x2', yaxis: 'y2',
+              hovertemplate: 's=%{x:.2f} cm<br>residuo=%{y:.4f}<extra></extra>',
+              showlegend: false
+            });
+            traces.push({
+              type: 'scatter', mode: 'lines',
+              x: [Math.min(...cut.ss), Math.max(...cut.ss)], y: [0, 0],
+              line: { color: '#666', width: 1, dash: 'dash' },
+              xaxis: 'x2', yaxis: 'y2',
+              hoverinfo: 'skip', showlegend: false
+            });
+          }
+
+          const layout = {
+            ...theme,
+            grid: fit ? { rows: 2, columns: 1, rowheights: [0.7, 0.3], pattern: 'independent' } : undefined,
+            xaxis: { ...theme.xaxis, title: { text: fit ? '' : 'posición a lo largo del corte (cm)' }, scaleanchor: undefined, scaleratio: undefined },
+            yaxis: { ...theme.yaxis, title: { text: 'valor' }, scaleanchor: undefined, scaleratio: undefined },
+            xaxis2: fit ? { gridcolor: '#2b303b', linecolor: '#444', title: { text: 'posición (cm)' } } : undefined,
+            yaxis2: fit ? { gridcolor: '#2b303b', linecolor: '#444', title: { text: 'residuo' } } : undefined,
+            showlegend: true,
+            legend: { font: { color: '#e0e0e0' }, x: 0.02, y: 0.98, bgcolor: 'rgba(0,0,0,0.5)' }
+          };
+
+          Plotly.newPlot(plot, traces, layout, {
+            responsive: true, displayModeBar: true, displaylogo: false
+          });
+        }
+
+        _doFit() {
+          if (typeof math === 'undefined' || window.__mathjsFailed) {
+            this._toast('mathjs no se cargó. Recargá la página.');
+            return;
+          }
+          const cut = this._lastCut || this._sampleCut();
+          if (!cut) { this._toast('Generá un corte primero'); return; }
+          const expr = document.getElementById('mp-1d-expr').value;
+          const params = this._readParamsTable();
+          if (params.length === 0) { this._toast('Definí al menos un parámetro'); return; }
+          let f;
+          try { f = this._buildModelFunction(expr); }
+          catch (e) { this._toast('Error en la expresión: ' + e.message); return; }
+
+          const goodIdx = [];
+          for (let i = 0; i < cut.ss.length; i++) {
+            if (Number.isFinite(cut.vs[i])) goodIdx.push(i);
+          }
+          const xs = goodIdx.map(i => cut.ss[i]);
+          const ys = goodIdx.map(i => cut.vs[i]);
+          if (xs.length < 4) { this._toast('Pocos puntos válidos para ajustar'); return; }
+
+          const paramsObj = {};
+          params.forEach(p => paramsObj[p.name] = p.value);
+          const paramsToFit = params.filter(p => p.fit).map(p => p.name);
+          if (paramsToFit.length === 0) { this._toast('Marcá al menos un parámetro como ajustable'); return; }
+
+          let result;
+          try {
+            result = MapeoPro.levenbergMarquardt(f, xs, ys, paramsObj, paramsToFit);
+          } catch (e) {
+            this._toast('Error en el ajuste: ' + e.message); return;
+          }
+          if (result.error) { this._toast(result.error); return; }
+
+          const sMin = Math.min(...cut.ss), sMax = Math.max(...cut.ss);
+          const NM = 200;
+          const modelXs = [], modelYs = [];
+          for (let i = 0; i < NM; i++) {
+            const s = sMin + (sMax - sMin) * (i / (NM - 1));
+            modelXs.push(s);
+            try { modelYs.push(f(s, result.params)); }
+            catch { modelYs.push(NaN); }
+          }
+          const residuals = cut.ss.map((s, i) => {
+            if (!Number.isFinite(cut.vs[i])) return NaN;
+            try { return cut.vs[i] - f(s, result.params); }
+            catch { return NaN; }
+          });
+
+          const fit = { modelXs, modelYs, residuals };
+          this._lastFitResult = { result, fit };
+
+          this._plotCut(cut, fit);
+          this._showFitResults(result, paramsToFit);
+
+          const inputs = document.getElementById('mp-1d-params').querySelectorAll('input[data-field=value]');
+          inputs.forEach(inp => {
+            const idx = parseInt(inp.dataset.idx, 10);
+            const name = params[idx]?.name;
+            if (name && name in result.params) {
+              inp.value = result.params[name].toPrecision(6);
+            }
+          });
+        }
+
+        _showFitResults(result, fitNames) {
+          const div = document.getElementById('mapeo-1d-results');
+          const fmt = (v, digits = 4) => {
+            if (!Number.isFinite(v)) return '—';
+            if (Math.abs(v) >= 1000 || (Math.abs(v) < 0.001 && v !== 0)) return v.toExponential(2);
+            return v.toFixed(digits);
+          };
+          const convergedTxt = result.converged
+            ? `<span style="color:#66bb6a;">convergió</span>`
+            : `<span style="color:#ef5350;">no convergió</span>`;
+          let html = `
+            <h4>Resultados del ajuste</h4>
+            <div style="margin-bottom:8px;">
+              <span class="metric">${convergedTxt} en ${result.iterations} iteraciones</span>
+              <span class="metric">N = ${result.dof + fitNames.length}</span>
+              <span class="metric">p = ${fitNames.length}</span>
+            </div>
+            <div style="margin-bottom:8px;">
+              <span class="metric">χ² = ${fmt(result.chi2, 3)}</span>
+              <span class="metric">χ²/dof = ${fmt(result.chi2Reduced, 3)}</span>
+              <span class="metric">R² = ${fmt(result.r2, 5)}</span>
+            </div>
+            <div><strong style="color:#9e9e9e;">Parámetros:</strong></div>
+          `;
+          Object.keys(result.params).forEach(name => {
+            const v = result.params[name];
+            const e = result.errors[name];
+            const isFit = fitNames.includes(name);
+            if (isFit && Number.isFinite(e)) {
+              html += `<div class="param"><span class="name">${name}</span> = ${fmt(v, 5)} <span class="err">± ${fmt(e, 3)}</span></div>`;
+            } else if (isFit) {
+              html += `<div class="param"><span class="name">${name}</span> = ${fmt(v, 5)} <span class="err">(error indeterminado)</span></div>`;
+            } else {
+              html += `<div class="param" style="color:#9e9e9e;"><span class="name">${name}</span> = ${fmt(v, 5)} <span class="err">(fijo)</span></div>`;
+            }
+          });
+          div.innerHTML = html;
+        }
+
+        _exportCut() {
+          if (!this._lastCut) { this._toast('Generá un corte primero'); return; }
+          const cut = this._lastCut;
+          const fit = this._lastFitResult?.fit;
+          const lines = [
+            '% fisicabit-mapeo 1D-cut v1',
+            `% x1,${cut.x1}`,
+            `% y1,${cut.y1}`,
+            `% x2,${cut.x2}`,
+            `% y2,${cut.y2}`,
+            fit ? 's_cm,x_cm,y_cm,valor,modelo,residuo' : 's_cm,x_cm,y_cm,valor'
+          ];
+          for (let i = 0; i < cut.ss.length; i++) {
+            const row = [
+              cut.ss[i].toFixed(4),
+              cut.xs[i].toFixed(4),
+              cut.ys[i].toFixed(4),
+              Number.isFinite(cut.vs[i]) ? cut.vs[i].toFixed(6) : 'NaN'
+            ];
+            if (fit) {
+              let mj = 0, bestD = Infinity;
+              for (let j = 0; j < fit.modelXs.length; j++) {
+                const d = Math.abs(fit.modelXs[j] - cut.ss[i]);
+                if (d < bestD) { bestD = d; mj = j; }
+              }
+              row.push(Number.isFinite(fit.modelYs[mj]) ? fit.modelYs[mj].toFixed(6) : 'NaN');
+              row.push(Number.isFinite(fit.residuals[i]) ? fit.residuals[i].toFixed(6) : 'NaN');
+            }
+            lines.push(row.join(','));
+          }
+          this._downloadFile(lines.join('\n'), 'corte1d');
         }
 
         _exportProImage(format) {
@@ -20680,6 +21362,10 @@ bluetooth.startIOPinService()</pre>
         <button class="mapeo-btn" id="mp-pro-export-png" style="width:auto;">PNG</button>
         <button class="mapeo-btn" id="mp-pro-export-svg" style="width:auto;">SVG</button>
       </div>
+      <div class="mapeo-pro-tabs">
+        <button class="mapeo-pro-tab active" data-tab="2d">Campo 2D</button>
+        <button class="mapeo-pro-tab" data-tab="1d">Análisis 1D</button>
+      </div>
       <div class="mapeo-pro-stage">
         <div class="mapeo-pro-plot" id="mapeo-pro-plot"></div>
         <div class="mapeo-pro-loading" id="mapeo-pro-loading">Cargando análisis…</div>
@@ -20687,6 +21373,62 @@ bluetooth.startIOPinService()</pre>
           <div style="font-size:14px; margin-bottom:8px;">Plotly no se cargó</div>
           <div>Necesitás conexión a internet la primera vez para cachear la librería.</div>
         </div>
+      </div>
+      <div class="mapeo-1d" id="mapeo-1d">
+        <aside class="mapeo-1d-controls">
+          <div class="group">
+            <h4>Definir corte</h4>
+            <label>Modo
+              <select id="mp-1d-mode">
+                <option value="horizontal">Horizontal (y constante)</option>
+                <option value="vertical">Vertical (x constante)</option>
+                <option value="custom">Coordenadas explícitas</option>
+              </select>
+            </label>
+            <label id="mp-1d-y-wrap">y (cm) <input type="number" id="mp-1d-y" value="5" step="0.1"></label>
+            <label id="mp-1d-x-wrap" style="display:none;">x (cm) <input type="number" id="mp-1d-x" value="7" step="0.1"></label>
+            <div id="mp-1d-custom-wrap" style="display:none;">
+              <label>x₁ (cm) <input type="number" id="mp-1d-x1" value="0" step="0.1"></label>
+              <label>y₁ (cm) <input type="number" id="mp-1d-y1" value="0" step="0.1"></label>
+              <label>x₂ (cm) <input type="number" id="mp-1d-x2" value="14" step="0.1"></label>
+              <label>y₂ (cm) <input type="number" id="mp-1d-y2" value="10" step="0.1"></label>
+            </div>
+            <label>N° muestras <input type="number" id="mp-1d-samples" value="100" min="20" max="500" step="10"></label>
+          </div>
+
+          <div class="group">
+            <h4>Modelo teórico</h4>
+            <label>Plantilla
+              <select id="mp-1d-template">
+                <option value="custom">— Personalizada —</option>
+                <option value="linear">Lineal: a*x + b</option>
+                <option value="parallel">Placas paralelas</option>
+                <option value="point">Carga puntual: k/abs(x-x0)</option>
+                <option value="dipole">Dipolo: k/abs(x-a) - k/abs(x-b)</option>
+                <option value="coaxial" selected>Cilindro coaxial (cuba)</option>
+              </select>
+            </label>
+            <label>Expresión f(x)
+              <textarea id="mp-1d-expr" rows="2">V2 + (V2-V1)/log(d/R - 1) * log((x-x1)/(d-(x-x1)))</textarea>
+            </label>
+            <h4 style="margin-top:10px;">Parámetros</h4>
+            <div class="mapeo-1d-params-table" id="mp-1d-params"></div>
+            <button class="mapeo-btn" id="mp-1d-fit" style="margin-top:10px;">Ajustar modelo</button>
+            <button class="mapeo-btn" id="mp-1d-update" style="margin-top:6px;">Recalcular sin ajustar</button>
+          </div>
+
+          <div class="group">
+            <h4>Exportar</h4>
+            <button class="mapeo-btn" id="mp-1d-export-csv">CSV del corte</button>
+          </div>
+        </aside>
+        <main class="mapeo-1d-stage">
+          <div class="mapeo-1d-plot" id="mapeo-1d-plot"></div>
+          <div class="mapeo-1d-results" id="mapeo-1d-results">
+            <h4>Resultados</h4>
+            <div style="color:#666;">Cargá un corte y ajustá un modelo para ver resultados.</div>
+          </div>
+        </main>
       </div>
     </div>
     <!-- ===== MAPEO PRO PANEL END ===== -->
