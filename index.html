@@ -19920,10 +19920,20 @@ bluetooth.startIOPinService()</pre>
             </div>
 
             <div class="section">
+              <div class="section-title">Conexión</div>
+              <div class="mapeo-info" id="mp-conn"></div>
+              <button class="mapeo-btn" id="mp-conn-bt">Conectar BLE</button>
+              <button class="mapeo-btn" id="mp-conn-usb">Conectar USB</button>
+              <button class="mapeo-btn danger" id="mp-disconnect" style="display:none;">Desconectar</button>
+              <button class="mapeo-btn" id="mp-mc">Código para la micro:bit</button>
+              <div class="mapeo-info" style="font-size:10px; line-height:1.4; margin-top:6px;">
+                Soporta BLE y USB · Serial. Copiá el código en MakeCode y descargá el .hex a tu placa.
+              </div>
+            </div>
+
+            <div class="section">
               <div class="section-title">Captura</div>
               <button class="mapeo-btn" id="mp-cap">● Iniciar captura</button>
-              <button class="mapeo-btn" id="mp-mc">Código MakeCode</button>
-              <div class="mapeo-info" id="mp-conn"></div>
             </div>
 
             <div class="section">
@@ -20119,14 +20129,20 @@ bluetooth.startIOPinService()</pre>
           this._refreshConnIndicator = () => {
             const el = $('mp-conn');
             if (!el) return;
+            const btnBT  = $('mp-conn-bt');
+            const btnUSB = $('mp-conn-usb');
+            const btnOff = $('mp-disconnect');
             if (typeof state === 'undefined') { el.textContent = ''; return; }
 
             if (!state.isConnected) {
               el.innerHTML =
                 '<div style="color:#ef5350;font-weight:600;margin-bottom:6px;">○ Sin conexión</div>' +
                 '<div style="color:#9e9e9e;font-size:10px;line-height:1.4;">' +
-                  'Conectá la micro:bit desde la toolbar principal antes de capturar.' +
+                  'Elegí transporte abajo. La placa debe tener el código de MAPEO descargado.' +
                 '</div>';
+              if (btnBT)  btnBT.style.display  = '';
+              if (btnUSB) btnUSB.style.display = '';
+              if (btnOff) btnOff.style.display = 'none';
               return;
             }
 
@@ -20139,11 +20155,52 @@ bluetooth.startIOPinService()</pre>
                 '<div style="color:#66bb6a;font-weight:600;">● Conectado</div>' +
                 '<div style="color:#9e9e9e;font-size:10px;letter-spacing:1px;margin-top:2px;">USB · SERIAL</div>';
             }
+            // Conectado: ocultar conectar, mostrar desconectar.
+            if (btnBT)  btnBT.style.display  = 'none';
+            if (btnUSB) btnUSB.style.display = 'none';
+            if (btnOff) btnOff.style.display = '';
           };
           this._refreshConnIndicator();
           // Refresco periódico discreto (1 vez por segundo). Barato y suficiente
           // para detectar cambios de transporte iniciados desde la toolbar.
           this._connTimer = setInterval(this._refreshConnIndicator, 1000);
+
+          // Binds de Conexión: proxy a los botones de la toolbar principal.
+          // Web Bluetooth y Web Serial requieren gesto del usuario; el .click()
+          // sintético propaga el gesto del click MAPEO → handler real.
+          $('mp-conn-bt').addEventListener('click', () => {
+            const tb = document.getElementById('connectBluetoothBtn');
+            if (tb) tb.click();
+            else this._toast('Botón BLE no disponible en este navegador');
+          });
+          $('mp-conn-usb').addEventListener('click', () => {
+            const tb = document.getElementById('connectBtn');
+            if (tb) tb.click();
+            else this._toast('Botón USB no disponible en este navegador');
+          });
+          $('mp-disconnect').addEventListener('click', () => {
+            // Replica la lógica de desconexión de exitSensorMode (línea ~17475)
+            // en lugar de depender de un botón externo (no existe disconnectBtn).
+            try {
+              if (state.isCollecting) {
+                const stopBtn = document.getElementById('stopBtn');
+                if (stopBtn) stopBtn.click();
+              }
+              if (state.reader) { try { state.reader.cancel(); } catch (_) {} }
+              if (state.port)   { try { state.port.close();   } catch (_) {}; state.port = null; }
+              if (state.btDevice && state.btDevice.gatt && state.btDevice.gatt.connected) {
+                try { state.btDevice.gatt.disconnect(); } catch (_) {}
+              }
+              state.isConnected = false;
+              state.isBluetooth = false;
+              state.btDevice = null;
+              state.btCharTx = null;
+              this._refreshConnIndicator();
+              this._toast('Desconectado');
+            } catch (e) {
+              this._toast('Error al desconectar');
+            }
+          });
 
           // Binds de la sección Sesiones
           $('mp-sess-save').addEventListener('click', () => this._saveAsNamed());
