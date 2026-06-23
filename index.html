@@ -15321,18 +15321,21 @@ bluetooth.startIOPinService()</pre>
 
             if (!isFinite(xMin) || !isFinite(yMin)) return;
 
-            // Margen sólo del lado opuesto al origen para que el primer punto
-            // quede alineado con el inicio del gráfico (no "corrido"). Si los
-            // datos no incluyen valores negativos, anclar el origen en 0 para
-            // que el (0,0) de los ejes coincida con el comienzo de los datos.
+            // Enmarcar los datos para que LLENEN la ventana: 5% de margen en los
+            // cuatro lados, alrededor del rango real. Antes se forzaba el inicio
+            // del eje a 0; con datos lejos del origen (p. ej. tiempo no puesto en
+            // cero, en ms) eso dejaba todo apretado contra un borde y parecía roto.
+            // Sólo evitamos cruzar a valores negativos cuando los datos son ≥ 0
+            // (así, datos que arrancan en 0 siguen apoyados en el origen).
+            const dataXMin = xMin, dataYMin = yMin;
             const xRange = xMax - xMin || 1;
             const yRange = yMax - yMin || 1;
-            xMax += xRange * 0.05;
-            yMax += yRange * 0.05;
-            if (xMin >= 0) xMin = 0;
-            else xMin -= xRange * 0.05;
-            if (yMin >= 0) yMin = 0;
-            else yMin -= yRange * 0.05;
+            const xPad = xRange * 0.05;
+            const yPad = yRange * 0.05;
+            xMin -= xPad; xMax += xPad;
+            yMin -= yPad; yMax += yPad;
+            if (dataXMin >= 0 && xMin < 0) xMin = 0;
+            if (dataYMin >= 0 && yMin < 0) yMin = 0;
 
             // Resetear zoom primero, luego aplicar bounds
             chart.resetZoom();
