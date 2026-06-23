@@ -12450,12 +12450,12 @@ bluetooth.startIOPinService()</pre>
 
         // Calcula errores estándar de los parámetros del ajuste
         // Usa propagación numérica: perturba cada coeficiente y calcula la varianza de los residuos
-        function calculateParameterErrors(type, coeffs, xData, yData) {
+        function calculateParameterErrors(type, coeffs, xData, yData, xShift = 0) {
             const n = xData.length;
             const p = coeffs.length; // número de parámetros
             if (n <= p) return coeffs.map(() => NaN); // no hay grados de libertad
 
-            const predict = createPredictor(type, coeffs);
+            const predict = createPredictor(type, coeffs, xShift);
 
             // Calcular varianza de los residuos: s² = SSR / (n - p)
             let ssr = 0;
@@ -12519,8 +12519,8 @@ bluetooth.startIOPinService()</pre>
                     const h = Math.max(Math.abs(coeffs[j]) * eps, eps);
                     coeffsPlus[j] += h;
                     coeffsMinus[j] -= h;
-                    const predPlus = createPredictor(type, coeffsPlus)(xData[i]);
-                    const predMinus = createPredictor(type, coeffsMinus)(xData[i]);
+                    const predPlus = createPredictor(type, coeffsPlus, xShift)(xData[i]);
+                    const predMinus = createPredictor(type, coeffsMinus, xShift)(xData[i]);
                     J[i][j] = (predPlus - predMinus) / (2 * h);
                 }
             }
@@ -12562,7 +12562,7 @@ bluetooth.startIOPinService()</pre>
         }
 
         // Función para crear predictor basado en tipo y coeficientes
-        function createPredictor(type, coeffs) {
+        function createPredictor(type, coeffs, xShift = 0) {
             switch(type) {
                 case 'linear':
                     // y = mx + b
@@ -12574,8 +12574,8 @@ bluetooth.startIOPinService()</pre>
                     // y = ax³ + bx² + cx + d
                     return (x) => coeffs[0] * x * x * x + coeffs[1] * x * x + coeffs[2] * x + coeffs[3];
                 case 'exponential':
-                    // y = a·e^(bx)
-                    return (x) => coeffs[0] * Math.exp(coeffs[1] * x);
+                    // y = a·e^(b·(x − x₀)); xShift = x₀ (anclaje al inicio del tramo)
+                    return (x) => coeffs[0] * Math.exp(coeffs[1] * (x - xShift));
                 case 'power':
                     // y = a·x^b
                     return (x) => coeffs[0] * Math.pow(x, coeffs[1]);
@@ -12589,8 +12589,8 @@ bluetooth.startIOPinService()</pre>
                     // y = A·sin(ωx + φ) + C
                     return (x) => coeffs[0] * Math.sin(coeffs[1] * x + coeffs[2]) + coeffs[3];
                 case 'saturating':
-                    // y = A − B·e^(−k·x)  (crecimiento exponencial con saturación / curva de carga)
-                    return (x) => coeffs[0] - coeffs[1] * Math.exp(-coeffs[2] * x);
+                    // y = A − B·e^(−k·(x−x₀))  (crecimiento con saturación / curva de carga)
+                    return (x) => coeffs[0] - coeffs[1] * Math.exp(-coeffs[2] * (x - xShift));
                 default:
                     return (x) => 0;
             }
@@ -12709,20 +12709,32 @@ bluetooth.startIOPinService()</pre>
                 throw new Error('Datos insuficientes para ajuste exponencial (requiere y > 0)');
             }
 
-            const data = xData.map((x, i) => [x, yData[i]]);
+            // Anclar la x al inicio del tramo (x₀ = mínimo). Ajustamos
+            // y = a·e^(b·(x−x₀)). Esto es clave cuando el tiempo NO está en cero
+            // (p. ej. milisegundos o corridas largas): con x grande, el coeficiente
+            // a = "y en x=0" es una extrapolación brutal que se desborda a Infinity,
+            // y la fórmula de regression-js sufre cancelación catastrófica. Con el
+            // anclaje, a = valor al inicio del tramo (finito y con sentido) y b (la
+            // tasa) no cambia. Si el tiempo ya está en cero, x₀≈0 y queda y = a·e^(bx).
+            const x0 = Math.min(...xData);
+            const data = xData.map((x, i) => [x - x0, yData[i]]);
             const result = regression.exponential(data, { precision: 12 });
 
-            // result.equation = [a, b] para y = a·e^(bx)
+            // result.equation = [a, b] para y = a·e^(b·(x−x₀))
             const a = result.equation[0];
             const b = result.equation[1];
 
-            console.log('Coeficientes:', { a, b });
+            console.log('Coeficientes:', { a, b, x0 });
             console.log('R² =', result.r2);
 
-            const predict = (x) => a * Math.exp(b * x);
-            const equation = `y = ${a.toFixed(4)}·e^(${b.toFixed(4)}x)`;
+            const predict = (x) => a * Math.exp(b * (x - x0));
+            // Mostrar la forma simple si el tiempo ya arranca cerca de 0; si no,
+            // mostrar el anclaje explícito para que el alumno vea el origen.
+            const equation = Math.abs(x0) < 1e-9
+                ? `y = ${a.toFixed(4)}·e^(${b.toFixed(4)}x)`
+                : `y = ${a.toFixed(4)}·e^(${b.toFixed(4)}·(x − ${x0.toFixed(4)}))`;
 
-            return { coeffs: [a, b], equation, r2: result.r2, predict };
+            return { coeffs: [a, b], xShift: x0, equation, r2: result.r2, predict };
         }
 
         function fitPower(xData, yData) {
@@ -12957,15 +12969,19 @@ bluetooth.startIOPinService()</pre>
             const yMax = Math.max(...yData);
             const yMin = Math.min(...yData);
             const span = (yMax - yMin) || 1;
+            // Anclar la x al inicio del tramo (igual que en fitExponential): el
+            // truco usa regression.exponential, que es inestable y se desborda con
+            // x grande (tiempo no zeroeado). Con el anclaje B queda finito y estable.
+            const x0 = Math.min(...xData);
 
             const evalA = (A) => {
-                const z = xData.map((x, i) => [x, A - yData[i]]);
+                const z = xData.map((x, i) => [x - x0, A - yData[i]]);
                 if (z.some(p => p[1] <= 0)) return null;
                 const r = regression.exponential(z, { precision: 12 });
                 const B = r.equation[0];
-                const k = -r.equation[1];            // y = A − B·e^(−k·x)
+                const k = -r.equation[1];            // y = A − B·e^(−k·(x−x₀))
                 if (!(B > 0) || !isFinite(k)) return null;
-                const predict = (x) => A - B * Math.exp(-k * x);
+                const predict = (x) => A - B * Math.exp(-k * (x - x0));
                 return { A, B, k, r2: calculateR2(xData, yData, predict), predict };
             };
 
@@ -12995,9 +13011,11 @@ bluetooth.startIOPinService()</pre>
             }
 
             const { A, B, k, r2, predict } = best;
-            const equation = `y = ${A.toFixed(4)} − ${B.toFixed(4)}·e^(−${k.toFixed(4)}x)`;
-            console.log('Coeficientes:', { A, B, k }, 'R² =', r2);
-            return { coeffs: [A, B, k], equation, r2, predict };
+            const equation = Math.abs(x0) < 1e-9
+                ? `y = ${A.toFixed(4)} − ${B.toFixed(4)}·e^(−${k.toFixed(4)}x)`
+                : `y = ${A.toFixed(4)} − ${B.toFixed(4)}·e^(−${k.toFixed(4)}·(x − ${x0.toFixed(4)}))`;
+            console.log('Coeficientes:', { A, B, k, x0 }, 'R² =', r2);
+            return { coeffs: [A, B, k], xShift: x0, equation, r2, predict };
         }
 
         // Función principal para realizar ajuste
@@ -13159,8 +13177,9 @@ bluetooth.startIOPinService()</pre>
                     throw new Error('Tipo de ajuste no reconocido');
             }
 
-            // Calculate parameter errors
-            const errors = calculateParameterErrors(fitType, result.coeffs, xData, yData);
+            // Calculate parameter errors (xShift: anclaje del ajuste exponencial)
+            const xShift = result.xShift || 0;
+            const errors = calculateParameterErrors(fitType, result.coeffs, xData, yData, xShift);
 
             return {
                 type: fitType,
@@ -13168,7 +13187,8 @@ bluetooth.startIOPinService()</pre>
                 errors: errors,
                 equation: result.equation,
                 r2: sanitizeR2(result.r2),
-                predict: result.predict
+                predict: result.predict,
+                xShift: xShift
             };
         }
 
@@ -13315,7 +13335,7 @@ bluetooth.startIOPinService()</pre>
                 // se extrapole a todo el dataset y se dispare.
                 const [xMin, xMax] = fitCurveXRange(Math.min(...xValues), Math.max(...xValues));
 
-                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs);
+                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs, state.fitResult.xShift || 0);
 
                 // 500 puntos para curvas ultra-suaves
                 const numPoints = 500;
@@ -16764,7 +16784,7 @@ bluetooth.startIOPinService()</pre>
                 const xValues = data.map(d => d.x);
                 // Curva solo sobre el tramo ajustado (evita extrapolar y dispararse).
                 const [xMin, xMax] = fitCurveXRange(Math.min(...xValues), Math.max(...xValues));
-                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs);
+                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs, state.fitResult.xShift || 0);
                 const fitData = [];
                 for (let i = 0; i <= 200; i++) {
                     const x = xMin + (xMax - xMin) * i / 200;
@@ -18614,7 +18634,7 @@ bluetooth.startIOPinService()</pre>
                 const xValues = data.map(d => d.x);
                 // Curva solo sobre el tramo ajustado (evita extrapolar y dispararse).
                 const [xMin, xMax] = fitCurveXRange(Math.min(...xValues), Math.max(...xValues));
-                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs);
+                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs, state.fitResult.xShift || 0);
                 const fitData = [];
                 for (let i = 0; i <= 200; i++) {
                     const x = xMin + (xMax - xMin) * i / 200;
