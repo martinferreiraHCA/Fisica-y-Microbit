@@ -12434,7 +12434,18 @@ bluetooth.startIOPinService()</pre>
                 ssTot += Math.pow(yData[i] - yMean, 2);
             }
 
+            // Si los datos seleccionados no tienen varianza (todos los y iguales,
+            // p. ej. una meseta o la línea de base), SStot = 0 y la fórmula
+            // 1 − SSres/SStot dividiría por cero → ±Infinity. En ese caso R² es
+            // indefinido: devolvemos NaN (se mostrará "N/A", no "Infinity").
+            if (!(ssTot > 0)) return NaN;
             return 1 - (ssRes / ssTot);
+        }
+
+        // R² puede salir ±Infinity o NaN cuando los datos no tienen varianza
+        // (selección plana). Lo normalizamos a NaN para no mostrar "Infinity".
+        function sanitizeR2(r2) {
+            return isFinite(r2) ? r2 : NaN;
         }
 
         // Calcula errores estándar de los parámetros del ajuste
@@ -13009,7 +13020,8 @@ bluetooth.startIOPinService()</pre>
         // significado físico de los parámetros y cómo se calculó el error.
         function _explainFitType(type, fitResult) {
             const r2 = fitResult.r2;
-            const r2Quality = r2 >= 0.98 ? 'excelente' : (r2 >= 0.9 ? 'aceptable' : 'pobre');
+            const r2Finite = isFinite(r2);
+            const r2Quality = !r2Finite ? 'indefinido' : (r2 >= 0.98 ? 'excelente' : (r2 >= 0.9 ? 'aceptable' : 'pobre'));
             let model = '';
             switch (type) {
                 case 'linear': model = '<b>y = m·x + b</b> &nbsp;(m: pendiente, b: ordenada al origen)'; break;
@@ -13023,9 +13035,12 @@ bluetooth.startIOPinService()</pre>
                 case 'saturating': model = '<b>y = A − B·e^(−k·x)</b> &nbsp;(crecimiento con saturación: A es el valor final/asíntota, k = 1/τ la rapidez de aproximación)'; break;
                 default: model = '';
             }
+            const r2Line = r2Finite
+                ? `<b>R² = ${fmtNum(r2)}</b> (${r2Quality}). R² ∈ [0,1] mide qué fracción de la varianza de los datos explica el modelo. R² = 1 es ajuste perfecto.`
+                : `<b>R² = N/A</b> (indefinido). Los datos seleccionados no varían (todos los valores son casi iguales: una meseta o la línea de base), así que R² no se puede calcular. Seleccioná un tramo donde la variable realmente cambie.`;
             return `
                 <b>Modelo:</b> ${model}<br>
-                <b>R² = ${fmtNum(r2)}</b> (${r2Quality}). R² ∈ [0,1] mide qué fracción de la varianza de los datos explica el modelo. R² = 1 es ajuste perfecto.<br>
+                ${r2Line}<br>
                 <b>± error estándar</b> de cada parámetro: estimado a partir de la matriz de covarianza del ajuste por mínimos cuadrados — indica el rango plausible del parámetro asumiendo que los residuos son ruido aleatorio gaussiano.
             `;
         }
@@ -13152,7 +13167,7 @@ bluetooth.startIOPinService()</pre>
                 coeffs: result.coeffs,
                 errors: errors,
                 equation: result.equation,
-                r2: result.r2,
+                r2: sanitizeR2(result.r2),
                 predict: result.predict
             };
         }
@@ -15089,10 +15104,12 @@ bluetooth.startIOPinService()</pre>
                 document.getElementById('fitEquation').textContent = fitResult.equation;
                 const r2 = fitResult.r2;
                 const r2El = document.getElementById('fitR2');
-                r2El.textContent = fmtNum(r2);
+                // R² indefinido (datos sin varianza) → "N/A" en vez de "Infinity"/"NaN"
+                r2El.textContent = isFinite(r2) ? fmtNum(r2) : 'N/A';
                 // Color según calidad del R²
                 r2El.classList.remove('didactic-error-good','didactic-error-warn','didactic-error-bad');
-                if (r2 >= 0.98) r2El.classList.add('didactic-error-good');
+                if (!isFinite(r2)) { /* sin color para N/A */ }
+                else if (r2 >= 0.98) r2El.classList.add('didactic-error-good');
                 else if (r2 >= 0.9) r2El.classList.add('didactic-error-warn');
                 else r2El.classList.add('didactic-error-bad');
                 document.getElementById('fitPoints').textContent = dataToFit.length;
@@ -15105,8 +15122,10 @@ bluetooth.startIOPinService()</pre>
                     const name = paramNames[i] || `p${i}`;
                     const val = fitResult.coeffs[i];
                     const err = (fitResult.errors && fitResult.errors[i] != null) ? fitResult.errors[i] : NaN;
-                    const errStr = isNaN(err) ? 'N/A' : fmtNum(err);
-                    errHtml += `<div class="didactic-row"><span class="lbl">${_escHtml(name)}</span><span class="val">${fmtNum(val)} ± ${errStr}</span></div>`;
+                    // isFinite cubre NaN e Infinity (isNaN no detecta Infinity)
+                    const errStr = isFinite(err) ? fmtNum(err) : 'N/A';
+                    const valStr = isFinite(val) ? fmtNum(val) : 'N/A';
+                    errHtml += `<div class="didactic-row"><span class="lbl">${_escHtml(name)}</span><span class="val">${valStr} ± ${errStr}</span></div>`;
                 }
                 errorsDiv.innerHTML = errHtml;
 
