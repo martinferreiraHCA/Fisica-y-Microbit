@@ -12574,6 +12574,23 @@ bluetooth.startIOPinService()</pre>
             }
         }
 
+        // Limita el rango X donde se dibuja la curva de ajuste al tramo realmente
+        // ajustado (state.fitResult.fitXMin/Max, si se guardó), recortado al rango
+        // de datos visibles [dataXMin, dataXMax]. Evita extrapolar la curva a todo
+        // el dataset: una exponencial ajustada a un sub-rango se dispara fuera de él
+        // (millones), rompiendo la escala del gráfico y el botón "encuadrar".
+        function fitCurveXRange(dataXMin, dataXMax) {
+            let xMin = dataXMin, xMax = dataXMax;
+            const fr = state.fitResult;
+            if (fr && typeof fr.fitXMin === 'number' && typeof fr.fitXMax === 'number'
+                && isFinite(fr.fitXMin) && isFinite(fr.fitXMax)) {
+                const lo = Math.max(dataXMin, Math.min(fr.fitXMin, fr.fitXMax));
+                const hi = Math.min(dataXMax, Math.max(fr.fitXMin, fr.fitXMax));
+                if (hi > lo) { xMin = lo; xMax = hi; }
+            }
+            return [xMin, xMax];
+        }
+
         // ========== AJUSTES USANDO REGRESSION-JS ==========
         // Librería: regression-js por Tom Alexander
         // https://github.com/Tom-Alexander/regression-js
@@ -12590,8 +12607,11 @@ bluetooth.startIOPinService()</pre>
             const data = xData.map((x, i) => [x, yData[i]]);
             console.log('Datos para regression-js:', data);
 
-            // Usar regression-js para el ajuste
-            const result = regression.linear(data);
+            // Usar regression-js para el ajuste.
+            // precision:12 evita el redondeo por defecto a 2 decimales de
+            // regression-js, que degrada los coeficientes (crítico en ajustes
+            // exponencial/potencia donde el exponente multiplica valores de x grandes).
+            const result = regression.linear(data, { precision: 12 });
 
             console.log('Resultado de regression-js:', result);
 
@@ -12612,11 +12632,11 @@ bluetooth.startIOPinService()</pre>
         }
 
         function fitQuadratic(xData, yData) {
-            // y = ax² + bx + c usando regression.polynomial(data, 2)
+            // y = ax² + bx + c usando regression.polynomial (order 2)
             console.log('=== AJUSTE CUADRÁTICO (regression-js) ===');
 
             const data = xData.map((x, i) => [x, yData[i]]);
-            const result = regression.polynomial(data, 2);
+            const result = regression.polynomial(data, { order: 2, precision: 12 });
 
             // result.equation = [a, b, c] para y = ax² + bx + c
             const a = result.equation[0];
@@ -12633,11 +12653,15 @@ bluetooth.startIOPinService()</pre>
         }
 
         function fitCubic(xData, yData) {
-            // y = ax³ + bx² + cx + d usando regression.polynomial(data, 3)
+            // y = ax³ + bx² + cx + d usando regression.polynomial (order 3)
             console.log('=== AJUSTE CÚBICO (regression-js) ===');
 
             const data = xData.map((x, i) => [x, yData[i]]);
-            const result = regression.polynomial(data, 3);
+            // IMPORTANTE: el orden debe ir como { order } en el objeto de opciones.
+            // Pasar el número suelto (regression.polynomial(data, 3)) lo ignora y
+            // regression-js usa el orden por defecto (2), devolviendo solo 3
+            // coeficientes; entonces d quedaba undefined y la predicción daba NaN.
+            const result = regression.polynomial(data, { order: 3, precision: 12 });
 
             // result.equation = [a, b, c, d] para y = ax³ + bx² + cx + d
             const a = result.equation[0];
@@ -12664,7 +12688,7 @@ bluetooth.startIOPinService()</pre>
             }
 
             const data = xData.map((x, i) => [x, yData[i]]);
-            const result = regression.exponential(data);
+            const result = regression.exponential(data, { precision: 12 });
 
             // result.equation = [a, b] para y = a·e^(bx)
             const a = result.equation[0];
@@ -12689,7 +12713,7 @@ bluetooth.startIOPinService()</pre>
             }
 
             const data = xData.map((x, i) => [x, yData[i]]);
-            const result = regression.power(data);
+            const result = regression.power(data, { precision: 12 });
 
             // result.equation = [a, b] para y = a·x^b
             const a = result.equation[0];
@@ -12714,7 +12738,7 @@ bluetooth.startIOPinService()</pre>
             }
 
             const data = xData.map((x, i) => [x, yData[i]]);
-            const result = regression.logarithmic(data);
+            const result = regression.logarithmic(data, { precision: 12 });
 
             // result.equation = [a, b] para y = a·ln(x) + b
             const a = result.equation[0];
@@ -13197,8 +13221,10 @@ bluetooth.startIOPinService()</pre>
                     }
                 });
 
-                const xMin = Math.min(...xValues);
-                const xMax = Math.max(...xValues);
+                // Dibujar la curva SOLO sobre el tramo realmente ajustado (ver
+                // fitCurveXRange): evita que una exponencial ajustada a un sub-rango
+                // se extrapole a todo el dataset y se dispare.
+                const [xMin, xMax] = fitCurveXRange(Math.min(...xValues), Math.max(...xValues));
 
                 const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs);
 
@@ -13214,6 +13240,9 @@ bluetooth.startIOPinService()</pre>
                 chart.data.datasets.push({
                     label: `Ajuste: ${state.fitResult.equation}`,
                     data: fitData,
+                    // Marca para que "encuadrar" (fitChartToData) ignore esta curva
+                    // y enmarque solo los datos reales.
+                    isFitCurve: true,
                     borderColor: state.fitColor || '#d32f2f',
                     backgroundColor: 'transparent',
                     borderWidth: 2.5,
@@ -14952,13 +14981,18 @@ bluetooth.startIOPinService()</pre>
                 // Realizar ajuste
                 const fitResult = performCurveFit(fitType, xData, yData);
 
-                // Guardar resultado en estado
+                // Guardar resultado en estado.
+                // Guardamos también el rango X realmente ajustado para que la curva
+                // se dibuje solo sobre ese tramo (modo "rango"/"seleccionados") y no
+                // se extrapole a todo el dataset, donde una exponencial puede dispararse.
                 state.fitResult = {
                     ...fitResult,
                     graphIndex: graphIndex,
                     varIndex: varIndex,
                     xAxis: graphConfig.xAxis,
-                    dataPoints: dataToFit.length
+                    dataPoints: dataToFit.length,
+                    fitXMin: Math.min(...xData),
+                    fitXMax: Math.max(...xData)
                 };
 
                 // Mostrar resultados
@@ -15139,11 +15173,17 @@ bluetooth.startIOPinService()</pre>
             const chart = state.charts[index];
             if (!chart) return;
 
-            // Calcular bounds de todos los datasets
+            // Calcular bounds SOLO de los datos reales. La curva de ajuste se
+            // excluye a propósito: una exponencial ajustada a un sub-rango puede
+            // alcanzar valores enormes, y si se incluyera, "encuadrar" comprimiría
+            // todos los datos en una sola línea. El usuario quiere enmarcar sus
+            // datos, no la curva teórica.
             let xMin = Infinity, xMax = -Infinity;
             let yMin = Infinity, yMax = -Infinity;
             chart.data.datasets.forEach(ds => {
+                if (ds.isFitCurve) return;
                 ds.data.forEach(pt => {
+                    if (!isFinite(pt.x) || !isFinite(pt.y)) return;
                     if (pt.x < xMin) xMin = pt.x;
                     if (pt.x > xMax) xMax = pt.x;
                     if (pt.y < yMin) yMin = pt.y;
@@ -16614,8 +16654,8 @@ bluetooth.startIOPinService()</pre>
             // Add fit curve if exists (red per Rule 6)
             if (state.fitResult && state.fitResult.varIndex === varIdx) {
                 const xValues = data.map(d => d.x);
-                const xMin = Math.min(...xValues);
-                const xMax = Math.max(...xValues);
+                // Curva solo sobre el tramo ajustado (evita extrapolar y dispararse).
+                const [xMin, xMax] = fitCurveXRange(Math.min(...xValues), Math.max(...xValues));
                 const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs);
                 const fitData = [];
                 for (let i = 0; i <= 200; i++) {
@@ -16624,6 +16664,7 @@ bluetooth.startIOPinService()</pre>
                 }
                 datasets.push({
                     label: 'Modelo',
+                    isFitCurve: true,
                     data: fitData,
                     borderColor: '#d32f2f', // red per Rule 6
                     backgroundColor: 'transparent',
@@ -18463,8 +18504,8 @@ bluetooth.startIOPinService()</pre>
 
             if (state.fitResult && state.fitResult.varIndex === varIdx) {
                 const xValues = data.map(d => d.x);
-                const xMin = Math.min(...xValues);
-                const xMax = Math.max(...xValues);
+                // Curva solo sobre el tramo ajustado (evita extrapolar y dispararse).
+                const [xMin, xMax] = fitCurveXRange(Math.min(...xValues), Math.max(...xValues));
                 const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs);
                 const fitData = [];
                 for (let i = 0; i <= 200; i++) {
@@ -18473,6 +18514,7 @@ bluetooth.startIOPinService()</pre>
                 }
                 datasets.push({
                     label: 'Modelo',
+                    isFitCurve: true,
                     data: fitData,
                     borderColor: '#d32f2f',
                     backgroundColor: 'transparent',
