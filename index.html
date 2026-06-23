@@ -4414,6 +4414,7 @@
                             <option value="logarithmic">Logarítmico (y = a·ln(x) + b)</option>
                             <option value="inverse">Inverso (y = a/x + b)</option>
                             <option value="sinusoidal">Sinusoidal (y = A·sin(ωx + φ) + C)</option>
+                            <option value="saturating">Crecimiento con saturación (y = A − B·e^(−kx))</option>
                         </select>
                     </div>
 
@@ -5228,6 +5229,7 @@
                 fitLogarithmic: 'Logarítmico (y = a·ln(x) + b)',
                 fitInverse: 'Inverso (y = a/x + b)',
                 fitSinusoidal: 'Sinusoidal (y = A·sin(ωx + φ) + C)',
+                fitSaturating: 'Crecimiento con saturación (y = A − B·e^(−kx))',
                 fitVariable: 'Variable a Ajustar',
                 fitGraph: 'Gráfica de Referencia',
                 dataToFit: 'DATOS A AJUSTAR:',
@@ -5545,6 +5547,7 @@
                 fitLogarithmic: 'Logarithmic (y = a·ln(x) + b)',
                 fitInverse: 'Inverse (y = a/x + b)',
                 fitSinusoidal: 'Sinusoidal (y = A·sin(ωx + φ) + C)',
+                fitSaturating: 'Saturating growth (y = A − B·e^(−kx))',
                 fitVariable: 'Variable to Fit',
                 fitGraph: 'Reference Graph',
                 dataToFit: 'DATA TO FIT:',
@@ -5862,6 +5865,7 @@
                 fitLogarithmic: 'Logarítmico (y = a·ln(x) + b)',
                 fitInverse: 'Inverso (y = a/x + b)',
                 fitSinusoidal: 'Sinusoidal (y = A·sin(ωx + φ) + C)',
+                fitSaturating: 'Crescimento com saturação (y = A − B·e^(−kx))',
                 fitVariable: 'Variável a Ajustar',
                 fitGraph: 'Gráfico de Referência',
                 dataToFit: 'DADOS A AJUSTAR:',
@@ -6381,6 +6385,7 @@
                 fitTypeSelect.options[5].textContent = t.fitLogarithmic;
                 fitTypeSelect.options[6].textContent = t.fitInverse;
                 fitTypeSelect.options[7].textContent = t.fitSinusoidal;
+                if (fitTypeSelect.options[8]) fitTypeSelect.options[8].textContent = t.fitSaturating;
             }
 
             // Info boxes
@@ -6828,6 +6833,7 @@
                 <li>Logarítmico: y = a·ln(x) + b</li>
                 <li>Inverso: y = a/x + b</li>
                 <li>Sinusoidal: y = A·sin(ωx + φ) + C</li>
+                <li>Crecimiento con saturación: y = A − B·e^(−kx)</li>
             </ul>
         </li>
         <li><strong>Variable a Ajustar:</strong> Selecciona cuál variable analizar</li>
@@ -7405,6 +7411,7 @@ bluetooth.startIOPinService()</pre>
                 <li>Logarithmic: y = a·ln(x) + b</li>
                 <li>Inverse: y = a/x + b</li>
                 <li>Sinusoidal: y = A·sin(ωx + φ) + C</li>
+                <li>Saturating growth: y = A − B·e^(−kx)</li>
             </ul>
         </li>
         <li><strong>Variable to Fit:</strong> Select which variable to analyze</li>
@@ -7982,6 +7989,7 @@ bluetooth.startIOPinService()</pre>
                 <li>Logarítmico: y = a·ln(x) + b</li>
                 <li>Inverso: y = a/x + b</li>
                 <li>Sinusoidal: y = A·sin(ωx + φ) + C</li>
+                <li>Crescimento com saturação: y = A − B·e^(−kx)</li>
             </ul>
         </li>
         <li><strong>Variável a Ajustar:</strong> Selecione qual variável analisar</li>
@@ -12426,7 +12434,18 @@ bluetooth.startIOPinService()</pre>
                 ssTot += Math.pow(yData[i] - yMean, 2);
             }
 
+            // Si los datos seleccionados no tienen varianza (todos los y iguales,
+            // p. ej. una meseta o la línea de base), SStot = 0 y la fórmula
+            // 1 − SSres/SStot dividiría por cero → ±Infinity. En ese caso R² es
+            // indefinido: devolvemos NaN (se mostrará "N/A", no "Infinity").
+            if (!(ssTot > 0)) return NaN;
             return 1 - (ssRes / ssTot);
+        }
+
+        // R² puede salir ±Infinity o NaN cuando los datos no tienen varianza
+        // (selección plana). Lo normalizamos a NaN para no mostrar "Infinity".
+        function sanitizeR2(r2) {
+            return isFinite(r2) ? r2 : NaN;
         }
 
         // Calcula errores estándar de los parámetros del ajuste
@@ -12569,6 +12588,9 @@ bluetooth.startIOPinService()</pre>
                 case 'sinusoidal':
                     // y = A·sin(ωx + φ) + C
                     return (x) => coeffs[0] * Math.sin(coeffs[1] * x + coeffs[2]) + coeffs[3];
+                case 'saturating':
+                    // y = A − B·e^(−k·x)  (crecimiento exponencial con saturación / curva de carga)
+                    return (x) => coeffs[0] - coeffs[1] * Math.exp(-coeffs[2] * x);
                 default:
                     return (x) => 0;
             }
@@ -12920,6 +12942,64 @@ bluetooth.startIOPinService()</pre>
             return { coeffs: [A, omegaFinal, phi, C], equation, r2, predict };
         }
 
+        function fitSaturating(xData, yData) {
+            // y = A − B·e^(−k·x)  (crecimiento exponencial con saturación / curva
+            // de carga típica de física: condensador, enfriamiento hacia el ambiente,
+            // velocidad límite). Es lo que parece una "exponencial creciente" que se
+            // aplana: NO es y = a·e^(bx) (esa no tiene techo).
+            //
+            // Truco de ajuste: z = A − y = B·e^(−k·x) es un decaimiento exponencial
+            // puro, así que para una asíntota A dada ajustamos z con
+            // regression.exponential. Buscamos el A que maximiza R² (A debe ser mayor
+            // que el máximo de y para que z sea positivo y exista el logaritmo).
+            console.log('=== AJUSTE CRECIMIENTO CON SATURACIÓN ===');
+
+            const yMax = Math.max(...yData);
+            const yMin = Math.min(...yData);
+            const span = (yMax - yMin) || 1;
+
+            const evalA = (A) => {
+                const z = xData.map((x, i) => [x, A - yData[i]]);
+                if (z.some(p => p[1] <= 0)) return null;
+                const r = regression.exponential(z, { precision: 12 });
+                const B = r.equation[0];
+                const k = -r.equation[1];            // y = A − B·e^(−k·x)
+                if (!(B > 0) || !isFinite(k)) return null;
+                const predict = (x) => A - B * Math.exp(-k * x);
+                return { A, B, k, r2: calculateR2(xData, yData, predict), predict };
+            };
+
+            let best = null;
+            // Barrido grueso de la asíntota A en (max(y), max(y) + 3·rango]
+            const loA = yMax + span * 0.001;
+            const hiA = yMax + span * 3;
+            const N = 60;
+            for (let i = 0; i <= N; i++) {
+                const cand = evalA(loA + (hiA - loA) * i / N);
+                if (cand && (!best || cand.r2 > best.r2)) best = cand;
+            }
+            if (!best) {
+                throw new Error('Datos no compatibles con crecimiento saturado (deben subir y estabilizarse en un valor)');
+            }
+            // Refinamiento local sucesivo alrededor del mejor A
+            let step = (hiA - loA) / N;
+            for (let pass = 0; pass < 4; pass++) {
+                const lo2 = best.A - step, hi2 = best.A + step;
+                for (let i = 0; i <= 40; i++) {
+                    const A = lo2 + (hi2 - lo2) * i / 40;
+                    if (A <= yMax) continue;
+                    const cand = evalA(A);
+                    if (cand && cand.r2 > best.r2) best = cand;
+                }
+                step /= 8;
+            }
+
+            const { A, B, k, r2, predict } = best;
+            const equation = `y = ${A.toFixed(4)} − ${B.toFixed(4)}·e^(−${k.toFixed(4)}x)`;
+            console.log('Coeficientes:', { A, B, k }, 'R² =', r2);
+            return { coeffs: [A, B, k], equation, r2, predict };
+        }
+
         // Función principal para realizar ajuste
         function getParamNames(fitType) {
             switch (fitType) {
@@ -12931,6 +13011,7 @@ bluetooth.startIOPinService()</pre>
                 case 'logarithmic': return ['a (coeficiente)', 'b (constante)'];
                 case 'inverse': return ['a (numerador)', 'b (constante)'];
                 case 'sinusoidal': return ['A (amplitud)', 'ω (frecuencia)', 'φ (fase)', 'C (offset)'];
+                case 'saturating': return ['A (valor final)', 'B', 'k (1/τ)'];
                 default: return [];
             }
         }
@@ -12939,7 +13020,8 @@ bluetooth.startIOPinService()</pre>
         // significado físico de los parámetros y cómo se calculó el error.
         function _explainFitType(type, fitResult) {
             const r2 = fitResult.r2;
-            const r2Quality = r2 >= 0.98 ? 'excelente' : (r2 >= 0.9 ? 'aceptable' : 'pobre');
+            const r2Finite = isFinite(r2);
+            const r2Quality = !r2Finite ? 'indefinido' : (r2 >= 0.98 ? 'excelente' : (r2 >= 0.9 ? 'aceptable' : 'pobre'));
             let model = '';
             switch (type) {
                 case 'linear': model = '<b>y = m·x + b</b> &nbsp;(m: pendiente, b: ordenada al origen)'; break;
@@ -12950,11 +13032,15 @@ bluetooth.startIOPinService()</pre>
                 case 'logarithmic': model = '<b>y = a·ln(x) + b</b>'; break;
                 case 'inverse': model = '<b>y = a/x + b</b>'; break;
                 case 'sinusoidal': model = '<b>y = A·sin(ω·x + φ) + C</b>'; break;
+                case 'saturating': model = '<b>y = A − B·e^(−k·x)</b> &nbsp;(crecimiento con saturación: A es el valor final/asíntota, k = 1/τ la rapidez de aproximación)'; break;
                 default: model = '';
             }
+            const r2Line = r2Finite
+                ? `<b>R² = ${fmtNum(r2)}</b> (${r2Quality}). R² ∈ [0,1] mide qué fracción de la varianza de los datos explica el modelo. R² = 1 es ajuste perfecto.`
+                : `<b>R² = N/A</b> (indefinido). Los datos seleccionados no varían (todos los valores son casi iguales: una meseta o la línea de base), así que R² no se puede calcular. Seleccioná un tramo donde la variable realmente cambie.`;
             return `
                 <b>Modelo:</b> ${model}<br>
-                <b>R² = ${fmtNum(r2)}</b> (${r2Quality}). R² ∈ [0,1] mide qué fracción de la varianza de los datos explica el modelo. R² = 1 es ajuste perfecto.<br>
+                ${r2Line}<br>
                 <b>± error estándar</b> de cada parámetro: estimado a partir de la matriz de covarianza del ajuste por mínimos cuadrados — indica el rango plausible del parámetro asumiendo que los residuos son ruido aleatorio gaussiano.
             `;
         }
@@ -13066,6 +13152,9 @@ bluetooth.startIOPinService()</pre>
                 case 'sinusoidal':
                     result = fitSinusoidal(xData, yData);
                     break;
+                case 'saturating':
+                    result = fitSaturating(xData, yData);
+                    break;
                 default:
                     throw new Error('Tipo de ajuste no reconocido');
             }
@@ -13078,7 +13167,7 @@ bluetooth.startIOPinService()</pre>
                 coeffs: result.coeffs,
                 errors: errors,
                 equation: result.equation,
-                r2: result.r2,
+                r2: sanitizeR2(result.r2),
                 predict: result.predict
             };
         }
@@ -13699,6 +13788,21 @@ bluetooth.startIOPinService()</pre>
                 }
                 document.getElementById('pointInfo').style.display = 'inline-block';
                 updateDisplay();
+
+                // Si hay una selección utilizable, activar el modo "Puntos
+                // Seleccionados" del ajuste de curva, para que "REALIZAR AJUSTE"
+                // use justo lo que el usuario marcó al arrastrar. Antes quedaba en
+                // "Todos los Datos" y ajustaba TODO el set (p. ej. subida + bajada),
+                // dando resultados sin sentido.
+                if (state.selectedPoints.size >= 2) {
+                    const selRadio = document.getElementById('fitModeSelected');
+                    if (selRadio && !selRadio.checked) {
+                        selRadio.checked = true;
+                        const rangeInputs = document.getElementById('fitRangeInputs');
+                        if (rangeInputs) rangeInputs.style.display = 'none';
+                    }
+                }
+                if (typeof updateCurveFitButtons === 'function') updateCurveFitButtons();
             }
 
             dragSelectState = null;
@@ -15000,10 +15104,12 @@ bluetooth.startIOPinService()</pre>
                 document.getElementById('fitEquation').textContent = fitResult.equation;
                 const r2 = fitResult.r2;
                 const r2El = document.getElementById('fitR2');
-                r2El.textContent = fmtNum(r2);
+                // R² indefinido (datos sin varianza) → "N/A" en vez de "Infinity"/"NaN"
+                r2El.textContent = isFinite(r2) ? fmtNum(r2) : 'N/A';
                 // Color según calidad del R²
                 r2El.classList.remove('didactic-error-good','didactic-error-warn','didactic-error-bad');
-                if (r2 >= 0.98) r2El.classList.add('didactic-error-good');
+                if (!isFinite(r2)) { /* sin color para N/A */ }
+                else if (r2 >= 0.98) r2El.classList.add('didactic-error-good');
                 else if (r2 >= 0.9) r2El.classList.add('didactic-error-warn');
                 else r2El.classList.add('didactic-error-bad');
                 document.getElementById('fitPoints').textContent = dataToFit.length;
@@ -15016,8 +15122,10 @@ bluetooth.startIOPinService()</pre>
                     const name = paramNames[i] || `p${i}`;
                     const val = fitResult.coeffs[i];
                     const err = (fitResult.errors && fitResult.errors[i] != null) ? fitResult.errors[i] : NaN;
-                    const errStr = isNaN(err) ? 'N/A' : fmtNum(err);
-                    errHtml += `<div class="didactic-row"><span class="lbl">${_escHtml(name)}</span><span class="val">${fmtNum(val)} ± ${errStr}</span></div>`;
+                    // isFinite cubre NaN e Infinity (isNaN no detecta Infinity)
+                    const errStr = isFinite(err) ? fmtNum(err) : 'N/A';
+                    const valStr = isFinite(val) ? fmtNum(val) : 'N/A';
+                    errHtml += `<div class="didactic-row"><span class="lbl">${_escHtml(name)}</span><span class="val">${valStr} ± ${errStr}</span></div>`;
                 }
                 errorsDiv.innerHTML = errHtml;
 
