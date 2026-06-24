@@ -5318,6 +5318,7 @@
                 segAuto: 'Automático (mejor)',
                 segLabel: 'Tramo',
                 segPoints: 'puntos',
+                segColor: 'Color del tramo',
                 customHelpBtnLabel: '❓ ¿Cómo se escribe?',
                 customHelpTitle: 'Cómo escribir tu ecuación',
                 customHelpBody:
@@ -5677,6 +5678,7 @@
                 segAuto: 'Automatic (best)',
                 segLabel: 'Segment',
                 segPoints: 'points',
+                segColor: 'Segment color',
                 customHelpBtnLabel: '❓ How to write it?',
                 customHelpTitle: 'How to write your equation',
                 customHelpBody:
@@ -6036,6 +6038,7 @@
                 segAuto: 'Automático (melhor)',
                 segLabel: 'Trecho',
                 segPoints: 'pontos',
+                segColor: 'Cor do trecho',
                 customHelpBtnLabel: '❓ Como escrever?',
                 customHelpTitle: 'Como escrever sua equação',
                 customHelpBody:
@@ -13818,14 +13821,14 @@ bluetooth.startIOPinService()</pre>
             // Preparar datasets
             chart.data.datasets = [];
 
-            // "Ver solo el modelo": si está activo y hay un ajuste para ESTA
-            // gráfica, ocultamos los datos (puntos, líneas y comparaciones) y
-            // dibujamos solo la curva del ajuste, para mostrar el modelo solo.
-            // (Si no hay ajuste en esta gráfica, se ignora: no dejamos el gráfico
-            // en blanco.)
+            // "Ver solo el modelo": si está activo y hay un ajuste (único o por
+            // tramos) para ESTA gráfica, ocultamos los datos (puntos, líneas y
+            // comparaciones) y dibujamos solo las curvas del modelo. (Si no hay
+            // ajuste en esta gráfica, se ignora: no dejamos el gráfico en blanco.)
             const _onlyModelCb = document.getElementById('fitShowOnlyModel');
-            const onlyModel = !!(_onlyModelCb && _onlyModelCb.checked
-                && state.fitResult && state.fitResult.graphIndex === index);
+            const _hasSingleFit = state.fitResult && state.fitResult.graphIndex === index;
+            const _hasSegFits = (state.segmentFits || []).some(sf => sf.graphIndex === index && !sf.error);
+            const onlyModel = !!(_onlyModelCb && _onlyModelCb.checked && (_hasSingleFit || _hasSegFits));
 
             if (!onlyModel) for (const varIdx of config.yVars) {
                 if (varIdx >= state.numVariables || !state.variables[varIdx]) continue;
@@ -13961,14 +13964,32 @@ bluetooth.startIOPinService()</pre>
             }
 
             // Curvas de AJUSTE POR TRAMOS (cada tramo con su modelo y color).
+            // Respeta "proyectar curva teórica": si está activo, extiende cada
+            // tramo ~15% más allá de sus límites (con recorte de banda para no
+            // dispararse), igual que el ajuste único.
+            const _projSeg = !!(document.getElementById('fitProjectCurve') && document.getElementById('fitProjectCurve').checked);
             (state.segmentFits || []).forEach((sf, si) => {
                 if (sf.graphIndex !== index || sf.error) return;
                 const predict = createPredictor(sf.type, sf.coeffs, sf.xShift || 0, sf);
+                let xLo = sf.fitXMin, xHi = sf.fitXMax;
+                let yBandLo = -Infinity, yBandHi = Infinity;
+                if (_projSeg) {
+                    const span = (sf.fitXMax - sf.fitXMin) || 1;
+                    xLo = sf.fitXMin - span * 0.15;
+                    xHi = sf.fitXMax + span * 0.15;
+                    const yv = state.rawData.map(d => d.values[sf.varIndex]).filter(v => isFinite(v));
+                    if (yv.length) {
+                        const lo = Math.min(...yv), hi = Math.max(...yv), r = (hi - lo) || 1;
+                        yBandLo = lo - 2 * r; yBandHi = hi + 2 * r;
+                    }
+                }
                 const fitData = [];
                 for (let i = 0; i <= 300; i++) {
-                    const x = sf.fitXMin + (sf.fitXMax - sf.fitXMin) * i / 300;
+                    const x = xLo + (xHi - xLo) * i / 300;
                     const y = predict(x);
-                    if (isFinite(y)) fitData.push({ x, y });
+                    if (!isFinite(y)) continue;
+                    if (_projSeg && (y < yBandLo || y > yBandHi)) continue;
+                    fitData.push({ x, y });
                 }
                 chart.data.datasets.push({
                     label: `Tramo ${si + 1}: ${sf.equation}`,
@@ -15761,6 +15782,7 @@ bluetooth.startIOPinService()</pre>
                 const sel = `<select data-seg="${i}" class="seg-model-select" style="font-size:11px; margin-left:4px;">`
                     + modelOpts.map(([v, lbl]) => `<option value="${v}"${(sf.requestedType === v) ? ' selected' : ''}>${_escHtml(lbl)}</option>`).join('')
                     + `</select>`;
+                const colorInp = `<input type="color" data-segcolor="${i}" value="${sf.color}" class="seg-color-input" title="${_escHtml(t.segColor || 'Color del tramo')}" style="width:26px; height:20px; padding:0; border:1px solid #ccc; vertical-align:middle; cursor:pointer; margin-left:6px;">`;
                 const r2cls = sf.r2 >= 0.98 ? 'didactic-error-good' : (sf.r2 >= 0.9 ? 'didactic-error-warn' : 'didactic-error-bad');
                 const pnames = sf.paramNames || getParamNames(sf.type);
                 let params = '';
@@ -15770,7 +15792,7 @@ bluetooth.startIOPinService()</pre>
                     params += `<div style="font-size:0.7rem; font-family:monospace; color:#37474f;">${_escHtml(nm)} = ${isFinite(v) ? fmtNum(v) : 'N/A'}${isFinite(e) ? ' ± ' + fmtNum(e) : ''}</div>`;
                 }
                 html += `<div style="border-left:4px solid ${sf.color}; padding:4px 8px; margin-bottom:8px;">`
-                    + `<div style="font-size:0.78rem;"><b style="color:${sf.color};">${segLabel} ${i + 1}</b> <span style="color:#777;">(${segPoints} ${rng})</span> ${sel}</div>`
+                    + `<div style="font-size:0.78rem;"><b style="color:${sf.color};">${segLabel} ${i + 1}</b> <span style="color:#777;">(${segPoints} ${rng})</span>${colorInp} ${sel}</div>`
                     + `<div style="font-size:0.72rem; font-family:monospace; word-break:break-all; margin:3px 0;">${_escHtml(sf.equation)}</div>`
                     + `<div style="font-size:0.72rem;">R² = <b class="${r2cls}">${isFinite(sf.r2) ? fmtNum(sf.r2) : 'N/A'}</b></div>`
                     + params + `</div>`;
@@ -15778,6 +15800,16 @@ bluetooth.startIOPinService()</pre>
             cont.innerHTML = html;
             cont.querySelectorAll('.seg-model-select').forEach(selEl => {
                 selEl.addEventListener('change', function () { _changeSegmentModel(parseInt(this.dataset.seg), this.value); });
+            });
+            // Cambio de color por tramo (en vivo, sin re-renderizar la lista).
+            cont.querySelectorAll('.seg-color-input').forEach(ci => {
+                ci.addEventListener('input', function () {
+                    const idx = parseInt(this.dataset.segcolor);
+                    if (state.segmentFits && state.segmentFits[idx]) {
+                        state.segmentFits[idx].color = this.value;
+                        if (typeof updateAllCharts === 'function') updateAllCharts();
+                    }
+                });
             });
         }
 
