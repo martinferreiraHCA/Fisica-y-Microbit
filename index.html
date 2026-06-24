@@ -4472,6 +4472,11 @@
                         <label for="fitShowOnlyModel" id="fitShowOnlyModelLabel">Ver solo el modelo (ocultar datos)</label>
                     </div>
 
+                    <div class="checkbox-row" style="margin-top:6px;">
+                        <input type="checkbox" id="fitProjectCurve">
+                        <label for="fitProjectCurve" id="fitProjectCurveLabel">Proyectar curva teórica (extender el ajuste)</label>
+                    </div>
+
                     <button class="toolbar-btn primary btn-full" id="performFitBtn" disabled>
                         REALIZAR AJUSTE
                     </button>
@@ -5477,6 +5482,7 @@
                 pillClickColor: 'Click para cambiar el color',
                 fitColorLabel: 'Color de la línea de ajuste',
                 fitShowOnlyModel: 'Ver solo el modelo (ocultar datos)',
+                fitProjectCurve: 'Proyectar curva teórica (extender el ajuste)',
                 numFormatTitle: 'Formato numérico',
                 numSigFigsLabel: 'Cifras significativas',
                 numScientificLabel: 'Notación científica (1,234×10³)',
@@ -5796,6 +5802,7 @@
                 pillClickColor: 'Click to change color',
                 fitColorLabel: 'Fit line color',
                 fitShowOnlyModel: 'Show only the model (hide data)',
+                fitProjectCurve: 'Project theoretical curve (extend the fit)',
                 numFormatTitle: 'Number format',
                 numSigFigsLabel: 'Significant figures',
                 numScientificLabel: 'Scientific notation (1.234×10³)',
@@ -6115,6 +6122,7 @@
                 pillClickColor: 'Clique para mudar a cor',
                 fitColorLabel: 'Cor da linha de ajuste',
                 fitShowOnlyModel: 'Ver só o modelo (ocultar dados)',
+                fitProjectCurve: 'Projetar curva teórica (estender o ajuste)',
                 numFormatTitle: 'Formato numérico',
                 numSigFigsLabel: 'Algarismos significativos',
                 numScientificLabel: 'Notação científica (1,234×10³)',
@@ -6470,6 +6478,8 @@
             if (fitColorLbl) fitColorLbl.textContent = t.fitColorLabel || 'Color de la línea de ajuste';
             const fitOnlyModelLbl = document.getElementById('fitShowOnlyModelLabel');
             if (fitOnlyModelLbl) fitOnlyModelLbl.textContent = t.fitShowOnlyModel || 'Ver solo el modelo (ocultar datos)';
+            const fitProjectLbl = document.getElementById('fitProjectCurveLabel');
+            if (fitProjectLbl) fitProjectLbl.textContent = t.fitProjectCurve || 'Proyectar curva teórica (extender el ajuste)';
             const nfTitle = document.getElementById('numFormatTitle');
             if (nfTitle) nfTitle.textContent = t.numFormatTitle || 'Formato numérico';
             const nfSig = document.getElementById('numSigFigsLabel');
@@ -13349,10 +13359,36 @@ bluetooth.startIOPinService()</pre>
                     }
                 });
 
-                // Dibujar la curva SOLO sobre el tramo realmente ajustado (ver
-                // fitCurveXRange): evita que una exponencial ajustada a un sub-rango
-                // se extrapole a todo el dataset y se dispare.
-                const [xMin, xMax] = fitCurveXRange(Math.min(...xValues), Math.max(...xValues));
+                const dataXMin = Math.min(...xValues);
+                const dataXMax = Math.max(...xValues);
+
+                // "Proyectar curva teórica": extender la curva más allá del tramo
+                // ajustado para ver la predicción del modelo sobre todo el gráfico
+                // (y un poco más allá). Si está apagado, se dibuja SOLO sobre el
+                // tramo realmente ajustado (evita extrapolar sin querer y dispararse).
+                const _projectCb = document.getElementById('fitProjectCurve');
+                const projecting = !!(_projectCb && _projectCb.checked);
+
+                let xMin, xMax;
+                if (projecting) {
+                    const span = (dataXMax - dataXMin) || 1;
+                    xMin = dataXMin - span * 0.15;   // proyectar ~15% hacia cada lado
+                    xMax = dataXMax + span * 0.15;
+                } else {
+                    [xMin, xMax] = fitCurveXRange(dataXMin, dataXMax);
+                }
+
+                // Banda de Y razonable: al proyectar, una exponencial puede dispararse;
+                // recortamos los puntos que se van demasiado (±2 rangos de datos) para
+                // no romper la escala. La curva se ve subir y termina al salir de banda.
+                const _yVals = state.rawData
+                    .map(d => d.values[state.fitResult.varIndex])
+                    .filter(v => isFinite(v));
+                const _yLoData = _yVals.length ? Math.min(..._yVals) : 0;
+                const _yHiData = _yVals.length ? Math.max(..._yVals) : 1;
+                const _yR = (_yHiData - _yLoData) || 1;
+                const yBandLo = _yLoData - _yR * 2;
+                const yBandHi = _yHiData + _yR * 2;
 
                 const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs, state.fitResult.xShift || 0);
 
@@ -13362,6 +13398,8 @@ bluetooth.startIOPinService()</pre>
                 for (let i = 0; i <= numPoints; i++) {
                     const x = xMin + (xMax - xMin) * i / numPoints;
                     const y = predict(x);
+                    if (!isFinite(y)) continue;                              // Chart.js no rompe
+                    if (projecting && (y < yBandLo || y > yBandHi)) continue; // recorte de proyección
                     fitData.push({ x, y });
                 }
 
@@ -15056,6 +15094,14 @@ bluetooth.startIOPinService()</pre>
             });
         }
 
+        // "Proyectar curva teórica" — re-renderiza para extender/recortar la curva.
+        const _fitProjectCb = document.getElementById('fitProjectCurve');
+        if (_fitProjectCb) {
+            _fitProjectCb.addEventListener('change', function() {
+                if (typeof updateAllCharts === 'function') updateAllCharts();
+            });
+        }
+
         // Al cambiar la gráfica de referencia, sugerir la variable mostrada
         const _fitGraphSelect = document.getElementById('fitGraphSelect');
         if (_fitGraphSelect) {
@@ -15199,9 +15245,11 @@ bluetooth.startIOPinService()</pre>
             state.fitResult = null;
             document.getElementById('fitResults').style.display = 'none';
             // Al limpiar el ajuste, volver a mostrar los datos (desactivar
-            // "ver solo el modelo") para no dejar el gráfico vacío.
+            // "ver solo el modelo" y "proyectar") para no dejar el gráfico vacío.
             const _onlyModelCb = document.getElementById('fitShowOnlyModel');
             if (_onlyModelCb) _onlyModelCb.checked = false;
+            const _projectCb = document.getElementById('fitProjectCurve');
+            if (_projectCb) _projectCb.checked = false;
             updateAllCharts();
             updateCurveFitButtons();
         });
