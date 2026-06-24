@@ -7294,6 +7294,19 @@ basic.forever(function () {
         <li><strong>Desconectar el cable USB</strong> — la micro:bit puede funcionar con batería</li>
     </ol>
 
+    <div style="margin-top:12px; padding:10px; background:#fff8e1; border:1px solid #ffca28; border-radius:5px;">
+        <strong style="color:#e65100;">⚠️ IMPORTANTE — Emparejamiento (es lo que hace que conecte)</strong>
+        <p style="margin:6px 0;">En MakeCode, abrí <strong>⚙ → Configuración del proyecto</strong> y elegí <strong>"No Pairing Required"</strong> (sin emparejamiento). Sin esto, Chrome/Edge muchas veces <strong>no logran conectar</strong>: la micro:bit pide un emparejamiento que el navegador no completa.</p>
+        <p style="margin:6px 0;">Si editás la configuración del proyecto (<code>pxt.json</code>) a mano, la sección Bluetooth debe incluir <code>"pairing_mode": 0</code>:</p>
+        <div class="code-block"><pre>"bluetooth": {
+    "open": 1,
+    "pairing_mode": 0,
+    "whitelist": 0,
+    "security_level": null
+}</pre></div>
+        <p style="margin:6px 0; font-size:0.9em; color:#555;">La configuración por defecto suele venir <b>sin</b> <code>"pairing_mode": 0</code> y entonces no conecta. Agregá esa línea, recompilá y volvé a descargar el .hex.</p>
+    </div>
+
     <h4 style="margin-top:15px; color:#1565c0;">PASO 4: Conectar desde la app</h4>
     <ol>
         <li>Abrir esta app en <strong>Chrome</strong> o <strong>Edge</strong></li>
@@ -7326,6 +7339,10 @@ bluetooth.startIOPinService()</pre>
         <tr style="border-bottom:1px solid #ddd;">
             <td style="padding:6px;">No aparece en el selector</td>
             <td style="padding:6px;">Verificar que la micro:bit tenga el programa con <code>bluetooth.startUartService()</code>. Reiniciar la micro:bit. Verificar que no esté conectada a otro dispositivo.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Aparece pero no conecta (se queda "Conectando")</td>
+            <td style="padding:6px;">Configurar <strong>"No Pairing Required"</strong> en MakeCode (Configuración del proyecto). En <code>pxt.json</code>, la sección Bluetooth debe tener <code>"pairing_mode": 0</code>. Recompilar y volver a descargar el .hex.</td>
         </tr>
         <tr style="border-bottom:1px solid #ddd;">
             <td style="padding:6px;">Se conecta pero no llegan datos</td>
@@ -7872,6 +7889,19 @@ basic.forever(function () {
         <li><strong>Disconnect the USB cable</strong> — the micro:bit can run on battery</li>
     </ol>
 
+    <div style="margin-top:12px; padding:10px; background:#fff8e1; border:1px solid #ffca28; border-radius:5px;">
+        <strong style="color:#e65100;">⚠️ IMPORTANT — Pairing (this is what makes it connect)</strong>
+        <p style="margin:6px 0;">In MakeCode, open <strong>⚙ → Project Settings</strong> and choose <strong>"No Pairing Required"</strong>. Without this, Chrome/Edge often <strong>fail to connect</strong>: the micro:bit asks for a pairing the browser doesn't complete.</p>
+        <p style="margin:6px 0;">If you edit the project config (<code>pxt.json</code>) by hand, the Bluetooth section must include <code>"pairing_mode": 0</code>:</p>
+        <div class="code-block"><pre>"bluetooth": {
+    "open": 1,
+    "pairing_mode": 0,
+    "whitelist": 0,
+    "security_level": null
+}</pre></div>
+        <p style="margin:6px 0; font-size:0.9em; color:#555;">The default config usually comes <b>without</b> <code>"pairing_mode": 0</code> and then it won't connect. Add that line, recompile and re-download the .hex.</p>
+    </div>
+
     <h4 style="margin-top:15px; color:#1565c0;">STEP 4: Connect from the app</h4>
     <ol>
         <li>Open this app in <strong>Chrome</strong> or <strong>Edge</strong></li>
@@ -7904,6 +7934,10 @@ bluetooth.startIOPinService()</pre>
         <tr style="border-bottom:1px solid #ddd;">
             <td style="padding:6px;">Not showing in picker</td>
             <td style="padding:6px;">Verify micro:bit has <code>bluetooth.startUartService()</code>. Restart the micro:bit. Verify it's not connected to another device.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Shows up but won't connect (stuck "Connecting")</td>
+            <td style="padding:6px;">Set <strong>"No Pairing Required"</strong> in MakeCode (Project Settings). In <code>pxt.json</code>, the Bluetooth section must have <code>"pairing_mode": 0</code>. Recompile and re-download the .hex.</td>
         </tr>
         <tr style="border-bottom:1px solid #ddd;">
             <td style="padding:6px;">Connects but no data arrives</td>
@@ -8450,6 +8484,19 @@ basic.forever(function () {
         <li><strong>Desconectar o cabo USB</strong> — a micro:bit pode funcionar com bateria</li>
     </ol>
 
+    <div style="margin-top:12px; padding:10px; background:#fff8e1; border:1px solid #ffca28; border-radius:5px;">
+        <strong style="color:#e65100;">⚠️ IMPORTANTE — Emparelhamento (é o que faz conectar)</strong>
+        <p style="margin:6px 0;">No MakeCode, abra <strong>⚙ → Configurações do projeto</strong> e escolha <strong>"No Pairing Required"</strong> (sem emparelhamento). Sem isso, Chrome/Edge muitas vezes <strong>não conseguem conectar</strong>: a micro:bit pede um emparelhamento que o navegador não completa.</p>
+        <p style="margin:6px 0;">Se editar a configuração do projeto (<code>pxt.json</code>) à mão, a seção Bluetooth deve incluir <code>"pairing_mode": 0</code>:</p>
+        <div class="code-block"><pre>"bluetooth": {
+    "open": 1,
+    "pairing_mode": 0,
+    "whitelist": 0,
+    "security_level": null
+}</pre></div>
+        <p style="margin:6px 0; font-size:0.9em; color:#555;">A configuração padrão costuma vir <b>sem</b> <code>"pairing_mode": 0</code> e aí não conecta. Adicione essa linha, recompile e baixe o .hex de novo.</p>
+    </div>
+
     <h4 style="margin-top:15px; color:#1565c0;">PASSO 4: Conectar pelo app</h4>
     <ol>
         <li>Abrir este app no <strong>Chrome</strong> ou <strong>Edge</strong></li>
@@ -8482,6 +8529,10 @@ bluetooth.startIOPinService()</pre>
         <tr style="border-bottom:1px solid #ddd;">
             <td style="padding:6px;">Não aparece no seletor</td>
             <td style="padding:6px;">Verificar que a micro:bit tem <code>bluetooth.startUartService()</code>. Reiniciar a micro:bit. Verificar que não está conectada a outro dispositivo.</td>
+        </tr>
+        <tr style="border-bottom:1px solid #ddd;">
+            <td style="padding:6px;">Aparece mas não conecta (fica "Conectando")</td>
+            <td style="padding:6px;">Configurar <strong>"No Pairing Required"</strong> no MakeCode (Configurações do projeto). No <code>pxt.json</code>, a seção Bluetooth deve ter <code>"pairing_mode": 0</code>. Recompilar e baixar o .hex de novo.</td>
         </tr>
         <tr style="border-bottom:1px solid #ddd;">
             <td style="padding:6px;">Conecta mas não chegam dados</td>
