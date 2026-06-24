@@ -5299,7 +5299,7 @@
                 fitCustom: 'Personalizada (tu propia ecuación)',
                 customExprLabel: 'Tu ecuación: y =',
                 customHint: 'Usá <b>x</b> como variable. Las demás letras (a, b, k, tau, phi…) son parámetros a ajustar. Funciones: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …',
-                customInitial: 'Valores iniciales (opcional):',
+                customInitial: 'Parámetros (la app estima los valores iniciales sola; cambialos solo si el ajuste no sale):',
                 customExamplesLabel: 'Ejemplos (clic para usar):',
                 customAnglesDeg: 'Ángulos en grados (sin, cos, tan)',
                 customHelpBtnLabel: '❓ ¿Cómo se escribe?',
@@ -5651,7 +5651,7 @@
                 fitCustom: 'Custom (your own equation)',
                 customExprLabel: 'Your equation: y =',
                 customHint: 'Use <b>x</b> as the variable. Other letters (a, b, k, tau, phi…) are parameters to fit. Functions: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …',
-                customInitial: 'Initial values (optional):',
+                customInitial: 'Parameters (the app estimates the initial values automatically; change them only if the fit fails):',
                 customExamplesLabel: 'Examples (click to use):',
                 customAnglesDeg: 'Angles in degrees (sin, cos, tan)',
                 customHelpBtnLabel: '❓ How to write it?',
@@ -6003,7 +6003,7 @@
                 fitCustom: 'Personalizada (sua própria equação)',
                 customExprLabel: 'Sua equação: y =',
                 customHint: 'Use <b>x</b> como variável. As outras letras (a, b, k, tau, phi…) são parâmetros a ajustar. Funções: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …',
-                customInitial: 'Valores iniciais (opcional):',
+                customInitial: 'Parâmetros (o app estima os valores iniciais sozinho; mude-os só se o ajuste falhar):',
                 customExamplesLabel: 'Exemplos (clique para usar):',
                 customAnglesDeg: 'Ângulos em graus (sin, cos, tan)',
                 customHelpBtnLabel: '❓ Como escrever?',
@@ -12793,7 +12793,7 @@ bluetooth.startIOPinService()</pre>
                     names.forEach((n, i) => { scope[n] = coeffs[i]; });
                     if (ctx && ctx.degrees) Object.assign(scope, _degTrigScope());  // ángulos en grados
                     return (x) => {
-                        try { const v = compiled.evaluate({ x, ...scope }); return (typeof v === 'number') ? v : NaN; }
+                        try { const v = compiled.evaluate({ x: x - xShift, ...scope }); return (typeof v === 'number') ? v : NaN; }
                         catch { return NaN; }
                     };
                 }
@@ -13353,20 +13353,57 @@ bluetooth.startIOPinService()</pre>
                 const v = compiled.evaluate(trig ? { x, ...params, ...trig } : { x, ...params });
                 return (typeof v === 'number') ? v : NaN;
             };
-            const paramsObj = {};
-            paramNames.forEach((n, i) => {
-                paramsObj[n] = (initialValues && Number.isFinite(initialValues[i])) ? initialValues[i] : 1;
-            });
-            const res = _customLMFit(f, xData, yData, paramsObj, paramNames, {});
-            if (res.error) throw new Error(res.error);
+
+            // Anclar x al inicio del tramo: el modelo se evalúa en (x − x₀). Evita que
+            // exp(-x/tau) se desborde con tiempos grandes (timestamps) y hace que los
+            // parámetros tipo "tau" sean relativos al inicio, como espera el alumno.
+            const x0 = Math.min(...xData);
+            const xs = xData.map(x => x - x0);
+
+            // MULTI-ARRANQUE: el estudiante no necesita poner valores iniciales.
+            // Probamos varias semillas derivadas de la escala de los datos y nos
+            // quedamos con el mejor R². (El ajuste no lineal depende del punto de
+            // partida; esto lo resuelve automáticamente para los casos comunes.)
+            const yMax = Math.max(...yData), yMin = Math.min(...yData);
+            const yRange = (yMax - yMin) || 1;
+            const yMean = yData.reduce((a, b) => a + b, 0) / yData.length;
+            const xRange = (Math.max(...xs) - Math.min(...xs)) || 1;
+            const yS = Math.max(Math.abs(yMax), Math.abs(yMin), yRange) || 1;
+            const pool = [...new Set(
+                [1, yS, yRange, yMean || 1, yMax || 1, xRange, xRange / 3, xRange / 10, 1 / xRange, 0.5]
+                .filter(v => Number.isFinite(v) && v !== 0)
+            )];
+            const userInit = paramNames.map((n, i) => (initialValues && Number.isFinite(initialValues[i])) ? initialValues[i] : null);
+            const seeds = [];
+            if (userInit.some(v => v !== null)) seeds.push(userInit.map(v => v == null ? 1 : v));
+            for (const s of pool) seeds.push(paramNames.map(() => s));
+            seeds.push(paramNames.map((n, i) => i % 2 === 0 ? yS : xRange));
+            seeds.push(paramNames.map((n, i) => i % 2 === 0 ? xRange : yS));
+
+            let best = null;
+            for (const seed of seeds) {
+                const po = {};
+                paramNames.forEach((n, i) => { po[n] = seed[i]; });
+                let res;
+                try { res = _customLMFit(f, xs, yData, po, paramNames, { maxIter: 80 }); }
+                catch { continue; }
+                if (res.error || !Number.isFinite(res.r2)) continue;
+                if (!best || res.r2 > best.r2) best = res;
+                if (best && best.r2 > 0.99999) break;   // ya es prácticamente perfecto
+            }
+            if (!best) {
+                throw new Error('No pude ajustar tu ecuación a estos datos. Revisá la fórmula o probá otra forma.');
+            }
+            const res = best;
             return {
                 coeffs: paramNames.map(n => res.params[n]),
                 errors: paramNames.map(n => res.errors[n]),
                 equation: `y = ${expr}`,
                 r2: res.r2,
-                predict: (x) => f(x, res.params),
+                predict: (x) => f(x - x0, res.params),
                 paramNames, expr,
                 degrees: !!degrees,
+                xShift: x0,
                 converged: res.converged,
                 iterations: res.iterations
             };
@@ -13405,7 +13442,8 @@ bluetooth.startIOPinService()</pre>
                 case 'inverse': model = '<b>y = a/x + b</b>'; break;
                 case 'sinusoidal': model = '<b>y = A·sin(ω·x + φ) + C</b>'; break;
                 case 'saturating': model = '<b>y = A − B·e^(−k·x)</b> &nbsp;(crecimiento con saturación: A es el valor final/asíntota, k = 1/τ la rapidez de aproximación)'; break;
-                case 'custom': model = '<b>y = ' + _escHtml(fitResult.expr || '') + '</b> &nbsp;(ecuación propia, ajustada por mínimos cuadrados no lineal)'; break;
+                case 'custom': model = '<b>y = ' + _escHtml(fitResult.expr || '') + '</b> &nbsp;(ecuación propia, ajustada por mínimos cuadrados no lineal)'
+                    + (fitResult.xShift ? '<br><span style="color:#546e7a;">x se mide desde el inicio del tramo (x = 0 en el primer punto), así los parámetros tipo τ quedan relativos al inicio.</span>' : ''); break;
                 default: model = '';
             }
             const r2Line = r2Finite
