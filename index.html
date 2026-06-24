@@ -4445,6 +4445,10 @@
                             <label id="customFitExprLabel" style="display:block; font-size:12px; margin-bottom:3px;">Tu ecuación: y =</label>
                             <input type="text" id="customFitExpr" placeholder="a*exp(-b*x) + c" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%; box-sizing:border-box; font-size:13px; font-family:monospace; padding:6px;">
                             <div id="customFitHint" style="font-size:0.72rem; color:#546e7a; margin-top:4px;">Usá <b>x</b> como variable. Las demás letras (a, b, k, tau, phi…) son parámetros a ajustar. Funciones: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …</div>
+                            <div class="checkbox-row" style="margin-top:5px;">
+                                <input type="checkbox" id="customAnglesDeg">
+                                <label for="customAnglesDeg" id="customAnglesDegLabel">Ángulos en grados (sin, cos, tan)</label>
+                            </div>
                             <div style="margin-top:6px;">
                                 <span id="customExamplesLabel" style="font-size:0.72rem; color:#455a64; font-weight:700;">Ejemplos (clic para usar):</span>
                                 <span class="custom-help-link" id="customHelpBtn" onclick="openCustomHelp()" title="Cómo escribir la ecuación" role="button" tabindex="0">❓ ¿Cómo se escribe?</span>
@@ -5297,6 +5301,7 @@
                 customHint: 'Usá <b>x</b> como variable. Las demás letras (a, b, k, tau, phi…) son parámetros a ajustar. Funciones: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …',
                 customInitial: 'Valores iniciales (opcional):',
                 customExamplesLabel: 'Ejemplos (clic para usar):',
+                customAnglesDeg: 'Ángulos en grados (sin, cos, tan)',
                 customHelpBtnLabel: '❓ ¿Cómo se escribe?',
                 customHelpTitle: 'Cómo escribir tu ecuación',
                 customHelpBody:
@@ -5306,7 +5311,7 @@
                     '<ul>' +
                     '<li><code>exp(x)</code> → e elevado a x · <code>sqrt(x)</code> → raíz cuadrada · <code>abs(x)</code> → valor absoluto</li>' +
                     '<li><code>ln(x)</code> → logaritmo natural · <code>log10(x)</code> → logaritmo base 10</li>' +
-                    '<li><code>sin(x)</code> <code>cos(x)</code> <code>tan(x)</code> → trigonométricas en <b>radianes</b> (también <code>asin, acos, atan</code>)</li>' +
+                    '<li><code>sin(x)</code> <code>cos(x)</code> <code>tan(x)</code> → trigonométricas en <b>radianes</b>, o en <b>grados</b> si marcás la casilla «Ángulos en grados» (también <code>asin, acos, atan</code>)</li>' +
                     '</ul>' +
                     '<p><b>Constantes:</b> <code>pi</code> ≈ 3,14159 · <code>e</code> ≈ 2,71828</p>' +
                     '<p><b>Ejemplos:</b></p>' +
@@ -5648,6 +5653,7 @@
                 customHint: 'Use <b>x</b> as the variable. Other letters (a, b, k, tau, phi…) are parameters to fit. Functions: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …',
                 customInitial: 'Initial values (optional):',
                 customExamplesLabel: 'Examples (click to use):',
+                customAnglesDeg: 'Angles in degrees (sin, cos, tan)',
                 customHelpBtnLabel: '❓ How to write it?',
                 customHelpTitle: 'How to write your equation',
                 customHelpBody:
@@ -5657,7 +5663,7 @@
                     '<ul>' +
                     '<li><code>exp(x)</code> → e to the x · <code>sqrt(x)</code> → square root · <code>abs(x)</code> → absolute value</li>' +
                     '<li><code>ln(x)</code> → natural log · <code>log10(x)</code> → base-10 log</li>' +
-                    '<li><code>sin(x)</code> <code>cos(x)</code> <code>tan(x)</code> → trig in <b>radians</b> (also <code>asin, acos, atan</code>)</li>' +
+                    '<li><code>sin(x)</code> <code>cos(x)</code> <code>tan(x)</code> → trig in <b>radians</b>, or in <b>degrees</b> if you tick the “Angles in degrees” box (also <code>asin, acos, atan</code>)</li>' +
                     '</ul>' +
                     '<p><b>Constants:</b> <code>pi</code> ≈ 3.14159 · <code>e</code> ≈ 2.71828</p>' +
                     '<p><b>Examples:</b></p>' +
@@ -5999,6 +6005,7 @@
                 customHint: 'Use <b>x</b> como variável. As outras letras (a, b, k, tau, phi…) são parâmetros a ajustar. Funções: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …',
                 customInitial: 'Valores iniciais (opcional):',
                 customExamplesLabel: 'Exemplos (clique para usar):',
+                customAnglesDeg: 'Ângulos em graus (sin, cos, tan)',
                 customHelpBtnLabel: '❓ Como escrever?',
                 customHelpTitle: 'Como escrever sua equação',
                 customHelpBody:
@@ -6008,7 +6015,7 @@
                     '<ul>' +
                     '<li><code>exp(x)</code> → e elevado a x · <code>sqrt(x)</code> → raiz quadrada · <code>abs(x)</code> → valor absoluto</li>' +
                     '<li><code>ln(x)</code> → log natural · <code>log10(x)</code> → log base 10</li>' +
-                    '<li><code>sin(x)</code> <code>cos(x)</code> <code>tan(x)</code> → trigonométricas em <b>radianos</b> (também <code>asin, acos, atan</code>)</li>' +
+                    '<li><code>sin(x)</code> <code>cos(x)</code> <code>tan(x)</code> → trigonométricas em <b>radianos</b>, ou em <b>graus</b> se marcar a caixa “Ângulos em graus” (também <code>asin, acos, atan</code>)</li>' +
                     '</ul>' +
                     '<p><b>Constantes:</b> <code>pi</code> ≈ 3,14159 · <code>e</code> ≈ 2,71828</p>' +
                     '<p><b>Exemplos:</b></p>' +
@@ -6632,6 +6639,8 @@
             if (customHintEl && t.customHint) customHintEl.innerHTML = t.customHint;
             const customExLbl = document.getElementById('customExamplesLabel');
             if (customExLbl && t.customExamplesLabel) customExLbl.textContent = t.customExamplesLabel;
+            const customDegLbl = document.getElementById('customAnglesDegLabel');
+            if (customDegLbl && t.customAnglesDeg) customDegLbl.textContent = t.customAnglesDeg;
             const customHelpBtnEl = document.getElementById('customHelpBtn');
             if (customHelpBtnEl && t.customHelpBtnLabel) customHelpBtnEl.textContent = t.customHelpBtnLabel;
             const customHelpTitleEl = document.getElementById('customHelpTitle');
@@ -12782,6 +12791,7 @@ bluetooth.startIOPinService()</pre>
                     try { compiled = math.compile(expr); } catch { return () => NaN; }
                     const scope = {};
                     names.forEach((n, i) => { scope[n] = coeffs[i]; });
+                    if (ctx && ctx.degrees) Object.assign(scope, _degTrigScope());  // ángulos en grados
                     return (x) => {
                         try { const v = compiled.evaluate({ x, ...scope }); return (typeof v === 'number') ? v : NaN; }
                         catch { return NaN; }
@@ -13322,13 +13332,25 @@ bluetooth.startIOPinService()</pre>
             return { params, errors: errObj, chi2, dof, r2, converged, iterations: iter };
         }
 
-        function fitCustom(xData, yData, expr, paramNames, initialValues) {
+        // Funciones trigonométricas en GRADOS (sobreescriben a las de math.js,
+        // que trabajan en radianes). Se inyectan en el scope al evaluar.
+        function _degTrigScope() {
+            const D = Math.PI / 180;
+            return {
+                sin: a => Math.sin(a * D), cos: a => Math.cos(a * D), tan: a => Math.tan(a * D),
+                cot: a => 1 / Math.tan(a * D), sec: a => 1 / Math.cos(a * D), csc: a => 1 / Math.sin(a * D),
+                asin: v => Math.asin(v) / D, acos: v => Math.acos(v) / D, atan: v => Math.atan(v) / D
+            };
+        }
+
+        function fitCustom(xData, yData, expr, paramNames, initialValues, degrees) {
             if (typeof math === 'undefined' || window.__mathjsFailed) {
                 throw new Error('La librería matemática (mathjs) no se cargó. Recargá la página.');
             }
             const compiled = math.compile(expr);   // valida la expresión (lanza si es inválida)
+            const trig = degrees ? _degTrigScope() : null;   // ángulos en grados si corresponde
             const f = (x, params) => {
-                const v = compiled.evaluate({ x, ...params });
+                const v = compiled.evaluate(trig ? { x, ...params, ...trig } : { x, ...params });
                 return (typeof v === 'number') ? v : NaN;
             };
             const paramsObj = {};
@@ -13344,6 +13366,7 @@ bluetooth.startIOPinService()</pre>
                 r2: res.r2,
                 predict: (x) => f(x, res.params),
                 paramNames, expr,
+                degrees: !!degrees,
                 converged: res.converged,
                 iterations: res.iterations
             };
@@ -13479,7 +13502,7 @@ bluetooth.startIOPinService()</pre>
             let result;
             switch (fitType) {
                 case 'custom':
-                    result = fitCustom(xData, yData, opts.expr, opts.paramNames, opts.initialValues);
+                    result = fitCustom(xData, yData, opts.expr, opts.paramNames, opts.initialValues, opts.degrees);
                     break;
                 case 'linear':
                     result = fitLinear(xData, yData);
@@ -13525,10 +13548,11 @@ bluetooth.startIOPinService()</pre>
                 r2: sanitizeR2(result.r2),
                 predict: result.predict,
                 xShift: xShift,
-                // Para el modelo personalizado: guardamos expresión y nombres para
-                // poder reconstruir el predictor (createPredictor) y mostrar params.
+                // Para el modelo personalizado: guardamos expresión, nombres y modo
+                // de ángulos para reconstruir el predictor (createPredictor) y mostrar params.
                 paramNames: result.paramNames,
-                expr: result.expr
+                expr: result.expr,
+                degrees: result.degrees
             };
         }
 
@@ -15578,7 +15602,8 @@ bluetooth.startIOPinService()</pre>
                         const v = inp ? parseFloat(inp.value) : NaN;
                         return Number.isFinite(v) ? v : 1;
                     });
-                    fitOpts = { expr, paramNames, initialValues };
+                    const degCb = document.getElementById('customAnglesDeg');
+                    fitOpts = { expr, paramNames, initialValues, degrees: !!(degCb && degCb.checked) };
                 }
 
                 // Realizar ajuste
