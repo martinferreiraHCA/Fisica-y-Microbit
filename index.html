@@ -4415,7 +4415,16 @@
                             <option value="inverse">Inverso (y = a/x + b)</option>
                             <option value="sinusoidal">Sinusoidal (y = A·sin(ωx + φ) + C)</option>
                             <option value="saturating">Crecimiento con saturación (y = A − B·e^(−kx))</option>
+                            <option value="custom">Personalizada (tu propia ecuación)</option>
                         </select>
+
+                        <!-- Editor de ecuación propia (visible solo si Tipo = Personalizada) -->
+                        <div id="customFitInputs" style="margin-top: 8px; display: none;">
+                            <label id="customFitExprLabel" style="display:block; font-size:12px; margin-bottom:3px;">Tu ecuación: y =</label>
+                            <input type="text" id="customFitExpr" placeholder="a*exp(-b*x) + c" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%; box-sizing:border-box; font-size:13px; font-family:monospace; padding:6px;">
+                            <div id="customFitHint" style="font-size:0.72rem; color:#546e7a; margin-top:4px;">Usá <b>x</b> como variable. Las demás letras (a, b, k, tau, phi…) son parámetros a ajustar. Funciones: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …</div>
+                            <div id="customFitParams" style="margin-top:6px; display:flex; flex-direction:column; gap:4px;"></div>
+                        </div>
                     </div>
 
                     <div class="input-row">
@@ -5240,6 +5249,10 @@
                 fitInverse: 'Inverso (y = a/x + b)',
                 fitSinusoidal: 'Sinusoidal (y = A·sin(ωx + φ) + C)',
                 fitSaturating: 'Crecimiento con saturación (y = A − B·e^(−kx))',
+                fitCustom: 'Personalizada (tu propia ecuación)',
+                customExprLabel: 'Tu ecuación: y =',
+                customHint: 'Usá <b>x</b> como variable. Las demás letras (a, b, k, tau, phi…) son parámetros a ajustar. Funciones: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …',
+                customInitial: 'Valores iniciales (opcional):',
                 fitVariable: 'Variable a Ajustar',
                 fitGraph: 'Gráfica de Referencia',
                 dataToFit: 'DATOS A AJUSTAR:',
@@ -5392,6 +5405,9 @@
                 alertRangeExceed: 'El rango excede el número de datos (máximo: {max})',
                 alertMinPoints: 'Necesitas al menos 2 puntos de datos para realizar el ajuste',
                 alertInvalidData: 'Error: Datos inválidos detectados. Verifica la configuración de la gráfica.',
+                alertCustomNoExpr: 'Escribí tu ecuación (usá x como variable). Ej: a*exp(-b*x) + c',
+                alertCustomBadExpr: 'No pude interpretar la ecuación: ',
+                alertCustomNoParams: 'Tu ecuación no tiene parámetros para ajustar. Usá letras como a, b, k (además de x). Ej: a*x + b',
                 alertFitError: 'Error al realizar el ajuste: ',
                 alertCsvEmpty: 'Archivo CSV vacío o inválido',
                 alertCsvVarCount: 'El CSV debe tener entre 1 y 3 variables',
@@ -5560,6 +5576,10 @@
                 fitInverse: 'Inverse (y = a/x + b)',
                 fitSinusoidal: 'Sinusoidal (y = A·sin(ωx + φ) + C)',
                 fitSaturating: 'Saturating growth (y = A − B·e^(−kx))',
+                fitCustom: 'Custom (your own equation)',
+                customExprLabel: 'Your equation: y =',
+                customHint: 'Use <b>x</b> as the variable. Other letters (a, b, k, tau, phi…) are parameters to fit. Functions: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …',
+                customInitial: 'Initial values (optional):',
                 fitVariable: 'Variable to Fit',
                 fitGraph: 'Reference Graph',
                 dataToFit: 'DATA TO FIT:',
@@ -5712,6 +5732,9 @@
                 alertRangeExceed: 'Range exceeds data count (maximum: {max})',
                 alertMinPoints: 'You need at least 2 data points to perform the fit',
                 alertInvalidData: 'Error: Invalid data detected. Check the graph configuration.',
+                alertCustomNoExpr: 'Write your equation (use x as the variable). E.g.: a*exp(-b*x) + c',
+                alertCustomBadExpr: "Couldn't parse the equation: ",
+                alertCustomNoParams: 'Your equation has no parameters to fit. Use letters like a, b, k (besides x). E.g.: a*x + b',
                 alertFitError: 'Error performing fit: ',
                 alertCsvEmpty: 'Empty or invalid CSV file',
                 alertCsvVarCount: 'CSV must have between 1 and 3 variables',
@@ -5880,6 +5903,10 @@
                 fitInverse: 'Inverso (y = a/x + b)',
                 fitSinusoidal: 'Sinusoidal (y = A·sin(ωx + φ) + C)',
                 fitSaturating: 'Crescimento com saturação (y = A − B·e^(−kx))',
+                fitCustom: 'Personalizada (sua própria equação)',
+                customExprLabel: 'Sua equação: y =',
+                customHint: 'Use <b>x</b> como variável. As outras letras (a, b, k, tau, phi…) são parâmetros a ajustar. Funções: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …',
+                customInitial: 'Valores iniciais (opcional):',
                 fitVariable: 'Variável a Ajustar',
                 fitGraph: 'Gráfico de Referência',
                 dataToFit: 'DADOS A AJUSTAR:',
@@ -6032,6 +6059,9 @@
                 alertRangeExceed: 'O intervalo excede o número de dados (máximo: {max})',
                 alertMinPoints: 'Você precisa de pelo menos 2 pontos de dados para realizar o ajuste',
                 alertInvalidData: 'Erro: Dados inválidos detectados. Verifique a configuração do gráfico.',
+                alertCustomNoExpr: 'Escreva sua equação (use x como variável). Ex.: a*exp(-b*x) + c',
+                alertCustomBadExpr: 'Não consegui interpretar a equação: ',
+                alertCustomNoParams: 'Sua equação não tem parâmetros para ajustar. Use letras como a, b, k (além de x). Ex.: a*x + b',
                 alertFitError: 'Erro ao realizar o ajuste: ',
                 alertCsvEmpty: 'Arquivo CSV vazio ou inválido',
                 alertCsvVarCount: 'O CSV deve ter entre 1 e 3 variáveis',
@@ -6402,6 +6432,7 @@
                 fitTypeSelect.options[6].textContent = t.fitInverse;
                 fitTypeSelect.options[7].textContent = t.fitSinusoidal;
                 if (fitTypeSelect.options[8]) fitTypeSelect.options[8].textContent = t.fitSaturating;
+                if (fitTypeSelect.options[9]) fitTypeSelect.options[9].textContent = t.fitCustom;
             }
 
             // Info boxes
@@ -6480,6 +6511,15 @@
             if (fitOnlyModelLbl) fitOnlyModelLbl.textContent = t.fitShowOnlyModel || 'Ver solo el modelo (ocultar datos)';
             const fitProjectLbl = document.getElementById('fitProjectCurveLabel');
             if (fitProjectLbl) fitProjectLbl.textContent = t.fitProjectCurve || 'Proyectar curva teórica (extender el ajuste)';
+            const customExprLbl = document.getElementById('customFitExprLabel');
+            if (customExprLbl && t.customExprLabel) customExprLbl.textContent = t.customExprLabel;
+            const customHintEl = document.getElementById('customFitHint');
+            if (customHintEl && t.customHint) customHintEl.innerHTML = t.customHint;
+            // Re-render de los inputs de parámetros (por si cambió el idioma del título)
+            if (typeof _renderCustomParamInputs === 'function'
+                && document.getElementById('fitType') && document.getElementById('fitType').value === 'custom') {
+                _renderCustomParamInputs();
+            }
             const nfTitle = document.getElementById('numFormatTitle');
             if (nfTitle) nfTitle.textContent = t.numFormatTitle || 'Formato numérico';
             const nfSig = document.getElementById('numSigFigsLabel');
@@ -12582,7 +12622,7 @@ bluetooth.startIOPinService()</pre>
         }
 
         // Función para crear predictor basado en tipo y coeficientes
-        function createPredictor(type, coeffs, xShift = 0) {
+        function createPredictor(type, coeffs, xShift = 0, ctx = null) {
             switch(type) {
                 case 'linear':
                     // y = mx + b
@@ -12611,6 +12651,21 @@ bluetooth.startIOPinService()</pre>
                 case 'saturating':
                     // y = A − B·e^(−k·(x−x₀))  (crecimiento con saturación / curva de carga)
                     return (x) => coeffs[0] - coeffs[1] * Math.exp(-coeffs[2] * (x - xShift));
+                case 'custom': {
+                    // Ecuación propia del usuario: ctx aporta la expresión y los
+                    // nombres de parámetros; coeffs son los valores ajustados.
+                    const expr = ctx && ctx.expr;
+                    const names = (ctx && ctx.paramNames) || [];
+                    if (!expr || typeof math === 'undefined') return () => NaN;
+                    let compiled;
+                    try { compiled = math.compile(expr); } catch { return () => NaN; }
+                    const scope = {};
+                    names.forEach((n, i) => { scope[n] = coeffs[i]; });
+                    return (x) => {
+                        try { const v = compiled.evaluate({ x, ...scope }); return (typeof v === 'number') ? v : NaN; }
+                        catch { return NaN; }
+                    };
+                }
                 default:
                     return (x) => 0;
             }
@@ -13038,6 +13093,141 @@ bluetooth.startIOPinService()</pre>
             return { coeffs: [A, B, k], xShift: x0, equation, r2, predict };
         }
 
+        // ===== AJUSTE A ECUACIÓN PROPIA (modelo personalizado) =====
+        // Usa math.js para parsear la fórmula del usuario y Levenberg-Marquardt
+        // (mínimos cuadrados no lineal) para ajustar sus parámetros.
+
+        // Constantes/símbolos reservados: 'x' es la variable independiente y
+        // pi/e/i son constantes reales de math.js. El resto de las letras (a, b,
+        // k, tau, phi, omega...) se toman como parámetros a ajustar.
+        const _CUSTOM_RESERVED = new Set(['x', 'pi', 'e', 'i', 'Infinity', 'NaN', 'true', 'false', 'null', 'undefined']);
+        function detectCustomParams(expr) {
+            if (typeof math === 'undefined') throw new Error('La librería matemática (mathjs) no está cargada');
+            const node = math.parse(expr);
+            const names = [];
+            const seen = new Set();
+            node.filter(n => n.isSymbolNode).forEach(n => {
+                const nm = n.name;
+                if (_CUSTOM_RESERVED.has(nm)) return;
+                if (typeof math[nm] === 'function') return;   // sin, cos, exp, sqrt, ...
+                if (!seen.has(nm)) { seen.add(nm); names.push(nm); }
+            });
+            return names;
+        }
+
+        // Levenberg-Marquardt autocontenido. f(x, paramsObj) -> y.
+        function _customLMFit(f, xs, ys, paramsObj, paramNames, opts = {}) {
+            const maxIter = opts.maxIter || 300;
+            const tol = opts.tol || 1e-10;
+            let lambda = opts.lambdaInit || 0.001;
+            const N = xs.length, p = paramNames.length;
+            if (p === 0 || N <= p) return { error: 'Pocos puntos o parámetros para ajustar' };
+
+            let theta = paramNames.map(n => paramsObj[n]);
+            const setTheta = (t) => paramNames.forEach((n, i) => { paramsObj[n] = t[i]; });
+            const norm2 = (v) => v.reduce((a, b) => a + (b || 0) ** 2, 0);
+
+            const resJac = (th) => {
+                setTheta(th);
+                const r = new Array(N), J = [];
+                for (let i = 0; i < N; i++) {
+                    let yi; try { yi = f(xs[i], paramsObj); } catch { yi = NaN; }
+                    r[i] = ys[i] - yi;
+                    const row = new Array(p);
+                    for (let k = 0; k < p; k++) {
+                        const o = th[k], h = Math.max(1e-7, Math.abs(o) * 1e-7);
+                        th[k] = o + h; setTheta(th); let yp; try { yp = f(xs[i], paramsObj); } catch { yp = NaN; }
+                        th[k] = o - h; setTheta(th); let ym; try { ym = f(xs[i], paramsObj); } catch { ym = NaN; }
+                        th[k] = o; setTheta(th);
+                        row[k] = (yp - ym) / (2 * h);
+                        if (!Number.isFinite(row[k])) row[k] = 0;
+                    }
+                    J.push(row);
+                }
+                return { r, J };
+            };
+            const solve = (Am, b) => {
+                const n = Am.length, M = Am.map((row, i) => row.concat([b[i]]));
+                for (let i = 0; i < n; i++) {
+                    let mx = i; for (let k = i + 1; k < n; k++) if (Math.abs(M[k][i]) > Math.abs(M[mx][i])) mx = k;
+                    [M[i], M[mx]] = [M[mx], M[i]];
+                    if (Math.abs(M[i][i]) < 1e-14) return null;
+                    for (let k = i + 1; k < n; k++) { const fac = M[k][i] / M[i][i]; for (let j = i; j <= n; j++) M[k][j] -= fac * M[i][j]; }
+                }
+                const x = new Array(n);
+                for (let i = n - 1; i >= 0; i--) { let s = M[i][n]; for (let j = i + 1; j < n; j++) s -= M[i][j] * x[j]; x[i] = s / M[i][i]; }
+                return x;
+            };
+
+            let { r, J } = resJac(theta);
+            let chi2 = norm2(r), iter = 0, converged = false;
+            if (!Number.isFinite(chi2)) return { error: 'La ecuación no evalúa con esos valores iniciales (probá otros)' };
+
+            while (iter < maxIter) {
+                const JtJ = [], Jtr = new Array(p).fill(0);
+                for (let k = 0; k < p; k++) {
+                    const row = new Array(p).fill(0);
+                    for (let i = 0; i < N; i++) { for (let l = 0; l < p; l++) row[l] += J[i][k] * J[i][l]; Jtr[k] += J[i][k] * r[i]; }
+                    JtJ.push(row);
+                }
+                const Am = JtJ.map((row, k) => row.map((v, l) => k === l ? v * (1 + lambda) : v));
+                const delta = solve(Am, Jtr);
+                if (!delta) { lambda *= 10; if (lambda > 1e10) break; iter++; continue; }
+                const thetaNew = theta.map((v, k) => v + delta[k]);
+                const { r: rN, J: jN } = resJac(thetaNew);
+                const chi2N = norm2(rN);
+                if (Number.isFinite(chi2N) && chi2N < chi2) {
+                    const improved = (chi2 - chi2N) / chi2;
+                    theta = thetaNew; r = rN; J = jN; chi2 = chi2N;
+                    lambda = Math.max(lambda / 10, 1e-12);
+                    if (improved < tol) { converged = true; break; }
+                } else { setTheta(theta); lambda *= 10; if (lambda > 1e10) break; }
+                iter++;
+            }
+
+            const dof = Math.max(1, N - p), sigma2 = chi2 / dof;
+            const errors = new Array(p).fill(NaN);
+            const JtJf = [];
+            for (let k = 0; k < p; k++) { const row = new Array(p).fill(0); for (let i = 0; i < N; i++) for (let l = 0; l < p; l++) row[l] += J[i][k] * J[i][l]; JtJf.push(row); }
+            for (let k = 0; k < p; k++) { const e = new Array(p).fill(0); e[k] = 1; const col = solve(JtJf.map(rr => rr.slice()), e); if (col && Number.isFinite(col[k]) && col[k] >= 0) errors[k] = Math.sqrt(sigma2 * col[k]); }
+
+            const yMean = ys.reduce((a, b) => a + b, 0) / ys.length;
+            const ssTot = ys.reduce((a, y) => a + (y - yMean) ** 2, 0);
+            const r2 = ssTot > 0 ? 1 - chi2 / ssTot : NaN;
+
+            const params = {}, errObj = {};
+            paramNames.forEach((n, i) => { params[n] = theta[i]; errObj[n] = errors[i]; });
+            setTheta(theta);
+            return { params, errors: errObj, chi2, dof, r2, converged, iterations: iter };
+        }
+
+        function fitCustom(xData, yData, expr, paramNames, initialValues) {
+            if (typeof math === 'undefined' || window.__mathjsFailed) {
+                throw new Error('La librería matemática (mathjs) no se cargó. Recargá la página.');
+            }
+            const compiled = math.compile(expr);   // valida la expresión (lanza si es inválida)
+            const f = (x, params) => {
+                const v = compiled.evaluate({ x, ...params });
+                return (typeof v === 'number') ? v : NaN;
+            };
+            const paramsObj = {};
+            paramNames.forEach((n, i) => {
+                paramsObj[n] = (initialValues && Number.isFinite(initialValues[i])) ? initialValues[i] : 1;
+            });
+            const res = _customLMFit(f, xData, yData, paramsObj, paramNames, {});
+            if (res.error) throw new Error(res.error);
+            return {
+                coeffs: paramNames.map(n => res.params[n]),
+                errors: paramNames.map(n => res.errors[n]),
+                equation: `y = ${expr}`,
+                r2: res.r2,
+                predict: (x) => f(x, res.params),
+                paramNames, expr,
+                converged: res.converged,
+                iterations: res.iterations
+            };
+        }
+
         // Función principal para realizar ajuste
         function getParamNames(fitType) {
             switch (fitType) {
@@ -13071,6 +13261,7 @@ bluetooth.startIOPinService()</pre>
                 case 'inverse': model = '<b>y = a/x + b</b>'; break;
                 case 'sinusoidal': model = '<b>y = A·sin(ω·x + φ) + C</b>'; break;
                 case 'saturating': model = '<b>y = A − B·e^(−k·x)</b> &nbsp;(crecimiento con saturación: A es el valor final/asíntota, k = 1/τ la rapidez de aproximación)'; break;
+                case 'custom': model = '<b>y = ' + _escHtml(fitResult.expr || '') + '</b> &nbsp;(ecuación propia, ajustada por mínimos cuadrados no lineal)'; break;
                 default: model = '';
             }
             const r2Line = r2Finite
@@ -13159,13 +13350,16 @@ bluetooth.startIOPinService()</pre>
             if (errExplain) errExplain.style.display = '';
         }
 
-        function performCurveFit(fitType, xData, yData) {
+        function performCurveFit(fitType, xData, yData, opts) {
             if (xData.length < 2 || yData.length < 2 || xData.length !== yData.length) {
                 throw new Error('Datos insuficientes o inconsistentes para ajuste');
             }
 
             let result;
             switch (fitType) {
+                case 'custom':
+                    result = fitCustom(xData, yData, opts.expr, opts.paramNames, opts.initialValues);
+                    break;
                 case 'linear':
                     result = fitLinear(xData, yData);
                     break;
@@ -13197,9 +13391,10 @@ bluetooth.startIOPinService()</pre>
                     throw new Error('Tipo de ajuste no reconocido');
             }
 
-            // Calculate parameter errors (xShift: anclaje del ajuste exponencial)
+            // Errores de parámetros. El ajuste personalizado ya los trae del LM;
+            // el resto se calculan por covarianza numérica.
             const xShift = result.xShift || 0;
-            const errors = calculateParameterErrors(fitType, result.coeffs, xData, yData, xShift);
+            const errors = result.errors || calculateParameterErrors(fitType, result.coeffs, xData, yData, xShift);
 
             return {
                 type: fitType,
@@ -13208,7 +13403,11 @@ bluetooth.startIOPinService()</pre>
                 equation: result.equation,
                 r2: sanitizeR2(result.r2),
                 predict: result.predict,
-                xShift: xShift
+                xShift: xShift,
+                // Para el modelo personalizado: guardamos expresión y nombres para
+                // poder reconstruir el predictor (createPredictor) y mostrar params.
+                paramNames: result.paramNames,
+                expr: result.expr
             };
         }
 
@@ -13390,7 +13589,7 @@ bluetooth.startIOPinService()</pre>
                 const yBandLo = _yLoData - _yR * 2;
                 const yBandHi = _yHiData + _yR * 2;
 
-                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs, state.fitResult.xShift || 0);
+                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs, state.fitResult.xShift || 0, state.fitResult);
 
                 // 500 puntos para curvas ultra-suaves
                 const numPoints = 500;
@@ -15102,6 +15301,43 @@ bluetooth.startIOPinService()</pre>
             });
         }
 
+        // ===== Modelo personalizado: editor de ecuación =====
+        // Muestra/oculta el editor según el tipo de ajuste y renderiza los inputs
+        // de valores iniciales para cada parámetro detectado en la ecuación.
+        function _renderCustomParamInputs() {
+            const cont = document.getElementById('customFitParams');
+            if (!cont) return;
+            const exprEl = document.getElementById('customFitExpr');
+            const expr = (exprEl && exprEl.value || '').trim();
+            let names = [];
+            if (expr) { try { names = detectCustomParams(expr); } catch (e) { /* ecuación incompleta: aún no mostramos params */ } }
+            // Preservar valores ya tipeados
+            const prev = {};
+            cont.querySelectorAll('input[data-pname]').forEach(inp => { prev[inp.dataset.pname] = inp.value; });
+            if (names.length === 0) { cont.innerHTML = ''; return; }
+            const titleTxt = (translations[currentLanguage] && translations[currentLanguage].customInitial) || 'Valores iniciales (opcional):';
+            let html = `<div style="font-size:0.7rem; color:#1565c0; font-weight:700;">${titleTxt}</div>`;
+            names.forEach(n => {
+                const v = (prev[n] != null && prev[n] !== '') ? prev[n] : '1';
+                html += `<div class="input-row" style="gap:6px; align-items:center;">`
+                      + `<label style="flex:0 0 auto; min-width:54px; margin:0; font-family:monospace;">${_escHtml(n)} =</label>`
+                      + `<input type="number" step="any" data-pname="${_escHtml(n)}" value="${_escHtml(v)}" style="font-size:12px; flex:1;"></div>`;
+            });
+            cont.innerHTML = html;
+        }
+
+        const _fitTypeSel = document.getElementById('fitType');
+        if (_fitTypeSel) {
+            _fitTypeSel.addEventListener('change', function() {
+                const isCustom = this.value === 'custom';
+                const box = document.getElementById('customFitInputs');
+                if (box) box.style.display = isCustom ? 'block' : 'none';
+                if (isCustom) _renderCustomParamInputs();
+            });
+        }
+        const _customExprEl = document.getElementById('customFitExpr');
+        if (_customExprEl) _customExprEl.addEventListener('input', _renderCustomParamInputs);
+
         // Al cambiar la gráfica de referencia, sugerir la variable mostrada
         const _fitGraphSelect = document.getElementById('fitGraphSelect');
         if (_fitGraphSelect) {
@@ -15177,8 +15413,26 @@ bluetooth.startIOPinService()</pre>
                     return;
                 }
 
+                // Para el modelo personalizado: leer la ecuación del usuario,
+                // detectar sus parámetros y sus valores iniciales.
+                let fitOpts;
+                if (fitType === 'custom') {
+                    const expr = (document.getElementById('customFitExpr').value || '').trim();
+                    if (!expr) { alert(tr('alertCustomNoExpr')); return; }
+                    let paramNames;
+                    try { paramNames = detectCustomParams(expr); }
+                    catch (e) { alert(tr('alertCustomBadExpr') + e.message); return; }
+                    if (paramNames.length === 0) { alert(tr('alertCustomNoParams')); return; }
+                    const initialValues = paramNames.map(n => {
+                        const inp = document.querySelector(`#customFitParams input[data-pname="${n}"]`);
+                        const v = inp ? parseFloat(inp.value) : NaN;
+                        return Number.isFinite(v) ? v : 1;
+                    });
+                    fitOpts = { expr, paramNames, initialValues };
+                }
+
                 // Realizar ajuste
-                const fitResult = performCurveFit(fitType, xData, yData);
+                const fitResult = performCurveFit(fitType, xData, yData, fitOpts);
 
                 // Guardar resultado en estado.
                 // Guardamos también el rango X realmente ajustado para que la curva
@@ -15209,9 +15463,10 @@ bluetooth.startIOPinService()</pre>
                 else r2El.classList.add('didactic-error-bad');
                 document.getElementById('fitPoints').textContent = dataToFit.length;
 
-                // Mostrar parámetros con sus errores estándar
+                // Mostrar parámetros con sus errores estándar. El modelo
+                // personalizado trae sus propios nombres (a, b, tau, ...).
                 const errorsDiv = document.getElementById('fitParamErrors');
-                const paramNames = getParamNames(fitResult.type);
+                const paramNames = fitResult.paramNames || getParamNames(fitResult.type);
                 let errHtml = '';
                 for (let i = 0; i < fitResult.coeffs.length; i++) {
                     const name = paramNames[i] || `p${i}`;
@@ -16868,7 +17123,7 @@ bluetooth.startIOPinService()</pre>
                 const xValues = data.map(d => d.x);
                 // Curva solo sobre el tramo ajustado (evita extrapolar y dispararse).
                 const [xMin, xMax] = fitCurveXRange(Math.min(...xValues), Math.max(...xValues));
-                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs, state.fitResult.xShift || 0);
+                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs, state.fitResult.xShift || 0, state.fitResult);
                 const fitData = [];
                 for (let i = 0; i <= 200; i++) {
                     const x = xMin + (xMax - xMin) * i / 200;
@@ -18718,7 +18973,7 @@ bluetooth.startIOPinService()</pre>
                 const xValues = data.map(d => d.x);
                 // Curva solo sobre el tramo ajustado (evita extrapolar y dispararse).
                 const [xMin, xMax] = fitCurveXRange(Math.min(...xValues), Math.max(...xValues));
-                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs, state.fitResult.xShift || 0);
+                const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs, state.fitResult.xShift || 0, state.fitResult);
                 const fitData = [];
                 for (let i = 0; i <= 200; i++) {
                     const x = xMin + (xMax - xMin) * i / 200;
