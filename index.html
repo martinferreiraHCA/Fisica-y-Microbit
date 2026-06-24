@@ -4467,6 +4467,11 @@
                         <input type="color" id="fitColorInput" value="#d32f2f" style="width:36px; height:28px; padding:0; border:1px solid #ccc; cursor:pointer;" title="Cambiar color">
                     </div>
 
+                    <div class="checkbox-row" style="margin-top:8px;">
+                        <input type="checkbox" id="fitShowOnlyModel">
+                        <label for="fitShowOnlyModel" id="fitShowOnlyModelLabel">Ver solo el modelo (ocultar datos)</label>
+                    </div>
+
                     <button class="toolbar-btn primary btn-full" id="performFitBtn" disabled>
                         REALIZAR AJUSTE
                     </button>
@@ -5471,6 +5476,7 @@
                 showDropLinesLabel: 'Líneas punteadas a los ejes',
                 pillClickColor: 'Click para cambiar el color',
                 fitColorLabel: 'Color de la línea de ajuste',
+                fitShowOnlyModel: 'Ver solo el modelo (ocultar datos)',
                 numFormatTitle: 'Formato numérico',
                 numSigFigsLabel: 'Cifras significativas',
                 numScientificLabel: 'Notación científica (1,234×10³)',
@@ -5789,6 +5795,7 @@
                 showDropLinesLabel: 'Dashed projection lines to axes',
                 pillClickColor: 'Click to change color',
                 fitColorLabel: 'Fit line color',
+                fitShowOnlyModel: 'Show only the model (hide data)',
                 numFormatTitle: 'Number format',
                 numSigFigsLabel: 'Significant figures',
                 numScientificLabel: 'Scientific notation (1.234×10³)',
@@ -6107,6 +6114,7 @@
                 showDropLinesLabel: 'Linhas pontilhadas aos eixos',
                 pillClickColor: 'Clique para mudar a cor',
                 fitColorLabel: 'Cor da linha de ajuste',
+                fitShowOnlyModel: 'Ver só o modelo (ocultar dados)',
                 numFormatTitle: 'Formato numérico',
                 numSigFigsLabel: 'Algarismos significativos',
                 numScientificLabel: 'Notação científica (1,234×10³)',
@@ -6460,6 +6468,8 @@
             if (showDropLbl) showDropLbl.textContent = t.showDropLinesLabel || 'Líneas punteadas a los ejes';
             const fitColorLbl = document.getElementById('fitColorLabel');
             if (fitColorLbl) fitColorLbl.textContent = t.fitColorLabel || 'Color de la línea de ajuste';
+            const fitOnlyModelLbl = document.getElementById('fitShowOnlyModelLabel');
+            if (fitOnlyModelLbl) fitOnlyModelLbl.textContent = t.fitShowOnlyModel || 'Ver solo el modelo (ocultar datos)';
             const nfTitle = document.getElementById('numFormatTitle');
             if (nfTitle) nfTitle.textContent = t.numFormatTitle || 'Formato numérico';
             const nfSig = document.getElementById('numSigFigsLabel');
@@ -13260,7 +13270,16 @@ bluetooth.startIOPinService()</pre>
             // Preparar datasets
             chart.data.datasets = [];
 
-            for (const varIdx of config.yVars) {
+            // "Ver solo el modelo": si está activo y hay un ajuste para ESTA
+            // gráfica, ocultamos los datos (puntos, líneas y comparaciones) y
+            // dibujamos solo la curva del ajuste, para mostrar el modelo solo.
+            // (Si no hay ajuste en esta gráfica, se ignora: no dejamos el gráfico
+            // en blanco.)
+            const _onlyModelCb = document.getElementById('fitShowOnlyModel');
+            const onlyModel = !!(_onlyModelCb && _onlyModelCb.checked
+                && state.fitResult && state.fitResult.graphIndex === index);
+
+            if (!onlyModel) for (const varIdx of config.yVars) {
                 if (varIdx >= state.numVariables || !state.variables[varIdx]) continue;
                 const color = state.variables[varIdx].color;
                 const data = state.rawData.map(d => {
@@ -13368,7 +13387,8 @@ bluetooth.startIOPinService()</pre>
             // Conjuntos de datos adicionales (CSVs extra cargados para comparar).
             // Cada conjunto se dibuja como línea discontinua en su color, para
             // cada una de las variables Y de esta gráfica.
-            (state.extraDataSets || []).forEach(set => {
+            // (Se ocultan también en modo "ver solo el modelo".)
+            if (!onlyModel) (state.extraDataSets || []).forEach(set => {
                 if (!set.visible || !set.points || set.points.length === 0) return;
                 config.yVars.forEach((varIdx, idx) => {
                     if (varIdx >= set.numVariables) return;
@@ -15027,6 +15047,15 @@ bluetooth.startIOPinService()</pre>
             });
         }
 
+        // "Ver solo el modelo (ocultar datos)" — re-renderiza para mostrar/ocultar
+        // los datos dejando solo la curva del ajuste.
+        const _fitOnlyModelCb = document.getElementById('fitShowOnlyModel');
+        if (_fitOnlyModelCb) {
+            _fitOnlyModelCb.addEventListener('change', function() {
+                if (typeof updateAllCharts === 'function') updateAllCharts();
+            });
+        }
+
         // Al cambiar la gráfica de referencia, sugerir la variable mostrada
         const _fitGraphSelect = document.getElementById('fitGraphSelect');
         if (_fitGraphSelect) {
@@ -15169,6 +15198,10 @@ bluetooth.startIOPinService()</pre>
         document.getElementById('clearFitBtn').addEventListener('click', () => {
             state.fitResult = null;
             document.getElementById('fitResults').style.display = 'none';
+            // Al limpiar el ajuste, volver a mostrar los datos (desactivar
+            // "ver solo el modelo") para no dejar el gráfico vacío.
+            const _onlyModelCb = document.getElementById('fitShowOnlyModel');
+            if (_onlyModelCb) _onlyModelCb.checked = false;
             updateAllCharts();
             updateCurveFitButtons();
         });
