@@ -4532,6 +4532,15 @@
                         LIMPIAR AJUSTE
                     </button>
 
+                    <!-- AJUSTE POR TRAMOS (carga/descarga…) -->
+                    <div style="margin-top:14px; padding:10px; background:#eef5ff; border:1px solid #c5d8f0; border-radius:5px;">
+                        <div style="font-weight:700; font-size:11px; color:#1565c0; margin-bottom:4px;" id="segFitTitle">AJUSTE POR TRAMOS</div>
+                        <div id="segFitHint" style="font-size:0.72rem; color:#546e7a; margin-bottom:7px;">Detecta solo los tramos (p. ej. subida/carga y bajada/descarga) y ajusta cada uno con su mejor modelo. Después podés cambiar el modelo de cada tramo.</div>
+                        <button class="toolbar-btn primary btn-full" id="detectSegmentsBtn">DETECTAR TRAMOS Y AJUSTAR</button>
+                        <div id="segFitResults" style="margin-top:8px;"></div>
+                        <button class="toolbar-btn btn-full" id="clearSegmentsBtn" style="margin-top:6px; display:none;">LIMPIAR TRAMOS</button>
+                    </div>
+
                     <div id="fitResults" style="display: none; margin-top: 12px;">
                         <!-- Resultado y explicación didáctica -->
                         <div class="didactic-block" id="fitResultsBlock">
@@ -5302,6 +5311,13 @@
                 customInitial: 'Parámetros (la app estima los valores iniciales sola; cambialos solo si el ajuste no sale):',
                 customExamplesLabel: 'Ejemplos (clic para usar):',
                 customAnglesDeg: 'Ángulos en grados (sin, cos, tan)',
+                segFitTitle: 'AJUSTE POR TRAMOS',
+                segFitHint: 'Detecta solo los tramos (p. ej. subida/carga y bajada/descarga) y ajusta cada uno con su mejor modelo. Después podés cambiar el modelo de cada tramo.',
+                segDetectBtn: 'DETECTAR TRAMOS Y AJUSTAR',
+                segClearBtn: 'LIMPIAR TRAMOS',
+                segAuto: 'Automático (mejor)',
+                segLabel: 'Tramo',
+                segPoints: 'puntos',
                 customHelpBtnLabel: '❓ ¿Cómo se escribe?',
                 customHelpTitle: 'Cómo escribir tu ecuación',
                 customHelpBody:
@@ -5654,6 +5670,13 @@
                 customInitial: 'Parameters (the app estimates the initial values automatically; change them only if the fit fails):',
                 customExamplesLabel: 'Examples (click to use):',
                 customAnglesDeg: 'Angles in degrees (sin, cos, tan)',
+                segFitTitle: 'PIECEWISE FIT',
+                segFitHint: 'Automatically detects the segments (e.g. rise/charge and fall/discharge) and fits each one with its best model. You can then change each segment’s model.',
+                segDetectBtn: 'DETECT SEGMENTS & FIT',
+                segClearBtn: 'CLEAR SEGMENTS',
+                segAuto: 'Automatic (best)',
+                segLabel: 'Segment',
+                segPoints: 'points',
                 customHelpBtnLabel: '❓ How to write it?',
                 customHelpTitle: 'How to write your equation',
                 customHelpBody:
@@ -6006,6 +6029,13 @@
                 customInitial: 'Parâmetros (o app estima os valores iniciais sozinho; mude-os só se o ajuste falhar):',
                 customExamplesLabel: 'Exemplos (clique para usar):',
                 customAnglesDeg: 'Ângulos em graus (sin, cos, tan)',
+                segFitTitle: 'AJUSTE POR TRECHOS',
+                segFitHint: 'Detecta sozinho os trechos (ex.: subida/carga e descida/descarga) e ajusta cada um com seu melhor modelo. Depois você pode mudar o modelo de cada trecho.',
+                segDetectBtn: 'DETECTAR TRECHOS E AJUSTAR',
+                segClearBtn: 'LIMPAR TRECHOS',
+                segAuto: 'Automático (melhor)',
+                segLabel: 'Trecho',
+                segPoints: 'pontos',
                 customHelpBtnLabel: '❓ Como escrever?',
                 customHelpTitle: 'Como escrever sua equação',
                 customHelpBody:
@@ -6641,6 +6671,16 @@
             if (customExLbl && t.customExamplesLabel) customExLbl.textContent = t.customExamplesLabel;
             const customDegLbl = document.getElementById('customAnglesDegLabel');
             if (customDegLbl && t.customAnglesDeg) customDegLbl.textContent = t.customAnglesDeg;
+            const segTitleEl = document.getElementById('segFitTitle');
+            if (segTitleEl && t.segFitTitle) segTitleEl.textContent = t.segFitTitle;
+            const segHintEl = document.getElementById('segFitHint');
+            if (segHintEl && t.segFitHint) segHintEl.textContent = t.segFitHint;
+            const segDetectEl = document.getElementById('detectSegmentsBtn');
+            if (segDetectEl && t.segDetectBtn) segDetectEl.textContent = t.segDetectBtn;
+            const segClearEl = document.getElementById('clearSegmentsBtn');
+            if (segClearEl && t.segClearBtn) segClearEl.textContent = t.segClearBtn;
+            // Re-render de la lista de tramos (por si cambió el idioma)
+            if (typeof renderSegmentFitResults === 'function' && state.segmentFits && state.segmentFits.length) renderSegmentFitResults();
             const customHelpBtnEl = document.getElementById('customHelpBtn');
             if (customHelpBtnEl && t.customHelpBtnLabel) customHelpBtnEl.textContent = t.customHelpBtnLabel;
             const customHelpTitleEl = document.getElementById('customHelpTitle');
@@ -8706,6 +8746,7 @@ bluetooth.startIOPinService()</pre>
             charts: [],
             // Curve Fitting
             fitResult: null,  // {type, coeffs, equation, r2, graphIndex, varIndex, dataPoints}
+            segmentFits: [],  // ajuste por tramos: [{from,to,type,coeffs,r2,color,...}]
             fitColor: '#d32f2f',  // color de la línea de ajuste (editable)
             // Conjuntos de datos adicionales (CSV importados para comparar
             // con la corrida principal). Cada uno se dibuja como una línea
@@ -13409,6 +13450,121 @@ bluetooth.startIOPinService()</pre>
             };
         }
 
+        // ===== AJUSTE POR TRAMOS (auto-detección de tramos + mejor modelo) =====
+        // Detecta tramos separados por puntos de giro prominentes (p. ej. el pico
+        // que separa carga de descarga) sobre la señal suavizada, y ajusta el
+        // extremo al valor real (crudo) para que el corte caiga justo en el pico.
+        function detectSegments(xData, yData, opts) {
+            opts = opts || {};
+            const N = yData.length;
+            if (N < 16) return [{ from: 0, to: N - 1 }];
+            const win = Math.max(2, Math.round(N * 0.03));
+            const sm = new Array(N);
+            for (let i = 0; i < N; i++) {
+                let s = 0, c = 0;
+                for (let j = Math.max(0, i - win); j <= Math.min(N - 1, i + win); j++) { s += yData[j]; c++; }
+                sm[i] = s / c;
+            }
+            const yMax = Math.max(...yData), yMin = Math.min(...yData);
+            const range = (yMax - yMin) || 1;
+            const minLen = Math.max(6, Math.round(N * 0.05));
+            const promThresh = (opts.prominence || 0.10) * range;
+            const span = Math.max(2, Math.round(N * 0.02));
+            const dirAt = (i) => Math.sign(sm[Math.min(N - 1, i + span)] - sm[Math.max(0, i - span)]);
+
+            const turns = [];
+            let curDir = 0, anchorVal = sm[0], extremeIdx = 0, extremeVal = sm[0];
+            for (let i = 1; i < N; i++) {
+                const d = dirAt(i);
+                if (d === 0) continue;
+                if (curDir === 0) { curDir = d; extremeIdx = i; extremeVal = sm[i]; anchorVal = sm[0]; continue; }
+                if (curDir > 0 && sm[i] > extremeVal) { extremeVal = sm[i]; extremeIdx = i; }
+                if (curDir < 0 && sm[i] < extremeVal) { extremeVal = sm[i]; extremeIdx = i; }
+                if (d !== curDir) {
+                    if (Math.abs(extremeVal - anchorVal) >= promThresh) {
+                        turns.push({ idx: extremeIdx, kind: curDir > 0 ? 'max' : 'min' });
+                        anchorVal = extremeVal; curDir = d; extremeIdx = i; extremeVal = sm[i];
+                    }
+                }
+            }
+            if (turns.length === 0) return [{ from: 0, to: N - 1 }];
+
+            // Ajustar cada giro al extremo real (crudo) en una ventana
+            const W = Math.max(2 * win, 12);
+            for (const t of turns) {
+                const lo = Math.max(0, t.idx - W), hi = Math.min(N - 1, t.idx + W);
+                let bi = t.idx, bv = yData[t.idx];
+                for (let j = lo; j <= hi; j++) {
+                    if (t.kind === 'max' ? yData[j] > bv : yData[j] < bv) { bv = yData[j]; bi = j; }
+                }
+                t.idx = bi;
+            }
+
+            let cuts = [...new Set([0, ...turns.map(t => t.idx), N - 1])].sort((a, b) => a - b);
+            const segs = [];
+            for (let i = 0; i < cuts.length - 1; i++) segs.push({ from: cuts[i], to: cuts[i + 1] });
+            const merged = [];
+            for (const s of segs) {
+                if (merged.length && (s.to - s.from + 1) < minLen) merged[merged.length - 1].to = s.to;
+                else merged.push({ from: s.from, to: s.to });
+            }
+            return merged;
+        }
+
+        // Ajusta un tramo. requestedType='auto' prueba candidatos y elige el mejor.
+        // Orden de preferencia: modelos simples/físicos primero; un modelo más
+        // complejo solo "gana" si mejora el R² de forma clara (margen), para no
+        // elegir un cúbico sobreajustado en vez de la exponencial/saturación.
+        const _SEGMENT_AUTO_CANDIDATES = ['linear', 'quadratic', 'exponential', 'saturating', 'cubic'];
+        const _SEGMENT_R2_MARGIN = 0.003;
+        function fitOneSegment(xSeg, ySeg, requestedType) {
+            if (requestedType && requestedType !== 'auto') {
+                const r = performCurveFit(requestedType, xSeg, ySeg);
+                r.requestedType = requestedType;
+                return r;
+            }
+            let best = null;
+            for (const t of _SEGMENT_AUTO_CANDIDATES) {
+                let r; try { r = performCurveFit(t, xSeg, ySeg); } catch (e) { continue; }
+                if (!r || !isFinite(r.r2)) continue;
+                // El primero válido fija el mejor; los siguientes deben superar por margen.
+                if (!best || r.r2 > best.r2 + _SEGMENT_R2_MARGIN) best = r;
+            }
+            if (!best) throw new Error('No se pudo ajustar el tramo con ningún modelo');
+            best.requestedType = 'auto';
+            return best;
+        }
+
+        // Construye state.segmentFits para los tramos dados (modo por tramos).
+        const _SEGMENT_PALETTE = ['#d32f2f', '#1565c0', '#2e7d32', '#ef6c00', '#6a1b9a', '#00838f', '#c2185b'];
+        function performSegmentFits(graphIndex, varIndex, segDefs, requestedTypes) {
+            const config = state.graphs[graphIndex];
+            const timeUnit = parseFloat(document.getElementById('timeUnit').value);
+            const xOf = (d) => config.xAxis === 'time'
+                ? (d.time - state.timeZeroOffset) / timeUnit
+                : d.values[parseInt(config.xAxis.replace('var', ''))];
+            const fits = [];
+            segDefs.forEach((seg, i) => {
+                const slice = state.rawData.slice(seg.from, seg.to + 1);
+                const xSeg = slice.map(xOf);
+                const ySeg = slice.map(d => d.values[varIndex]);
+                if (xSeg.length < 3) return;
+                let res;
+                try { res = fitOneSegment(xSeg, ySeg, (requestedTypes && requestedTypes[i]) || 'auto'); }
+                catch (e) { fits.push({ from: seg.from, to: seg.to, graphIndex, varIndex, error: e.message, color: _SEGMENT_PALETTE[i % _SEGMENT_PALETTE.length] }); return; }
+                fits.push({
+                    from: seg.from, to: seg.to, graphIndex, varIndex, xAxis: config.xAxis,
+                    type: res.type, requestedType: res.requestedType,
+                    coeffs: res.coeffs, errors: res.errors, equation: res.equation, r2: res.r2,
+                    xShift: res.xShift || 0, paramNames: res.paramNames, expr: res.expr, degrees: res.degrees,
+                    fitXMin: Math.min(...xSeg), fitXMax: Math.max(...xSeg),
+                    color: _SEGMENT_PALETTE[i % _SEGMENT_PALETTE.length]
+                });
+            });
+            state.segmentFits = fits;
+            state.fitResult = null;  // el modo por tramos reemplaza al ajuste único
+        }
+
         // Función principal para realizar ajuste
         function getParamNames(fitType) {
             switch (fitType) {
@@ -13803,6 +13959,33 @@ bluetooth.startIOPinService()</pre>
                     fill: false
                 });
             }
+
+            // Curvas de AJUSTE POR TRAMOS (cada tramo con su modelo y color).
+            (state.segmentFits || []).forEach((sf, si) => {
+                if (sf.graphIndex !== index || sf.error) return;
+                const predict = createPredictor(sf.type, sf.coeffs, sf.xShift || 0, sf);
+                const fitData = [];
+                for (let i = 0; i <= 300; i++) {
+                    const x = sf.fitXMin + (sf.fitXMax - sf.fitXMin) * i / 300;
+                    const y = predict(x);
+                    if (isFinite(y)) fitData.push({ x, y });
+                }
+                chart.data.datasets.push({
+                    label: `Tramo ${si + 1}: ${sf.equation}`,
+                    data: fitData,
+                    isFitCurve: true,
+                    borderColor: sf.color,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2.5,
+                    borderDash: [6, 3],
+                    borderCapStyle: 'round',
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    showLine: true,
+                    tension: 0,
+                    fill: false
+                });
+            });
 
             // Conjuntos de datos adicionales (CSVs extra cargados para comparar).
             // Cada conjunto se dibuja como línea discontinua en su color, para
@@ -15550,6 +15733,106 @@ bluetooth.startIOPinService()</pre>
             if (m) m.classList.remove('active');
         }
 
+        // ===== UI del AJUSTE POR TRAMOS =====
+        function renderSegmentFitResults() {
+            const cont = document.getElementById('segFitResults');
+            const clearBtn = document.getElementById('clearSegmentsBtn');
+            if (!cont) return;
+            const fits = state.segmentFits || [];
+            if (fits.length === 0) { cont.innerHTML = ''; if (clearBtn) clearBtn.style.display = 'none'; return; }
+            if (clearBtn) clearBtn.style.display = '';
+            const t = translations[currentLanguage] || {};
+            const modelOpts = [
+                ['auto', t.segAuto || 'Automático (mejor)'],
+                ['linear', t.fitLinear || 'Lineal'], ['quadratic', t.fitQuadratic || 'Cuadrático'],
+                ['cubic', t.fitCubic || 'Cúbico'], ['exponential', t.fitExponential || 'Exponencial'],
+                ['power', t.fitPower || 'Potencia'], ['logarithmic', t.fitLogarithmic || 'Logarítmico'],
+                ['inverse', t.fitInverse || 'Inverso'], ['sinusoidal', t.fitSinusoidal || 'Sinusoidal'],
+                ['saturating', t.fitSaturating || 'Saturación']
+            ];
+            const segLabel = t.segLabel || 'Tramo', segPoints = t.segPoints || 'puntos';
+            let html = '';
+            fits.forEach((sf, i) => {
+                const rng = `${sf.from + 1}–${sf.to + 1}`;
+                if (sf.error) {
+                    html += `<div style="border-left:4px solid ${sf.color}; padding:4px 8px; margin-bottom:8px;"><b>${segLabel} ${i + 1}</b> (${rng}): <span style="color:#b71c1c;">${_escHtml(sf.error)}</span></div>`;
+                    return;
+                }
+                const sel = `<select data-seg="${i}" class="seg-model-select" style="font-size:11px; margin-left:4px;">`
+                    + modelOpts.map(([v, lbl]) => `<option value="${v}"${(sf.requestedType === v) ? ' selected' : ''}>${_escHtml(lbl)}</option>`).join('')
+                    + `</select>`;
+                const r2cls = sf.r2 >= 0.98 ? 'didactic-error-good' : (sf.r2 >= 0.9 ? 'didactic-error-warn' : 'didactic-error-bad');
+                const pnames = sf.paramNames || getParamNames(sf.type);
+                let params = '';
+                for (let k = 0; k < sf.coeffs.length; k++) {
+                    const nm = (pnames && pnames[k]) || `p${k}`;
+                    const v = sf.coeffs[k], e = sf.errors && sf.errors[k];
+                    params += `<div style="font-size:0.7rem; font-family:monospace; color:#37474f;">${_escHtml(nm)} = ${isFinite(v) ? fmtNum(v) : 'N/A'}${isFinite(e) ? ' ± ' + fmtNum(e) : ''}</div>`;
+                }
+                html += `<div style="border-left:4px solid ${sf.color}; padding:4px 8px; margin-bottom:8px;">`
+                    + `<div style="font-size:0.78rem;"><b style="color:${sf.color};">${segLabel} ${i + 1}</b> <span style="color:#777;">(${segPoints} ${rng})</span> ${sel}</div>`
+                    + `<div style="font-size:0.72rem; font-family:monospace; word-break:break-all; margin:3px 0;">${_escHtml(sf.equation)}</div>`
+                    + `<div style="font-size:0.72rem;">R² = <b class="${r2cls}">${isFinite(sf.r2) ? fmtNum(sf.r2) : 'N/A'}</b></div>`
+                    + params + `</div>`;
+            });
+            cont.innerHTML = html;
+            cont.querySelectorAll('.seg-model-select').forEach(selEl => {
+                selEl.addEventListener('change', function () { _changeSegmentModel(parseInt(this.dataset.seg), this.value); });
+            });
+        }
+
+        function _changeSegmentModel(i, type) {
+            const sf = state.segmentFits && state.segmentFits[i];
+            if (!sf) return;
+            const config = state.graphs[sf.graphIndex];
+            const timeUnit = parseFloat(document.getElementById('timeUnit').value);
+            const xOf = (d) => config.xAxis === 'time'
+                ? (d.time - state.timeZeroOffset) / timeUnit
+                : d.values[parseInt(config.xAxis.replace('var', ''))];
+            const slice = state.rawData.slice(sf.from, sf.to + 1);
+            const xSeg = slice.map(xOf), ySeg = slice.map(d => d.values[sf.varIndex]);
+            try {
+                const res = fitOneSegment(xSeg, ySeg, type);
+                Object.assign(sf, {
+                    type: res.type, requestedType: type,
+                    coeffs: res.coeffs, errors: res.errors, equation: res.equation, r2: res.r2,
+                    xShift: res.xShift || 0, paramNames: res.paramNames, expr: res.expr, degrees: res.degrees,
+                    error: undefined
+                });
+            } catch (e) { sf.error = e.message; }
+            if (typeof updateAllCharts === 'function') updateAllCharts();
+            renderSegmentFitResults();
+        }
+
+        const _detectSegBtn = document.getElementById('detectSegmentsBtn');
+        if (_detectSegBtn) _detectSegBtn.addEventListener('click', () => {
+            if (!state.rawData || state.rawData.length < 8) { alert(tr('alertMinPoints')); return; }
+            const graphIndex = parseInt(document.getElementById('fitGraphSelect').value) || 0;
+            const varIndex = parseInt(document.getElementById('fitVariable').value) || 0;
+            const config = state.graphs[graphIndex];
+            const timeUnit = parseFloat(document.getElementById('timeUnit').value);
+            const xOf = (d) => config.xAxis === 'time'
+                ? (d.time - state.timeZeroOffset) / timeUnit
+                : d.values[parseInt(config.xAxis.replace('var', ''))];
+            const xData = state.rawData.map(xOf);
+            const yData = state.rawData.map(d => d.values[varIndex]);
+            const segs = detectSegments(xData, yData);
+            try { performSegmentFits(graphIndex, varIndex, segs, null); }
+            catch (e) { alert((tr('alertFitError') || 'Error: ') + e.message); return; }
+            // El modo por tramos reemplaza al ajuste único en la UI
+            document.getElementById('fitResults').style.display = 'none';
+            if (typeof updateCurveFitButtons === 'function') updateCurveFitButtons();
+            if (typeof updateAllCharts === 'function') updateAllCharts();
+            renderSegmentFitResults();
+        });
+
+        const _clearSegBtn = document.getElementById('clearSegmentsBtn');
+        if (_clearSegBtn) _clearSegBtn.addEventListener('click', () => {
+            state.segmentFits = [];
+            renderSegmentFitResults();
+            if (typeof updateAllCharts === 'function') updateAllCharts();
+        });
+
         // Al cambiar la gráfica de referencia, sugerir la variable mostrada
         const _fitGraphSelect = document.getElementById('fitGraphSelect');
         if (_fitGraphSelect) {
@@ -15660,6 +15943,12 @@ bluetooth.startIOPinService()</pre>
                     fitXMin: Math.min(...xData),
                     fitXMax: Math.max(...xData)
                 };
+
+                // El ajuste único y el ajuste por tramos son mutuamente excluyentes.
+                if (state.segmentFits && state.segmentFits.length) {
+                    state.segmentFits = [];
+                    if (typeof renderSegmentFitResults === 'function') renderSegmentFitResults();
+                }
 
                 // Mostrar resultados
                 document.getElementById('fitResults').style.display = 'block';
