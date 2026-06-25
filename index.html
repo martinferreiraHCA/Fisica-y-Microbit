@@ -1116,6 +1116,24 @@
             font-size: 0.78rem; text-decoration: underline; padding: 2px 4px;
         }
 
+        /* Modal de programas de ejemplo */
+        .ex-card {
+            margin: 12px 0; padding: 12px; background: #f5f8ff;
+            border: 1px solid #c5d8f0; border-radius: 6px;
+        }
+        .ex-card-title { font-weight: 700; color: #1565c0; margin-bottom: 6px; font-size: 0.95rem; }
+        .ex-prog { margin-top: 10px; }
+        .ex-prog-head {
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 6px; font-size: 0.85rem; margin-bottom: 4px;
+        }
+        .ex-prog-head .toolbar-btn { font-size: 11px; padding: 4px 8px; }
+        .ex-code {
+            width: 100%; box-sizing: border-box; font-family: 'Courier New', monospace;
+            font-size: 12px; padding: 8px; border: 1px solid #b0bec5; border-radius: 4px;
+            background: #1a1d23; color: #e0e0e0; resize: vertical; line-height: 1.4;
+        }
+
         .help-section h3 {
             font-size: 1rem;
             font-weight: 700;
@@ -3978,6 +3996,8 @@
                 MAKECODE ↗
             </a>
             <div class="toolbar-separator"></div>
+            <button id="examplesBtn" class="toolbar-btn" onclick="openExamplesModal()">EJEMPLOS</button>
+            <div class="toolbar-separator"></div>
             <button id="helpBtn" class="toolbar-btn">AYUDA</button>
             <div class="toolbar-separator"></div>
             <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
@@ -4004,6 +4024,7 @@
         <button id="exportBtn2" class="toolbar-btn" onclick="document.getElementById('exportBtn').click(); closeToolbarMenu();">EXPORTAR CSV</button>
         <button id="clearBtn2" class="toolbar-btn" onclick="document.getElementById('clearBtn').click(); closeToolbarMenu();">LIMPIAR</button>
         <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: flex; align-items: center;">MAKECODE ↗</a>
+        <button id="examplesBtn2" class="toolbar-btn" onclick="openExamplesModal(); closeToolbarMenu();">EJEMPLOS</button>
         <button id="helpBtn2" class="toolbar-btn" onclick="document.getElementById('helpBtn').click(); closeToolbarMenu();">AYUDA</button>
         <select id="languageSelector2" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
             <option value="es">ES</option>
@@ -4934,6 +4955,100 @@
         </div>
     </div>
 
+    <!-- Modal de PROGRAMAS DE EJEMPLO -->
+    <div class="modal" id="examplesModal">
+        <div class="modal-content help-modal">
+            <div class="modal-header" id="examplesModalTitle">PROGRAMAS DE EJEMPLO</div>
+            <div id="examplesModalBody" style="line-height:1.6; font-size:0.92rem; color:#263238;">
+
+                <p style="margin:6px 0;">Programas listos para tu micro:bit. Podés <b>cargarlos por USB</b>, <b>abrirlos/editarlos en MakeCode</b>, o <b>subir tu propio .hex</b>.</p>
+                <div style="margin:6px 0; padding:8px 10px; background:#fff8e1; border:1px solid #ffca28; border-radius:5px; font-size:0.85rem;">
+                    ⚠️ Para conectar por Bluetooth, el programa debe tener <code>bluetooth.startUartService()</code> y la opción <b>"No Pairing Required"</b> (ver AYUDA → Bluetooth). El .hex de ejemplo ya viene así.
+                </div>
+
+                <!-- A: cargar el .hex de ejemplo -->
+                <div class="ex-card">
+                    <div class="ex-card-title">① Cargar el programa de ejemplo a la micro:bit (USB)</div>
+                    <p style="margin:4px 0; font-size:0.86rem;">Ejemplo: envía por Bluetooth el <b>tiempo y la aceleración X</b> (listo para usar).</p>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
+                        <button class="toolbar-btn primary" onclick="exFlashExample()">💾 Guardar en la micro:bit…</button>
+                        <button class="toolbar-btn" onclick="exDownloadExample()">⬇ Descargar .hex</button>
+                    </div>
+                    <p style="margin:6px 0 0; font-size:0.78rem; color:#555;">"Guardar en la micro:bit" abre el explorador: elegí el disco <b>MICROBIT</b> y guardá ahí — la placa se programa sola (la luz amarilla parpadea). Si tu navegador no lo permite, usá <b>Descargar .hex</b> y <b>arrastrá</b> el archivo al disco <b>MICROBIT</b>.</p>
+                </div>
+
+                <!-- B: subir tu propio .hex -->
+                <div class="ex-card">
+                    <div class="ex-card-title">② Subí tu propio .hex</div>
+                    <input type="file" id="userHexInput" accept=".hex" style="font-size:12px;">
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+                        <button class="toolbar-btn primary" onclick="exFlashUser()">💾 Guardar en la micro:bit…</button>
+                        <button class="toolbar-btn" onclick="exDownloadUser()">⬇ Descargar</button>
+                    </div>
+                </div>
+
+                <!-- C: programas (código editable) -->
+                <div class="ex-card">
+                    <div class="ex-card-title">③ Programas (copialos o editalos en MakeCode)</div>
+                    <p style="margin:4px 0; font-size:0.82rem; color:#555;">Editá el código abajo si querés, <b>copialo</b> y pegalo en MakeCode (vista JavaScript) para compilarlo y descargar tu .hex.</p>
+
+                    <div class="ex-prog">
+                        <div class="ex-prog-head"><b>Aceleración X</b> (igual al .hex de ejemplo)
+                            <span><button class="toolbar-btn" onclick="exCopy('exCode1')">Copiar</button>
+                            <button class="toolbar-btn" onclick="exOpenMakeCode()">Abrir en MakeCode ↗</button></span></div>
+<textarea id="exCode1" class="ex-code" rows="8" spellcheck="false">let valor = 0
+let t = 0
+bluetooth.startUartService()
+basic.forever(function () {
+    t = input.runningTime()
+    valor = input.acceleration(Dimension.X)
+    bluetooth.uartWriteLine("" + t + "," + valor)
+    basic.pause(100)
+})</textarea>
+                    </div>
+
+                    <div class="ex-prog">
+                        <div class="ex-prog-head"><b>Aceleración X, Y, Z</b>
+                            <span><button class="toolbar-btn" onclick="exCopy('exCode2')">Copiar</button>
+                            <button class="toolbar-btn" onclick="exOpenMakeCode()">Abrir en MakeCode ↗</button></span></div>
+<textarea id="exCode2" class="ex-code" rows="8" spellcheck="false">bluetooth.startUartService()
+basic.forever(function () {
+    let t = input.runningTime()
+    bluetooth.uartWriteLine("" + t + "," + input.acceleration(Dimension.X) + "," + input.acceleration(Dimension.Y) + "," + input.acceleration(Dimension.Z))
+    basic.pause(100)
+})</textarea>
+                    </div>
+
+                    <div class="ex-prog">
+                        <div class="ex-prog-head"><b>Nivel de luz</b>
+                            <span><button class="toolbar-btn" onclick="exCopy('exCode3')">Copiar</button>
+                            <button class="toolbar-btn" onclick="exOpenMakeCode()">Abrir en MakeCode ↗</button></span></div>
+<textarea id="exCode3" class="ex-code" rows="7" spellcheck="false">bluetooth.startUartService()
+basic.forever(function () {
+    let t = input.runningTime()
+    bluetooth.uartWriteLine("" + t + "," + input.lightLevel())
+    basic.pause(100)
+})</textarea>
+                    </div>
+
+                    <div class="ex-prog">
+                        <div class="ex-prog-head"><b>Temperatura</b>
+                            <span><button class="toolbar-btn" onclick="exCopy('exCode4')">Copiar</button>
+                            <button class="toolbar-btn" onclick="exOpenMakeCode()">Abrir en MakeCode ↗</button></span></div>
+<textarea id="exCode4" class="ex-code" rows="7" spellcheck="false">bluetooth.startUartService()
+basic.forever(function () {
+    let t = input.runningTime()
+    bluetooth.uartWriteLine("" + t + "," + input.temperature())
+    basic.pause(1000)
+})</textarea>
+                    </div>
+                </div>
+
+            </div>
+            <button class="toolbar-btn primary modal-close" onclick="closeExamplesModal()">CERRAR</button>
+        </div>
+    </div>
+
     <!-- Modal de ayuda básica -->
     <div class="modal" id="helpModal">
         <div class="modal-content help-modal">
@@ -5258,6 +5373,8 @@
                 importCSV: 'IMPORTAR CSV',
                 clear: 'LIMPIAR',
                 help: 'AYUDA',
+                examplesBtn: 'EJEMPLOS',
+                examplesTitle: 'PROGRAMAS DE EJEMPLO',
                 disconnected: 'DESCONECTADO',
                 reconnecting: 'RECONECTANDO...',
                 connected: 'CONECTADO',
@@ -5618,6 +5735,8 @@
                 importCSV: 'IMPORT CSV',
                 clear: 'CLEAR',
                 help: 'HELP',
+                examplesBtn: 'EXAMPLES',
+                examplesTitle: 'EXAMPLE PROGRAMS',
                 disconnected: 'DISCONNECTED',
                 reconnecting: 'RECONNECTING...',
                 connected: 'CONNECTED',
@@ -5978,6 +6097,8 @@
                 importCSV: 'IMPORTAR CSV',
                 clear: 'LIMPAR',
                 help: 'AJUDA',
+                examplesBtn: 'EXEMPLOS',
+                examplesTitle: 'PROGRAMAS DE EXEMPLO',
                 disconnected: 'DESCONECTADO',
                 reconnecting: 'RECONECTANDO...',
                 connected: 'CONECTADO',
@@ -6402,6 +6523,9 @@
             document.getElementById('exportBtn').textContent = t.exportCSV;
             document.getElementById('clearBtn').textContent = t.clear;
             document.getElementById('helpBtn').textContent = t.help;
+            const _exBtn = document.getElementById('examplesBtn'); if (_exBtn && t.examplesBtn) _exBtn.textContent = t.examplesBtn;
+            const _exBtn2 = document.getElementById('examplesBtn2'); if (_exBtn2 && t.examplesBtn) _exBtn2.textContent = t.examplesBtn;
+            const _exTitle = document.getElementById('examplesModalTitle'); if (_exTitle && t.examplesTitle) _exTitle.textContent = t.examplesTitle;
 
             // View switcher
             const vsBtn = (id, key) => { const el = document.getElementById(id); if (el && t[key]) el.textContent = t[key]; };
@@ -15804,6 +15928,71 @@ bluetooth.startIOPinService()</pre>
             const m = document.getElementById('customHelpModal');
             if (m) m.classList.remove('active');
         }
+
+        // ===== Modal de PROGRAMAS DE EJEMPLO (ver/editar código, cargar .hex por USB) =====
+        const EXAMPLE_HEX_URL = 'microbit-example-bluetooth.hex';
+        function openExamplesModal() { const m = document.getElementById('examplesModal'); if (m) m.classList.add('active'); }
+        function closeExamplesModal() { const m = document.getElementById('examplesModal'); if (m) m.classList.remove('active'); }
+        function exOpenMakeCode() { window.open('https://makecode.microbit.org/', '_blank', 'noopener'); }
+        function exToast(msg) {
+            let el = document.getElementById('exToast');
+            if (!el) {
+                el = document.createElement('div'); el.id = 'exToast';
+                el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;padding:10px 18px;border-radius:6px;z-index:3000;font-size:14px;box-shadow:0 2px 10px rgba(0,0,0,.3);transition:opacity .3s;';
+                document.body.appendChild(el);
+            }
+            el.textContent = msg; el.style.opacity = '1';
+            clearTimeout(el._t); el._t = setTimeout(() => { el.style.opacity = '0'; }, 1800);
+        }
+        function exCopy(id) {
+            const ta = document.getElementById(id); if (!ta) return;
+            ta.focus(); ta.select();
+            const ok = () => exToast('Código copiado ✓');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(ta.value).then(ok, () => { try { document.execCommand('copy'); ok(); } catch (e) {} });
+            } else { try { document.execCommand('copy'); ok(); } catch (e) {} }
+        }
+        function _exDownloadBlob(blob, name) {
+            const u = URL.createObjectURL(blob); const a = document.createElement('a');
+            a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(u), 3000);
+        }
+        async function _exGetExampleBlob() {
+            const r = await fetch(EXAMPLE_HEX_URL);
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return await r.blob();
+        }
+        async function exDownloadExample() {
+            try { _exDownloadBlob(await _exGetExampleBlob(), 'microbit-ejemplo.hex'); exToast('Descargado ✓'); }
+            catch (e) { alert('No se pudo descargar el .hex de ejemplo: ' + (e && e.message || e)); }
+        }
+        // Guardar el .hex directo (ideal: elegir el disco MICROBIT → la placa se programa sola).
+        async function _exSaveToMicrobit(getBlob, suggested) {
+            if (!window.showSaveFilePicker) {
+                alert('Tu navegador no permite guardar directo en el disco. Usá "Descargar .hex" y arrastrá el archivo al disco MICROBIT (Chrome/Edge en computadora sí lo permiten).');
+                return;
+            }
+            let blob;
+            try { blob = await getBlob(); }
+            catch (e) { alert('No se pudo leer el .hex: ' + (e && e.message || e)); return; }
+            try {
+                const h = await window.showSaveFilePicker({
+                    suggestedName: suggested || 'microbit.hex',
+                    types: [{ description: 'micro:bit hex', accept: { 'application/octet-stream': ['.hex'] } }]
+                });
+                const w = await h.createWritable(); await w.write(blob); await w.close();
+                alert('Guardado. Si elegiste el disco MICROBIT, la micro:bit se va a programar sola (la luz amarilla parpadea unos segundos).');
+            } catch (e) { if (e && e.name !== 'AbortError') alert('No se pudo guardar: ' + (e && e.message || e)); }
+        }
+        function exFlashExample() { _exSaveToMicrobit(_exGetExampleBlob, 'microbit-ejemplo.hex'); }
+        function _exUserFile() {
+            const inp = document.getElementById('userHexInput');
+            const f = inp && inp.files && inp.files[0];
+            if (!f) throw new Error('Elegí primero un archivo .hex');
+            return f;
+        }
+        function exDownloadUser() { try { const f = _exUserFile(); _exDownloadBlob(f, f.name || 'microbit.hex'); } catch (e) { alert(e.message); } }
+        function exFlashUser() { let f; try { f = _exUserFile(); } catch (e) { alert(e.message); return; } _exSaveToMicrobit(async () => f, f.name || 'microbit.hex'); }
 
         // ===== UI del AJUSTE POR TRAMOS =====
         function renderSegmentFitResults() {
