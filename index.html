@@ -4143,6 +4143,60 @@
           font-family:inherit; font-weight:700;
         }
         .inf-view-toggle button.active { background:#fff; color:#000; }
+
+        /* Preview del dibujo (miniatura clickeable) */
+        .inf-draw-preview {
+          border:1px dashed #555; background:#fff; color:#666;
+          min-height:96px; display:flex; align-items:center; justify-content:center;
+          text-align:center; font-size:11.5px; padding:12px; cursor:pointer; line-height:1.5;
+        }
+        .inf-draw-preview.has { border-style:solid; border-color:#2b303b; padding:0; background:#fff; }
+        .inf-draw-preview img { width:100%; display:block; }
+
+        /* Controles de tamaño y pie de imagen */
+        .inf-img-ctrl {
+          display:flex; gap:10px; padding:9px; border:1px solid #2b303b;
+          background:#1a1d23; margin-bottom:7px;
+        }
+        .inf-img-thumb { width:60px; height:46px; object-fit:cover; border:1px solid #444; background:#fff; flex-shrink:0; }
+        .inf-img-fields { flex:1; min-width:0; }
+        .inf-img-name { font-size:11px; color:#e0e0e0; font-weight:600; margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .inf-img-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+        .inf-img-row span { font-size:10px; color:#9e9e9e; text-transform:uppercase; letter-spacing:0.5px; }
+        .inf-img-ctrl select, .inf-img-ctrl input {
+          background:#0f1115; color:#fff; border:1px solid #444; border-radius:0;
+          font-family:inherit; font-size:11px; padding:5px 7px; box-sizing:border-box;
+        }
+        .inf-img-ctrl .inf-img-size { flex:1; }
+        .inf-img-ctrl .inf-img-cap { display:block; width:100%; }
+        .inf-img-ctrl input:focus, .inf-img-ctrl select:focus { outline:none; border-color:#fff; }
+
+        /* Editor de secciones de texto propias */
+        .inf-sec-item { border:1px solid #2b303b; background:#1a1d23; padding:9px; margin-bottom:8px; }
+        .inf-sec-title { display:block; width:100%; box-sizing:border-box; background:#0f1115; color:#fff; border:1px solid #444; padding:7px 8px; font-family:inherit; font-size:12px; margin-bottom:6px; }
+        .inf-sec-row2 { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+        .inf-sec-pos { flex:1; background:#0f1115; color:#fff; border:1px solid #444; padding:6px; font-family:inherit; font-size:11px; }
+        .inf-sec-del { background:#000; color:#ef5350; border:1px solid #ef5350; padding:6px 10px; cursor:pointer; font-size:11px; flex-shrink:0; font-family:inherit; }
+        .inf-sec-del:hover { background:#ef5350; color:#000; }
+        .inf-sec-text { display:block; width:100%; box-sizing:border-box; min-height:64px; resize:vertical; background:#0f1115; color:#fff; border:1px solid #444; padding:7px 8px; font-family:inherit; font-size:12px; line-height:1.5; }
+        .inf-sec-title:focus, .inf-sec-text:focus, .inf-sec-pos:focus { outline:none; border-color:#fff; }
+
+        /* Modal del lienzo de dibujo */
+        .inf-draw-modal {
+          display:none; position:fixed; inset:0; z-index:9250;
+          background:#14161b; flex-direction:column;
+        }
+        .inf-draw-modal.open { display:flex; }
+        .inf-draw-modal-bar {
+          background:#0a0a0a; color:#fff; display:flex; align-items:center; gap:10px;
+          padding:10px 14px; flex-wrap:wrap; border-bottom:1px solid #000;
+        }
+        .inf-draw-modal-title { font-weight:800; letter-spacing:2px; text-transform:uppercase; font-size:12px; }
+        .inf-draw-stage { flex:1; display:flex; align-items:center; justify-content:center; padding:16px; overflow:auto; min-height:0; }
+        #inf-draw-big {
+          background:#fff; border:1px solid #333; touch-action:none; cursor:crosshair;
+          max-width:100%; max-height:100%; width:auto; height:auto; box-shadow:0 6px 30px rgba(0,0,0,.5);
+        }
         /* ===== INFORME STYLES END ===== */
     </style>
 </head>
@@ -23743,26 +23797,30 @@ bluetooth.startIOPinService()</pre>
                     <div id="inf-checklist"></div>
                 </div>
 
+                <div class="inf-section" id="inf-img-section" style="display:none;">
+                    <div class="inf-section-title">Imágenes: tamaño y pie</div>
+                    <div class="inf-hint">Ajustá el tamaño y escribí el pie de cada imagen (gráficas, fotos y dibujo).</div>
+                    <div id="inf-img-controls"></div>
+                </div>
+
                 <div class="inf-section">
                     <div class="inf-section-title">Apuntes escritos</div>
                     <div class="inf-field"><textarea id="inf-notes" placeholder="Observaciones, procedimiento, análisis y conclusiones…"></textarea></div>
                 </div>
 
                 <div class="inf-section">
+                    <div class="inf-section-title">Secciones de texto</div>
+                    <div class="inf-hint">Agregá partes propias (Objetivo, Materiales, Marco teórico, Conclusión…).</div>
+                    <div id="inf-sections"></div>
+                    <button class="inf-btn" id="inf-add-section">＋ Agregar sección</button>
+                </div>
+
+                <div class="inf-section">
                     <div class="inf-section-title">Apuntes dibujados</div>
-                    <div class="inf-hint">Esquemas del montaje, diagramas de fuerzas, croquis…</div>
-                    <div class="inf-draw-wrap"><canvas id="inf-draw" class="inf-draw-canvas" width="720" height="440"></canvas></div>
-                    <div class="inf-draw-tools" id="inf-draw-tools">
-                        <button data-tool="pen" class="active" id="inf-pen">✏ Lápiz</button>
-                        <button data-tool="eraser" id="inf-eraser">Goma</button>
-                        <input type="color" id="inf-draw-color" value="#111111" title="Color">
-                        <select id="inf-draw-size" title="Grosor" style="width:auto;">
-                            <option value="2">Fino</option>
-                            <option value="4" selected>Medio</option>
-                            <option value="9">Grueso</option>
-                        </select>
-                        <button id="inf-draw-clear">Borrar todo</button>
-                    </div>
+                    <div class="inf-hint">Esquemas del montaje, diagramas de fuerzas, croquis… Se abre un lienzo grande para dibujar a mano.</div>
+                    <div class="inf-draw-preview" id="inf-draw-preview">Tocá acá para abrir el lienzo y dibujar tu esquema a mano</div>
+                    <button class="inf-btn" id="inf-draw-open">✏ Abrir lienzo para dibujar</button>
+                    <button class="inf-btn" id="inf-draw-clear2" style="display:none;">Borrar dibujo</button>
                 </div>
 
                 <div class="inf-section">
@@ -23776,6 +23834,7 @@ bluetooth.startIOPinService()</pre>
                 <div class="inf-section">
                     <div class="inf-section-title">Exportar</div>
                     <button class="inf-btn primary" id="inf-pdf">⬇ Descargar informe (PDF)</button>
+                    <button class="inf-btn" id="inf-zip">📦 Descargar todo (ZIP)</button>
                     <div class="inf-btn-row">
                         <button class="inf-btn" id="inf-graphs">Gráficos PNG</button>
                         <button class="inf-btn" id="inf-csv">Datos CSV</button>
@@ -23799,6 +23858,30 @@ bluetooth.startIOPinService()</pre>
             </section>
         </div>
     </div>
+
+    <!-- Modal del lienzo de dibujo (zona grande para dibujar a mano) -->
+    <div class="inf-draw-modal" id="inf-draw-modal">
+        <div class="inf-draw-modal-bar">
+            <span class="inf-draw-modal-title">Lienzo de dibujo</span>
+            <div class="inf-draw-tools" id="inf-draw-tools-big">
+                <button data-tool="pen" class="active" id="inf-pen-big">✏ Lápiz</button>
+                <button data-tool="eraser" id="inf-eraser-big">Goma</button>
+                <input type="color" id="inf-draw-color-big" value="#111111" title="Color">
+                <select id="inf-draw-size-big" title="Grosor" style="width:auto;">
+                    <option value="2">Fino</option>
+                    <option value="4" selected>Medio</option>
+                    <option value="9">Grueso</option>
+                    <option value="16">Muy grueso</option>
+                </select>
+                <button id="inf-draw-clear-big">Borrar todo</button>
+            </div>
+            <span class="inf-spacer"></span>
+            <button class="inf-btn" id="inf-draw-cancel" style="width:auto;margin:0;">Cancelar</button>
+            <button class="inf-btn primary" id="inf-draw-done" style="width:auto;margin:0;">Listo ✓</button>
+        </div>
+        <div class="inf-draw-stage"><canvas id="inf-draw-big"></canvas></div>
+    </div>
+
     <div class="inf-toast" id="inf-toast"></div>
 
     <script>
@@ -23866,16 +23949,22 @@ bluetooth.startIOPinService()</pre>
         notesText: '',
         devicePhotos: [],     // [{dataUrl, name}]
         selected: {},         // {itemId: bool}
+        imgOpts: {},          // {imgId: {size:'small'|'medium'|'large', caption}}
+        sections: [],         // [{id, title, text, pos:'start'|'end'}]
+        _secSeq: 0,
         drawTool: 'pen', drawColor: '#111111', drawSize: 4,
-        _drawn: false, _drawDirty: false,
-        hasDrawing: function () { return this._drawn === true; },
-        drawingDataURL: function () {
-          if (!this._drawn) return null;
-          var cv = document.getElementById('inf-draw');
-          try { return cv ? cv.toDataURL('image/png') : null; } catch (e) { return null; }
-        }
+        drawingData: null,    // dataURL del dibujo (fuente única de verdad)
+        hasDrawing: function () { return !!this.drawingData; },
+        drawingDataURL: function () { return this.drawingData; }
       };
       window.Informe = I;
+
+      // Tamaños de imagen (ancho relativo en el documento)
+      var SIZE_LABELS = [['small', 'Chico'], ['medium', 'Mediano'], ['large', 'Grande']];
+      var SIZE_W = { small: '46%', medium: '72%', large: '100%' };
+      function imgOpt(id) { if (!I.imgOpts[id]) I.imgOpts[id] = { size: 'medium', caption: '' }; return I.imgOpts[id]; }
+      function defGraphCap(i) { var cfg = (state.graphs && state.graphs[i]) || {}; return (cfg.yLabel || 'Valor') + ' en función de ' + (cfg.xLabel || 'tiempo') + '.'; }
+      function defPhotoCap(i) { return 'Montaje experimental' + (((I.devicePhotos || []).length > 1) ? (' #' + (i + 1)) : ''); }
 
       // --- Utilidades ---
       function esc(s) {
@@ -23978,6 +24067,11 @@ bluetooth.startIOPinService()</pre>
         if (sp > 0) items.push({ id: 'dataphotos', label: 'Fotos de datos', tag: sp + ' fotos', avail: true, def: false });
         items.push({ id: 'notes', label: 'Apuntes escritos', tag: '', avail: true, def: !!I.notesText.trim() });
         items.push({ id: 'drawing', label: 'Apuntes dibujados', tag: '', avail: true, def: I.hasDrawing() });
+        (I.sections || []).forEach(function (s) {
+          var lbl = (s.title || '').trim() || '(sin título)';
+          var hasContent = !!((s.title || '').trim() || (s.text || '').trim());
+          items.push({ id: 'sec:' + s.id, label: 'Sección: ' + lbl, tag: (s.pos === 'end' ? 'al final' : 'al inicio'), avail: hasContent, def: true });
+        });
         return items;
       }
 
@@ -24044,9 +24138,13 @@ bluetooth.startIOPinService()</pre>
         var img = chartToDataURL(i); if (!img) return null;
         var title = fn('computeGraphTitle') ? computeGraphTitle(i) : ('Gráfica ' + (i + 1));
         var cfg = state.graphs[i] || {};
+        var o = imgOpt('graph' + i); var w = SIZE_W[o.size] || '72%';
+        var cap = (o.caption || '').trim()
+          ? esc(o.caption)
+          : ('<b>' + esc(cfg.yLabel || '') + '</b> en función de <b>' + esc(cfg.xLabel || '') + '</b>.');
         return '<div class="rep-block">' + band('Gráfica ' + (i + 1), title) +
-          '<div class="rep-pad"><div class="rep-figure"><img src="' + img + '"></div>' +
-          '<div class="rep-cap"><b>' + esc(cfg.yLabel || '') + '</b> en función de <b>' + esc(cfg.xLabel || '') + '</b>.</div></div></div>';
+          '<div class="rep-pad"><div class="rep-figure" style="max-width:' + w + ';margin:0 auto;"><img src="' + img + '"></div>' +
+          '<div class="rep-cap" style="text-align:center;">' + cap + '</div></div></div>';
       }
 
       function paramsHTML(f) {
@@ -24106,11 +24204,14 @@ bluetooth.startIOPinService()</pre>
 
       function photosBlock() {
         var ph = I.devicePhotos || []; if (!ph.length) return '';
-        var grid = ph.map(function (p, i) {
-          return '<div class="rep-photo"><img src="' + p.dataUrl + '"><div class="cap">Montaje experimental' + (ph.length > 1 ? (' #' + (i + 1)) : '') + '</div></div>';
+        var figs = ph.map(function (p, i) {
+          var o = imgOpt('photo' + i); var w = SIZE_W[o.size] || '72%';
+          var cap = (o.caption || '').trim() ? esc(o.caption) : esc(defPhotoCap(i));
+          return '<div class="rep-figure" style="max-width:' + w + ';margin:10px auto 4px;"><img src="' + p.dataUrl + '"></div>' +
+            '<div class="rep-cap" style="text-align:center;margin-bottom:8px;">' + cap + '</div>';
         }).join('');
         return '<div class="rep-block">' + band('Montaje experimental', ph.length + (ph.length > 1 ? ' fotos' : ' foto')) +
-          '<div class="rep-pad"><div class="rep-photos-grid' + (ph.length === 1 ? ' single' : '') + '">' + grid + '</div></div></div>';
+          '<div class="rep-pad">' + figs + '</div></div>';
       }
 
       function dataPhotosBlock() {
@@ -24128,9 +24229,17 @@ bluetooth.startIOPinService()</pre>
         var t = I.notesText.trim(); if (!t) return '';
         return '<div class="rep-block">' + band('Apuntes', '') + '<div class="rep-pad"><div class="rep-notes">' + esc(t) + '</div></div></div>';
       }
+      function sectionBlock(s) {
+        var title = (s.title || '').trim(), text = (s.text || '').trim();
+        if (!title && !text) return '';
+        return '<div class="rep-block">' + band(title || 'Sección', '') + '<div class="rep-pad"><div class="rep-notes">' + esc(text) + '</div></div></div>';
+      }
       function drawingBlock() {
         var url = I.drawingDataURL(); if (!url) return '';
-        return '<div class="rep-block">' + band('Diagramas y esquemas', '') + '<div class="rep-pad"><div class="rep-draw"><img src="' + url + '"></div></div></div>';
+        var o = imgOpt('drawing'); var w = SIZE_W[o.size] || '100%';
+        var cap = (o.caption || '').trim() ? ('<div class="rep-cap" style="text-align:center;">' + esc(o.caption) + '</div>') : '';
+        return '<div class="rep-block">' + band('Diagramas y esquemas', '') +
+          '<div class="rep-pad"><div class="rep-figure" style="max-width:' + w + ';margin:0 auto;"><img src="' + url + '"></div>' + cap + '</div></div>';
       }
       function footBlock() {
         return '<div class="rep-foot-block"><div class="rep-foot"><span>fisicabit · micro:bit datalab</span><span>' +
@@ -24140,6 +24249,7 @@ bluetooth.startIOPinService()</pre>
       function buildReportHTML(sel) {
         var parts = [];
         if (sel.cover) parts.push(coverBlock());
+        (I.sections || []).forEach(function (s) { if (s.pos !== 'end' && sel['sec:' + s.id]) { var b = sectionBlock(s); if (b) parts.push(b); } });
         if (sel.data) dataBlocks().forEach(function (b) { parts.push(b); });
         var ng = (state.numGraphs || 1);
         for (var i = 0; i < ng; i++) { if (sel['graph' + i]) { var b = graphBlock(i); if (b) parts.push(b); } }
@@ -24150,6 +24260,7 @@ bluetooth.startIOPinService()</pre>
         if (sel.dataphotos && (state.sensorPhotos || []).length) parts.push(dataPhotosBlock());
         if (sel.notes && I.notesText.trim()) parts.push(notesBlock());
         if (sel.drawing && I.hasDrawing()) parts.push(drawingBlock());
+        (I.sections || []).forEach(function (s) { if (s.pos === 'end' && sel['sec:' + s.id]) { var b = sectionBlock(s); if (b) parts.push(b); } });
         if (parts.length) parts.push(footBlock());
         return parts.join('');
       }
@@ -24187,7 +24298,74 @@ bluetooth.startIOPinService()</pre>
         });
       }
 
-      function refresh() { buildChecklist(); renderPreview(); }
+      function refresh() { buildChecklist(); buildImgControls(); buildSectionsUI(); renderDrawPreview(); renderPreview(); }
+
+      // --- Controles de tamaño y pie de cada imagen ---
+      function imgList() {
+        var list = [], st = state, n = (st.rawData || []).length, ng = st.numGraphs || 1;
+        for (var i = 0; i < ng; i++) {
+          if (st.charts && st.charts[i] && n > 0) {
+            var t = fn('computeGraphTitle') ? computeGraphTitle(i) : ('Gráfica ' + (i + 1));
+            list.push({ id: 'graph' + i, label: 'Gráfica ' + (i + 1) + ' · ' + t, thumb: chartToDataURL(i), defCap: defGraphCap(i) });
+          }
+        }
+        (I.devicePhotos || []).forEach(function (p, i) {
+          list.push({ id: 'photo' + i, label: 'Foto del montaje' + (I.devicePhotos.length > 1 ? (' #' + (i + 1)) : ''), thumb: p.dataUrl, defCap: defPhotoCap(i) });
+        });
+        if (I.hasDrawing()) list.push({ id: 'drawing', label: 'Dibujo / esquema', thumb: I.drawingData, defCap: 'Esquema del montaje' });
+        return list;
+      }
+      function buildImgControls() {
+        var box = el('inf-img-controls'), sec = el('inf-img-section'); if (!box) return;
+        var list = imgList();
+        if (!list.length) { if (sec) sec.style.display = 'none'; box.innerHTML = ''; return; }
+        if (sec) sec.style.display = '';
+        box.innerHTML = '';
+        list.forEach(function (it) {
+          var o = imgOpt(it.id);
+          var sizeOpts = SIZE_LABELS.map(function (s) { return '<option value="' + s[0] + '"' + (o.size === s[0] ? ' selected' : '') + '>' + s[1] + '</option>'; }).join('');
+          var row = document.createElement('div'); row.className = 'inf-img-ctrl';
+          row.innerHTML = '<img class="inf-img-thumb" src="' + (it.thumb || '') + '">' +
+            '<div class="inf-img-fields">' +
+            '<div class="inf-img-name">' + esc(it.label) + '</div>' +
+            '<div class="inf-img-row"><span>Tamaño</span><select class="inf-img-size">' + sizeOpts + '</select></div>' +
+            '<input class="inf-img-cap" type="text" placeholder="' + esc(it.defCap || 'Pie de imagen') + '" value="' + esc(o.caption || '') + '">' +
+            '</div>';
+          var ss = row.querySelector('.inf-img-size');
+          ss.addEventListener('change', function () { imgOpt(it.id).size = ss.value; renderPreviewDebounced(); schedule(); });
+          var ci = row.querySelector('.inf-img-cap');
+          ci.addEventListener('input', function () { imgOpt(it.id).caption = ci.value; renderPreviewDebounced(); schedule(); });
+          box.appendChild(row);
+        });
+      }
+
+      // --- Secciones de texto propias ---
+      function buildSectionsUI() {
+        var box = el('inf-sections'); if (!box) return;
+        box.innerHTML = '';
+        (I.sections || []).forEach(function (s, idx) {
+          var wrap = document.createElement('div'); wrap.className = 'inf-sec-item';
+          wrap.innerHTML =
+            '<input class="inf-sec-title" type="text" placeholder="Título (ej: Objetivo)" value="' + esc(s.title || '') + '">' +
+            '<div class="inf-sec-row2">' +
+            '<select class="inf-sec-pos"><option value="start"' + (s.pos !== 'end' ? ' selected' : '') + '>Al inicio</option><option value="end"' + (s.pos === 'end' ? ' selected' : '') + '>Al final</option></select>' +
+            '<button class="inf-sec-del" title="Quitar sección">✕ Quitar</button>' +
+            '</div>' +
+            '<textarea class="inf-sec-text" placeholder="Texto de la sección…"></textarea>';
+          var t = wrap.querySelector('.inf-sec-title'); t.addEventListener('input', function () { s.title = t.value; buildChecklist(); renderPreviewDebounced(); schedule(); });
+          var tx = wrap.querySelector('.inf-sec-text'); tx.value = s.text || ''; tx.addEventListener('input', function () { s.text = tx.value; if ((s.title || s.text || '').trim()) I.selected['sec:' + s.id] = true; buildChecklist(); renderPreviewDebounced(); schedule(); });
+          var ps = wrap.querySelector('.inf-sec-pos'); ps.addEventListener('change', function () { s.pos = ps.value; buildChecklist(); renderPreviewDebounced(); schedule(); });
+          var del = wrap.querySelector('.inf-sec-del'); del.addEventListener('click', function () { I.sections.splice(idx, 1); delete I.selected['sec:' + s.id]; buildSectionsUI(); buildChecklist(); renderPreview(); schedule(); });
+          box.appendChild(wrap);
+        });
+      }
+      function addSection() {
+        I._secSeq = (I._secSeq || 0) + 1;
+        var id = 'sec' + I._secSeq;
+        I.sections.push({ id: id, title: '', text: '', pos: 'start' });
+        I.selected['sec:' + id] = true;
+        buildSectionsUI(); buildChecklist(); renderPreview(); schedule();
+      }
 
       // ==================== EXPORTAR A PDF ====================
       function slugTitle() {
@@ -24222,13 +24400,9 @@ bluetooth.startIOPinService()</pre>
           '</body></html>');
         w.document.close();
       }
-      async function downloadPDF() {
-        var sel = collect();
-        var html = buildReportHTML(sel);
-        if (!html) { toast('No hay contenido seleccionado para exportar.'); return; }
-        var hasLibs = window.jspdf && window.jspdf.jsPDF && typeof window.html2canvas === 'function';
-        if (!hasLibs) { toast('Abriendo vista de impresión (elegí “Guardar como PDF”)…'); printFallback(html); return; }
-        toast('Generando PDF…');
+      // Construye el PDF (jsPDF) a partir del HTML del informe. Devuelve la
+      // instancia jsPDF o null si falla. No descarga: eso lo decide quien llama.
+      async function buildPdfDoc(html) {
         var holder = null;
         try {
           if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
@@ -24269,15 +24443,92 @@ bluetooth.startIOPinService()</pre>
             pdf.text('fisicabit · informe de laboratorio', margin, pageH - 14);
             pdf.text(p + ' / ' + total, pageW - margin, pageH - 14, { align: 'right' });
           }
-          pdf.save(pdfFilename());
-          toast('PDF descargado ✓');
+          return pdf;
         } catch (err) {
           console.error('[INFORME] Error generando PDF:', err);
-          toast('No se pudo generar el PDF automáticamente. Abriendo vista de impresión…');
-          printFallback(html);
+          return null;
         } finally {
           if (holder && holder.parentNode) holder.parentNode.removeChild(holder);
         }
+      }
+      async function downloadPDF() {
+        var html = buildReportHTML(collect());
+        if (!html) { toast('No hay contenido seleccionado para exportar.'); return; }
+        var hasLibs = window.jspdf && window.jspdf.jsPDF && typeof window.html2canvas === 'function';
+        if (!hasLibs) { toast('Abriendo vista de impresión (elegí “Guardar como PDF”)…'); printFallback(html); return; }
+        toast('Generando PDF…');
+        var pdf = await buildPdfDoc(html);
+        if (pdf) { pdf.save(pdfFilename()); toast('PDF descargado ✓'); }
+        else { toast('No se pudo generar el PDF. Abriendo vista de impresión…'); printFallback(html); }
+      }
+
+      // ==================== DESCARGAR TODO (.ZIP) ====================
+      function buildCSVString() {
+        var tuEl = el('timeUnit'); var tuv = tuEl ? parseFloat(tuEl.value) : 1000;
+        var showT = state.microbitTimestamp !== false;
+        var header = (showT ? 'Tiempo' : '#');
+        for (var i = 0; i < state.numVariables; i++) header += ',' + (state.variables[i] ? state.variables[i].name : ('V' + (i + 1)));
+        var rows = (state.rawData || []).map(function (d, idx) {
+          var first = showT ? ((d.time - (state.timeZeroOffset || 0)) / tuv).toFixed(6) : String(idx + 1);
+          var row = first;
+          for (var i = 0; i < state.numVariables; i++) row += ',' + (typeof d.values[i] === 'number' ? d.values[i].toFixed(6) : '');
+          return row;
+        }).join('\n');
+        return header + '\n' + rows;
+      }
+      async function ensureJSZip() {
+        if (typeof window.JSZip !== 'undefined') return true;
+        try {
+          await new Promise(function (res, rej) {
+            var s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+            s.onload = res; s.onerror = rej; document.head.appendChild(s);
+          });
+          return typeof window.JSZip !== 'undefined';
+        } catch (e) { return false; }
+      }
+      async function downloadZip() {
+        toast('Preparando ZIP…');
+        var ok = await ensureJSZip();
+        if (!ok) { toast('No se pudo cargar el compresor ZIP (¿sin internet?).'); return; }
+        var zip = new window.JSZip();
+        try { zip.file('proyecto.fisicabit.json', JSON.stringify(serialize())); } catch (e) {}
+        if ((state.rawData || []).length) zip.file('datos.csv', buildCSVString());
+        if (state.charts && state.charts.length) {
+          var gf = zip.folder('graficos');
+          for (var i = 0; i < state.charts.length; i++) {
+            if (state.charts[i]) { var u = chartToDataURL(i); if (u) gf.file('grafica_' + (i + 1) + '.png', u.split(',')[1], { base64: true }); }
+          }
+        }
+        if ((I.devicePhotos || []).length) {
+          var mf = zip.folder('fotos_montaje');
+          I.devicePhotos.forEach(function (p, i) { var b = (p.dataUrl || '').split(',')[1]; if (b) mf.file('montaje_' + String(i + 1).padStart(2, '0') + '.jpg', b, { base64: true }); });
+        }
+        var sp = (state.sensorPhotos || []).filter(function (p) { return p && p.photoDataURL; });
+        if (sp.length) {
+          var df = zip.folder('fotos_datos');
+          sp.forEach(function (p, i) { var b = p.photoDataURL.split(',')[1]; if (b) df.file('dato_' + String(i + 1).padStart(3, '0') + '.jpg', b, { base64: true }); });
+        }
+        if (I.hasDrawing()) { var du = I.drawingDataURL(); if (du) zip.file('dibujo.png', du.split(',')[1], { base64: true }); }
+        var apt = [];
+        if (I.meta.title) apt.push(I.meta.title + '\n');
+        if (I.notesText.trim()) apt.push('APUNTES\n' + I.notesText.trim() + '\n');
+        (I.sections || []).forEach(function (s) { if ((s.title || '').trim() || (s.text || '').trim()) apt.push((s.title || 'Sección').toUpperCase() + '\n' + (s.text || '') + '\n'); });
+        if (apt.length) zip.file('apuntes.txt', apt.join('\n'));
+        var html = buildReportHTML(collect());
+        var hasLibs = window.jspdf && window.jspdf.jsPDF && typeof window.html2canvas === 'function';
+        if (html && hasLibs) {
+          toast('Generando PDF para el ZIP…');
+          var pdf = await buildPdfDoc(html);
+          if (pdf) { try { zip.file(pdfFilename(), pdf.output('blob')); } catch (e) {} }
+        }
+        toast('Comprimiendo…');
+        var blob = await zip.generateAsync({ type: 'blob' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href = url;
+        a.download = 'informe_' + slugTitle() + '_' + (new Date().toISOString().slice(0, 10)) + '.zip';
+        a.click(); URL.revokeObjectURL(url);
+        toast('ZIP descargado ✓');
       }
 
       function downloadGraphs() {
@@ -24294,46 +24545,79 @@ bluetooth.startIOPinService()</pre>
         else toast('No hay datos para exportar.');
       }
 
-      // ==================== DIBUJO (APUNTES) ====================
-      function drawCtx() { var cv = el('inf-draw'); return cv ? cv.getContext('2d') : null; }
+      // ==================== DIBUJO (APUNTES) — lienzo grande en modal ====================
+      var _bigDirty = false, _bigCleared = false, _bigDrawing = false, _bigLast = null;
       function clearDrawing(silent) {
-        var cv = el('inf-draw'), ctx = drawCtx(); if (!cv || !ctx) return;
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height);
-        I._drawn = false; I._drawDirty = false;
-        if (!silent) { renderPreview(); schedule(); }
+        I.drawingData = null; renderDrawPreview();
+        if (!silent) { buildChecklist(); buildImgControls(); renderPreview(); schedule(); }
       }
-      function setupDraw() {
-        var cv = el('inf-draw'); if (!cv) return;
-        var ctx = cv.getContext('2d');
+      function renderDrawPreview() {
+        var box = el('inf-draw-preview'), clr = el('inf-draw-clear2'); if (!box) return;
+        if (I.drawingData) {
+          box.className = 'inf-draw-preview has';
+          box.innerHTML = '<img src="' + I.drawingData + '">';
+          if (clr) clr.style.display = '';
+        } else {
+          box.className = 'inf-draw-preview';
+          box.textContent = 'Tocá acá para abrir el lienzo y dibujar tu esquema a mano';
+          if (clr) clr.style.display = 'none';
+        }
+      }
+      function setTool(t) {
+        I.drawTool = t;
+        var pen = el('inf-pen-big'), er = el('inf-eraser-big');
+        if (pen) pen.classList.toggle('active', t === 'pen');
+        if (er) er.classList.toggle('active', t === 'eraser');
+      }
+      function setupDrawBig() {
+        var cv = el('inf-draw-big'); if (!cv) return;
+        cv.width = 1200; cv.height = 900;
+        var ctx = cv.getContext('2d'); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
         ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height);
-        ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-        var drawing = false, last = null;
         function pos(e) {
           var r = cv.getBoundingClientRect();
-          var clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
-          var clientY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
-          return { x: (clientX - r.left) * (cv.width / r.width), y: (clientY - r.top) * (cv.height / r.height) };
+          var cx = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+          var cy = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+          return { x: (cx - r.left) * (cv.width / r.width), y: (cy - r.top) * (cv.height / r.height) };
         }
-        function down(e) { e.preventDefault(); drawing = true; last = pos(e); }
+        function down(e) { e.preventDefault(); _bigDrawing = true; _bigLast = pos(e); }
         function move(e) {
-          if (!drawing) return; e.preventDefault();
+          if (!_bigDrawing) return; e.preventDefault();
           var p = pos(e);
           ctx.strokeStyle = (I.drawTool === 'eraser') ? '#ffffff' : I.drawColor;
           ctx.lineWidth = (I.drawTool === 'eraser') ? (I.drawSize * 4) : I.drawSize;
-          ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
-          last = p; I._drawn = true; I._drawDirty = true;
+          ctx.beginPath(); ctx.moveTo(_bigLast.x, _bigLast.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+          _bigLast = p; _bigDirty = true;
         }
-        function up() { if (drawing) { drawing = false; if (I._drawn) I.selected['drawing'] = true; buildChecklist(); renderPreviewDebounced(); schedule(); } }
+        function up() { _bigDrawing = false; }
         cv.addEventListener('pointerdown', down);
         cv.addEventListener('pointermove', move);
         window.addEventListener('pointerup', up);
         cv.addEventListener('pointerleave', up);
       }
-      function setTool(t) {
-        I.drawTool = t;
-        var pen = el('inf-pen'), er = el('inf-eraser');
-        if (pen) pen.classList.toggle('active', t === 'pen');
-        if (er) er.classList.toggle('active', t === 'eraser');
+      function openDrawModal() {
+        var cv = el('inf-draw-big'), m = el('inf-draw-modal'); if (!cv || !m) return;
+        var ctx = cv.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height);
+        _bigDirty = false; _bigCleared = false;
+        if (I.drawingData) { var im = new Image(); im.onload = function () { ctx.drawImage(im, 0, 0, cv.width, cv.height); }; im.src = I.drawingData; }
+        setTool('pen');
+        var cc = el('inf-draw-color-big'); if (cc) cc.value = I.drawColor;
+        m.classList.add('open');
+      }
+      function clearBig() {
+        var cv = el('inf-draw-big'); if (!cv) return;
+        var ctx = cv.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height);
+        _bigDirty = false; _bigCleared = true;
+      }
+      function closeDrawModal(save) {
+        var cv = el('inf-draw-big'), m = el('inf-draw-modal');
+        if (save && cv) {
+          if (_bigDirty) { try { I.drawingData = cv.toDataURL('image/png'); } catch (e) {} }
+          else if (_bigCleared) { I.drawingData = null; }
+          if (I.drawingData) I.selected['drawing'] = true;
+        }
+        if (m) m.classList.remove('open');
+        renderDrawPreview(); buildChecklist(); buildImgControls(); renderPreview(); schedule();
       }
 
       // ==================== FOTO DEL MONTAJE ====================
@@ -24407,7 +24691,11 @@ bluetooth.startIOPinService()</pre>
           sensorPhotos: st.sensorPhotos || [], extraDataSets: st.extraDataSets || [],
           timeUnit: (el('timeUnit') || {}).value
         };
-        var report = { meta: I.meta, notes: I.notesText, drawing: I.drawingDataURL(), devicePhotos: I.devicePhotos, selected: I.selected };
+        var report = {
+          meta: I.meta, notes: I.notesText, drawing: I.drawingDataURL(),
+          devicePhotos: I.devicePhotos, selected: I.selected,
+          imgOpts: I.imgOpts, sections: I.sections
+        };
         return JSON.parse(JSON.stringify({ schema: 2, savedAt: Date.now(), app: app, report: report }));
       }
 
@@ -24473,13 +24761,12 @@ bluetooth.startIOPinService()</pre>
           I.notesText = rep.notes || '';
           I.devicePhotos = Array.isArray(rep.devicePhotos) ? rep.devicePhotos : [];
           I.selected = rep.selected || {};
+          I.imgOpts = rep.imgOpts || {};
+          I.sections = Array.isArray(rep.sections) ? rep.sections : [];
+          I._secSeq = I.sections.reduce(function (m, s) { var nn = parseInt(String(s.id).replace(/\D/g, '')) || 0; return Math.max(m, nn); }, 0);
+          I.drawingData = rep.drawing || null;
           syncReportInputs();
           renderPhotos();
-          clearDrawing(true);
-          if (rep.drawing) {
-            var dc = drawCtx(), cv = el('inf-draw');
-            if (dc && cv) { var im = new Image(); im.onload = function () { dc.drawImage(im, 0, 0, cv.width, cv.height); I._drawn = true; renderPreview(); }; im.src = rep.drawing; }
-          }
           refresh();
         } catch (e) {
           console.error('[INFORME] Error restaurando proyecto:', e);
@@ -24502,7 +24789,8 @@ bluetooth.startIOPinService()</pre>
           st.fitResult ? (st.fitResult.type + '' + st.fitResult.r2) : '',
           (st.segmentFits || []).length, (st.sensorPhotos || []).length,
           I.meta.title, I.meta.student, I.meta.course, I.meta.institution, I.meta.date,
-          I.notesText.length, I._drawn, I.devicePhotos.length, JSON.stringify(I.selected)].join('|');
+          I.notesText.length, (I.drawingData ? I.drawingData.length : 0), I.devicePhotos.length,
+          JSON.stringify(I.selected), JSON.stringify(I.imgOpts), JSON.stringify(I.sections)].join('|');
       }
       async function autosaveNow() {
         var st = state || {};
@@ -24584,7 +24872,8 @@ bluetooth.startIOPinService()</pre>
         st.fitResult = null; st.segmentFits = []; st.extraDataSets = [];
         I.meta = { title: '', student: '', course: '', institution: '', date: todayStr() };
         I.notesText = ''; I.devicePhotos = []; I.selected = {};
-        syncReportInputs(); renderPhotos(); clearDrawing(true);
+        I.imgOpts = {}; I.sections = []; I._secSeq = 0; I.drawingData = null;
+        syncReportInputs(); renderPhotos(); renderDrawPreview();
         try { await idbDel(AUTOSAVE_KEY); } catch (e) {}
         try { localStorage.removeItem(LS_KEY); } catch (e) {}
         var fr = el('fitResults'); if (fr) fr.style.display = 'none';
@@ -24611,12 +24900,20 @@ bluetooth.startIOPinService()</pre>
         var notesEl = el('inf-notes');
         if (notesEl) { notesEl.value = I.notesText; notesEl.addEventListener('input', function () { I.notesText = notesEl.value; if (I.notesText.trim()) I.selected['notes'] = true; buildChecklist(); renderPreviewDebounced(); schedule(); }); }
 
-        // Dibujo
-        if (el('inf-pen')) el('inf-pen').addEventListener('click', function () { setTool('pen'); });
-        if (el('inf-eraser')) el('inf-eraser').addEventListener('click', function () { setTool('eraser'); });
-        if (el('inf-draw-color')) el('inf-draw-color').addEventListener('input', function (e) { I.drawColor = e.target.value; if (I.drawTool === 'eraser') setTool('pen'); });
-        if (el('inf-draw-size')) el('inf-draw-size').addEventListener('change', function (e) { I.drawSize = parseInt(e.target.value) || 4; });
-        if (el('inf-draw-clear')) el('inf-draw-clear').addEventListener('click', function () { if (confirm('¿Borrar todo el dibujo?')) clearDrawing(false); });
+        // Dibujo (lienzo grande en modal)
+        if (el('inf-draw-open')) el('inf-draw-open').addEventListener('click', openDrawModal);
+        if (el('inf-draw-preview')) el('inf-draw-preview').addEventListener('click', openDrawModal);
+        if (el('inf-draw-clear2')) el('inf-draw-clear2').addEventListener('click', function () { if (confirm('¿Borrar el dibujo?')) clearDrawing(false); });
+        if (el('inf-pen-big')) el('inf-pen-big').addEventListener('click', function () { setTool('pen'); });
+        if (el('inf-eraser-big')) el('inf-eraser-big').addEventListener('click', function () { setTool('eraser'); });
+        if (el('inf-draw-color-big')) el('inf-draw-color-big').addEventListener('input', function (e) { I.drawColor = e.target.value; if (I.drawTool === 'eraser') setTool('pen'); });
+        if (el('inf-draw-size-big')) el('inf-draw-size-big').addEventListener('change', function (e) { I.drawSize = parseInt(e.target.value) || 4; });
+        if (el('inf-draw-clear-big')) el('inf-draw-clear-big').addEventListener('click', clearBig);
+        if (el('inf-draw-done')) el('inf-draw-done').addEventListener('click', function () { closeDrawModal(true); });
+        if (el('inf-draw-cancel')) el('inf-draw-cancel').addEventListener('click', function () { closeDrawModal(false); });
+
+        // Secciones de texto propias
+        if (el('inf-add-section')) el('inf-add-section').addEventListener('click', addSection);
 
         // Fotos
         if (el('inf-photo-btn')) el('inf-photo-btn').addEventListener('click', function () { el('inf-photo-input').click(); });
@@ -24627,6 +24924,7 @@ bluetooth.startIOPinService()</pre>
         if (el('inf-pdf-top')) el('inf-pdf-top').addEventListener('click', downloadPDF);
         if (el('inf-graphs')) el('inf-graphs').addEventListener('click', downloadGraphs);
         if (el('inf-csv')) el('inf-csv').addEventListener('click', downloadCSV);
+        if (el('inf-zip')) el('inf-zip').addEventListener('click', downloadZip);
 
         // Proyecto
         if (el('inf-save')) el('inf-save').addEventListener('click', saveProjectFile);
@@ -24637,7 +24935,12 @@ bluetooth.startIOPinService()</pre>
         // Abrir / cerrar panel
         var btn = el('btn-informe'); if (btn) btn.addEventListener('click', openPanel);
         var closeBtn = el('informe-close'); if (closeBtn) closeBtn.addEventListener('click', closePanel);
-        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && el('informe-panel').classList.contains('open')) closePanel(); });
+        document.addEventListener('keydown', function (e) {
+          if (e.key !== 'Escape') return;
+          var m = el('inf-draw-modal');
+          if (m && m.classList.contains('open')) { closeDrawModal(false); }
+          else if (el('informe-panel').classList.contains('open')) { closePanel(); }
+        });
 
         // Toggle móvil (controles / vista previa)
         var toggle = el('inf-view-toggle');
@@ -24656,10 +24959,9 @@ bluetooth.startIOPinService()</pre>
         injectStyles();
         I.meta.date = I.meta.date || todayStr();
         wire();
-        setupDraw();
+        setupDrawBig();
         renderPhotos();
-        buildChecklist();
-        renderPreview();
+        refresh();
         startAutosave();
         checkRestore();
       }
