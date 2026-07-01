@@ -4092,13 +4092,21 @@
         .inf-swatch { width:22px; height:22px; border:1px solid #444; cursor:pointer; }
 
         /* Miniaturas de fotos del montaje */
-        .inf-photos { display:flex; flex-wrap:wrap; gap:7px; margin-top:8px; }
-        .inf-photo-thumb { position:relative; width:76px; height:76px; border:1px solid #444; overflow:hidden; background:#000; }
+        .inf-photos { margin-top:8px; }
+        .inf-photo-item { display:flex; gap:10px; padding:8px; border:1px solid #2b303b; background:#1a1d23; margin-bottom:7px; }
+        .inf-photo-thumb { position:relative; width:76px; height:76px; border:1px solid #444; overflow:hidden; background:#000; flex-shrink:0; }
         .inf-photo-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
         .inf-photo-thumb .inf-photo-del {
           position:absolute; top:2px; right:2px; background:rgba(0,0,0,.75); color:#fff;
           border:none; width:18px; height:18px; font-size:12px; line-height:1; cursor:pointer;
         }
+        .inf-photo-fields { flex:1; min-width:0; }
+        .inf-photo-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+        .inf-photo-row span { font-size:10px; color:#9e9e9e; text-transform:uppercase; letter-spacing:0.5px; }
+        .inf-photo-size, .inf-photo-cap { background:#0f1115; color:#fff; border:1px solid #444; font-family:inherit; font-size:11px; padding:5px 7px; box-sizing:border-box; }
+        .inf-photo-size { flex:1; }
+        .inf-photo-cap { display:block; width:100%; }
+        .inf-photo-size:focus, .inf-photo-cap:focus { outline:none; border-color:#fff; }
 
         /* Vista previa (documento del informe) */
         .inf-preview {
@@ -24012,8 +24020,8 @@ bluetooth.startIOPinService()</pre>
                 </div>
 
                 <div class="inf-section" id="inf-img-section" style="display:none;">
-                    <div class="inf-section-title">Imágenes: tamaño y pie</div>
-                    <div class="inf-hint">Ajustá el tamaño y escribí el pie de cada imagen (gráficas, fotos y dibujo).</div>
+                    <div class="inf-section-title">Gráficas y dibujo: tamaño y pie</div>
+                    <div class="inf-hint">Ajustá el tamaño y el pie de las gráficas y del dibujo. (Las imágenes que subís se ajustan en la sección «Imágenes».)</div>
                     <div id="inf-img-controls"></div>
                 </div>
 
@@ -24039,10 +24047,10 @@ bluetooth.startIOPinService()</pre>
                 </div>
 
                 <div class="inf-section">
-                    <div class="inf-section-title">Foto del montaje</div>
-                    <div class="inf-hint">Registrá una foto del dispositivo experimental (usa la cámara en el celular).</div>
-                    <input type="file" id="inf-photo-input" accept="image/*" capture="environment" style="display:none;">
-                    <button class="inf-btn" id="inf-photo-btn">＋ Agregar foto</button>
+                    <div class="inf-section-title">Imágenes</div>
+                    <div class="inf-hint">Subí imágenes propias (foto del montaje, gráficos externos, diagramas…). A cada una podés ajustarle el tamaño y el pie, y se agregan al informe.</div>
+                    <input type="file" id="inf-photo-input" accept="image/*" multiple style="display:none;">
+                    <button class="inf-btn" id="inf-photo-btn">＋ Subir imagen</button>
                     <div class="inf-photos" id="inf-photos"></div>
                 </div>
 
@@ -24344,7 +24352,7 @@ bluetooth.startIOPinService()</pre>
         var sf = (st.segmentFits || []).length;
         items.push({ id: 'segfit', label: 'Ajuste por tramos', tag: sf ? (sf + ' tramos') : '', avail: sf > 0, def: sf > 0 });
         items.push({ id: 'stats', label: 'Estadísticas', tag: '', avail: n > 0, def: n > 0 });
-        items.push({ id: 'photos', label: 'Foto del montaje', tag: I.devicePhotos.length ? (I.devicePhotos.length + ' fotos') : '', avail: true, def: I.devicePhotos.length > 0 });
+        items.push({ id: 'photos', label: 'Imágenes', tag: I.devicePhotos.length ? (I.devicePhotos.length + (I.devicePhotos.length > 1 ? ' imágenes' : ' imagen')) : '', avail: true, def: I.devicePhotos.length > 0 });
         var sp = (st.sensorPhotos || []).filter(function (p) { return p && p.photoDataURL; }).length;
         if (sp > 0) items.push({ id: 'dataphotos', label: 'Fotos de datos', tag: sp + ' fotos', avail: true, def: false });
         items.push({ id: 'notes', label: 'Apuntes escritos', tag: '', avail: true, def: !!I.notesText.trim() });
@@ -24486,13 +24494,12 @@ bluetooth.startIOPinService()</pre>
 
       function photosBlock() {
         var ph = I.devicePhotos || []; if (!ph.length) return '';
-        var figs = ph.map(function (p, i) {
-          var o = imgOpt('photo' + i); var w = SIZE_W[o.size] || '72%';
-          var cap = (o.caption || '').trim() ? esc(o.caption) : esc(defPhotoCap(i));
-          return '<div class="rep-figure" style="max-width:' + w + ';margin:10px auto 4px;"><img src="' + p.dataUrl + '"></div>' +
-            '<div class="rep-cap" style="text-align:center;margin-bottom:8px;">' + cap + '</div>';
+        var figs = ph.map(function (p) {
+          var w = SIZE_W[p.size] || '72%';
+          var cap = (p.caption || '').trim() ? ('<div class="rep-cap" style="text-align:center;margin-bottom:8px;">' + esc(p.caption) + '</div>') : '<div style="margin-bottom:6px;"></div>';
+          return '<div class="rep-figure" style="max-width:' + w + ';margin:10px auto 2px;"><img src="' + p.dataUrl + '"></div>' + cap;
         }).join('');
-        return '<div class="rep-block">' + band('Montaje experimental', ph.length + (ph.length > 1 ? ' fotos' : ' foto')) +
+        return '<div class="rep-block">' + band('Imágenes', ph.length + (ph.length > 1 ? ' imágenes' : ' imagen')) +
           '<div class="rep-pad">' + figs + '</div></div>';
       }
 
@@ -24590,7 +24597,7 @@ bluetooth.startIOPinService()</pre>
         if (id === 'fit') return 'Ajuste de curva';
         if (id === 'segfit') return 'Ajuste por tramos';
         if (id === 'stats') return 'Estadísticas';
-        if (id === 'photos') return 'Montaje experimental';
+        if (id === 'photos') return 'Imágenes';
         if (id === 'dataphotos') return 'Fotos de datos';
         if (id === 'notes') return 'Apuntes';
         if (id === 'drawing') return 'Diagramas y esquemas';
@@ -24736,9 +24743,7 @@ bluetooth.startIOPinService()</pre>
             list.push({ id: 'graph' + i, label: 'Gráfica ' + (i + 1) + ' · ' + t, thumb: chartToDataURL(i), defCap: defGraphCap(i) });
           }
         }
-        (I.devicePhotos || []).forEach(function (p, i) {
-          list.push({ id: 'photo' + i, label: 'Foto del montaje' + (I.devicePhotos.length > 1 ? (' #' + (i + 1)) : ''), thumb: p.dataUrl, defCap: defPhotoCap(i) });
-        });
+        // Las imágenes subidas manejan su tamaño/pie en la sección "Imágenes".
         if (I.hasDrawing()) list.push({ id: 'drawing', label: 'Dibujo / esquema', thumb: I.drawingData, defCap: 'Esquema del montaje' });
         return list;
       }
@@ -25056,8 +25061,8 @@ bluetooth.startIOPinService()</pre>
         if (m.classList.contains('open')) { m.classList.remove('open'); return; }
         m.innerHTML = ''; var st = state, n = (st.rawData || []).length, ng = st.numGraphs || 1, any = false;
         for (var i = 0; i < ng; i++) { if (st.charts && st.charts[i] && n > 0) { (function (idx) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '📈 Gráfica ' + (idx + 1); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(chartToDataURL(idx), (fn('computeGraphTitle') ? computeGraphTitle(idx) : ('Gráfica ' + (idx + 1)))); m.classList.remove('open'); }); m.appendChild(b); any = true; })(i); } }
-        (I.devicePhotos || []).forEach(function (p, k) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '📷 Foto ' + (k + 1); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(p.dataUrl, 'Montaje experimental'); m.classList.remove('open'); }); m.appendChild(b); any = true; });
-        if (!any) { toast('No hay gráficas ni fotos para insertar todavía.'); return; }
+        (I.devicePhotos || []).forEach(function (p, k) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '🖼 Imagen ' + (k + 1) + ((p.caption || '').trim() ? (' · ' + p.caption.slice(0, 26)) : ''); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(p.dataUrl, (p.caption || '').trim()); m.classList.remove('open'); }); m.appendChild(b); any = true; });
+        if (!any) { toast('No hay gráficas ni imágenes para insertar todavía.'); return; }
         closeMenus(); positionMenu(m, evt.currentTarget); m.classList.add('open');
       }
       function insertCite(r) { var ed = I._focusEd; if (!ed) { toast('Poné el cursor en un bloque de texto.'); return; } ed.focus(); restoreRange(); try { document.execCommand('insertHTML', false, citeInText(r) + ' '); } catch (e) {} onEditableInput(ed); }
@@ -25421,24 +25426,40 @@ bluetooth.startIOPinService()</pre>
             var c = document.createElement('canvas'); c.width = w; c.height = h;
             c.getContext('2d').drawImage(img, 0, 0, w, h);
             var url; try { url = c.toDataURL('image/jpeg', 0.82); } catch (er) { url = e.target.result; }
-            I.devicePhotos.push({ dataUrl: url, name: file.name || 'foto' });
+            I.devicePhotos.push({ dataUrl: url, name: file.name || 'imagen', caption: '', size: 'medium' });
             I.selected['photos'] = true;
-            renderPhotos(); buildChecklist(); renderPreview(); schedule();
-            toast('Foto agregada.');
+            renderPhotos(); buildChecklist(); buildImgControls(); renderPreview(); schedule();
+            toast('Imagen agregada.');
           };
           img.src = e.target.result;
         };
         reader.readAsDataURL(file);
       }
+      // Cada imagen guarda su propio tamaño y pie (más robusto que indexar por posición).
+      function normalizePhotos() {
+        (I.devicePhotos || []).forEach(function (p, i) {
+          if (typeof p.size !== 'string') p.size = (I.imgOpts && I.imgOpts['photo' + i] && I.imgOpts['photo' + i].size) || 'medium';
+          if (typeof p.caption !== 'string') p.caption = (I.imgOpts && I.imgOpts['photo' + i] && I.imgOpts['photo' + i].caption) || '';
+        });
+      }
       function renderPhotos() {
         var box = el('inf-photos'); if (!box) return;
+        normalizePhotos();
         box.innerHTML = '';
         I.devicePhotos.forEach(function (p, i) {
-          var d = document.createElement('div'); d.className = 'inf-photo-thumb';
-          d.innerHTML = '<img src="' + p.dataUrl + '"><button class="inf-photo-del" title="Quitar">✕</button>';
+          var d = document.createElement('div'); d.className = 'inf-photo-item';
+          var sizeOpts = SIZE_LABELS.map(function (s) { return '<option value="' + s[0] + '"' + ((p.size || 'medium') === s[0] ? ' selected' : '') + '>' + s[1] + '</option>'; }).join('');
+          d.innerHTML =
+            '<div class="inf-photo-thumb"><img src="' + p.dataUrl + '"><button class="inf-photo-del" title="Quitar imagen">✕</button></div>' +
+            '<div class="inf-photo-fields">' +
+            '<div class="inf-photo-row"><span>Tamaño</span><select class="inf-photo-size">' + sizeOpts + '</select></div>' +
+            '<input class="inf-photo-cap" type="text" placeholder="Pie de imagen (opcional)" value="' + esc(p.caption || '') + '">' +
+            '</div>';
           d.querySelector('.inf-photo-del').addEventListener('click', function () {
-            I.devicePhotos.splice(i, 1); renderPhotos(); buildChecklist(); renderPreview(); schedule();
+            I.devicePhotos.splice(i, 1); renderPhotos(); buildChecklist(); buildImgControls(); renderPreview(); schedule();
           });
+          d.querySelector('.inf-photo-size').addEventListener('change', function () { p.size = this.value; renderPreviewDebounced(); schedule(); });
+          d.querySelector('.inf-photo-cap').addEventListener('input', function () { p.caption = this.value; renderPreviewDebounced(); schedule(); });
           box.appendChild(d);
         });
       }
@@ -25730,7 +25751,7 @@ bluetooth.startIOPinService()</pre>
 
         // Fotos
         if (el('inf-photo-btn')) el('inf-photo-btn').addEventListener('click', function () { el('inf-photo-input').click(); });
-        if (el('inf-photo-input')) el('inf-photo-input').addEventListener('change', function (e) { if (e.target.files && e.target.files[0]) addPhotoFromFile(e.target.files[0]); e.target.value = ''; });
+        if (el('inf-photo-input')) el('inf-photo-input').addEventListener('change', function (e) { var fs = e.target.files; if (fs) { for (var k = 0; k < fs.length; k++) addPhotoFromFile(fs[k]); } e.target.value = ''; });
 
         // Exportar
         if (el('inf-pdf')) el('inf-pdf').addEventListener('click', downloadPDF);
