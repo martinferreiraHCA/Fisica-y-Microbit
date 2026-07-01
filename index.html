@@ -34,6 +34,7 @@
       window.MathJax = {
         tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
         svg: { fontCache: 'none' },
+        options: { enableAssistiveMml: false, menuOptions: { settings: { assistiveMml: false } } },
         startup: { typeset: false }
       };
     </script>
@@ -4342,11 +4343,39 @@
         .inf-rich h2 { font-size:17px; margin:8px 0 5px; }
         .inf-rich h3 { font-size:15px; margin:7px 0 4px; }
         .inf-rich ul, .inf-rich ol { margin:0 0 8px 22px; }
-        .inf-rich .doc-eq { display:inline-block; vertical-align:middle; background:#eef4ff; border:1px solid #cfe0ff; border-radius:3px; padding:0 3px; cursor:pointer; }
-        .inf-rich .doc-eq img { height:1.35em; vertical-align:middle; }
-        .inf-rich figure.doc-fig { margin:10px auto; text-align:center; max-width:70%; }
-        .inf-rich figure.doc-fig img { max-width:100%; border:1px solid #e6e6e6; }
-        .inf-rich figure.doc-fig figcaption { font-size:11px; color:#777; margin-top:4px; }
+        .inf-rich .doc-eq, .inf-page-body .doc-eq { display:inline-block; vertical-align:middle; background:#eef4ff; border:1px solid #cfe0ff; border-radius:3px; padding:0 3px; cursor:pointer; }
+        .inf-rich .doc-eq img, .inf-page-body .doc-eq img { height:auto; max-height:2.1em; vertical-align:middle; }
+        .inf-rich .doc-eq-block, .inf-page-body .doc-eq-block { display:block; text-align:center; margin:14px auto; background:#f4f8ff; border:1px solid #dbe7fb; border-radius:4px; padding:8px; cursor:pointer; max-width:96%; }
+        .inf-rich .doc-eq-block img, .inf-page-body .doc-eq-block img { max-width:100%; height:auto; }
+        .inf-rich h4, .inf-page-body h4 { font-size:13px; font-weight:700; margin:7px 0 4px; color:#333; }
+        .inf-rich figure.doc-fig, .inf-page-body figure.doc-fig { margin:10px auto; text-align:center; max-width:70%; }
+        .inf-rich figure.doc-fig img, .inf-page-body figure.doc-fig img { max-width:100%; border:1px solid #e6e6e6; }
+        .inf-rich figure.doc-fig figcaption, .inf-page-body figure.doc-fig figcaption { font-size:11px; color:#777; margin-top:4px; }
+
+        /* Paleta de símbolos agrupada (modal de ecuación) */
+        #inf-eq-syms { display:block; }
+        .inf-eq-grp { font-size:9.5px; letter-spacing:1px; text-transform:uppercase; color:#8a93a0; margin:8px 0 4px; }
+        .inf-eq-symrow { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:2px; }
+        .inf-latex-preview { font-size:22px; min-height:52px; }
+        .inf-eq-mode { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#e0e0e0; cursor:pointer; }
+        .inf-eq-mode input { accent-color:#fff; cursor:pointer; }
+
+        /* Editor de página completa */
+        .inf-page-editor { display:none; position:fixed; inset:0; z-index:9150; background:#2b2e33; flex-direction:column; }
+        .inf-page-editor.open { display:flex; }
+        .inf-page-top { display:flex; align-items:center; gap:12px; padding:9px 14px; background:#0a0a0a; color:#fff; }
+        .inf-page-title-lbl { font-size:10px; letter-spacing:1.5px; color:#9e9e9e; text-transform:uppercase; white-space:nowrap; }
+        .inf-page-title { flex:0 1 480px; background:#0f1115; color:#fff; border:1px solid #444; padding:8px 10px; font-family:'Montserrat',sans-serif; font-size:15px; font-weight:700; }
+        .inf-page-title:focus { outline:none; border-color:#fff; }
+        .inf-page-editor .inf-wp-toolbar { position:sticky; top:0; }
+        .inf-page-scroll { flex:1; overflow-y:auto; background:#3c3f45; padding:24px 16px 80px; }
+        .inf-page-sheet { width:794px; max-width:100%; margin:0 auto; background:#fff; box-shadow:0 6px 34px rgba(0,0,0,.5); min-height:88vh; }
+        .inf-page-body { padding:46px 58px; min-height:88vh; outline:none; font-family:inherit; font-size:14px; line-height:1.75; color:#161616; }
+        .inf-page-body:empty:before { content:'Escribí acá como en un editor de texto… Usá la barra de arriba para formato, títulos y subsecciones, ecuaciones ∑ y citas “.'; color:#c4c4c4; }
+        .inf-page-body p { margin:0 0 10px; }
+        .inf-page-body h2 { font-size:20px; font-weight:800; margin:14px 0 6px; }
+        .inf-page-body h3 { font-size:16px; font-weight:700; margin:11px 0 5px; }
+        .inf-page-body ul, .inf-page-body ol { margin:0 0 10px 24px; }
 
         .inf-menu { display:none; position:fixed; z-index:9500; background:#0f1115; border:1px solid #555; max-width:280px; max-height:50vh; overflow-y:auto; box-shadow:0 6px 24px rgba(0,0,0,.5); }
         .inf-menu.open { display:block; }
@@ -24067,9 +24096,25 @@ bluetooth.startIOPinService()</pre>
             <textarea class="inf-blk-latex" id="inf-eq-latex" placeholder="Ej:  E_c = \frac{1}{2} m v^{2}"></textarea>
             <div class="inf-latex-preview" id="inf-eq-preview"></div>
             <div class="inf-eq-actions">
+                <label class="inf-eq-mode"><input type="checkbox" id="inf-eq-block" checked> Ecuación centrada (grande)</label>
+                <span class="inf-spacer"></span>
                 <button class="inf-btn" id="inf-eq-cancel" style="width:auto;margin:0;">Cancelar</button>
                 <button class="inf-btn primary" id="inf-eq-insert" style="width:auto;margin:0;">Insertar ✓</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Editor de página completa (una sección como una hoja en blanco grande) -->
+    <div class="inf-page-editor" id="inf-page-editor">
+        <div class="inf-page-top">
+            <span class="inf-page-title-lbl">Editando sección</span>
+            <input id="inf-page-title" class="inf-page-title" placeholder="Título de la sección">
+            <span class="inf-spacer"></span>
+            <button class="inf-btn primary" id="inf-page-done" style="width:auto;margin:0;">Listo ✓</button>
+        </div>
+        <div class="inf-wp-toolbar" id="inf-page-toolbar"></div>
+        <div class="inf-page-scroll">
+            <div class="inf-page-sheet"><div class="inf-page-body" id="inf-page-body" contenteditable="true"></div></div>
         </div>
     </div>
 
@@ -24165,7 +24210,10 @@ bluetooth.startIOPinService()</pre>
         ".rep-doc .rep-rich ul,.rep-doc .rep-rich ol{margin:0 0 8px 22px;}",
         ".rep-doc .rep-rich li{margin:2px 0;}",
         ".rep-doc .rep-rich .doc-eq{display:inline-block;vertical-align:middle;margin:0 2px;}",
-        ".rep-doc .rep-rich .doc-eq img{height:1.35em;vertical-align:middle;}",
+        ".rep-doc .rep-rich .doc-eq img{height:auto;max-height:2.1em;vertical-align:middle;}",
+        ".rep-doc .rep-rich .doc-eq-block{display:block;text-align:center;margin:14px 0;}",
+        ".rep-doc .rep-rich .doc-eq-block img{max-width:94%;height:auto;}",
+        ".rep-doc .rep-rich h4{font-size:12.5px;font-weight:700;margin:8px 0 4px;color:#333;}",
         ".rep-doc .rep-rich figure.doc-fig{margin:10px auto;text-align:center;max-width:70%;}",
         ".rep-doc .rep-rich figure.doc-fig img{max-width:100%;display:block;margin:0 auto;border:1px solid #e6e6e6;}",
         ".rep-doc .rep-rich figure.doc-fig figcaption{font-size:11px;color:#6a6a6a;margin-top:5px;}",
@@ -24464,12 +24512,18 @@ bluetooth.startIOPinService()</pre>
         return '<div class="rep-block">' + band('Apuntes', '') + '<div class="rep-pad"><div class="rep-notes">' + esc(t) + '</div></div></div>';
       }
       // LaTeX -> imagen SVG (data URL) vía MathJax; robusto para PDF/ZIP.
+      // Se fuerza un tamaño en píxeles (a partir de las unidades ex del SVG) para
+      // que las ecuaciones se vean bien grandes y no dependan del contexto.
       function latexToImg(latex, display) {
         try {
           if (!(window.MathJax && MathJax.tex2svg) || !(latex || '').trim()) return null;
           var node = MathJax.tex2svg(latex, { display: display !== false });
+          var amml = node.querySelector('mjx-assistive-mml'); if (amml && amml.parentNode) amml.parentNode.removeChild(amml);
           var svg = node.querySelector('svg'); if (!svg) return null;
           svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+          var wEx = parseFloat(svg.getAttribute('width')) || 0, hEx = parseFloat(svg.getAttribute('height')) || 0;
+          var pxPerEx = (display !== false) ? 11 : 9;
+          if (wEx && hEx) { svg.setAttribute('width', (wEx * pxPerEx).toFixed(1) + 'px'); svg.setAttribute('height', (hEx * pxPerEx).toFixed(1) + 'px'); }
           var str = new XMLSerializer().serializeToString(svg);
           return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(str)));
         } catch (e) { return null; }
@@ -24714,12 +24768,15 @@ bluetooth.startIOPinService()</pre>
 
       // ===== SECCIONES + EDITOR DEL DOCUMENTO (WYSIWYG + tarjetas + LaTeX + APA) =====
       var QUICK_SECS = ['Fundamento teórico', 'Objetivo', 'Materiales', 'Marco teórico', 'Procedimiento', 'Resultados', 'Conclusión'];
-      var LATEX_SNIPPETS = [
-        ['x²', '^{2}'], ['xₙ', '_{n}'], ['a/b', '\\frac{a}{b}'], ['√', '\\sqrt{x}'], ['ⁿ√', '\\sqrt[n]{x}'],
-        ['≈', '\\approx '], ['≤', '\\leq '], ['≥', '\\geq '], ['±', '\\pm '], ['×', '\\times '], ['·', '\\cdot '],
-        ['Δ', '\\Delta '], ['α', '\\alpha '], ['β', '\\beta '], ['θ', '\\theta '], ['π', '\\pi '], ['ω', '\\omega '], ['μ', '\\mu '],
-        ['Σ', '\\sum_{i=1}^{n} '], ['∫', '\\int_{a}^{b} '], ['d/dx', '\\frac{d}{dx}'], ['vec', '\\vec{v}'], ['x̄', '\\bar{x}'], ['10ⁿ', '\\times 10^{-3}'], ['abc', '\\text{texto}']
+      // Paleta de símbolos agrupada, orientada a física.
+      var EQ_GROUPS = [
+        ['Estructura', [['a/b', '\\frac{a}{b}'], ['√', '\\sqrt{x}'], ['ⁿ√', '\\sqrt[n]{x}'], ['x²', '^{2}'], ['xₙ', '_{n}'], ['x₀', '_{0}'], ['( )', '\\left( \\right)'], ['|x|', '\\left| x \\right|'], ['⟨⟩', '\\langle x \\rangle']]],
+        ['Vectores y derivadas', [['vec', '\\vec{v}'], ['û', '\\hat{u}'], ['x̄', '\\bar{x}'], ['ẋ', '\\dot{x}'], ['ẍ', '\\ddot{x}'], ['d/dt', '\\frac{d}{dt}'], ['∂', '\\partial '], ['∂/∂x', '\\frac{\\partial}{\\partial x}'], ['∇', '\\nabla '], ['∇·', '\\nabla\\cdot '], ['∇×', '\\nabla\\times ']]],
+        ['Letras griegas', [['α', '\\alpha '], ['β', '\\beta '], ['γ', '\\gamma '], ['Δ', '\\Delta '], ['δ', '\\delta '], ['ε', '\\varepsilon '], ['θ', '\\theta '], ['λ', '\\lambda '], ['μ', '\\mu '], ['ν', '\\nu '], ['π', '\\pi '], ['ρ', '\\rho '], ['σ', '\\sigma '], ['τ', '\\tau '], ['φ', '\\phi '], ['ω', '\\omega '], ['Ω', '\\Omega ']]],
+        ['Símbolos', [['·', '\\cdot '], ['×', '\\times '], ['±', '\\pm '], ['∓', '\\mp '], ['≈', '\\approx '], ['≠', '\\neq '], ['≤', '\\leq '], ['≥', '\\geq '], ['≡', '\\equiv '], ['∝', '\\propto '], ['∞', '\\infty '], ['°', '^{\\circ}'], ['ℏ', '\\hbar '], ['→', '\\rightarrow '], ['Σ', '\\sum_{i=1}^{n} '], ['∫', '\\int_{a}^{b} '], ['∮', '\\oint ']]],
+        ['Unidades', [['m/s', '\\,\\text{m/s}'], ['m/s²', '\\,\\text{m/s}^{2}'], ['N', '\\,\\text{N}'], ['J', '\\,\\text{J}'], ['W', '\\,\\text{W}'], ['kg', '\\,\\text{kg}'], ['×10ⁿ', '\\times 10^{-3}'], ['texto', '\\text{ }']]]
       ];
+      var LATEX_SNIPPETS = EQ_GROUPS.reduce(function (a, g) { return a.concat(g[1]); }, []);
       var DOC_FONTS = [['', 'Montserrat (predet.)'], ['Georgia, serif', 'Georgia (serif)'], ["'Times New Roman', serif", 'Times New Roman'], ['Arial, sans-serif', 'Arial'], ["'Courier New', monospace", 'Courier'], ['Verdana, sans-serif', 'Verdana']];
       var WP_FONTS = ['Montserrat', 'Georgia', 'Times New Roman', 'Arial', 'Courier New', 'Verdana'];
       var WP_SIZES = [['2', 'Chica'], ['3', 'Normal'], ['4', 'Media'], ['5', 'Grande'], ['6', 'Muy grande']];
@@ -24732,7 +24789,7 @@ bluetooth.startIOPinService()</pre>
       function renderMath(elm, latex) {
         if (!elm) return;
         if (!(latex || '').trim()) { elm.innerHTML = '<span class="inf-math-empty">La fórmula renderizada aparece acá.</span>'; return; }
-        function go() { try { elm.innerHTML = ''; elm.appendChild(MathJax.tex2svg(latex, { display: true })); } catch (e) { elm.textContent = '⚠ ' + ((e && e.message) || 'LaTeX inválido'); } }
+        function go() { try { elm.innerHTML = ''; var node = MathJax.tex2svg(latex, { display: true }); var amml = node.querySelector('mjx-assistive-mml'); if (amml && amml.parentNode) amml.parentNode.removeChild(amml); elm.appendChild(node); } catch (e) { elm.textContent = '⚠ ' + ((e && e.message) || 'LaTeX inválido'); } }
         if (window.MathJax && MathJax.tex2svg) go();
         else if (window.MathJax && MathJax.startup && MathJax.startup.promise) { elm.textContent = 'cargando MathJax…'; MathJax.startup.promise.then(go); }
         else { elm.innerHTML = '<span class="inf-math-empty">Sin conexión no se ve el render, pero el LaTeX se guarda igual.</span>'; }
@@ -24807,8 +24864,8 @@ bluetooth.startIOPinService()</pre>
         try { document.execCommand(cmd, false, val === undefined ? null : val); } catch (e) {}
         onEditableInput(ed);
       }
-      function buildWpToolbar() {
-        var bar = el('inf-wp-toolbar'); if (!bar || _wpBuilt) return; _wpBuilt = true;
+      function buildWpToolbar(bar) {
+        bar = bar || el('inf-wp-toolbar'); if (!bar || bar.dataset.built) return; bar.dataset.built = '1';
         function grp() { var d = document.createElement('span'); d.className = 'inf-wp-grp'; return d; }
         function tbtn(txt, title, fn, cls) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-wp-btn' + (cls ? ' ' + cls : ''); b.title = title || txt; b.innerHTML = txt; b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', fn); return b; }
         bar.innerHTML = '';
@@ -24829,9 +24886,10 @@ bluetooth.startIOPinService()</pre>
         g2.appendChild(tbtn('<u>S</u>', 'Subrayado', function () { exec('underline'); }));
         bar.appendChild(g2);
         var g3 = grp();
-        g3.appendChild(tbtn('T1', 'Título', function () { exec('formatBlock', 'H2'); }));
-        g3.appendChild(tbtn('T2', 'Subtítulo', function () { exec('formatBlock', 'H3'); }));
-        g3.appendChild(tbtn('¶', 'Párrafo normal', function () { exec('formatBlock', 'P'); }));
+        g3.appendChild(tbtn('Título', 'Título de sección (H2)', function () { exec('formatBlock', 'H2'); }, 'wide'));
+        g3.appendChild(tbtn('Subsec.', 'Subsección (H3)', function () { exec('formatBlock', 'H3'); }, 'wide'));
+        g3.appendChild(tbtn('Sub-sub', 'Sub-subsección (H4)', function () { exec('formatBlock', 'H4'); }, 'wide'));
+        g3.appendChild(tbtn('¶', 'Texto normal', function () { exec('formatBlock', 'P'); }));
         bar.appendChild(g3);
         var g4 = grp();
         g4.appendChild(tbtn('•', 'Lista con viñetas', function () { exec('insertUnorderedList'); }));
@@ -24900,7 +24958,10 @@ bluetooth.startIOPinService()</pre>
           dn.addEventListener('click', function () { moveDocItem(id, 1); });
           inc.addEventListener('click', function () { I.selected[id] = (I.selected[id] === false); buildEditorDoc(); buildChecklist(); renderPreviewDebounced(); schedule(); });
           acts.appendChild(up); acts.appendChild(dn); acts.appendChild(inc);
-          if (isSec) { var del = cbtn('✕', 'Quitar sección'); del.classList.add('del'); del.addEventListener('click', function () { if (confirm('¿Quitar esta sección?')) delSection(id.slice(4)); }); acts.appendChild(del); }
+          if (isSec) {
+            var expand = cbtn('⤢', 'Editar en página completa'); expand.addEventListener('click', function () { openPageEditor(id.slice(4)); }); acts.appendChild(expand);
+            var del = cbtn('✕', 'Quitar sección'); del.classList.add('del'); del.addEventListener('click', function () { if (confirm('¿Quitar esta sección?')) delSection(id.slice(4)); }); acts.appendChild(del);
+          }
           bar.appendChild(handle); bar.appendChild(name); bar.appendChild(acts); card.appendChild(bar);
           var content = document.createElement('div'); content.className = 'inf-card-content';
           if (isSec) {
@@ -24913,7 +24974,7 @@ bluetooth.startIOPinService()</pre>
             rich.addEventListener('input', function () { onEditableInput(rich); });
             rich.addEventListener('mouseup', function () { I._focusEd = rich; saveRange(); });
             rich.addEventListener('keyup', function () { saveRange(); });
-            rich.addEventListener('click', function (e) { var t = e.target && e.target.closest ? e.target.closest('.doc-eq') : null; if (t) openEqEditor(rich, t); });
+            rich.addEventListener('click', function (e) { var t = e.target && e.target.closest ? e.target.closest('.doc-eq, .doc-eq-block') : null; if (t) openEqEditor(rich, t); });
             content.appendChild(rich);
           } else {
             var h = reportItemHTML(id);
@@ -24936,7 +24997,16 @@ bluetooth.startIOPinService()</pre>
       var _eqEditable = null, _eqTarget = null, _eqSymsBuilt = false;
       function buildEqSyms() {
         var box = el('inf-eq-syms'); if (!box || _eqSymsBuilt) return; _eqSymsBuilt = true;
-        LATEX_SNIPPETS.forEach(function (sn) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-latex-sym'; b.textContent = sn[0]; b.title = sn[1]; b.addEventListener('click', function () { var ta = el('inf-eq-latex'); insertAtCursor(ta, sn[1]); renderMath(el('inf-eq-preview'), ta.value); }); box.appendChild(b); });
+        EQ_GROUPS.forEach(function (g) {
+          var lbl = document.createElement('div'); lbl.className = 'inf-eq-grp'; lbl.textContent = g[0]; box.appendChild(lbl);
+          var row = document.createElement('div'); row.className = 'inf-eq-symrow';
+          g[1].forEach(function (sn) {
+            var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-latex-sym'; b.textContent = sn[0]; b.title = sn[1];
+            b.addEventListener('click', function () { var ta = el('inf-eq-latex'); insertAtCursor(ta, sn[1]); renderMath(el('inf-eq-preview'), ta.value); });
+            row.appendChild(b);
+          });
+          box.appendChild(row);
+        });
       }
       function openEqEditor(editable, existingSpan) {
         editable = editable || I._focusEd;
@@ -24944,6 +25014,7 @@ bluetooth.startIOPinService()</pre>
         _eqEditable = editable; _eqTarget = existingSpan || null; I._focusEd = editable;
         if (!existingSpan) saveRange();
         var ta = el('inf-eq-latex'); ta.value = existingSpan ? decodeURIComponent(existingSpan.getAttribute('data-latex') || '') : '';
+        var bl = el('inf-eq-block'); if (bl) bl.checked = existingSpan ? existingSpan.classList.contains('doc-eq-block') : true;
         renderMath(el('inf-eq-preview'), ta.value);
         el('inf-eq-modal').classList.add('open'); setTimeout(function () { ta.focus(); }, 20);
       }
@@ -24951,12 +25022,19 @@ bluetooth.startIOPinService()</pre>
       function commitEq() {
         var ta = el('inf-eq-latex'), latex = (ta.value || '').trim();
         if (!latex) { if (_eqTarget && _eqTarget.parentNode) { _eqTarget.parentNode.removeChild(_eqTarget); onEditableInput(_eqEditable); } closeEqEditor(); return; }
-        var url = latexToImg(latex, false), inner = url ? ('<img src="' + url + '">') : esc(latex);
-        if (_eqTarget) { _eqTarget.setAttribute('data-latex', encodeURIComponent(latex)); _eqTarget.innerHTML = inner; }
-        else {
-          var span = '<span class="doc-eq" contenteditable="false" data-latex="' + encodeURIComponent(latex) + '">' + inner + '</span>​';
+        var block = el('inf-eq-block') ? el('inf-eq-block').checked : true;
+        var url = latexToImg(latex, block), inner = url ? ('<img src="' + url + '">') : esc(latex);
+        var cls = block ? 'doc-eq-block' : 'doc-eq', tag = block ? 'div' : 'span';
+        if (_eqTarget) {
+          var nw = document.createElement(tag); nw.className = cls; nw.setAttribute('contenteditable', 'false');
+          nw.setAttribute('data-latex', encodeURIComponent(latex)); nw.innerHTML = inner;
+          _eqTarget.parentNode.replaceChild(nw, _eqTarget);
+        } else {
+          var html = block
+            ? ('<div class="doc-eq-block" contenteditable="false" data-latex="' + encodeURIComponent(latex) + '">' + inner + '</div><p>​</p>')
+            : ('<span class="doc-eq" contenteditable="false" data-latex="' + encodeURIComponent(latex) + '">' + inner + '</span>​');
           _eqEditable.focus(); restoreRange();
-          try { document.execCommand('insertHTML', false, span); } catch (e) { _eqEditable.innerHTML += span; }
+          try { document.execCommand('insertHTML', false, html); } catch (e) { _eqEditable.innerHTML += html; }
         }
         onEditableInput(_eqEditable); closeEqEditor();
       }
@@ -25026,6 +25104,30 @@ bluetooth.startIOPinService()</pre>
       }
 
       function buildEditor() { buildWpToolbar(); buildEqSyms(); buildEditorOpts(); buildEditorDoc(); buildBiblioManager(); }
+
+      // ---- Editor de página completa (una sección, página en blanco grande) ----
+      var _pageSec = null;
+      function openPageEditor(sid) {
+        var s = findSec(sid); if (!s) return; normSection(s); _pageSec = sid;
+        buildWpToolbar(el('inf-page-toolbar'));
+        var ti = el('inf-page-title'); ti.value = s.title || '';
+        ti.oninput = function () { s.title = ti.value; buildChecklist(); renderPreviewDebounced(); schedule(); };
+        var body = el('inf-page-body'); body.dataset.sec = sid; body.innerHTML = s.html || '';
+        body.style.fontFamily = I.doc.font || '';
+        body.onfocus = function () { I._focusEd = body; };
+        body.oninput = function () { onEditableInput(body); };
+        body.onmouseup = function () { I._focusEd = body; saveRange(); };
+        body.onkeyup = function () { saveRange(); };
+        body.onclick = function (e) { var t = e.target && e.target.closest ? e.target.closest('.doc-eq, .doc-eq-block') : null; if (t) openEqEditor(body, t); };
+        el('inf-page-editor').classList.add('open');
+        I._focusEd = body;
+        setTimeout(function () { body.focus(); }, 30);
+      }
+      function closePageEditor() {
+        var m = el('inf-page-editor'); if (m) m.classList.remove('open');
+        _pageSec = null; I._focusEd = null;
+        buildEditorDoc(); renderPreviewDebounced(); schedule();
+      }
 
       // ==================== EXPORTAR A PDF ====================
       function slugTitle() {
@@ -25626,6 +25728,9 @@ bluetooth.startIOPinService()</pre>
         if (el('inf-eq-insert')) el('inf-eq-insert').addEventListener('click', commitEq);
         if (el('inf-eq-cancel')) el('inf-eq-cancel').addEventListener('click', closeEqEditor);
 
+        // Editor de página completa
+        if (el('inf-page-done')) el('inf-page-done').addEventListener('click', closePageEditor);
+
         // Abrir / cerrar panel
         var btn = el('btn-informe'); if (btn) btn.addEventListener('click', openPanel);
         var closeBtn = el('informe-close'); if (closeBtn) closeBtn.addEventListener('click', closePanel);
@@ -25633,7 +25738,9 @@ bluetooth.startIOPinService()</pre>
           if (e.key !== 'Escape') return;
           var eqm = el('inf-eq-modal');
           var dm = el('inf-draw-modal');
+          var pe = el('inf-page-editor');
           if (eqm && eqm.classList.contains('open')) { closeEqEditor(); }
+          else if (pe && pe.classList.contains('open')) { closePageEditor(); }
           else if (dm && dm.classList.contains('open')) { closeDrawModal(false); }
           else if (el('informe-panel').classList.contains('open')) { closePanel(); }
         });
