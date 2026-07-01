@@ -24110,7 +24110,7 @@ bluetooth.startIOPinService()</pre>
                     <div class="inf-section-title">Exportar</div>
                     <button class="inf-btn primary inf-tip" data-tip="Descargar el informe completo en PDF" id="inf-pdf">⬇ Descargar informe (PDF)</button>
                     <button class="inf-btn inf-tip" data-tip="Descargar el informe en Word (.docx) para editarlo" id="inf-docx">⬇ Descargar informe (Word .docx)</button>
-                    <button class="inf-btn inf-tip" data-tip="Descargar todo (PDF, imágenes y datos) en un archivo ZIP" id="inf-zip">📦 Descargar todo (ZIP)</button>
+                    <button class="inf-btn inf-tip" data-tip="Descargar todo (PDF, Word, imágenes y datos) en un archivo ZIP" id="inf-zip">📦 Descargar todo (ZIP)</button>
                     <div class="inf-btn-row">
                         <button class="inf-btn inf-tip" data-tip="Descargar las gráficas como imágenes PNG" id="inf-graphs">Gráficos PNG</button>
                         <button class="inf-btn inf-tip" data-tip="Descargar los datos de las mediciones en formato CSV" id="inf-csv">Datos CSV</button>
@@ -25490,26 +25490,69 @@ bluetooth.startIOPinService()</pre>
           });
         }));
       }
-      async function downloadDocx() {
+      // Espera a que todas las imágenes del contenedor carguen (para poder medirlas bien).
+      function loadAllImages(holder) {
+        var imgs = [].slice.call(holder.querySelectorAll('img'));
+        return Promise.all(imgs.map(function (im) {
+          return new Promise(function (res) {
+            if (im.complete && im.naturalWidth) return res();
+            im.addEventListener('load', function () { res(); }, { once: true });
+            im.addEventListener('error', function () { res(); }, { once: true });
+            setTimeout(res, 4000);
+          });
+        }));
+      }
+      // Prepara las imágenes para Word: rasteriza las ecuaciones (SVG→PNG) y le fija a cada
+      // imagen un tamaño en píxeles explícito. Word ignora el tamaño por CSS y, sin width/height,
+      // dibuja las imágenes a su resolución natural (enormes, cortadas por el margen).
+      var DOCX_MAX_IMG_PX = 660;   // ancho útil aproximado de A4 con márgenes de 0,5"
+      async function prepareImagesForDocx(holder) {
+        try { await rasterizeEquations(holder); } catch (e) {}
+        try { await loadAllImages(holder); } catch (e) {}
+        [].slice.call(holder.querySelectorAll('img')).forEach(function (im) {
+          try {
+            var r = im.getBoundingClientRect();
+            var natW = im.naturalWidth || 0, natH = im.naturalHeight || 0;
+            var w = r.width || natW || 0;
+            // La altura se calcula por la relación de aspecto real de la imagen (rect.height no es fiable).
+            var h = (natW && natH) ? (w * natH / natW) : (r.height || natH || 0);
+            if (!w || !h) return;
+            if (w > DOCX_MAX_IMG_PX) { h = h * (DOCX_MAX_IMG_PX / w); w = DOCX_MAX_IMG_PX; }
+            w = Math.round(w); h = Math.round(h);
+            im.setAttribute('width', String(w));
+            im.setAttribute('height', String(h));
+            im.style.width = w + 'px'; im.style.height = h + 'px'; im.style.maxWidth = '100%';
+            // El contenedor de la figura suele tener ancho en % (que Word ignora): igualalo al px.
+            var fig = im.closest ? im.closest('figure.doc-fig, .rep-figure') : null;
+            if (fig && fig !== holder) { fig.style.maxWidth = ''; fig.style.width = w + 'px'; }
+          } catch (e) {}
+        });
+      }
+      // Genera el .docx (Blob). Reutilizable por el botón de Word y por el ZIP. null si no hay contenido o falla.
+      async function buildDocxBlob() {
         var html = buildReportHTML(collect());
-        if (!html) { toast('No hay contenido seleccionado para exportar.'); return; }
-        toast('Generando documento Word…');
+        if (!html) return null;
         var ok = await ensureHtmlDocx();
-        if (!ok) { toast('No se pudo cargar el generador de Word (¿sin internet?).'); return; }
-        // Rasterizar ecuaciones (SVG→PNG) en un contenedor fuera de pantalla antes de exportar.
+        if (!ok) return null;
         var holder = buildOffscreen(html), body = html;
-        try { await rasterizeEquations(holder); body = holder.innerHTML; } catch (e) {}
+        try { await prepareImagesForDocx(holder); body = holder.innerHTML; } catch (e) {}
         try { document.body.removeChild(holder); } catch (e) {}
         var css = REPORT_CSS +
           "\nbody{margin:0;background:#fff;font-family:'Montserrat',Calibri,Arial,sans-serif;}" +
           "\n.rep-doc{width:100%;} img{max-width:100%;height:auto;}" +
+          "\n.rep-figure,.rep-doc figure.doc-fig{text-align:center;}" +
           "\n.rep-band,.rep-cover,.rep-fit,.rep-photo,.rep-figure,.rep-block{page-break-inside:avoid;}";
         var full = '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><style>' + css +
           '</style></head><body><div class="rep-doc">' + body + '</div></body></html>';
-        var blob;
         try {
-          blob = window.htmlDocx.asBlob(full, { orientation: 'portrait', margins: { top: 720, right: 720, bottom: 720, left: 720 } });
-        } catch (e) { toast('No se pudo generar el .docx.'); return; }
+          return window.htmlDocx.asBlob(full, { orientation: 'portrait', margins: { top: 720, right: 720, bottom: 720, left: 720 } });
+        } catch (e) { return null; }
+      }
+      async function downloadDocx() {
+        if (!buildReportHTML(collect())) { toast('No hay contenido seleccionado para exportar.'); return; }
+        toast('Generando documento Word…');
+        var blob = await buildDocxBlob();
+        if (!blob) { toast('No se pudo generar el .docx (¿sin internet para cargar el generador?).'); return; }
         try {
           var url = URL.createObjectURL(blob);
           var a = document.createElement('a'); a.href = url; a.download = docxFilename();
@@ -25578,6 +25621,10 @@ bluetooth.startIOPinService()</pre>
           toast('Generando PDF para el ZIP…');
           var pdf = await buildPdfDoc(html);
           if (pdf) { try { zip.file(pdfFilename(), pdf.output('blob')); } catch (e) {} }
+        }
+        if (html) {
+          toast('Generando Word (.docx) para el ZIP…');
+          try { var docxBlob = await buildDocxBlob(); if (docxBlob) zip.file(docxFilename(), docxBlob); } catch (e) {}
         }
         toast('Comprimiendo…');
         var blob = await zip.generateAsync({ type: 'blob' });
