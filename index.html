@@ -4388,6 +4388,28 @@
         .inf-fig-sep { width:1px; height:20px; background:#3a3f48; margin:0 3px; }
         .inf-fig-w { font-size:11px; color:#cfd3da; min-width:36px; text-align:center; }
 
+        /* Tooltip de ayuda reutilizable: descripción breve al pasar el cursor por cualquier botón */
+        .inf-tip { position:relative; }
+        .inf-tip[data-tip]:hover::after {
+          content:attr(data-tip); position:absolute; top:calc(100% + 7px); left:50%; transform:translateX(-50%);
+          width:max-content; max-width:230px; text-align:center; line-height:1.35;
+          background:#000; color:#fff; border:1px solid #666; padding:5px 9px; font-size:11px; font-weight:400;
+          border-radius:4px; z-index:9600; pointer-events:none;
+          font-family:'Montserrat',-apple-system,sans-serif; letter-spacing:0.2px; box-shadow:0 3px 12px rgba(0,0,0,.55);
+        }
+        .inf-tip[data-tip]:hover::before {
+          content:''; position:absolute; top:calc(100% + 2px); left:50%; transform:translateX(-50%);
+          border:5px solid transparent; border-bottom-color:#000; z-index:9601; pointer-events:none;
+        }
+        /* Variante alineada al borde derecho (botones pegados al borde derecho de la pantalla) */
+        .inf-tip.inf-tip-left[data-tip]:hover::after { left:auto; right:0; transform:none; }
+        .inf-tip.inf-tip-left[data-tip]:hover::before { left:auto; right:11px; transform:none; }
+        /* Variante hacia arriba (botones al pie de una barra o modal) */
+        .inf-tip.inf-tip-up[data-tip]:hover::after { top:auto; bottom:calc(100% + 7px); }
+        .inf-tip.inf-tip-up[data-tip]:hover::before { top:auto; bottom:calc(100% + 2px); border-bottom-color:transparent; border-top-color:#000; }
+        .inf-tip[data-tip]:hover::after, .inf-tip[data-tip]:hover::before { animation:infTipIn .12s ease-out; }
+        @keyframes infTipIn { from { opacity:0; } to { opacity:1; } }
+
         /* Paleta de símbolos agrupada (modal de ecuación) */
         #inf-eq-syms { display:block; }
         .inf-eq-grp { font-size:9.5px; letter-spacing:1px; text-transform:uppercase; color:#8a93a0; margin:8px 0 4px; }
@@ -24019,17 +24041,17 @@ bluetooth.startIOPinService()</pre>
         <div class="inf-topbar">
             <div class="inf-brand">INFORME DE LABORATORIO<small>fisicabit · micro:bit datalab</small></div>
             <div class="inf-view-toggle" id="inf-view-toggle">
-                <button data-v="side" class="active">Controles</button>
-                <button data-v="preview">Vista previa</button>
+                <button data-v="side" class="active inf-tip" data-tip="Mostrar el panel para armar el informe">Controles</button>
+                <button data-v="preview" class="inf-tip" data-tip="Mostrar la vista previa del informe">Vista previa</button>
             </div>
             <div class="inf-spacer"></div>
-            <button class="inf-btn primary" id="inf-pdf-top" style="width:auto; margin:0; padding:9px 18px;">⬇ Descargar PDF</button>
-            <button class="inf-close" id="informe-close">Cerrar ✕</button>
+            <button class="inf-btn primary inf-tip inf-tip-left" data-tip="Generar y descargar el informe en PDF" id="inf-pdf-top" style="width:auto; margin:0; padding:9px 18px;">⬇ Descargar PDF</button>
+            <button class="inf-close inf-tip inf-tip-left" data-tip="Cerrar el armador de informe" id="informe-close">Cerrar ✕</button>
         </div>
 
         <div class="inf-tabsbar" id="inf-tabsbar">
-            <button class="inf-toptab active" data-t="armado">Armado</button>
-            <button class="inf-toptab" data-t="editor">Editor del documento</button>
+            <button class="inf-toptab active inf-tip" data-tip="Armá el informe: datos, contenido, apuntes e imágenes" data-t="armado">Armado</button>
+            <button class="inf-toptab inf-tip" data-tip="Editor tipo procesador de texto para dar formato al documento" data-t="editor">Editor del documento</button>
         </div>
 
         <div class="inf-body">
@@ -24072,25 +24094,25 @@ bluetooth.startIOPinService()</pre>
                     <div class="inf-section-title">Apuntes dibujados</div>
                     <div class="inf-hint">Esquemas del montaje, diagramas de fuerzas, croquis… Se abre un lienzo grande para dibujar a mano.</div>
                     <div class="inf-draw-preview" id="inf-draw-preview">Tocá acá para abrir el lienzo y dibujar tu esquema a mano</div>
-                    <button class="inf-btn" id="inf-draw-open">✏ Abrir lienzo para dibujar</button>
-                    <button class="inf-btn" id="inf-draw-clear2" style="display:none;">Borrar dibujo</button>
+                    <button class="inf-btn inf-tip" data-tip="Abrir un lienzo grande para dibujar a mano un esquema o diagrama" id="inf-draw-open">✏ Abrir lienzo para dibujar</button>
+                    <button class="inf-btn inf-tip" data-tip="Borrar el dibujo hecho a mano" id="inf-draw-clear2" style="display:none;">Borrar dibujo</button>
                 </div>
 
                 <div class="inf-section">
                     <div class="inf-section-title">Imágenes</div>
                     <div class="inf-hint">Subí imágenes propias (foto del montaje, gráficos externos, diagramas…). A cada una podés ajustarle el tamaño y el pie, y se agregan al informe.</div>
                     <input type="file" id="inf-photo-input" accept="image/*" multiple style="display:none;">
-                    <button class="inf-btn" id="inf-photo-btn">＋ Subir imagen</button>
+                    <button class="inf-btn inf-tip" data-tip="Subir una o varias imágenes desde tu dispositivo" id="inf-photo-btn">＋ Subir imagen</button>
                     <div class="inf-photos" id="inf-photos"></div>
                 </div>
 
                 <div class="inf-section">
                     <div class="inf-section-title">Exportar</div>
-                    <button class="inf-btn primary" id="inf-pdf">⬇ Descargar informe (PDF)</button>
-                    <button class="inf-btn" id="inf-zip">📦 Descargar todo (ZIP)</button>
+                    <button class="inf-btn primary inf-tip" data-tip="Descargar el informe completo en PDF" id="inf-pdf">⬇ Descargar informe (PDF)</button>
+                    <button class="inf-btn inf-tip" data-tip="Descargar todo (PDF, imágenes y datos) en un archivo ZIP" id="inf-zip">📦 Descargar todo (ZIP)</button>
                     <div class="inf-btn-row">
-                        <button class="inf-btn" id="inf-graphs">Gráficos PNG</button>
-                        <button class="inf-btn" id="inf-csv">Datos CSV</button>
+                        <button class="inf-btn inf-tip" data-tip="Descargar las gráficas como imágenes PNG" id="inf-graphs">Gráficos PNG</button>
+                        <button class="inf-btn inf-tip" data-tip="Descargar los datos de las mediciones en formato CSV" id="inf-csv">Datos CSV</button>
                     </div>
                 </div>
 
@@ -24098,11 +24120,11 @@ bluetooth.startIOPinService()</pre>
                     <div class="inf-section-title">Proyecto</div>
                     <div class="inf-hint" id="inf-autosave-status">Autoguardado en el navegador activado.</div>
                     <div class="inf-btn-row">
-                        <button class="inf-btn" id="inf-save">Guardar proyecto</button>
-                        <button class="inf-btn" id="inf-open">Abrir proyecto</button>
+                        <button class="inf-btn inf-tip" data-tip="Guardar el proyecto en un archivo para continuar más tarde" id="inf-save">Guardar proyecto</button>
+                        <button class="inf-btn inf-tip" data-tip="Abrir un proyecto guardado (.json o .zip)" id="inf-open">Abrir proyecto</button>
                     </div>
                     <input type="file" id="inf-open-input" accept=".json,.zip,application/json,application/zip" style="display:none;">
-                    <button class="inf-btn danger" id="inf-reset">Reiniciar todo</button>
+                    <button class="inf-btn danger inf-tip" data-tip="Borrar todo y empezar un informe nuevo" id="inf-reset">Reiniciar todo</button>
                 </div>
             </aside>
 
@@ -24139,8 +24161,8 @@ bluetooth.startIOPinService()</pre>
             <div class="inf-eq-actions">
                 <label class="inf-eq-mode"><input type="checkbox" id="inf-eq-block" checked> Ecuación centrada (grande)</label>
                 <span class="inf-spacer"></span>
-                <button class="inf-btn" id="inf-eq-cancel" style="width:auto;margin:0;">Cancelar</button>
-                <button class="inf-btn primary" id="inf-eq-insert" style="width:auto;margin:0;">Insertar ✓</button>
+                <button class="inf-btn inf-tip inf-tip-up" data-tip="Cerrar sin insertar la ecuación" id="inf-eq-cancel" style="width:auto;margin:0;">Cancelar</button>
+                <button class="inf-btn primary inf-tip inf-tip-up" data-tip="Insertar la ecuación en el documento" id="inf-eq-insert" style="width:auto;margin:0;">Insertar ✓</button>
             </div>
         </div>
     </div>
@@ -24151,7 +24173,7 @@ bluetooth.startIOPinService()</pre>
             <span class="inf-page-title-lbl">Editando sección</span>
             <input id="inf-page-title" class="inf-page-title" placeholder="Título de la sección">
             <span class="inf-spacer"></span>
-            <button class="inf-btn primary" id="inf-page-done" style="width:auto;margin:0;">Listo ✓</button>
+            <button class="inf-btn primary inf-tip inf-tip-left" data-tip="Guardar los cambios y volver al editor" id="inf-page-done" style="width:auto;margin:0;">Listo ✓</button>
         </div>
         <div class="inf-wp-toolbar" id="inf-page-toolbar"></div>
         <div class="inf-page-scroll">
@@ -24164,8 +24186,8 @@ bluetooth.startIOPinService()</pre>
         <div class="inf-draw-modal-bar">
             <span class="inf-draw-modal-title">Lienzo de dibujo</span>
             <div class="inf-draw-tools" id="inf-draw-tools-big">
-                <button data-tool="pen" class="active" id="inf-pen-big">✏ Lápiz</button>
-                <button data-tool="eraser" id="inf-eraser-big">Goma</button>
+                <button data-tool="pen" class="active inf-tip" data-tip="Lápiz para dibujar" id="inf-pen-big">✏ Lápiz</button>
+                <button data-tool="eraser" class="inf-tip" data-tip="Goma para borrar parte del dibujo" id="inf-eraser-big">Goma</button>
                 <input type="color" id="inf-draw-color-big" value="#111111" title="Color">
                 <select id="inf-draw-size-big" title="Grosor" style="width:auto;">
                     <option value="2">Fino</option>
@@ -24173,11 +24195,11 @@ bluetooth.startIOPinService()</pre>
                     <option value="9">Grueso</option>
                     <option value="16">Muy grueso</option>
                 </select>
-                <button id="inf-draw-clear-big">Borrar todo</button>
+                <button class="inf-tip" data-tip="Borrar todo el lienzo" id="inf-draw-clear-big">Borrar todo</button>
             </div>
             <span class="inf-spacer"></span>
-            <button class="inf-btn" id="inf-draw-cancel" style="width:auto;margin:0;">Cancelar</button>
-            <button class="inf-btn primary" id="inf-draw-done" style="width:auto;margin:0;">Listo ✓</button>
+            <button class="inf-btn inf-tip" data-tip="Cerrar el lienzo sin guardar el dibujo" id="inf-draw-cancel" style="width:auto;margin:0;">Cancelar</button>
+            <button class="inf-btn primary inf-tip inf-tip-left" data-tip="Guardar el dibujo y cerrar el lienzo" id="inf-draw-done" style="width:auto;margin:0;">Listo ✓</button>
         </div>
         <div class="inf-draw-stage"><canvas id="inf-draw-big"></canvas></div>
     </div>
@@ -24824,7 +24846,7 @@ bluetooth.startIOPinService()</pre>
       var DOC_FONTS = [['', 'Montserrat (predet.)'], ['Georgia, serif', 'Georgia (serif)'], ["'Times New Roman', serif", 'Times New Roman'], ['Arial, sans-serif', 'Arial'], ["'Courier New', monospace", 'Courier'], ['Verdana, sans-serif', 'Verdana']];
       var WP_FONTS = ['Montserrat', 'Georgia', 'Times New Roman', 'Arial', 'Courier New', 'Verdana'];
       var WP_SIZES = [['2', 'Chica'], ['3', 'Normal'], ['4', 'Media'], ['5', 'Grande'], ['6', 'Muy grande']];
-      function chip(txt) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-chip'; b.textContent = txt; return b; }
+      function chip(txt, tip) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-chip inf-tip'; b.textContent = txt; if (tip) b.setAttribute('data-tip', tip); return b; }
       function insertAtCursor(ta, text) {
         var s = ta.selectionStart || 0, e = ta.selectionEnd || 0, v = ta.value;
         ta.value = v.slice(0, s) + text + v.slice(e);
@@ -24860,8 +24882,8 @@ bluetooth.startIOPinService()</pre>
       // ---- Armado: puntero a la pestaña Editor ----
       function renderSecQuick() {
         var q = el('inf-sec-quick'); if (!q) return; q.innerHTML = '';
-        QUICK_SECS.forEach(function (name) { var b = chip('＋ ' + name); b.addEventListener('click', function () { addSection(name); }); q.appendChild(b); });
-        var blank = chip('＋ En blanco'); blank.addEventListener('click', function () { addSection(''); }); q.appendChild(blank);
+        QUICK_SECS.forEach(function (name) { var b = chip('＋ ' + name, 'Agregar la sección «' + name + '» al documento'); b.addEventListener('click', function () { addSection(name); }); q.appendChild(b); });
+        var blank = chip('＋ En blanco', 'Agregar una sección vacía para escribir lo que quieras'); blank.addEventListener('click', function () { addSection(''); }); q.appendChild(blank);
       }
       function buildSectionsUI() {
         renderSecQuick();
@@ -24912,7 +24934,7 @@ bluetooth.startIOPinService()</pre>
       function buildWpToolbar(bar) {
         bar = bar || el('inf-wp-toolbar'); if (!bar || bar.dataset.built) return; bar.dataset.built = '1';
         function grp() { var d = document.createElement('span'); d.className = 'inf-wp-grp'; return d; }
-        function tbtn(txt, title, fn, cls) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-wp-btn' + (cls ? ' ' + cls : ''); b.title = title || txt; b.innerHTML = txt; b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', fn); return b; }
+        function tbtn(txt, title, fn, cls) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-wp-btn inf-tip' + (cls ? ' ' + cls : ''); b.setAttribute('data-tip', title || txt); b.innerHTML = txt; b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', fn); return b; }
         bar.innerHTML = '';
         var g1 = grp();
         var fsel = document.createElement('select'); fsel.className = 'inf-wp-sel'; fsel.title = 'Fuente';
@@ -24926,29 +24948,29 @@ bluetooth.startIOPinService()</pre>
         ssel.addEventListener('change', function () { exec('fontSize', ssel.value); });
         g1.appendChild(ssel); bar.appendChild(g1);
         var g2 = grp();
-        g2.appendChild(tbtn('<b>N</b>', 'Negrita', function () { exec('bold'); }));
-        g2.appendChild(tbtn('<i>C</i>', 'Cursiva', function () { exec('italic'); }));
-        g2.appendChild(tbtn('<u>S</u>', 'Subrayado', function () { exec('underline'); }));
+        g2.appendChild(tbtn('<b>N</b>', 'Negrita: resalta el texto seleccionado', function () { exec('bold'); }));
+        g2.appendChild(tbtn('<i>C</i>', 'Cursiva: inclina el texto seleccionado', function () { exec('italic'); }));
+        g2.appendChild(tbtn('<u>S</u>', 'Subrayado: subraya el texto seleccionado', function () { exec('underline'); }));
         bar.appendChild(g2);
         var g3 = grp();
         g3.appendChild(tbtn('Título', 'Título de sección (H2)', function () { exec('formatBlock', 'H2'); }, 'wide'));
         g3.appendChild(tbtn('Subsec.', 'Subsección (H3)', function () { exec('formatBlock', 'H3'); }, 'wide'));
         g3.appendChild(tbtn('Sub-sub', 'Sub-subsección (H4)', function () { exec('formatBlock', 'H4'); }, 'wide'));
-        g3.appendChild(tbtn('¶', 'Texto normal', function () { exec('formatBlock', 'P'); }));
+        g3.appendChild(tbtn('¶', 'Texto normal (párrafo)', function () { exec('formatBlock', 'P'); }));
         bar.appendChild(g3);
         var g4 = grp();
         g4.appendChild(tbtn('•', 'Lista con viñetas', function () { exec('insertUnorderedList'); }));
         g4.appendChild(tbtn('1.', 'Lista numerada', function () { exec('insertOrderedList'); }));
-        g4.appendChild(tbtn('⯇', 'Izquierda', function () { exec('justifyLeft'); }));
-        g4.appendChild(tbtn('≡', 'Centrar', function () { exec('justifyCenter'); }));
-        g4.appendChild(tbtn('⯈', 'Derecha', function () { exec('justifyRight'); }));
+        g4.appendChild(tbtn('⯇', 'Alinear a la izquierda', function () { exec('justifyLeft'); }));
+        g4.appendChild(tbtn('≡', 'Centrar el texto', function () { exec('justifyCenter'); }));
+        g4.appendChild(tbtn('⯈', 'Alinear a la derecha', function () { exec('justifyRight'); }));
         bar.appendChild(g4);
         var g5 = grp();
         var color = document.createElement('input'); color.type = 'color'; color.className = 'inf-wp-color'; color.title = 'Color del texto'; color.value = '#111111';
         color.addEventListener('mousedown', function () { saveRange(); });
         color.addEventListener('input', function () { exec('foreColor', color.value); });
         g5.appendChild(color);
-        g5.appendChild(tbtn('T✕', 'Quitar formato', function () { exec('removeFormat'); }));
+        g5.appendChild(tbtn('T✕', 'Quitar el formato del texto', function () { exec('removeFormat'); }));
         bar.appendChild(g5);
         var g6 = grp();
         g6.appendChild(tbtn('∑ Ecuación', 'Insertar ecuación (LaTeX)', function () { openEqEditor(ensureFocusEd(), null); }, 'wide'));
@@ -24962,8 +24984,8 @@ bluetooth.startIOPinService()</pre>
         var box = el('inf-editor-opts'); if (!box) return; box.innerHTML = '';
         var add = document.createElement('div'); add.className = 'inf-eo-row';
         add.innerHTML = '<span class="inf-eo-lbl">Agregar sección:</span>';
-        QUICK_SECS.forEach(function (name) { var c = chip('＋ ' + name); c.addEventListener('click', function () { addSection(name); }); add.appendChild(c); });
-        var blank = chip('＋ En blanco'); blank.addEventListener('click', function () { addSection(''); }); add.appendChild(blank);
+        QUICK_SECS.forEach(function (name) { var c = chip('＋ ' + name, 'Agregar la sección «' + name + '» al documento'); c.addEventListener('click', function () { addSection(name); }); add.appendChild(c); });
+        var blank = chip('＋ En blanco', 'Agregar una sección vacía para escribir lo que quieras'); blank.addEventListener('click', function () { addSection(''); }); add.appendChild(blank);
         box.appendChild(add);
         var row = document.createElement('div'); row.className = 'inf-eo-row';
         var tocL = document.createElement('label'); tocL.className = 'inf-eo-check'; tocL.innerHTML = '<input type="checkbox"' + (I.doc.toc ? ' checked' : '') + '> Índice';
@@ -24983,7 +25005,7 @@ bluetooth.startIOPinService()</pre>
       function setBiblio(on) { I.doc.biblioOn = !!on; if (on) I.selected['biblio'] = true; buildEditor(); renderPreviewDebounced(); schedule(); }
 
       // ---- Lienzo de tarjetas del documento ----
-      function cbtn(txt, title) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-card-btn'; b.title = title || ''; b.textContent = txt; return b; }
+      function cbtn(txt, title) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-card-btn inf-tip'; if (title) b.setAttribute('data-tip', title); b.textContent = txt; return b; }
       function moveDocItem(id, dir) { var order = resolveOrder(), i = order.indexOf(id), j = i + dir; if (i < 0 || j < 0 || j >= order.length) return; var t = order[i]; order[i] = order[j]; order[j] = t; I.doc.order = order; buildEditorDoc(); renderPreviewDebounced(); schedule(); }
       function reorderDocItem(from, to) { var order = resolveOrder(), fi = order.indexOf(from); if (fi < 0) return; order.splice(fi, 1); var ti = order.indexOf(to); if (ti < 0) ti = order.length; order.splice(ti, 0, from); I.doc.order = order; buildEditorDoc(); renderPreviewDebounced(); schedule(); }
       function buildEditorDoc() {
@@ -24995,10 +25017,10 @@ bluetooth.startIOPinService()</pre>
           var included = I.selected[id] !== false, isSec = id.indexOf('sec:') === 0;
           var card = document.createElement('div'); card.className = 'inf-card ' + (isSec ? 'inf-card-sec' : 'inf-card-auto-c') + (id === 'cover' ? ' inf-card-cover' : '') + (included ? '' : ' excluded'); card.dataset.id = id;
           var bar = document.createElement('div'); bar.className = 'inf-card-bar';
-          var handle = document.createElement('span'); handle.className = 'inf-card-handle'; handle.title = 'Arrastrá para reordenar'; handle.textContent = '⠿'; handle.setAttribute('draggable', 'true');
+          var handle = document.createElement('span'); handle.className = 'inf-card-handle inf-tip'; handle.setAttribute('data-tip', 'Arrastrá para reordenar esta parte del documento'); handle.textContent = '⠿'; handle.setAttribute('draggable', 'true');
           var name = document.createElement('span'); name.className = 'inf-card-name'; name.textContent = isSec ? 'Sección de texto' : friendlyItemName(id);
           var acts = document.createElement('span'); acts.className = 'inf-card-actions';
-          var up = cbtn('▲', 'Subir'), dn = cbtn('▼', 'Bajar'), inc = cbtn(included ? '●' : '○', included ? 'Incluido (clic para ocultar)' : 'Oculto (clic para incluir)'); inc.classList.toggle('on', included);
+          var up = cbtn('▲', 'Subir: mover esta parte más arriba'), dn = cbtn('▼', 'Bajar: mover esta parte más abajo'), inc = cbtn(included ? '●' : '○', included ? 'Incluido en el informe (clic para ocultar)' : 'Oculto (clic para incluir en el informe)'); inc.classList.toggle('on', included);
           up.addEventListener('click', function () { moveDocItem(id, -1); });
           dn.addEventListener('click', function () { moveDocItem(id, 1); });
           inc.addEventListener('click', function () { I.selected[id] = (I.selected[id] === false); buildEditorDoc(); buildChecklist(); renderPreviewDebounced(); schedule(); });
@@ -25242,7 +25264,7 @@ bluetooth.startIOPinService()</pre>
           '<div class="inf-bib-row2"><input id="inf-bib-year" class="inf-bib-year" placeholder="Año"><input id="inf-bib-title" placeholder="Título"></div>' +
           '<input id="inf-bib-source" placeholder="Fuente (revista, editorial o sitio web)">' +
           '<input id="inf-bib-url" placeholder="URL (opcional)">' +
-          '<button class="inf-btn" id="inf-bib-add">＋ Agregar referencia</button>' +
+          '<button class="inf-btn inf-tip" data-tip="Agregar una nueva referencia a la bibliografía" id="inf-bib-add">＋ Agregar referencia</button>' +
           '</div><div class="inf-bib-list" id="inf-bib-list"></div>';
         el('inf-bib-add').addEventListener('click', addRef);
         renderBibList();
@@ -25260,8 +25282,8 @@ bluetooth.startIOPinService()</pre>
           var d = document.createElement('div'); d.className = 'inf-bib-item';
           d.innerHTML = '<div class="inf-bib-apa">' + biblioAPA(r) + '</div>';
           var acts = document.createElement('div'); acts.className = 'inf-bib-acts';
-          var citeB = chip('Insertar cita'); citeB.addEventListener('mousedown', function (e) { e.preventDefault(); }); citeB.addEventListener('click', function () { insertCite(r); });
-          var delB = chip('✕'); delB.classList.add('del'); delB.addEventListener('click', function () { I.doc.biblio.splice(i, 1); renderBibList(); buildEditorDoc(); renderPreviewDebounced(); schedule(); });
+          var citeB = chip('Insertar cita', 'Insertar la cita (APA) de esta referencia en el texto'); citeB.addEventListener('mousedown', function (e) { e.preventDefault(); }); citeB.addEventListener('click', function () { insertCite(r); });
+          var delB = chip('✕', 'Eliminar esta referencia de la bibliografía'); delB.classList.add('del'); delB.addEventListener('click', function () { I.doc.biblio.splice(i, 1); renderBibList(); buildEditorDoc(); renderPreviewDebounced(); schedule(); });
           acts.appendChild(citeB); acts.appendChild(delB); d.appendChild(acts); l.appendChild(d);
         });
       }
