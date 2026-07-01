@@ -29,6 +29,16 @@
             onerror="window.__html2canvasFailed=true;"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer
             onerror="window.__jspdfFailed=true;"></script>
+    <!-- MathJax (SVG): editor de LaTeX del informe (fundamento teórico / fórmulas) -->
+    <script>
+      window.MathJax = {
+        tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+        svg: { fontCache: 'none' },
+        startup: { typeset: false }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async
+            onerror="window.__mathjaxFailed=true;"></script>
     <style>
         * {
             margin: 0;
@@ -4171,15 +4181,76 @@
         .inf-img-ctrl .inf-img-cap { display:block; width:100%; }
         .inf-img-ctrl input:focus, .inf-img-ctrl select:focus { outline:none; border-color:#fff; }
 
-        /* Editor de secciones de texto propias */
-        .inf-sec-item { border:1px solid #2b303b; background:#1a1d23; padding:9px; margin-bottom:8px; }
-        .inf-sec-title { display:block; width:100%; box-sizing:border-box; background:#0f1115; color:#fff; border:1px solid #444; padding:7px 8px; font-family:inherit; font-size:12px; margin-bottom:6px; }
-        .inf-sec-row2 { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+        /* Editor de secciones de texto propias (pestañas + bloques + LaTeX) */
+        .inf-chip {
+          display:inline-block; background:#000; color:#fff; border:1px solid #444;
+          padding:6px 10px; margin:0 5px 5px 0; font-size:11px; cursor:pointer;
+          font-family:inherit; letter-spacing:0.3px; border-radius:0;
+        }
+        .inf-chip:hover { border-color:#fff; background:#20242b; }
+        .inf-sec-quick { margin-bottom:8px; }
+
+        .inf-tabs { display:flex; flex-wrap:wrap; gap:4px; border-bottom:1px solid #2b303b; margin-bottom:9px; padding-bottom:6px; }
+        .inf-tab {
+          background:#1a1d23; color:#bdbdbd; border:1px solid #2b303b; border-bottom:none;
+          padding:7px 11px; font-size:11px; cursor:pointer; font-family:inherit; max-width:150px;
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0.3px;
+        }
+        .inf-tab:hover { color:#fff; border-color:#555; }
+        .inf-tab.active { background:#fff; color:#000; border-color:#fff; font-weight:700; }
+        .inf-tab.add { color:#fff; font-weight:700; max-width:none; }
+
+        .inf-sec-ehead { margin-bottom:8px; }
+        .inf-sec-title { display:block; width:100%; box-sizing:border-box; background:#0f1115; color:#fff; border:1px solid #444; padding:8px; font-family:inherit; font-size:13px; font-weight:600; margin-bottom:6px; }
+        .inf-sec-row2 { display:flex; gap:6px; align-items:center; }
+        .inf-sec-mv { background:#000; color:#fff; border:1px solid #444; padding:6px 9px; cursor:pointer; font-family:inherit; font-size:11px; }
+        .inf-sec-mv:hover { border-color:#fff; }
         .inf-sec-pos { flex:1; background:#0f1115; color:#fff; border:1px solid #444; padding:6px; font-family:inherit; font-size:11px; }
         .inf-sec-del { background:#000; color:#ef5350; border:1px solid #ef5350; padding:6px 10px; cursor:pointer; font-size:11px; flex-shrink:0; font-family:inherit; }
         .inf-sec-del:hover { background:#ef5350; color:#000; }
-        .inf-sec-text { display:block; width:100%; box-sizing:border-box; min-height:64px; resize:vertical; background:#0f1115; color:#fff; border:1px solid #444; padding:7px 8px; font-family:inherit; font-size:12px; line-height:1.5; }
-        .inf-sec-title:focus, .inf-sec-text:focus, .inf-sec-pos:focus { outline:none; border-color:#fff; }
+        .inf-sec-title:focus, .inf-sec-pos:focus { outline:none; border-color:#fff; }
+
+        /* Bloques dentro de una sección */
+        .inf-blk-list { margin-bottom:8px; }
+        .inf-blk { border:1px solid #2b303b; background:#161a20; margin-bottom:7px; }
+        .inf-blk-head { display:flex; align-items:center; justify-content:space-between; background:#0f1115; padding:5px 8px; border-bottom:1px solid #2b303b; }
+        .inf-blk-type { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:#9e9e9e; font-weight:700; }
+        .inf-blk-actions { display:flex; gap:4px; }
+        .inf-blk-btn { background:#000; color:#fff; border:1px solid #444; width:26px; height:24px; cursor:pointer; font-size:11px; padding:0; line-height:1; }
+        .inf-blk-btn:hover { border-color:#fff; }
+        .inf-blk-btn.del { color:#ef5350; border-color:#5a2b2b; }
+        .inf-blk-btn.del:hover { background:#ef5350; color:#000; }
+        .inf-blk-body { padding:8px; }
+        .inf-blk-text { display:block; width:100%; box-sizing:border-box; min-height:60px; resize:vertical; background:#0f1115; color:#fff; border:1px solid #444; padding:7px 8px; font-family:inherit; font-size:12px; line-height:1.5; }
+        .inf-blk-text:focus { outline:none; border-color:#fff; }
+
+        /* Editor LaTeX */
+        .inf-latex-tools { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:6px; }
+        .inf-latex-sym { background:#000; color:#fff; border:1px solid #444; min-width:28px; height:26px; padding:0 6px; cursor:pointer; font-size:13px; font-family:'Cambria Math','Latin Modern Math',Georgia,serif; }
+        .inf-latex-sym:hover { background:#fff; color:#000; }
+        .inf-blk-latex { display:block; width:100%; box-sizing:border-box; min-height:48px; resize:vertical; background:#0f1115; color:#8fe388; border:1px solid #444; padding:7px 8px; font-family:'Courier New',monospace; font-size:12.5px; line-height:1.5; }
+        .inf-blk-latex:focus { outline:none; border-color:#fff; }
+        .inf-latex-preview { background:#fff; color:#111; padding:12px 10px; margin-top:6px; text-align:center; min-height:44px; overflow-x:auto; }
+        .inf-latex-preview .inf-math-empty { color:#9e9e9e; font-family:'Montserrat',sans-serif; font-size:11px; }
+        .inf-latex-help { font-size:10.5px; color:#9e9e9e; line-height:1.6; margin-top:6px; }
+        .inf-latex-help code { background:#0f1115; border:1px solid #333; padding:1px 4px; color:#8fe388; font-size:10.5px; }
+
+        /* Bloque de imagen dentro de sección */
+        .inf-blk-imgbody { display:flex; gap:10px; }
+        .inf-blk-thumb { width:70px; height:54px; object-fit:cover; border:1px solid #444; background:#fff; flex-shrink:0; }
+        .inf-blk-imgfields { flex:1; min-width:0; }
+        .inf-blk-imgrow { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+        .inf-blk-imgrow span { font-size:10px; color:#9e9e9e; text-transform:uppercase; letter-spacing:0.5px; }
+        .inf-blk-size, .inf-blk-cap { background:#0f1115; color:#fff; border:1px solid #444; font-family:inherit; font-size:11px; padding:5px 7px; box-sizing:border-box; }
+        .inf-blk-size { flex:1; }
+        .inf-blk-cap { display:block; width:100%; }
+        .inf-blk-size:focus, .inf-blk-cap:focus { outline:none; border-color:#fff; }
+
+        /* Menú insertar */
+        .inf-ins { border-top:1px dashed #2b303b; padding-top:8px; }
+        .inf-ins-title { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:#9e9e9e; font-weight:700; margin-bottom:6px; }
+        .inf-ins-row { display:flex; flex-wrap:wrap; align-items:center; gap:0; margin-bottom:2px; }
+        .inf-ins-lbl { font-size:10px; color:#9e9e9e; text-transform:uppercase; letter-spacing:0.5px; margin-right:6px; }
 
         /* Modal del lienzo de dibujo */
         .inf-draw-modal {
@@ -23810,9 +23881,10 @@ bluetooth.startIOPinService()</pre>
 
                 <div class="inf-section">
                     <div class="inf-section-title">Secciones de texto</div>
-                    <div class="inf-hint">Agregá partes propias (Objetivo, Materiales, Marco teórico, Conclusión…).</div>
-                    <div id="inf-sections"></div>
-                    <button class="inf-btn" id="inf-add-section">＋ Agregar sección</button>
+                    <div class="inf-hint">Escribí el fundamento teórico y otras partes: texto, fórmulas en <b>LaTeX</b>, y gráficas o fotos insertadas. Cada sección es una pestaña; podés reordenarlas.</div>
+                    <div class="inf-sec-quick" id="inf-sec-quick"></div>
+                    <div class="inf-tabs" id="inf-sec-tabs"></div>
+                    <div id="inf-sec-editor"></div>
                 </div>
 
                 <div class="inf-section">
@@ -23848,7 +23920,7 @@ bluetooth.startIOPinService()</pre>
                         <button class="inf-btn" id="inf-save">Guardar proyecto</button>
                         <button class="inf-btn" id="inf-open">Abrir proyecto</button>
                     </div>
-                    <input type="file" id="inf-open-input" accept=".json,application/json" style="display:none;">
+                    <input type="file" id="inf-open-input" accept=".json,.zip,application/json,application/zip" style="display:none;">
                     <button class="inf-btn danger" id="inf-reset">Reiniciar todo</button>
                 </div>
             </aside>
@@ -23940,7 +24012,10 @@ bluetooth.startIOPinService()</pre>
         ".rep-doc .rep-photos-grid.single{grid-template-columns:1fr;}",
         ".rep-doc .rep-photo img{width:100%;border:1px solid #ddd;display:block;}",
         ".rep-doc .rep-photo .cap{font-size:10.5px;color:#777;margin-top:5px;}",
-        ".rep-doc .rep-foot{padding:10px 46px;border-top:2px solid #0a0a0a;font-size:9.5px;color:#9a9a9a;letter-spacing:1.5px;text-transform:uppercase;display:flex;justify-content:space-between;gap:10px;}"
+        ".rep-doc .rep-foot{padding:10px 46px;border-top:2px solid #0a0a0a;font-size:9.5px;color:#9a9a9a;letter-spacing:1.5px;text-transform:uppercase;display:flex;justify-content:space-between;gap:10px;}",
+        ".rep-doc .rep-formula{text-align:center;margin:10px 0;}",
+        ".rep-doc .rep-formula img{max-width:100%;height:auto;vertical-align:middle;}",
+        ".rep-doc .rep-formula-fallback{font-family:'Courier New',monospace;font-size:12.5px;background:#f4f4f4;border:1px solid #e2e2e2;padding:8px 10px;margin:8px 0;text-align:center;word-break:break-word;}"
       ].join('\n');
 
       // --- Estado del módulo ---
@@ -23950,8 +24025,8 @@ bluetooth.startIOPinService()</pre>
         devicePhotos: [],     // [{dataUrl, name}]
         selected: {},         // {itemId: bool}
         imgOpts: {},          // {imgId: {size:'small'|'medium'|'large', caption}}
-        sections: [],         // [{id, title, text, pos:'start'|'end'}]
-        _secSeq: 0,
+        sections: [],         // [{id, title, pos:'start'|'end', blocks:[...]}]
+        _secSeq: 0, _secActive: 0, _blkSeq: 0,
         drawTool: 'pen', drawColor: '#111111', drawSize: 4,
         drawingData: null,    // dataURL del dibujo (fuente única de verdad)
         hasDrawing: function () { return !!this.drawingData; },
@@ -24068,9 +24143,9 @@ bluetooth.startIOPinService()</pre>
         items.push({ id: 'notes', label: 'Apuntes escritos', tag: '', avail: true, def: !!I.notesText.trim() });
         items.push({ id: 'drawing', label: 'Apuntes dibujados', tag: '', avail: true, def: I.hasDrawing() });
         (I.sections || []).forEach(function (s) {
+          normSection(s);
           var lbl = (s.title || '').trim() || '(sin título)';
-          var hasContent = !!((s.title || '').trim() || (s.text || '').trim());
-          items.push({ id: 'sec:' + s.id, label: 'Sección: ' + lbl, tag: (s.pos === 'end' ? 'al final' : 'al inicio'), avail: hasContent, def: true });
+          items.push({ id: 'sec:' + s.id, label: 'Sección: ' + lbl, tag: (s.pos === 'end' ? 'al final' : 'al inicio'), avail: sectionHasContent(s), def: true });
         });
         return items;
       }
@@ -24229,10 +24304,61 @@ bluetooth.startIOPinService()</pre>
         var t = I.notesText.trim(); if (!t) return '';
         return '<div class="rep-block">' + band('Apuntes', '') + '<div class="rep-pad"><div class="rep-notes">' + esc(t) + '</div></div></div>';
       }
+      // Normaliza una sección al modelo por bloques (migra formato viejo {text}).
+      function normSection(s) {
+        if (!s) return s;
+        if (!Array.isArray(s.blocks)) {
+          s.blocks = [];
+          if (typeof s.text === 'string' && s.text.trim()) s.blocks.push({ type: 'text', text: s.text });
+        }
+        s.blocks.forEach(function (b) { if (b && !b.id) b.id = 'blk' + (++I._blkSeq); });
+        if (!s.id) s.id = 'sec' + (++I._secSeq);
+        if (!s.pos) s.pos = 'start';
+        delete s.text;
+        return s;
+      }
+      function sectionHasContent(s) {
+        if ((s.title || '').trim()) return true;
+        return (s.blocks || []).some(function (b) {
+          return (b.type === 'text' && (b.text || '').trim()) ||
+            (b.type === 'formula' && (b.latex || '').trim()) ||
+            (b.type === 'image' && b.dataUrl);
+        });
+      }
+      // LaTeX -> imagen SVG (data URL) vía MathJax; robusto para PDF/ZIP.
+      function latexToImg(latex, display) {
+        try {
+          if (!(window.MathJax && MathJax.tex2svg) || !(latex || '').trim()) return null;
+          var node = MathJax.tex2svg(latex, { display: display !== false });
+          var svg = node.querySelector('svg'); if (!svg) return null;
+          svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+          var str = new XMLSerializer().serializeToString(svg);
+          return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(str)));
+        } catch (e) { return null; }
+      }
+      function renderSectionBlockHTML(b) {
+        if (!b) return '';
+        if (b.type === 'text') { var t = (b.text || '').trim(); return t ? '<div class="rep-notes" style="margin-bottom:9px;">' + esc(t) + '</div>' : ''; }
+        if (b.type === 'formula') {
+          if (!(b.latex || '').trim()) return '';
+          var url = latexToImg(b.latex, true);
+          if (url) return '<div class="rep-formula"><img src="' + url + '"></div>';
+          return '<div class="rep-formula-fallback">' + esc(b.latex) + '</div>';
+        }
+        if (b.type === 'image') {
+          if (!b.dataUrl) return '';
+          var w = SIZE_W[b.size] || '72%';
+          var cap = (b.caption || '').trim() ? ('<div class="rep-cap" style="text-align:center;">' + esc(b.caption) + '</div>') : '';
+          return '<div class="rep-figure" style="max-width:' + w + ';margin:8px auto 2px;"><img src="' + b.dataUrl + '"></div>' + cap;
+        }
+        return '';
+      }
       function sectionBlock(s) {
-        var title = (s.title || '').trim(), text = (s.text || '').trim();
-        if (!title && !text) return '';
-        return '<div class="rep-block">' + band(title || 'Sección', '') + '<div class="rep-pad"><div class="rep-notes">' + esc(text) + '</div></div></div>';
+        normSection(s);
+        var title = (s.title || '').trim();
+        var inner = (s.blocks || []).map(renderSectionBlockHTML).filter(Boolean).join('');
+        if (!title && !inner) return '';
+        return '<div class="rep-block">' + band(title || 'Sección', '') + '<div class="rep-pad">' + (inner || '') + '</div></div>';
       }
       function drawingBlock() {
         var url = I.drawingDataURL(); if (!url) return '';
@@ -24339,31 +24465,162 @@ bluetooth.startIOPinService()</pre>
         });
       }
 
-      // --- Secciones de texto propias ---
-      function buildSectionsUI() {
-        var box = el('inf-sections'); if (!box) return;
-        box.innerHTML = '';
-        (I.sections || []).forEach(function (s, idx) {
-          var wrap = document.createElement('div'); wrap.className = 'inf-sec-item';
-          wrap.innerHTML =
-            '<input class="inf-sec-title" type="text" placeholder="Título (ej: Objetivo)" value="' + esc(s.title || '') + '">' +
-            '<div class="inf-sec-row2">' +
-            '<select class="inf-sec-pos"><option value="start"' + (s.pos !== 'end' ? ' selected' : '') + '>Al inicio</option><option value="end"' + (s.pos === 'end' ? ' selected' : '') + '>Al final</option></select>' +
-            '<button class="inf-sec-del" title="Quitar sección">✕ Quitar</button>' +
-            '</div>' +
-            '<textarea class="inf-sec-text" placeholder="Texto de la sección…"></textarea>';
-          var t = wrap.querySelector('.inf-sec-title'); t.addEventListener('input', function () { s.title = t.value; buildChecklist(); renderPreviewDebounced(); schedule(); });
-          var tx = wrap.querySelector('.inf-sec-text'); tx.value = s.text || ''; tx.addEventListener('input', function () { s.text = tx.value; if ((s.title || s.text || '').trim()) I.selected['sec:' + s.id] = true; buildChecklist(); renderPreviewDebounced(); schedule(); });
-          var ps = wrap.querySelector('.inf-sec-pos'); ps.addEventListener('change', function () { s.pos = ps.value; buildChecklist(); renderPreviewDebounced(); schedule(); });
-          var del = wrap.querySelector('.inf-sec-del'); del.addEventListener('click', function () { I.sections.splice(idx, 1); delete I.selected['sec:' + s.id]; buildSectionsUI(); buildChecklist(); renderPreview(); schedule(); });
-          box.appendChild(wrap);
-        });
+      // --- Secciones de texto propias (pestañas + bloques + LaTeX) ---
+      var QUICK_SECS = ['Fundamento teórico', 'Objetivo', 'Materiales', 'Marco teórico', 'Procedimiento', 'Resultados', 'Conclusión'];
+      var LATEX_SNIPPETS = [
+        ['x²', '^{2}'], ['xₙ', '_{n}'], ['a/b', '\\frac{a}{b}'], ['√', '\\sqrt{x}'], ['ⁿ√', '\\sqrt[n]{x}'],
+        ['≈', '\\approx '], ['≤', '\\leq '], ['≥', '\\geq '], ['±', '\\pm '], ['×', '\\times '], ['·', '\\cdot '],
+        ['Δ', '\\Delta '], ['α', '\\alpha '], ['β', '\\beta '], ['θ', '\\theta '], ['π', '\\pi '], ['ω', '\\omega '], ['μ', '\\mu '],
+        ['Σ', '\\sum_{i=1}^{n} '], ['∫', '\\int_{a}^{b} '], ['d/dx', '\\frac{d}{dx}'], ['vec', '\\vec{v}'], ['x̄', '\\bar{x}'], ['10ⁿ', '\\times 10^{-3}'], ['abc', '\\text{texto}']
+      ];
+      function chip(txt) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-chip'; b.textContent = txt; return b; }
+      function markSecSel(s) { I.selected['sec:' + s.id] = true; }
+      function onSectionsChange() { buildSectionsUI(); buildChecklist(); renderPreviewDebounced(); schedule(); }
+      function insertAtCursor(ta, text) {
+        var s = ta.selectionStart || 0, e = ta.selectionEnd || 0, v = ta.value;
+        ta.value = v.slice(0, s) + text + v.slice(e);
+        var pos = s + text.length; ta.selectionStart = ta.selectionEnd = pos; ta.focus();
       }
-      function addSection() {
+      function renderMath(elm, latex) {
+        if (!elm) return;
+        if (!(latex || '').trim()) { elm.innerHTML = '<span class="inf-math-empty">La fórmula renderizada aparece acá.</span>'; return; }
+        function go() { try { elm.innerHTML = ''; elm.appendChild(MathJax.tex2svg(latex, { display: true })); } catch (e) { elm.textContent = '⚠ ' + ((e && e.message) || 'LaTeX inválido'); } }
+        if (window.MathJax && MathJax.tex2svg) go();
+        else if (window.MathJax && MathJax.startup && MathJax.startup.promise) { elm.textContent = 'cargando MathJax…'; MathJax.startup.promise.then(go); }
+        else { elm.innerHTML = '<span class="inf-math-empty">Sin conexión no se ve el render, pero el LaTeX se guarda igual.</span>'; }
+      }
+      function moveBlock(s, bi, dir) { var j = bi + dir; if (j < 0 || j >= s.blocks.length) return; var t = s.blocks[bi]; s.blocks[bi] = s.blocks[j]; s.blocks[j] = t; buildSectionsUI(); renderPreviewDebounced(); schedule(); }
+      function insertBlock(s, block) { block.id = 'blk' + (++I._blkSeq); s.blocks.push(block); markSecSel(s); onSectionsChange(); }
+      function moveSection(dir) {
+        var i = I._secActive, j = i + dir; if (j < 0 || j >= I.sections.length) return;
+        var t = I.sections[i]; I.sections[i] = I.sections[j]; I.sections[j] = t; I._secActive = j;
+        buildSectionsUI(); buildChecklist(); renderPreviewDebounced(); schedule();
+      }
+      function sectionGraphOptions() {
+        var opts = [], st = state, n = (st.rawData || []).length, ng = st.numGraphs || 1;
+        for (var i = 0; i < ng; i++) { if (st.charts && st.charts[i] && n > 0) opts.push({ label: 'Gráfica ' + (i + 1), idx: i }); }
+        return opts;
+      }
+      function renderBlockEditor(s, b, bi) {
+        var wrap = document.createElement('div'); wrap.className = 'inf-blk';
+        var head = document.createElement('div'); head.className = 'inf-blk-head';
+        var label = { text: 'Texto', formula: 'Fórmula (LaTeX)', image: 'Imagen' }[b.type] || b.type;
+        head.innerHTML = '<span class="inf-blk-type">' + label + '</span>' +
+          '<span class="inf-blk-actions">' +
+          '<button class="inf-blk-btn" data-a="up" title="Subir">▲</button>' +
+          '<button class="inf-blk-btn" data-a="down" title="Bajar">▼</button>' +
+          '<button class="inf-blk-btn del" data-a="del" title="Quitar bloque">✕</button>' +
+          '</span>';
+        head.querySelector('[data-a=up]').addEventListener('click', function () { moveBlock(s, bi, -1); });
+        head.querySelector('[data-a=down]').addEventListener('click', function () { moveBlock(s, bi, 1); });
+        head.querySelector('[data-a=del]').addEventListener('click', function () { s.blocks.splice(bi, 1); onSectionsChange(); });
+        wrap.appendChild(head);
+        var body = document.createElement('div'); body.className = 'inf-blk-body'; wrap.appendChild(body);
+        if (b.type === 'text') {
+          var ta = document.createElement('textarea'); ta.className = 'inf-blk-text'; ta.placeholder = 'Escribí el texto…'; ta.value = b.text || '';
+          ta.addEventListener('input', function () { b.text = ta.value; markSecSel(s); buildChecklist(); renderPreviewDebounced(); schedule(); });
+          body.appendChild(ta);
+        } else if (b.type === 'formula') {
+          var tools = document.createElement('div'); tools.className = 'inf-latex-tools';
+          var taF = document.createElement('textarea'); taF.className = 'inf-blk-latex'; taF.placeholder = 'Ej:  v = v_0 + a\\,t'; taF.value = b.latex || '';
+          var prev = document.createElement('div'); prev.className = 'inf-latex-preview';
+          LATEX_SNIPPETS.forEach(function (sn) {
+            var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'inf-latex-sym'; btn.textContent = sn[0]; btn.title = sn[1];
+            btn.addEventListener('click', function () { insertAtCursor(taF, sn[1]); b.latex = taF.value; renderMath(prev, b.latex); markSecSel(s); buildChecklist(); renderPreviewDebounced(); schedule(); });
+            tools.appendChild(btn);
+          });
+          taF.addEventListener('input', function () { b.latex = taF.value; renderMath(prev, b.latex); markSecSel(s); buildChecklist(); renderPreviewDebounced(); schedule(); });
+          var help = document.createElement('div'); help.className = 'inf-latex-help';
+          help.innerHTML = 'Escribí la fórmula en <b>LaTeX</b>. Ej: <code>\\frac{1}{2} m v^{2}</code>, <code>\\vec{F} = m\\,\\vec{a}</code>, <code>x_0</code>, <code>10^{-3}</code>. Tocá los botones para aprender los comandos.';
+          body.appendChild(tools); body.appendChild(taF); body.appendChild(prev); body.appendChild(help);
+          renderMath(prev, b.latex);
+        } else if (b.type === 'image') {
+          body.className = 'inf-blk-body inf-blk-imgbody';
+          var thumb = document.createElement('img'); thumb.className = 'inf-blk-thumb'; thumb.src = b.dataUrl || '';
+          var fields = document.createElement('div'); fields.className = 'inf-blk-imgfields';
+          var row = document.createElement('div'); row.className = 'inf-blk-imgrow'; row.innerHTML = '<span>Tamaño</span>';
+          var sizeSel = document.createElement('select'); sizeSel.className = 'inf-blk-size';
+          SIZE_LABELS.forEach(function (sz) { var o = document.createElement('option'); o.value = sz[0]; o.textContent = sz[1]; if ((b.size || 'medium') === sz[0]) o.selected = true; sizeSel.appendChild(o); });
+          sizeSel.addEventListener('change', function () { b.size = sizeSel.value; renderPreviewDebounced(); schedule(); });
+          row.appendChild(sizeSel);
+          var cap = document.createElement('input'); cap.type = 'text'; cap.className = 'inf-blk-cap'; cap.placeholder = 'Pie de imagen…'; cap.value = b.caption || '';
+          cap.addEventListener('input', function () { b.caption = cap.value; renderPreviewDebounced(); schedule(); });
+          fields.appendChild(row); fields.appendChild(cap);
+          body.appendChild(thumb); body.appendChild(fields);
+        }
+        return wrap;
+      }
+      function renderSecQuick() {
+        var q = el('inf-sec-quick'); if (!q) return; q.innerHTML = '';
+        QUICK_SECS.forEach(function (name) { var b = chip('＋ ' + name); b.addEventListener('click', function () { addSection(name); }); q.appendChild(b); });
+        var blank = chip('＋ En blanco'); blank.addEventListener('click', function () { addSection(''); }); q.appendChild(blank);
+      }
+      function buildSectionsUI() {
+        renderSecQuick();
+        var tabs = el('inf-sec-tabs'), ed = el('inf-sec-editor'); if (!tabs || !ed) return;
+        var secs = I.sections || []; secs.forEach(normSection);
+        if (I._secActive >= secs.length) I._secActive = secs.length - 1;
+        if (I._secActive < 0) I._secActive = 0;
+        tabs.innerHTML = '';
+        secs.forEach(function (s, idx) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-tab' + (idx === I._secActive ? ' active' : '');
+          b.textContent = (s.title || '').trim() || ('Sección ' + (idx + 1));
+          b.addEventListener('click', function () { I._secActive = idx; buildSectionsUI(); });
+          tabs.appendChild(b);
+        });
+        if (secs.length) { var addTab = document.createElement('button'); addTab.type = 'button'; addTab.className = 'inf-tab add'; addTab.textContent = '＋'; addTab.title = 'Nueva sección'; addTab.addEventListener('click', function () { addSection(''); }); tabs.appendChild(addTab); }
+        ed.innerHTML = '';
+        if (!secs.length) { ed.innerHTML = '<div class="inf-hint">Todavía no hay secciones. Creá una con los botones de arriba (ej: <b>Fundamento teórico</b>) para escribir texto, fórmulas en LaTeX e insertar gráficas o fotos.</div>'; return; }
+        var s = secs[I._secActive];
+        var head = document.createElement('div'); head.className = 'inf-sec-ehead';
+        head.innerHTML =
+          '<input class="inf-sec-title" type="text" placeholder="Título de la sección (ej: Fundamento teórico)" value="' + esc(s.title || '') + '">' +
+          '<div class="inf-sec-row2">' +
+          '<button class="inf-sec-mv" data-a="left" title="Mover sección antes">◀</button>' +
+          '<button class="inf-sec-mv" data-a="right" title="Mover sección después">▶</button>' +
+          '<select class="inf-sec-pos"><option value="start"' + (s.pos !== 'end' ? ' selected' : '') + '>Al inicio</option><option value="end"' + (s.pos === 'end' ? ' selected' : '') + '>Al final</option></select>' +
+          '<button class="inf-sec-del" title="Quitar sección">✕ Quitar</button>' +
+          '</div>';
+        var ti = head.querySelector('.inf-sec-title');
+        ti.addEventListener('input', function () {
+          s.title = ti.value;
+          var btns = tabs.querySelectorAll('.inf-tab:not(.add)');
+          if (btns[I._secActive]) btns[I._secActive].textContent = (s.title || '').trim() || ('Sección ' + (I._secActive + 1));
+          buildChecklist(); renderPreviewDebounced(); schedule();
+        });
+        head.querySelector('[data-a=left]').addEventListener('click', function () { moveSection(-1); });
+        head.querySelector('[data-a=right]').addEventListener('click', function () { moveSection(1); });
+        head.querySelector('.inf-sec-pos').addEventListener('change', function () { s.pos = this.value; buildChecklist(); renderPreviewDebounced(); schedule(); });
+        head.querySelector('.inf-sec-del').addEventListener('click', function () { if (!confirm('¿Quitar esta sección completa?')) return; var id = s.id; I.sections.splice(I._secActive, 1); delete I.selected['sec:' + id]; buildSectionsUI(); buildChecklist(); renderPreview(); schedule(); });
+        ed.appendChild(head);
+        var list = document.createElement('div'); list.className = 'inf-blk-list';
+        (s.blocks || []).forEach(function (b, bi) { list.appendChild(renderBlockEditor(s, b, bi)); });
+        ed.appendChild(list);
+        var ins = document.createElement('div'); ins.className = 'inf-ins';
+        ins.innerHTML = '<div class="inf-ins-title">Insertar en esta sección</div>';
+        var row1 = document.createElement('div'); row1.className = 'inf-ins-row';
+        var bText = chip('＋ Texto'); bText.addEventListener('click', function () { insertBlock(s, { type: 'text', text: '' }); });
+        var bFx = chip('＋ Fórmula (LaTeX)'); bFx.addEventListener('click', function () { insertBlock(s, { type: 'formula', latex: '', display: true }); });
+        row1.appendChild(bText); row1.appendChild(bFx); ins.appendChild(row1);
+        var gopts = sectionGraphOptions(), photos = I.devicePhotos || [];
+        if (gopts.length || photos.length) {
+          var row2 = document.createElement('div'); row2.className = 'inf-ins-row';
+          row2.innerHTML = '<span class="inf-ins-lbl">Imágenes:</span>';
+          gopts.forEach(function (g) { var c = chip('📈 ' + g.label); c.addEventListener('click', function () { insertBlock(s, { type: 'image', dataUrl: chartToDataURL(g.idx), caption: (fn('computeGraphTitle') ? computeGraphTitle(g.idx) : g.label), size: 'medium' }); }); row2.appendChild(c); });
+          photos.forEach(function (p, k) { var c = chip('📷 Foto ' + (k + 1)); c.addEventListener('click', function () { insertBlock(s, { type: 'image', dataUrl: p.dataUrl, caption: 'Montaje experimental', size: 'medium' }); }); row2.appendChild(c); });
+          ins.appendChild(row2);
+        } else {
+          var hint = document.createElement('div'); hint.className = 'inf-hint'; hint.textContent = 'Cargá datos (para insertar gráficas) o agregá una foto del montaje para poder insertarlas acá.'; ins.appendChild(hint);
+        }
+        ed.appendChild(ins);
+      }
+      function addSection(title) {
         I._secSeq = (I._secSeq || 0) + 1;
         var id = 'sec' + I._secSeq;
-        I.sections.push({ id: id, title: '', text: '', pos: 'start' });
+        var blocks = [{ id: 'blk' + (++I._blkSeq), type: 'text', text: '' }];
+        I.sections.push({ id: id, title: title || '', pos: 'start', blocks: blocks });
         I.selected['sec:' + id] = true;
+        I._secActive = I.sections.length - 1;
         buildSectionsUI(); buildChecklist(); renderPreview(); schedule();
       }
 
@@ -24764,6 +25021,8 @@ bluetooth.startIOPinService()</pre>
           I.imgOpts = rep.imgOpts || {};
           I.sections = Array.isArray(rep.sections) ? rep.sections : [];
           I._secSeq = I.sections.reduce(function (m, s) { var nn = parseInt(String(s.id).replace(/\D/g, '')) || 0; return Math.max(m, nn); }, 0);
+          I._blkSeq = 0; I._secActive = 0;
+          I.sections.forEach(normSection);
           I.drawingData = rep.drawing || null;
           syncReportInputs();
           renderPhotos();
@@ -24805,6 +25064,7 @@ bluetooth.startIOPinService()</pre>
             var light = serialize();
             (light.app.rawData || []).forEach(function (r) { if (r.photoDataURL) r.photoDataURL = null; });
             light.app.sensorPhotos = []; light.report.drawing = null; light.report.devicePhotos = [];
+            (light.report.sections || []).forEach(function (s) { (s.blocks || []).forEach(function (b) { if (b.type === 'image') b.dataUrl = null; }); });
             localStorage.setItem(LS_KEY, JSON.stringify(light));
             setStatus('Autoguardado (texto y datos; usá “Guardar proyecto” para incluir imágenes).');
           } catch (e2) {
@@ -24850,17 +25110,37 @@ bluetooth.startIOPinService()</pre>
           toast('Proyecto guardado en tu dispositivo.');
         } catch (e) { console.error(e); toast('No se pudo guardar el proyecto.'); }
       }
+      function applyOpenedBlob(blob, fromZip) {
+        if (!blob || !blob.app) { toast('El archivo no es un proyecto de fisicabit.'); return; }
+        if ((state.rawData || []).length && !confirm('Abrir este proyecto reemplazará los datos actuales. ¿Continuar?')) return;
+        restore(blob); toast(fromZip ? 'Proyecto abierto desde ZIP ✓' : 'Proyecto abierto ✓'); schedule();
+      }
       function openProjectFile(file) {
         if (!file) return;
+        var name = (file.name || '').toLowerCase();
+        if (name.endsWith('.zip') || file.type === 'application/zip') { openProjectZip(file); return; }
         var reader = new FileReader();
         reader.onload = function (e) {
           var blob = null;
           try { blob = JSON.parse(e.target.result); } catch (er) { toast('El archivo no es un proyecto válido.'); return; }
-          if (!blob || !blob.app) { toast('El archivo no es un proyecto de fisicabit.'); return; }
-          if ((state.rawData || []).length && !confirm('Abrir este proyecto reemplazará los datos actuales. ¿Continuar?')) return;
-          restore(blob); toast('Proyecto abierto ✓'); schedule();
+          applyOpenedBlob(blob, false);
         };
         reader.readAsText(file);
+      }
+      async function openProjectZip(file) {
+        var ok = await ensureJSZip();
+        if (!ok) { toast('No se pudo cargar el lector de ZIP (¿sin internet?).'); return; }
+        try {
+          var zip = await window.JSZip.loadAsync(file);
+          var entry = zip.file('proyecto.fisicabit.json');
+          if (!entry) { var cands = zip.file(/proyecto.*\.json$/i); entry = cands && cands.length ? cands[0] : null; }
+          if (!entry) { var anyj = zip.file(/\.json$/i); entry = anyj && anyj.length ? anyj[0] : null; }
+          if (!entry) { toast('El ZIP no contiene un proyecto (proyecto.fisicabit.json).'); return; }
+          var txt = await entry.async('string');
+          var blob = null;
+          try { blob = JSON.parse(txt); } catch (er) { toast('El proyecto dentro del ZIP está dañado.'); return; }
+          applyOpenedBlob(blob, true);
+        } catch (e) { console.error('[INFORME] Error abriendo ZIP:', e); toast('No se pudo abrir el ZIP.'); }
       }
 
       async function resetAll() {
@@ -24872,7 +25152,7 @@ bluetooth.startIOPinService()</pre>
         st.fitResult = null; st.segmentFits = []; st.extraDataSets = [];
         I.meta = { title: '', student: '', course: '', institution: '', date: todayStr() };
         I.notesText = ''; I.devicePhotos = []; I.selected = {};
-        I.imgOpts = {}; I.sections = []; I._secSeq = 0; I.drawingData = null;
+        I.imgOpts = {}; I.sections = []; I._secSeq = 0; I._secActive = 0; I._blkSeq = 0; I.drawingData = null;
         syncReportInputs(); renderPhotos(); renderDrawPreview();
         try { await idbDel(AUTOSAVE_KEY); } catch (e) {}
         try { localStorage.removeItem(LS_KEY); } catch (e) {}
@@ -24911,9 +25191,6 @@ bluetooth.startIOPinService()</pre>
         if (el('inf-draw-clear-big')) el('inf-draw-clear-big').addEventListener('click', clearBig);
         if (el('inf-draw-done')) el('inf-draw-done').addEventListener('click', function () { closeDrawModal(true); });
         if (el('inf-draw-cancel')) el('inf-draw-cancel').addEventListener('click', function () { closeDrawModal(false); });
-
-        // Secciones de texto propias
-        if (el('inf-add-section')) el('inf-add-section').addEventListener('click', addSection);
 
         // Fotos
         if (el('inf-photo-btn')) el('inf-photo-btn').addEventListener('click', function () { el('inf-photo-input').click(); });
