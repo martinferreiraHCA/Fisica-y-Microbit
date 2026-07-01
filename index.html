@@ -24316,7 +24316,6 @@ bluetooth.startIOPinService()</pre>
       var SIZE_W = { small: '46%', medium: '72%', large: '100%' };
       function imgOpt(id) { if (!I.imgOpts[id]) I.imgOpts[id] = { size: 'medium', caption: '' }; return I.imgOpts[id]; }
       function defGraphCap(i) { var cfg = (state.graphs && state.graphs[i]) || {}; return (cfg.yLabel || 'Valor') + ' en función de ' + (cfg.xLabel || 'tiempo') + '.'; }
-      function defPhotoCap(i) { return 'Montaje experimental' + (((I.devicePhotos || []).length > 1) ? (' #' + (i + 1)) : ''); }
 
       // --- Utilidades ---
       function esc(s) {
@@ -24635,7 +24634,6 @@ bluetooth.startIOPinService()</pre>
         if (!title && !html) return '';
         return '<div class="rep-block">' + band(title || 'Sección', '') + '<div class="rep-pad"><div class="rep-rich">' + (html || '') + '</div></div></div>';
       }
-      function sectionBlock(s) { return sectionReportHTML(s); }
       function drawingBlock() {
         var url = I.drawingDataURL(); if (!url) return '';
         var o = imgOpt('drawing'); var w = SIZE_W[o.size] || '100%';
