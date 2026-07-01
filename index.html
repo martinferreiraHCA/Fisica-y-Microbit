@@ -4388,18 +4388,20 @@
         .inf-fig-sep { width:1px; height:20px; background:#3a3f48; margin:0 3px; }
         .inf-fig-w { font-size:11px; color:#cfd3da; min-width:36px; text-align:center; }
 
-        /* Tooltip de ayuda reutilizable: descripción breve al pasar el cursor por cualquier botón */
+        /* Tooltip de ayuda reutilizable: descripción breve al pasar el cursor por cualquier botón.
+           Se define de forma autónoma (reseteando bottom/white-space/bordes) para que NO se mezcle
+           con el tooltip global [data-tip] del resto de la app (que usa white-space:nowrap y va arriba). */
         .inf-tip { position:relative; }
         .inf-tip[data-tip]:hover::after {
-          content:attr(data-tip); position:absolute; top:calc(100% + 7px); left:50%; transform:translateX(-50%);
-          width:max-content; max-width:230px; text-align:center; line-height:1.35;
+          content:attr(data-tip); position:absolute; top:calc(100% + 7px); bottom:auto; left:50%; right:auto; transform:translateX(-50%);
+          width:max-content; max-width:230px; white-space:normal; text-align:center; line-height:1.35;
           background:#000; color:#fff; border:1px solid #666; padding:5px 9px; font-size:11px; font-weight:400;
-          border-radius:4px; z-index:9600; pointer-events:none;
-          font-family:'Montserrat',-apple-system,sans-serif; letter-spacing:0.2px; box-shadow:0 3px 12px rgba(0,0,0,.55);
+          border-radius:4px; z-index:9600; pointer-events:none; visibility:visible; opacity:1;
+          font-family:'Montserrat',-apple-system,sans-serif; letter-spacing:0.2px; text-transform:none; box-shadow:0 3px 12px rgba(0,0,0,.55);
         }
         .inf-tip[data-tip]:hover::before {
-          content:''; position:absolute; top:calc(100% + 2px); left:50%; transform:translateX(-50%);
-          border:5px solid transparent; border-bottom-color:#000; z-index:9601; pointer-events:none;
+          content:''; position:absolute; top:calc(100% + 2px); bottom:auto; left:50%; right:auto; transform:translateX(-50%);
+          border:5px solid transparent; border-bottom-color:#000; border-top-color:transparent; z-index:9601; pointer-events:none; visibility:visible; opacity:1;
         }
         /* Variante alineada al borde derecho (botones pegados al borde derecho de la pantalla) */
         .inf-tip.inf-tip-left[data-tip]:hover::after { left:auto; right:0; transform:none; }
@@ -4407,8 +4409,6 @@
         /* Variante hacia arriba (botones al pie de una barra o modal) */
         .inf-tip.inf-tip-up[data-tip]:hover::after { top:auto; bottom:calc(100% + 7px); }
         .inf-tip.inf-tip-up[data-tip]:hover::before { top:auto; bottom:calc(100% + 2px); border-bottom-color:transparent; border-top-color:#000; }
-        .inf-tip[data-tip]:hover::after, .inf-tip[data-tip]:hover::before { animation:infTipIn .12s ease-out; }
-        @keyframes infTipIn { from { opacity:0; } to { opacity:1; } }
 
         /* Paleta de símbolos agrupada (modal de ecuación) */
         #inf-eq-syms { display:block; }
@@ -24163,7 +24163,7 @@ bluetooth.startIOPinService()</pre>
                 <label class="inf-eq-mode"><input type="checkbox" id="inf-eq-block" checked> Ecuación centrada (grande)</label>
                 <span class="inf-spacer"></span>
                 <button class="inf-btn inf-tip inf-tip-up" data-tip="Cerrar sin insertar la ecuación" id="inf-eq-cancel" style="width:auto;margin:0;">Cancelar</button>
-                <button class="inf-btn primary inf-tip inf-tip-up" data-tip="Insertar la ecuación en el documento" id="inf-eq-insert" style="width:auto;margin:0;">Insertar ✓</button>
+                <button class="inf-btn primary inf-tip inf-tip-up inf-tip-left" data-tip="Insertar la ecuación en el documento" id="inf-eq-insert" style="width:auto;margin:0;">Insertar ✓</button>
             </div>
         </div>
     </div>
