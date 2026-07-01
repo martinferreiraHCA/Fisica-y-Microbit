@@ -24801,7 +24801,8 @@ bluetooth.startIOPinService()</pre>
           var sel = window.getSelection(); if (!sel || !sel.rangeCount) return;
           var r = sel.getRangeAt(0), node = r.commonAncestorContainer;
           var elx = node.nodeType === 1 ? node : node.parentNode;
-          if (elx && elx.closest && elx.closest('.inf-rich')) { I._savedRange = r.cloneRange(); I._focusEd = elx.closest('.inf-rich'); }
+          var host = elx && elx.closest ? elx.closest('.inf-rich, .inf-page-body') : null;
+          if (host) { I._savedRange = r.cloneRange(); I._focusEd = host; }
         } catch (e) {}
       }
       function restoreRange() { try { if (I._savedRange) { var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(I._savedRange); } } catch (e) {} }
