@@ -4303,32 +4303,42 @@
         .inf-eo-check input { accent-color:#fff; cursor:pointer; }
         .inf-eo-font { display:inline-flex; align-items:center; gap:6px; margin-left:auto; }
 
-        .inf-doc-wrap { flex:1; min-height:0; overflow-y:auto; background:#4a4d52; padding:22px; }
-        .inf-doc-canvas { width:794px; max-width:100%; margin:0 auto; background:#fff; box-shadow:0 6px 34px rgba(0,0,0,.5); padding-bottom:20px; }
+        .inf-doc-wrap { flex:1; min-height:0; overflow-y:auto; background:#33363c; padding:20px 16px 44px; }
+        .inf-doc-canvas { width:860px; max-width:100%; margin:0 auto; background:transparent; box-shadow:none; padding:0; }
 
-        .inf-card { position:relative; }
-        .inf-card.excluded { opacity:0.45; }
-        .inf-card.drop-target { outline:2px dashed #1976d2; outline-offset:-2px; }
-        .inf-card.dragging { opacity:0.5; }
-        .inf-card-bar { display:flex; align-items:center; gap:8px; padding:4px 10px; background:#0a0a0a; color:#fff; }
-        .inf-card-handle { cursor:grab; font-size:15px; color:#9e9e9e; padding:0 2px; user-select:none; }
+        /* Cada bloque del informe es una tarjeta separada (panel blanco sobre gris) */
+        .inf-card { position:relative; background:#fff; margin:0 auto 16px; border-radius:8px; overflow:hidden; box-shadow:0 3px 16px rgba(0,0,0,.30); }
+        .inf-card.inf-card-sec { box-shadow:0 3px 16px rgba(25,118,210,.28); }
+        .inf-card.excluded { opacity:0.5; }
+        .inf-card.excluded .inf-card-content { filter:grayscale(0.55); }
+        .inf-card.drop-target { outline:3px dashed #1976d2; outline-offset:3px; }
+        .inf-card.dragging { opacity:0.4; }
+        /* Barra de control (chrome del editor): gris, compacta, distinta del listón negro */
+        .inf-card-bar { display:flex; align-items:center; gap:9px; padding:7px 12px; background:#2a2e36; color:#c7ccd4; border-bottom:1px solid #ececec; }
+        .inf-card-sec .inf-card-bar { background:#1f2b3a; }
+        .inf-card-handle { cursor:grab; font-size:16px; color:#8a93a0; padding:0 3px; user-select:none; }
+        .inf-card-handle:hover { color:#fff; }
         .inf-card-handle:active { cursor:grabbing; }
-        .inf-card-name { flex:1; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .inf-card-actions { display:flex; gap:3px; }
-        .inf-card-btn { background:#000; color:#fff; border:1px solid #444; width:26px; height:24px; cursor:pointer; font-size:11px; padding:0; line-height:1; }
-        .inf-card-btn:hover { border-color:#fff; }
-        .inf-card-btn.on { color:#7fdca0; border-color:#3a5a45; }
-        .inf-card-btn.del { color:#ef5350; border-color:#5a2b2b; }
+        .inf-card-name { flex:1; font-size:10.5px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:#aeb4bd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .inf-card-sec .inf-card-name { color:#7fb0e8; }
+        .inf-card-actions { display:flex; gap:4px; }
+        .inf-card-btn { background:#3a3f48; color:#fff; border:1px solid #4a505b; width:26px; height:24px; cursor:pointer; font-size:11px; padding:0; line-height:1; border-radius:3px; }
+        .inf-card-btn:hover { background:#000; border-color:#fff; }
+        .inf-card-btn.on { color:#7fdca0; }
+        .inf-card-btn.del { color:#ef8a88; border-color:#5a2b2b; }
         .inf-card-btn.del:hover { background:#ef5350; color:#000; }
-        .inf-card-empty { color:#999; font-size:12px; padding:14px 46px; }
+        .inf-card-empty { color:#999; font-size:12px; padding:18px 40px; text-align:center; font-style:italic; }
+        .inf-card-auto { padding:12px 0 14px; }
+        .inf-card-cover .inf-card-auto { padding:0; }
         .inf-card-sectitle {
-          display:block; width:100%; box-sizing:border-box; border:none; border-bottom:1px solid #eee;
-          padding:10px 46px; font-family:'Montserrat',sans-serif; font-size:18px; font-weight:700; color:#111;
+          display:block; width:100%; box-sizing:border-box; border:none;
+          padding:12px 40px 4px; font-family:'Montserrat',sans-serif; font-size:19px; font-weight:800; color:#111;
         }
-        .inf-card-sectitle:focus { outline:none; background:#fbfbf6; }
-        .inf-rich { min-height:56px; padding:12px 46px 16px; font-family:inherit; font-size:13px; line-height:1.6; color:#161616; outline:none; }
-        .inf-rich:focus { background:#fffdf5; }
-        .inf-rich:empty:before { content:'Escribí acá… (usá la barra de arriba para formato, ecuaciones y citas)'; color:#bbb; }
+        .inf-card-sectitle::placeholder { color:#c8c8c8; font-weight:600; }
+        .inf-card-sectitle:focus { outline:none; }
+        .inf-rich { min-height:60px; padding:6px 40px 18px; font-family:inherit; font-size:13px; line-height:1.65; color:#161616; outline:none; }
+        .inf-rich:focus { background:#fcfcf7; }
+        .inf-rich:empty:before { content:'Escribí el contenido acá…  (formato, ecuaciones ∑ y citas “ desde la barra de arriba)'; color:#bbb; }
         .inf-rich h2 { font-size:17px; margin:8px 0 5px; }
         .inf-rich h3 { font-size:15px; margin:7px 0 4px; }
         .inf-rich ul, .inf-rich ol { margin:0 0 8px 22px; }
@@ -24880,10 +24890,10 @@ bluetooth.startIOPinService()</pre>
         if (!order.length) { canvas.innerHTML = '<div class="inf-card-empty" style="padding:30px;text-align:center;">El documento está vacío. Cargá datos o agregá una sección de texto.</div>'; return; }
         order.forEach(function (id) {
           var included = I.selected[id] !== false, isSec = id.indexOf('sec:') === 0;
-          var card = document.createElement('div'); card.className = 'inf-card' + (included ? '' : ' excluded'); card.dataset.id = id;
+          var card = document.createElement('div'); card.className = 'inf-card ' + (isSec ? 'inf-card-sec' : 'inf-card-auto-c') + (id === 'cover' ? ' inf-card-cover' : '') + (included ? '' : ' excluded'); card.dataset.id = id;
           var bar = document.createElement('div'); bar.className = 'inf-card-bar';
           var handle = document.createElement('span'); handle.className = 'inf-card-handle'; handle.title = 'Arrastrá para reordenar'; handle.textContent = '⠿'; handle.setAttribute('draggable', 'true');
-          var name = document.createElement('span'); name.className = 'inf-card-name'; name.textContent = friendlyItemName(id);
+          var name = document.createElement('span'); name.className = 'inf-card-name'; name.textContent = isSec ? 'Sección de texto' : friendlyItemName(id);
           var acts = document.createElement('span'); acts.className = 'inf-card-actions';
           var up = cbtn('▲', 'Subir'), dn = cbtn('▼', 'Bajar'), inc = cbtn(included ? '●' : '○', included ? 'Incluido (clic para ocultar)' : 'Oculto (clic para incluir)'); inc.classList.toggle('on', included);
           up.addEventListener('click', function () { moveDocItem(id, -1); });
@@ -24895,8 +24905,8 @@ bluetooth.startIOPinService()</pre>
           var content = document.createElement('div'); content.className = 'inf-card-content';
           if (isSec) {
             var s = findSec(id.slice(4)); normSection(s);
-            var ti = document.createElement('input'); ti.className = 'inf-card-sectitle'; ti.value = s.title || ''; ti.placeholder = 'Título de la sección';
-            ti.addEventListener('input', function () { s.title = ti.value; name.textContent = (s.title || '').trim() || 'Sección'; buildChecklist(); renderPreviewDebounced(); schedule(); });
+            var ti = document.createElement('input'); ti.className = 'inf-card-sectitle'; ti.value = s.title || ''; ti.placeholder = 'Título de la sección (ej: Fundamento teórico)';
+            ti.addEventListener('input', function () { s.title = ti.value; buildChecklist(); renderPreviewDebounced(); schedule(); });
             content.appendChild(ti);
             var rich = document.createElement('div'); rich.className = 'inf-rich'; rich.contentEditable = 'true'; rich.dataset.sec = s.id; rich.innerHTML = s.html || '';
             rich.addEventListener('focus', function () { I._focusEd = rich; });
@@ -24907,7 +24917,10 @@ bluetooth.startIOPinService()</pre>
             content.appendChild(rich);
           } else {
             var h = reportItemHTML(id);
-            content.innerHTML = '<div class="inf-card-auto rep-doc">' + (h || '<div class="inf-card-empty">(se genera de los datos)</div>') + '</div>';
+            content.innerHTML = '<div class="inf-card-auto rep-doc">' + (h || '<div class="inf-card-empty">(se genera automáticamente de los datos)</div>') + '</div>';
+            // En el editor ocultamos el listón negro del documento: la cabecera de la
+            // tarjeta ya identifica el bloque (los listones sí aparecen en el PDF/preview).
+            if (id !== 'cover') { var au = content.querySelector('.inf-card-auto'); if (au) au.querySelectorAll('.rep-band').forEach(function (b) { if (b.parentNode) b.parentNode.removeChild(b); }); }
           }
           card.appendChild(content);
           handle.addEventListener('dragstart', function (e) { I._dragId = id; card.classList.add('dragging'); try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id); } catch (_) {} });
