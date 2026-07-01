@@ -4356,9 +4356,24 @@
         .inf-rich .doc-eq-block, .inf-page-body .doc-eq-block { display:block; text-align:center; margin:14px auto; background:#f4f8ff; border:1px solid #dbe7fb; border-radius:4px; padding:8px; cursor:pointer; max-width:96%; }
         .inf-rich .doc-eq-block img, .inf-page-body .doc-eq-block img { max-width:100%; height:auto; }
         .inf-rich h4, .inf-page-body h4 { font-size:13px; font-weight:700; margin:7px 0 4px; color:#333; }
-        .inf-rich figure.doc-fig, .inf-page-body figure.doc-fig { margin:10px auto; text-align:center; max-width:70%; }
-        .inf-rich figure.doc-fig img, .inf-page-body figure.doc-fig img { max-width:100%; border:1px solid #e6e6e6; }
-        .inf-rich figure.doc-fig figcaption, .inf-page-body figure.doc-fig figcaption { font-size:11px; color:#777; margin-top:4px; }
+        .inf-rich figure.doc-fig, .inf-page-body figure.doc-fig { width:60%; margin:12px auto; text-align:center; cursor:pointer; }
+        .inf-rich figure.doc-fig.fig-left, .inf-page-body figure.doc-fig.fig-left { margin:12px auto 12px 0; text-align:left; }
+        .inf-rich figure.doc-fig.fig-right, .inf-page-body figure.doc-fig.fig-right { margin:12px 0 12px auto; text-align:right; }
+        .inf-rich figure.doc-fig.fig-float-left, .inf-page-body figure.doc-fig.fig-float-left { float:left; margin:6px 16px 10px 0; }
+        .inf-rich figure.doc-fig.fig-float-right, .inf-page-body figure.doc-fig.fig-float-right { float:right; margin:6px 0 10px 16px; }
+        .inf-rich figure.doc-fig img, .inf-page-body figure.doc-fig img { width:100%; height:auto; border:1px solid #e6e6e6; display:block; }
+        .inf-rich figure.doc-fig figcaption, .inf-page-body figure.doc-fig figcaption { font-size:11px; color:#777; margin-top:5px; text-align:center; outline:none; min-height:1em; }
+        .inf-rich figure.doc-fig figcaption:empty:before, .inf-page-body figure.doc-fig figcaption:empty:before { content:'Pie de imagen (opcional)…'; color:#c4c4c4; }
+        .inf-rich:after, .inf-page-body:after { content:''; display:table; clear:both; }
+
+        /* Barra flotante de edición de imagen */
+        .inf-fig-tools { display:none; position:fixed; z-index:9550; background:#0f1115; border:1px solid #555; box-shadow:0 6px 24px rgba(0,0,0,.5); padding:4px; }
+        .inf-fig-tools.open { display:flex; align-items:center; flex-wrap:wrap; gap:2px; }
+        .inf-fig-btn { background:#2a2e36; color:#fff; border:1px solid #444; min-width:28px; height:28px; padding:0 7px; cursor:pointer; font-size:13px; font-family:inherit; border-radius:3px; }
+        .inf-fig-btn:hover { background:#fff; color:#000; }
+        .inf-fig-btn.on { background:#fff; color:#000; }
+        .inf-fig-sep { width:1px; height:20px; background:#3a3f48; margin:0 3px; }
+        .inf-fig-w { font-size:11px; color:#cfd3da; min-width:36px; text-align:center; }
 
         /* Paleta de símbolos agrupada (modal de ecuación) */
         #inf-eq-syms { display:block; }
@@ -24098,6 +24113,8 @@ bluetooth.startIOPinService()</pre>
     <div class="inf-menu" id="inf-cite-menu"></div>
     <div class="inf-menu" id="inf-img-menu"></div>
     <input type="file" id="inf-doc-img-input" accept="image/*" style="display:none;">
+    <!-- Barra flotante de edición de imagen -->
+    <div class="inf-fig-tools" id="inf-fig-tools"></div>
 
     <!-- Modal: editor de ecuaciones LaTeX -->
     <div class="inf-eq-modal" id="inf-eq-modal">
@@ -24225,9 +24242,15 @@ bluetooth.startIOPinService()</pre>
         ".rep-doc .rep-rich .doc-eq-block{display:block;text-align:center;margin:14px 0;}",
         ".rep-doc .rep-rich .doc-eq-block img{max-width:94%;height:auto;}",
         ".rep-doc .rep-rich h4{font-size:12.5px;font-weight:700;margin:8px 0 4px;color:#333;}",
-        ".rep-doc .rep-rich figure.doc-fig{margin:10px auto;text-align:center;max-width:70%;}",
-        ".rep-doc .rep-rich figure.doc-fig img{max-width:100%;display:block;margin:0 auto;border:1px solid #e6e6e6;}",
+        ".rep-doc .rep-rich figure.doc-fig{width:60%;margin:12px auto;text-align:center;}",
+        ".rep-doc .rep-rich figure.doc-fig.fig-left{margin:12px auto 12px 0;text-align:left;}",
+        ".rep-doc .rep-rich figure.doc-fig.fig-right{margin:12px 0 12px auto;text-align:right;}",
+        ".rep-doc .rep-rich figure.doc-fig.fig-float-left{float:left;margin:6px 16px 10px 0;}",
+        ".rep-doc .rep-rich figure.doc-fig.fig-float-right{float:right;margin:6px 0 10px 16px;}",
+        ".rep-doc .rep-rich figure.doc-fig img{width:100%;height:auto;display:block;border:1px solid #e6e6e6;}",
         ".rep-doc .rep-rich figure.doc-fig figcaption{font-size:11px;color:#6a6a6a;margin-top:5px;}",
+        ".rep-doc .rep-rich figure.doc-fig figcaption:empty{display:none;}",
+        ".rep-doc .rep-rich:after{content:'';display:table;clear:both;}",
         ".rep-doc .rep-toc-row{display:flex;gap:10px;padding:4px 0;border-bottom:1px dotted #ddd;font-size:12.5px;}",
         ".rep-doc .rep-toc-n{color:#888;min-width:26px;font-weight:700;}",
         ".rep-doc .rep-biblio{font-size:12px;line-height:1.55;}",
@@ -24983,7 +25006,12 @@ bluetooth.startIOPinService()</pre>
             rich.addEventListener('input', function () { onEditableInput(rich); });
             rich.addEventListener('mouseup', function () { I._focusEd = rich; saveRange(); });
             rich.addEventListener('keyup', function () { saveRange(); });
-            rich.addEventListener('click', function (e) { var t = e.target && e.target.closest ? e.target.closest('.doc-eq, .doc-eq-block') : null; if (t) openEqEditor(rich, t); });
+            rich.addEventListener('click', function (e) {
+              if (!e.target || !e.target.closest) return;
+              var eq = e.target.closest('.doc-eq, .doc-eq-block'); if (eq) { openEqEditor(rich, eq); return; }
+              var fig = e.target.closest('.doc-fig'); if (fig) { openFigTools(rich, fig); return; }
+              closeFigTools();
+            });
             content.appendChild(rich);
           } else {
             var h = reportItemHTML(id);
@@ -25095,8 +25123,60 @@ bluetooth.startIOPinService()</pre>
       function insertImageIntoDoc(dataUrl, caption) {
         if (!dataUrl) { toast('No se pudo capturar la imagen.'); return; }
         var ed = I._focusEd || ensureFocusEd(); if (!ed) { toast('Creá una sección de texto para insertar la imagen.'); return; }
-        var fig = '<figure class="doc-fig" contenteditable="false"><img src="' + dataUrl + '">' + (caption ? '<figcaption>' + esc(caption) + '</figcaption>' : '') + '</figure><p>​</p>';
+        var fig = '<figure class="doc-fig fig-center" contenteditable="false" style="width:60%"><img src="' + dataUrl + '"><figcaption contenteditable="true">' + (caption ? esc(caption) : '') + '</figcaption></figure><p>​</p>';
         ed.focus(); restoreRange(); try { document.execCommand('insertHTML', false, fig); } catch (e) { ed.innerHTML += fig; } onEditableInput(ed);
+      }
+
+      // ---- Barra flotante para editar una imagen del editor ----
+      var _figTarget = null, _figEditable = null, _figWidths = [20, 30, 40, 50, 60, 75, 90, 100];
+      function openFigTools(editable, fig) { _figEditable = editable; _figTarget = fig; buildFigTools(); updateFigToolsState(); var tb = el('inf-fig-tools'); if (tb) { tb.classList.add('open'); positionFigTools(); } }
+      function closeFigTools() { var tb = el('inf-fig-tools'); if (tb) tb.classList.remove('open'); _figTarget = null; }
+      function positionFigTools() {
+        var tb = el('inf-fig-tools'); if (!tb || !_figTarget) return;
+        try {
+          var r = _figTarget.getBoundingClientRect();
+          var top = r.top - 42; if (top < 56) top = r.bottom + 6;
+          tb.style.top = top + 'px';
+          tb.style.left = Math.max(6, Math.min(r.left, window.innerWidth - tb.offsetWidth - 8)) + 'px';
+        } catch (e) {}
+      }
+      function figCurWidth() { return parseFloat((_figTarget && _figTarget.style.width) || '') || 60; }
+      function figSetWidth(w) { if (!_figTarget) return; w = Math.max(15, Math.min(100, Math.round(w))); _figTarget.style.width = w + '%'; onEditableInput(_figEditable); updateFigToolsState(); positionFigTools(); }
+      function figStep(dir) { var cur = figCurWidth(), idx = 0, best = 1e9; _figWidths.forEach(function (v, i) { var d = Math.abs(v - cur); if (d < best) { best = d; idx = i; } }); idx = Math.max(0, Math.min(_figWidths.length - 1, idx + dir)); figSetWidth(_figWidths[idx]); }
+      function figSetAlign(cls) { if (!_figTarget) return; ['fig-left', 'fig-center', 'fig-right', 'fig-float-left', 'fig-float-right'].forEach(function (c) { _figTarget.classList.remove(c); }); _figTarget.classList.add(cls); onEditableInput(_figEditable); updateFigToolsState(); positionFigTools(); }
+      function figMove(dir) {
+        if (!_figTarget) return; var f = _figTarget, p = f.parentNode; if (!p) return;
+        if (dir < 0) { var prev = f.previousElementSibling; if (prev) p.insertBefore(f, prev); }
+        else { var next = f.nextElementSibling; if (next) p.insertBefore(next, f); }
+        onEditableInput(_figEditable); positionFigTools();
+      }
+      function figEditCaption() { if (!_figTarget) return; var cap = _figTarget.querySelector('figcaption'); if (!cap) { cap = document.createElement('figcaption'); _figTarget.appendChild(cap); } cap.setAttribute('contenteditable', 'true'); cap.focus(); }
+      function figDelete() { if (!_figTarget) return; var ed = _figEditable, f = _figTarget; if (f.parentNode) f.parentNode.removeChild(f); closeFigTools(); onEditableInput(ed); }
+      function updateFigToolsState() {
+        var tb = el('inf-fig-tools'); if (!tb || !_figTarget) return;
+        tb.querySelectorAll('[data-align]').forEach(function (b) { b.classList.toggle('on', _figTarget.classList.contains(b.getAttribute('data-align'))); });
+        var lbl = tb.querySelector('.inf-fig-w'); if (lbl) lbl.textContent = Math.round(figCurWidth()) + '%';
+      }
+      function buildFigTools() {
+        var tb = el('inf-fig-tools'); if (!tb || tb.dataset.built) return; tb.dataset.built = '1';
+        function mk(txt, title, fn, align) { var x = document.createElement('button'); x.type = 'button'; x.className = 'inf-fig-btn'; x.title = title; x.innerHTML = txt; if (align) x.setAttribute('data-align', align); x.addEventListener('mousedown', function (e) { e.preventDefault(); }); x.addEventListener('click', fn); return x; }
+        function sep() { var s = document.createElement('span'); s.className = 'inf-fig-sep'; return s; }
+        tb.appendChild(mk('⯇', 'Alinear a la izquierda', function () { figSetAlign('fig-left'); }, 'fig-left'));
+        tb.appendChild(mk('≡', 'Centrar', function () { figSetAlign('fig-center'); }, 'fig-center'));
+        tb.appendChild(mk('⯈', 'Alinear a la derecha', function () { figSetAlign('fig-right'); }, 'fig-right'));
+        tb.appendChild(sep());
+        tb.appendChild(mk('◧', 'Texto alrededor (imagen a la izquierda)', function () { figSetAlign('fig-float-left'); }, 'fig-float-left'));
+        tb.appendChild(mk('◨', 'Texto alrededor (imagen a la derecha)', function () { figSetAlign('fig-float-right'); }, 'fig-float-right'));
+        tb.appendChild(sep());
+        tb.appendChild(mk('−', 'Más chica', function () { figStep(-1); }));
+        var wl = document.createElement('span'); wl.className = 'inf-fig-w'; wl.textContent = '60%'; tb.appendChild(wl);
+        tb.appendChild(mk('＋', 'Más grande', function () { figStep(1); }));
+        tb.appendChild(sep());
+        tb.appendChild(mk('↑', 'Mover arriba', function () { figMove(-1); }));
+        tb.appendChild(mk('↓', 'Mover abajo', function () { figMove(1); }));
+        tb.appendChild(sep());
+        tb.appendChild(mk('✎ Pie', 'Editar el pie de imagen', function () { figEditCaption(); }));
+        tb.appendChild(mk('🗑', 'Quitar imagen', function () { figDelete(); }));
       }
 
       // ---- Bibliografía (APA) ----
@@ -25150,7 +25230,12 @@ bluetooth.startIOPinService()</pre>
         body.oninput = function () { onEditableInput(body); };
         body.onmouseup = function () { I._focusEd = body; saveRange(); };
         body.onkeyup = function () { saveRange(); };
-        body.onclick = function (e) { var t = e.target && e.target.closest ? e.target.closest('.doc-eq, .doc-eq-block') : null; if (t) openEqEditor(body, t); };
+        body.onclick = function (e) {
+          if (!e.target || !e.target.closest) return;
+          var eq = e.target.closest('.doc-eq, .doc-eq-block'); if (eq) { openEqEditor(body, eq); return; }
+          var fig = e.target.closest('.doc-fig'); if (fig) { openFigTools(body, fig); return; }
+          closeFigTools();
+        };
         el('inf-page-editor').classList.add('open');
         I._focusEd = body;
         setTimeout(function () { body.focus(); }, 30);
@@ -25862,11 +25947,16 @@ bluetooth.startIOPinService()</pre>
         checkRestore();
         // Guardar la selección activa dentro de los editores enriquecidos
         document.addEventListener('selectionchange', saveRange);
-        // Cerrar menús flotantes al hacer clic afuera
+        buildFigTools();
+        // Cerrar menús / barra de imagen al hacer clic afuera
         document.addEventListener('mousedown', function (e) {
-          if (e.target && e.target.closest && (e.target.closest('.inf-menu') || e.target.closest('.inf-wp-btn'))) return;
-          closeMenus();
+          var t = e.target, cl = t && t.closest;
+          if (!(cl && (t.closest('.inf-menu') || t.closest('.inf-wp-btn')))) closeMenus();
+          if (!(cl && (t.closest('.inf-fig-tools') || t.closest('.doc-fig')))) closeFigTools();
         });
+        // Reposicionar la barra de imagen al hacer scroll o cambiar tamaño
+        window.addEventListener('scroll', function () { positionFigTools(); }, true);
+        window.addEventListener('resize', function () { positionFigTools(); });
       }
 
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
