@@ -4389,6 +4389,8 @@
         .inf-menu.open { display:block; }
         .inf-menu-item { display:block; width:100%; text-align:left; background:transparent; color:#e0e0e0; border:none; border-bottom:1px solid #23272e; padding:8px 12px; font-size:12px; cursor:pointer; font-family:inherit; }
         .inf-menu-item:hover { background:#fff; color:#000; }
+        .inf-menu-item.inf-menu-upload { color:#fff; font-weight:700; border-bottom:1px solid #444; background:#171a1f; }
+        .inf-menu-item.inf-menu-upload:hover { background:#fff; color:#000; }
 
         .inf-eq-modal { display:none; position:fixed; inset:0; z-index:9300; background:rgba(0,0,0,.6); align-items:center; justify-content:center; padding:20px; }
         .inf-eq-modal.open { display:flex; }
@@ -24095,6 +24097,7 @@ bluetooth.startIOPinService()</pre>
     <!-- Menús flotantes del editor -->
     <div class="inf-menu" id="inf-cite-menu"></div>
     <div class="inf-menu" id="inf-img-menu"></div>
+    <input type="file" id="inf-doc-img-input" accept="image/*" style="display:none;">
 
     <!-- Modal: editor de ecuaciones LaTeX -->
     <div class="inf-eq-modal" id="inf-eq-modal">
@@ -24912,9 +24915,9 @@ bluetooth.startIOPinService()</pre>
         g5.appendChild(tbtn('T✕', 'Quitar formato', function () { exec('removeFormat'); }));
         bar.appendChild(g5);
         var g6 = grp();
-        g6.appendChild(tbtn('∑ Ecuación', 'Insertar ecuación (LaTeX)', function () { openEqEditor(I._focusEd, null); }, 'wide'));
-        g6.appendChild(tbtn('“ Cita', 'Insertar cita (APA)', function (e) { toggleCiteMenu(e); }, 'wide'));
-        g6.appendChild(tbtn('🖼 Imagen', 'Insertar gráfica o foto', function (e) { toggleImgMenu(e); }, 'wide'));
+        g6.appendChild(tbtn('∑ Ecuación', 'Insertar ecuación (LaTeX)', function () { openEqEditor(ensureFocusEd(), null); }, 'wide'));
+        g6.appendChild(tbtn('“ Cita', 'Insertar cita (APA)', function (e) { ensureFocusEd(); toggleCiteMenu(e); }, 'wide'));
+        g6.appendChild(tbtn('🖼 Imagen', 'Subir o insertar una imagen (gráfica, foto…)', function (e) { toggleImgMenu(e); }, 'wide'));
         bar.appendChild(g6);
       }
 
@@ -25048,6 +25051,24 @@ bluetooth.startIOPinService()</pre>
       // ---- Menús (cita / imagen) ----
       function positionMenu(m, anchor) { try { var r = anchor.getBoundingClientRect(); m.style.left = Math.max(6, Math.min(r.left, window.innerWidth - 240)) + 'px'; m.style.top = (r.bottom + 4) + 'px'; } catch (e) {} }
       function closeMenus() { document.querySelectorAll('.inf-menu.open').forEach(function (m) { m.classList.remove('open'); }); }
+      // Asegura que haya un bloque de texto enfocado donde insertar (fallback al primero).
+      function ensureFocusEd() {
+        if (I._focusEd && I._focusEd.isConnected) return I._focusEd;
+        var pe = el('inf-page-editor');
+        if (pe && pe.classList.contains('open')) { var pb = el('inf-page-body'); if (pb) { pb.focus(); I._focusEd = pb; saveRange(); return pb; } }
+        var r = document.querySelector('#inf-doc-canvas .inf-rich');
+        if (r) {
+          r.focus();
+          try { var range = document.createRange(); range.selectNodeContents(r); range.collapse(false); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); I._savedRange = range.cloneRange(); } catch (e) {}
+          I._focusEd = r; return r;
+        }
+        return null;
+      }
+      function triggerDocImageUpload() {
+        saveRange();
+        var inp = el('inf-doc-img-input'); if (!inp) return;
+        inp.value = ''; inp.click();
+      }
       function toggleCiteMenu(evt) {
         if (!(I.doc.biblio || []).length) { toast('Agregá referencias en «Bibliografía» primero.'); return; }
         var m = el('inf-cite-menu'); if (!m) return;
@@ -25059,16 +25080,21 @@ bluetooth.startIOPinService()</pre>
       function toggleImgMenu(evt) {
         var m = el('inf-img-menu'); if (!m) return;
         if (m.classList.contains('open')) { m.classList.remove('open'); return; }
-        m.innerHTML = ''; var st = state, n = (st.rawData || []).length, ng = st.numGraphs || 1, any = false;
-        for (var i = 0; i < ng; i++) { if (st.charts && st.charts[i] && n > 0) { (function (idx) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '📈 Gráfica ' + (idx + 1); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(chartToDataURL(idx), (fn('computeGraphTitle') ? computeGraphTitle(idx) : ('Gráfica ' + (idx + 1)))); m.classList.remove('open'); }); m.appendChild(b); any = true; })(i); } }
-        (I.devicePhotos || []).forEach(function (p, k) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '🖼 Imagen ' + (k + 1) + ((p.caption || '').trim() ? (' · ' + p.caption.slice(0, 26)) : ''); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(p.dataUrl, (p.caption || '').trim()); m.classList.remove('open'); }); m.appendChild(b); any = true; });
-        if (!any) { toast('No hay gráficas ni imágenes para insertar todavía.'); return; }
+        ensureFocusEd();
+        m.innerHTML = ''; var st = state, n = (st.rawData || []).length, ng = st.numGraphs || 1;
+        // Siempre: subir una imagen nueva desde el editor
+        var up = document.createElement('button'); up.type = 'button'; up.className = 'inf-menu-item inf-menu-upload'; up.textContent = '⬆  Subir imagen nueva…';
+        up.addEventListener('mousedown', function (e) { e.preventDefault(); });
+        up.addEventListener('click', function () { m.classList.remove('open'); triggerDocImageUpload(); });
+        m.appendChild(up);
+        for (var i = 0; i < ng; i++) { if (st.charts && st.charts[i] && n > 0) { (function (idx) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '📈 Gráfica ' + (idx + 1); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(chartToDataURL(idx), (fn('computeGraphTitle') ? computeGraphTitle(idx) : ('Gráfica ' + (idx + 1)))); m.classList.remove('open'); }); m.appendChild(b); })(i); } }
+        (I.devicePhotos || []).forEach(function (p, k) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '🖼 Imagen ' + (k + 1) + ((p.caption || '').trim() ? (' · ' + p.caption.slice(0, 26)) : ''); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(p.dataUrl, (p.caption || '').trim()); m.classList.remove('open'); }); m.appendChild(b); });
         closeMenus(); positionMenu(m, evt.currentTarget); m.classList.add('open');
       }
-      function insertCite(r) { var ed = I._focusEd; if (!ed) { toast('Poné el cursor en un bloque de texto.'); return; } ed.focus(); restoreRange(); try { document.execCommand('insertHTML', false, citeInText(r) + ' '); } catch (e) {} onEditableInput(ed); }
+      function insertCite(r) { var ed = I._focusEd || ensureFocusEd(); if (!ed) { toast('Creá una sección de texto para insertar la cita.'); return; } ed.focus(); restoreRange(); try { document.execCommand('insertHTML', false, citeInText(r) + ' '); } catch (e) {} onEditableInput(ed); }
       function insertImageIntoDoc(dataUrl, caption) {
         if (!dataUrl) { toast('No se pudo capturar la imagen.'); return; }
-        var ed = I._focusEd; if (!ed) { toast('Poné el cursor en un bloque de texto.'); return; }
+        var ed = I._focusEd || ensureFocusEd(); if (!ed) { toast('Creá una sección de texto para insertar la imagen.'); return; }
         var fig = '<figure class="doc-fig" contenteditable="false"><img src="' + dataUrl + '">' + (caption ? '<figcaption>' + esc(caption) + '</figcaption>' : '') + '</figure><p>​</p>';
         ed.focus(); restoreRange(); try { document.execCommand('insertHTML', false, fig); } catch (e) { ed.innerHTML += fig; } onEditableInput(ed);
       }
@@ -25414,9 +25440,10 @@ bluetooth.startIOPinService()</pre>
         renderDrawPreview(); buildChecklist(); buildImgControls(); renderPreview(); schedule();
       }
 
-      // ==================== FOTO DEL MONTAJE ====================
-      function addPhotoFromFile(file) {
-        if (!file) return;
+      // ==================== IMÁGENES ====================
+      // Lee un archivo de imagen y devuelve un dataURL redimensionado (máx 1400px).
+      function readImageDataURL(file, cb) {
+        if (!file) { cb(null); return; }
         var reader = new FileReader();
         reader.onload = function (e) {
           var img = new Image();
@@ -25426,14 +25453,23 @@ bluetooth.startIOPinService()</pre>
             var c = document.createElement('canvas'); c.width = w; c.height = h;
             c.getContext('2d').drawImage(img, 0, 0, w, h);
             var url; try { url = c.toDataURL('image/jpeg', 0.82); } catch (er) { url = e.target.result; }
-            I.devicePhotos.push({ dataUrl: url, name: file.name || 'imagen', caption: '', size: 'medium' });
-            I.selected['photos'] = true;
-            renderPhotos(); buildChecklist(); buildImgControls(); renderPreview(); schedule();
-            toast('Imagen agregada.');
+            cb(url);
           };
+          img.onerror = function () { cb(e.target.result); };
           img.src = e.target.result;
         };
+        reader.onerror = function () { cb(null); };
         reader.readAsDataURL(file);
+      }
+      function addPhotoFromFile(file) {
+        if (!file) return;
+        readImageDataURL(file, function (url) {
+          if (!url) { toast('No se pudo leer la imagen.'); return; }
+          I.devicePhotos.push({ dataUrl: url, name: file.name || 'imagen', caption: '', size: 'medium' });
+          I.selected['photos'] = true;
+          renderPhotos(); buildChecklist(); buildImgControls(); renderPreview(); schedule();
+          toast('Imagen agregada.');
+        });
       }
       // Cada imagen guarda su propio tamaño y pie (más robusto que indexar por posición).
       function normalizePhotos() {
@@ -25778,6 +25814,14 @@ bluetooth.startIOPinService()</pre>
 
         // Editor de página completa
         if (el('inf-page-done')) el('inf-page-done').addEventListener('click', closePageEditor);
+
+        // Subir imagen nueva desde el editor (insertar en el texto)
+        if (el('inf-doc-img-input')) el('inf-doc-img-input').addEventListener('change', function (e) {
+          var f = e.target.files && e.target.files[0]; e.target.value = '';
+          if (!f) return;
+          toast('Cargando imagen…');
+          readImageDataURL(f, function (url) { if (url) insertImageIntoDoc(url, ''); else toast('No se pudo leer la imagen.'); });
+        });
 
         // Abrir / cerrar panel
         var btn = el('btn-informe'); if (btn) btn.addEventListener('click', openPanel);
