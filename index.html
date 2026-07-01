@@ -4388,18 +4388,20 @@
         .inf-fig-sep { width:1px; height:20px; background:#3a3f48; margin:0 3px; }
         .inf-fig-w { font-size:11px; color:#cfd3da; min-width:36px; text-align:center; }
 
-        /* Tooltip de ayuda reutilizable: descripción breve al pasar el cursor por cualquier botón */
+        /* Tooltip de ayuda reutilizable: descripción breve al pasar el cursor por cualquier botón.
+           Se define de forma autónoma (reseteando bottom/white-space/bordes) para que NO se mezcle
+           con el tooltip global [data-tip] del resto de la app (que usa white-space:nowrap y va arriba). */
         .inf-tip { position:relative; }
         .inf-tip[data-tip]:hover::after {
-          content:attr(data-tip); position:absolute; top:calc(100% + 7px); left:50%; transform:translateX(-50%);
-          width:max-content; max-width:230px; text-align:center; line-height:1.35;
+          content:attr(data-tip); position:absolute; top:calc(100% + 7px); bottom:auto; left:50%; right:auto; transform:translateX(-50%);
+          width:max-content; max-width:230px; white-space:normal; text-align:center; line-height:1.35;
           background:#000; color:#fff; border:1px solid #666; padding:5px 9px; font-size:11px; font-weight:400;
-          border-radius:4px; z-index:9600; pointer-events:none;
-          font-family:'Montserrat',-apple-system,sans-serif; letter-spacing:0.2px; box-shadow:0 3px 12px rgba(0,0,0,.55);
+          border-radius:4px; z-index:9600; pointer-events:none; visibility:visible; opacity:1;
+          font-family:'Montserrat',-apple-system,sans-serif; letter-spacing:0.2px; text-transform:none; box-shadow:0 3px 12px rgba(0,0,0,.55);
         }
         .inf-tip[data-tip]:hover::before {
-          content:''; position:absolute; top:calc(100% + 2px); left:50%; transform:translateX(-50%);
-          border:5px solid transparent; border-bottom-color:#000; z-index:9601; pointer-events:none;
+          content:''; position:absolute; top:calc(100% + 2px); bottom:auto; left:50%; right:auto; transform:translateX(-50%);
+          border:5px solid transparent; border-bottom-color:#000; border-top-color:transparent; z-index:9601; pointer-events:none; visibility:visible; opacity:1;
         }
         /* Variante alineada al borde derecho (botones pegados al borde derecho de la pantalla) */
         .inf-tip.inf-tip-left[data-tip]:hover::after { left:auto; right:0; transform:none; }
@@ -4407,8 +4409,6 @@
         /* Variante hacia arriba (botones al pie de una barra o modal) */
         .inf-tip.inf-tip-up[data-tip]:hover::after { top:auto; bottom:calc(100% + 7px); }
         .inf-tip.inf-tip-up[data-tip]:hover::before { top:auto; bottom:calc(100% + 2px); border-bottom-color:transparent; border-top-color:#000; }
-        .inf-tip[data-tip]:hover::after, .inf-tip[data-tip]:hover::before { animation:infTipIn .12s ease-out; }
-        @keyframes infTipIn { from { opacity:0; } to { opacity:1; } }
 
         /* Paleta de símbolos agrupada (modal de ecuación) */
         #inf-eq-syms { display:block; }
@@ -24109,6 +24109,7 @@ bluetooth.startIOPinService()</pre>
                 <div class="inf-section">
                     <div class="inf-section-title">Exportar</div>
                     <button class="inf-btn primary inf-tip" data-tip="Descargar el informe completo en PDF" id="inf-pdf">⬇ Descargar informe (PDF)</button>
+                    <button class="inf-btn inf-tip" data-tip="Descargar el informe en Word (.docx) para editarlo" id="inf-docx">⬇ Descargar informe (Word .docx)</button>
                     <button class="inf-btn inf-tip" data-tip="Descargar todo (PDF, imágenes y datos) en un archivo ZIP" id="inf-zip">📦 Descargar todo (ZIP)</button>
                     <div class="inf-btn-row">
                         <button class="inf-btn inf-tip" data-tip="Descargar las gráficas como imágenes PNG" id="inf-graphs">Gráficos PNG</button>
@@ -24162,7 +24163,7 @@ bluetooth.startIOPinService()</pre>
                 <label class="inf-eq-mode"><input type="checkbox" id="inf-eq-block" checked> Ecuación centrada (grande)</label>
                 <span class="inf-spacer"></span>
                 <button class="inf-btn inf-tip inf-tip-up" data-tip="Cerrar sin insertar la ecuación" id="inf-eq-cancel" style="width:auto;margin:0;">Cancelar</button>
-                <button class="inf-btn primary inf-tip inf-tip-up" data-tip="Insertar la ecuación en el documento" id="inf-eq-insert" style="width:auto;margin:0;">Insertar ✓</button>
+                <button class="inf-btn primary inf-tip inf-tip-up inf-tip-left" data-tip="Insertar la ecuación en el documento" id="inf-eq-insert" style="width:auto;margin:0;">Insertar ✓</button>
             </div>
         </div>
     </div>
@@ -25441,6 +25442,83 @@ bluetooth.startIOPinService()</pre>
         else { toast('No se pudo generar el PDF. Abriendo vista de impresión…'); printFallback(html); }
       }
 
+      // ==================== DESCARGAR WORD (.DOCX) ====================
+      function docxFilename() {
+        var d = new Date();
+        var ds = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        return 'informe_' + slugTitle() + '_' + ds + '.docx';
+      }
+      async function ensureHtmlDocx() {
+        if (window.htmlDocx && typeof window.htmlDocx.asBlob === 'function') return true;
+        var urls = ['https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js',
+                    'https://unpkg.com/html-docx-js@0.3.1/dist/html-docx.js'];
+        for (var i = 0; i < urls.length; i++) {
+          try {
+            await new Promise(function (res, rej) {
+              var s = document.createElement('script'); s.src = urls[i];
+              s.onload = res; s.onerror = rej; document.head.appendChild(s);
+            });
+            if (window.htmlDocx && typeof window.htmlDocx.asBlob === 'function') return true;
+          } catch (e) {}
+        }
+        return !!(window.htmlDocx && typeof window.htmlDocx.asBlob === 'function');
+      }
+      // Word no dibuja SVG desde HTML: convierte las ecuaciones (SVG) a PNG.
+      function rasterizeEquations(holder) {
+        var imgs = [].slice.call(holder.querySelectorAll('img')).filter(function (im) {
+          return /^data:image\/svg\+xml/.test(im.getAttribute('src') || '');
+        });
+        return Promise.all(imgs.map(function (im) {
+          return new Promise(function (res) {
+            var probe = new Image();
+            probe.onload = function () {
+              try {
+                var w = probe.naturalWidth || probe.width || 0, h = probe.naturalHeight || probe.height || 0;
+                if (w && h) {
+                  var sc = 3, c = document.createElement('canvas'); c.width = Math.round(w * sc); c.height = Math.round(h * sc);
+                  var cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height);
+                  cx.drawImage(probe, 0, 0, c.width, c.height);
+                  im.setAttribute('src', c.toDataURL('image/png'));
+                  im.setAttribute('width', String(w)); im.setAttribute('height', String(h));
+                  im.style.width = w + 'px'; im.style.height = h + 'px';
+                }
+              } catch (e) {}
+              res();
+            };
+            probe.onerror = function () { res(); };
+            probe.src = im.getAttribute('src');
+          });
+        }));
+      }
+      async function downloadDocx() {
+        var html = buildReportHTML(collect());
+        if (!html) { toast('No hay contenido seleccionado para exportar.'); return; }
+        toast('Generando documento Word…');
+        var ok = await ensureHtmlDocx();
+        if (!ok) { toast('No se pudo cargar el generador de Word (¿sin internet?).'); return; }
+        // Rasterizar ecuaciones (SVG→PNG) en un contenedor fuera de pantalla antes de exportar.
+        var holder = buildOffscreen(html), body = html;
+        try { await rasterizeEquations(holder); body = holder.innerHTML; } catch (e) {}
+        try { document.body.removeChild(holder); } catch (e) {}
+        var css = REPORT_CSS +
+          "\nbody{margin:0;background:#fff;font-family:'Montserrat',Calibri,Arial,sans-serif;}" +
+          "\n.rep-doc{width:100%;} img{max-width:100%;height:auto;}" +
+          "\n.rep-band,.rep-cover,.rep-fit,.rep-photo,.rep-figure,.rep-block{page-break-inside:avoid;}";
+        var full = '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><style>' + css +
+          '</style></head><body><div class="rep-doc">' + body + '</div></body></html>';
+        var blob;
+        try {
+          blob = window.htmlDocx.asBlob(full, { orientation: 'portrait', margins: { top: 720, right: 720, bottom: 720, left: 720 } });
+        } catch (e) { toast('No se pudo generar el .docx.'); return; }
+        try {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a'); a.href = url; a.download = docxFilename();
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+          toast('Documento Word descargado ✓');
+        } catch (e) { toast('No se pudo descargar el .docx.'); }
+      }
+
       // ==================== DESCARGAR TODO (.ZIP) ====================
       function buildCSVString() {
         var tuEl = el('timeUnit'); var tuv = tuEl ? parseFloat(tuEl.value) : 1000;
@@ -25951,6 +26029,7 @@ bluetooth.startIOPinService()</pre>
         // Exportar
         if (el('inf-pdf')) el('inf-pdf').addEventListener('click', downloadPDF);
         if (el('inf-pdf-top')) el('inf-pdf-top').addEventListener('click', downloadPDF);
+        if (el('inf-docx')) el('inf-docx').addEventListener('click', downloadDocx);
         if (el('inf-graphs')) el('inf-graphs').addEventListener('click', downloadGraphs);
         if (el('inf-csv')) el('inf-csv').addEventListener('click', downloadCSV);
         if (el('inf-zip')) el('inf-zip').addEventListener('click', downloadZip);
