@@ -4356,7 +4356,10 @@
         .inf-rich .doc-eq-block, .inf-page-body .doc-eq-block { display:block; text-align:center; margin:14px auto; background:#f4f8ff; border:1px solid #dbe7fb; border-radius:4px; padding:8px; cursor:pointer; max-width:96%; }
         .inf-rich .doc-eq-block img, .inf-page-body .doc-eq-block img { max-width:100%; height:auto; }
         .inf-rich h4, .inf-page-body h4 { font-size:13px; font-weight:700; margin:7px 0 4px; color:#333; }
-        .inf-rich figure.doc-fig, .inf-page-body figure.doc-fig { width:60%; margin:12px auto; text-align:center; cursor:pointer; }
+        .inf-rich figure.doc-fig, .inf-page-body figure.doc-fig { width:60%; margin:12px auto; text-align:center; cursor:grab; }
+        .inf-rich figure.doc-fig:active, .inf-page-body figure.doc-fig:active { cursor:grabbing; }
+        .inf-rich figure.doc-fig.dragging, .inf-page-body figure.doc-fig.dragging { opacity:0.45; outline:2px dashed #1976d2; }
+        .inf-rich figure.doc-fig img, .inf-page-body figure.doc-fig img { pointer-events:none; }
         .inf-rich figure.doc-fig.fig-left, .inf-page-body figure.doc-fig.fig-left { margin:12px auto 12px 0; text-align:left; }
         .inf-rich figure.doc-fig.fig-right, .inf-page-body figure.doc-fig.fig-right { margin:12px 0 12px auto; text-align:right; }
         .inf-rich figure.doc-fig.fig-float-left, .inf-page-body figure.doc-fig.fig-float-left { float:left; margin:6px 16px 10px 0; }
@@ -4369,9 +4372,19 @@
         /* Barra flotante de edición de imagen */
         .inf-fig-tools { display:none; position:fixed; z-index:9550; background:#0f1115; border:1px solid #555; box-shadow:0 6px 24px rgba(0,0,0,.5); padding:4px; }
         .inf-fig-tools.open { display:flex; align-items:center; flex-wrap:wrap; gap:2px; }
-        .inf-fig-btn { background:#2a2e36; color:#fff; border:1px solid #444; min-width:28px; height:28px; padding:0 7px; cursor:pointer; font-size:13px; font-family:inherit; border-radius:3px; }
+        .inf-fig-btn { position:relative; background:#2a2e36; color:#fff; border:1px solid #444; min-width:28px; height:28px; padding:0 7px; cursor:pointer; font-size:13px; font-family:inherit; border-radius:3px; }
         .inf-fig-btn:hover { background:#fff; color:#000; }
         .inf-fig-btn.on { background:#fff; color:#000; }
+        .inf-fig-btn[data-tip]:hover::after {
+          content:attr(data-tip); position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);
+          background:#000; color:#fff; border:1px solid #666; padding:4px 8px; font-size:11px; font-weight:400;
+          white-space:nowrap; border-radius:4px; z-index:9600; pointer-events:none;
+          font-family:'Montserrat',-apple-system,sans-serif; letter-spacing:0.2px; box-shadow:0 3px 10px rgba(0,0,0,.5);
+        }
+        .inf-fig-btn[data-tip]:hover::before {
+          content:''; position:absolute; bottom:calc(100% + 2px); left:50%; transform:translateX(-50%);
+          border:5px solid transparent; border-top-color:#000; z-index:9600; pointer-events:none;
+        }
         .inf-fig-sep { width:1px; height:20px; background:#3a3f48; margin:0 3px; }
         .inf-fig-w { font-size:11px; color:#cfd3da; min-width:36px; text-align:center; }
 
@@ -25012,6 +25025,7 @@ bluetooth.startIOPinService()</pre>
               var fig = e.target.closest('.doc-fig'); if (fig) { openFigTools(rich, fig); return; }
               closeFigTools();
             });
+            wireFigDrag(rich); markFigsDraggable(rich);
             content.appendChild(rich);
           } else {
             var h = reportItemHTML(id);
@@ -25123,8 +25137,45 @@ bluetooth.startIOPinService()</pre>
       function insertImageIntoDoc(dataUrl, caption) {
         if (!dataUrl) { toast('No se pudo capturar la imagen.'); return; }
         var ed = I._focusEd || ensureFocusEd(); if (!ed) { toast('Creá una sección de texto para insertar la imagen.'); return; }
-        var fig = '<figure class="doc-fig fig-center" contenteditable="false" style="width:60%"><img src="' + dataUrl + '"><figcaption contenteditable="true">' + (caption ? esc(caption) : '') + '</figcaption></figure><p>​</p>';
+        var fig = '<figure class="doc-fig fig-center" contenteditable="false" draggable="true" title="Arrastrá para mover · clic para ver opciones" style="width:60%"><img src="' + dataUrl + '"><figcaption contenteditable="true">' + (caption ? esc(caption) : '') + '</figcaption></figure><p>​</p>';
         ed.focus(); restoreRange(); try { document.execCommand('insertHTML', false, fig); } catch (e) { ed.innerHTML += fig; } onEditableInput(ed);
+      }
+
+      // ---- Arrastrar imágenes para moverlas dentro del documento ----
+      var _dragFig = null;
+      function blockAtY(container, y) {
+        var best = null, bestOff = -Infinity;
+        [].slice.call(container.children).forEach(function (c) {
+          if (c === _dragFig || c.nodeType !== 1) return;
+          var b = c.getBoundingClientRect(), off = y - (b.top + b.height / 2);
+          if (off < 0 && off > bestOff) { bestOff = off; best = c; }
+        });
+        return best;
+      }
+      function markFigsDraggable(ed) {
+        if (!ed) return;
+        ed.querySelectorAll('figure.doc-fig').forEach(function (f) {
+          f.setAttribute('draggable', 'true');
+          if (!f.getAttribute('title')) f.setAttribute('title', 'Arrastrá para mover · clic para ver opciones');
+        });
+      }
+      function wireFigDrag(ed) {
+        if (!ed || ed.dataset.figdrag) return; ed.dataset.figdrag = '1';
+        ed.addEventListener('dragstart', function (e) {
+          var f = e.target && e.target.closest ? e.target.closest('.doc-fig') : null;
+          if (!f) return;
+          _dragFig = f; f.classList.add('dragging'); closeFigTools();
+          try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'fig'); } catch (_) {}
+        });
+        ed.addEventListener('dragover', function (e) {
+          if (!_dragFig || !ed.contains(_dragFig)) return;
+          e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
+          var after = blockAtY(ed, e.clientY);
+          if (after == null) { if (ed.lastElementChild !== _dragFig) ed.appendChild(_dragFig); }
+          else if (after !== _dragFig) { ed.insertBefore(_dragFig, after); }
+        });
+        ed.addEventListener('drop', function (e) { if (_dragFig) e.preventDefault(); });
+        ed.addEventListener('dragend', function () { if (_dragFig) { _dragFig.classList.remove('dragging'); onEditableInput(ed); _dragFig = null; } });
       }
 
       // ---- Barra flotante para editar una imagen del editor ----
@@ -25159,7 +25210,7 @@ bluetooth.startIOPinService()</pre>
       }
       function buildFigTools() {
         var tb = el('inf-fig-tools'); if (!tb || tb.dataset.built) return; tb.dataset.built = '1';
-        function mk(txt, title, fn, align) { var x = document.createElement('button'); x.type = 'button'; x.className = 'inf-fig-btn'; x.title = title; x.innerHTML = txt; if (align) x.setAttribute('data-align', align); x.addEventListener('mousedown', function (e) { e.preventDefault(); }); x.addEventListener('click', fn); return x; }
+        function mk(txt, title, fn, align) { var x = document.createElement('button'); x.type = 'button'; x.className = 'inf-fig-btn'; x.setAttribute('data-tip', title); x.innerHTML = txt; if (align) x.setAttribute('data-align', align); x.addEventListener('mousedown', function (e) { e.preventDefault(); }); x.addEventListener('click', fn); return x; }
         function sep() { var s = document.createElement('span'); s.className = 'inf-fig-sep'; return s; }
         tb.appendChild(mk('⯇', 'Alinear a la izquierda', function () { figSetAlign('fig-left'); }, 'fig-left'));
         tb.appendChild(mk('≡', 'Centrar', function () { figSetAlign('fig-center'); }, 'fig-center'));
@@ -25225,6 +25276,7 @@ bluetooth.startIOPinService()</pre>
         var ti = el('inf-page-title'); ti.value = s.title || '';
         ti.oninput = function () { s.title = ti.value; buildChecklist(); renderPreviewDebounced(); schedule(); };
         var body = el('inf-page-body'); body.dataset.sec = sid; body.innerHTML = s.html || '';
+        wireFigDrag(body); markFigsDraggable(body);
         body.style.fontFamily = I.doc.font || '';
         body.onfocus = function () { I._focusEd = body; };
         body.oninput = function () { onEditableInput(body); };
