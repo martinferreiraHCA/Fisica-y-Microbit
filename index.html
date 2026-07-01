@@ -25165,6 +25165,24 @@ bluetooth.startIOPinService()</pre>
       }
       // Construye el PDF (jsPDF) a partir del HTML del informe. Devuelve la
       // instancia jsPDF o null si falla. No descarga: eso lo decide quien llama.
+      // Busca, hacia arriba desde el corte ideal, un renglón (casi) en blanco
+      // para no partir una línea de texto al paginar. Devuelve la y de corte.
+      function findSafeCut(ctx, width, idealY, minY) {
+        idealY = Math.floor(idealY); minY = Math.max(0, Math.floor(minY));
+        if (!ctx || (idealY - minY) < 4) return idealY;
+        var h = idealY - minY, band;
+        try { band = ctx.getImageData(0, minY, width, h).data; } catch (e) { return idealY; }
+        var stepX = Math.max(1, Math.floor(width / 220));
+        for (var ry = h - 1; ry >= 0; ry--) {
+          var bad = 0, base = ry * width * 4, ok = true;
+          for (var x = 0; x < width; x += stepX) {
+            var i = base + x * 4;
+            if (band[i] < 248 || band[i + 1] < 248 || band[i + 2] < 248) { if (++bad > 3) { ok = false; break; } }
+          }
+          if (ok) return minY + ry;
+        }
+        return idealY;
+      }
       async function buildPdfDoc(html) {
         var holder = null;
         try {
@@ -25187,15 +25205,23 @@ bluetooth.startIOPinService()</pre>
               y += imgH + 12;
             } else {
               if (y > margin) { pdf.addPage(); y = margin; }
+              var cctx = null; try { cctx = canvas.getContext('2d'); } catch (e) {}
               var srcPageH = Math.floor(canvas.width * usableH / usableW), sy = 0, firstSlice = true;
               while (sy < canvas.height) {
-                var sh = Math.min(srcPageH, canvas.height - sy);
+                var cutY;
+                if ((canvas.height - sy) <= srcPageH) { cutY = canvas.height; }
+                else {
+                  var ideal = sy + srcPageH;
+                  cutY = findSafeCut(cctx, canvas.width, ideal, sy + Math.floor(srcPageH * 0.55));
+                  if (!cutY || cutY <= sy + 4 || cutY > ideal) cutY = ideal;
+                }
+                var sh = cutY - sy;
                 var tmp = document.createElement('canvas'); tmp.width = canvas.width; tmp.height = sh;
                 tmp.getContext('2d').drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
                 if (!firstSlice) pdf.addPage();
                 var hpt = sh * (usableW / canvas.width);
                 pdf.addImage(tmp.toDataURL('image/png'), 'PNG', margin, margin, usableW, hpt, undefined, 'FAST');
-                sy += sh; firstSlice = false;
+                sy = cutY; firstSlice = false;
               }
               y = pageH; // forzar página nueva para el siguiente bloque
             }
