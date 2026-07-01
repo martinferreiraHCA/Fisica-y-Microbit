@@ -4268,6 +4268,105 @@
           background:#fff; border:1px solid #333; touch-action:none; cursor:crosshair;
           max-width:100%; max-height:100%; width:auto; height:auto; box-shadow:0 6px 30px rgba(0,0,0,.5);
         }
+
+        /* ===== EDITOR DEL DOCUMENTO ===== */
+        .inf-tabsbar { display:flex; gap:2px; background:#0a0a0a; padding:0 12px; border-bottom:1px solid #000; }
+        .inf-toptab {
+          background:transparent; color:#9e9e9e; border:none; border-bottom:3px solid transparent;
+          padding:11px 18px; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+          cursor:pointer; font-family:inherit;
+        }
+        .inf-toptab:hover { color:#fff; }
+        .inf-toptab.active { color:#fff; border-bottom-color:#fff; }
+
+        .inf-editor-panel { flex:1; min-height:0; flex-direction:column; background:#1a1d23; }
+        .inf-wp-toolbar {
+          display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px 12px;
+          background:#23272e; border-bottom:1px solid #2b303b;
+        }
+        .inf-wp-grp { display:flex; align-items:center; gap:2px; padding-right:6px; margin-right:2px; border-right:1px solid #2b303b; }
+        .inf-wp-grp:last-child { border-right:none; }
+        .inf-wp-btn {
+          background:#000; color:#fff; border:1px solid #444; min-width:30px; height:30px; padding:0 8px;
+          cursor:pointer; font-size:13px; font-family:'Georgia',serif;
+        }
+        .inf-wp-btn.wide { font-family:'Montserrat',sans-serif; font-size:11px; letter-spacing:0.3px; }
+        .inf-wp-btn:hover { background:#fff; color:#000; }
+        .inf-wp-sel { background:#0f1115; color:#fff; border:1px solid #444; height:30px; font-family:inherit; font-size:11px; padding:0 6px; }
+        .inf-wp-color { width:30px; height:30px; padding:0; border:1px solid #444; background:#000; cursor:pointer; }
+
+        .inf-editor-opts { padding:8px 12px; background:#20242b; border-bottom:1px solid #2b303b; }
+        .inf-eo-row { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:5px; }
+        .inf-eo-row:last-child { margin-bottom:0; }
+        .inf-eo-lbl { font-size:10px; color:#9e9e9e; text-transform:uppercase; letter-spacing:0.5px; margin-right:4px; }
+        .inf-eo-check { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#e0e0e0; cursor:pointer; padding:5px 10px; border:1px solid #2b303b; background:#1a1d23; }
+        .inf-eo-check input { accent-color:#fff; cursor:pointer; }
+        .inf-eo-font { display:inline-flex; align-items:center; gap:6px; margin-left:auto; }
+
+        .inf-doc-wrap { flex:1; min-height:0; overflow-y:auto; background:#4a4d52; padding:22px; }
+        .inf-doc-canvas { width:794px; max-width:100%; margin:0 auto; background:#fff; box-shadow:0 6px 34px rgba(0,0,0,.5); padding-bottom:20px; }
+
+        .inf-card { position:relative; }
+        .inf-card.excluded { opacity:0.45; }
+        .inf-card.drop-target { outline:2px dashed #1976d2; outline-offset:-2px; }
+        .inf-card.dragging { opacity:0.5; }
+        .inf-card-bar { display:flex; align-items:center; gap:8px; padding:4px 10px; background:#0a0a0a; color:#fff; }
+        .inf-card-handle { cursor:grab; font-size:15px; color:#9e9e9e; padding:0 2px; user-select:none; }
+        .inf-card-handle:active { cursor:grabbing; }
+        .inf-card-name { flex:1; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .inf-card-actions { display:flex; gap:3px; }
+        .inf-card-btn { background:#000; color:#fff; border:1px solid #444; width:26px; height:24px; cursor:pointer; font-size:11px; padding:0; line-height:1; }
+        .inf-card-btn:hover { border-color:#fff; }
+        .inf-card-btn.on { color:#7fdca0; border-color:#3a5a45; }
+        .inf-card-btn.del { color:#ef5350; border-color:#5a2b2b; }
+        .inf-card-btn.del:hover { background:#ef5350; color:#000; }
+        .inf-card-empty { color:#999; font-size:12px; padding:14px 46px; }
+        .inf-card-sectitle {
+          display:block; width:100%; box-sizing:border-box; border:none; border-bottom:1px solid #eee;
+          padding:10px 46px; font-family:'Montserrat',sans-serif; font-size:18px; font-weight:700; color:#111;
+        }
+        .inf-card-sectitle:focus { outline:none; background:#fbfbf6; }
+        .inf-rich { min-height:56px; padding:12px 46px 16px; font-family:inherit; font-size:13px; line-height:1.6; color:#161616; outline:none; }
+        .inf-rich:focus { background:#fffdf5; }
+        .inf-rich:empty:before { content:'Escribí acá… (usá la barra de arriba para formato, ecuaciones y citas)'; color:#bbb; }
+        .inf-rich h2 { font-size:17px; margin:8px 0 5px; }
+        .inf-rich h3 { font-size:15px; margin:7px 0 4px; }
+        .inf-rich ul, .inf-rich ol { margin:0 0 8px 22px; }
+        .inf-rich .doc-eq { display:inline-block; vertical-align:middle; background:#eef4ff; border:1px solid #cfe0ff; border-radius:3px; padding:0 3px; cursor:pointer; }
+        .inf-rich .doc-eq img { height:1.35em; vertical-align:middle; }
+        .inf-rich figure.doc-fig { margin:10px auto; text-align:center; max-width:70%; }
+        .inf-rich figure.doc-fig img { max-width:100%; border:1px solid #e6e6e6; }
+        .inf-rich figure.doc-fig figcaption { font-size:11px; color:#777; margin-top:4px; }
+
+        .inf-menu { display:none; position:fixed; z-index:9500; background:#0f1115; border:1px solid #555; max-width:280px; max-height:50vh; overflow-y:auto; box-shadow:0 6px 24px rgba(0,0,0,.5); }
+        .inf-menu.open { display:block; }
+        .inf-menu-item { display:block; width:100%; text-align:left; background:transparent; color:#e0e0e0; border:none; border-bottom:1px solid #23272e; padding:8px 12px; font-size:12px; cursor:pointer; font-family:inherit; }
+        .inf-menu-item:hover { background:#fff; color:#000; }
+
+        .inf-eq-modal { display:none; position:fixed; inset:0; z-index:9300; background:rgba(0,0,0,.6); align-items:center; justify-content:center; padding:20px; }
+        .inf-eq-modal.open { display:flex; }
+        .inf-eq-box { background:#23272e; border:1px solid #444; width:640px; max-width:100%; max-height:92vh; overflow-y:auto; padding:16px; }
+        .inf-eq-head { font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:#fff; margin-bottom:10px; }
+        .inf-eq-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+
+        .inf-biblio-mgr { width:794px; max-width:100%; margin:14px auto 0; background:#23272e; border:1px solid #2b303b; padding:12px; }
+        .inf-bib-title { font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:#fff; margin-bottom:9px; }
+        .inf-bib-form input { display:block; width:100%; box-sizing:border-box; background:#0f1115; color:#fff; border:1px solid #444; padding:7px 8px; font-family:inherit; font-size:12px; margin-bottom:6px; }
+        .inf-bib-form input:focus { outline:none; border-color:#fff; }
+        .inf-bib-row2 { display:flex; gap:6px; }
+        .inf-bib-row2 .inf-bib-year { width:90px; flex:none; }
+        .inf-bib-list { margin-top:8px; }
+        .inf-bib-item { display:flex; align-items:flex-start; gap:8px; padding:8px 0; border-top:1px solid #2b303b; }
+        .inf-bib-apa { flex:1; font-size:12px; color:#d6d6d6; line-height:1.5; }
+        .inf-bib-apa i { color:#fff; }
+        .inf-bib-acts { display:flex; gap:5px; flex-shrink:0; }
+        .inf-chip.del { color:#ef5350; border-color:#ef5350; }
+        .inf-chip.del:hover { background:#ef5350; color:#000; }
+
+        @media (max-width: 900px) {
+          .inf-doc-canvas, .inf-biblio-mgr { width:100%; }
+          .inf-card-sectitle, .inf-card-empty, .inf-rich { padding-left:20px; padding-right:20px; }
+        }
         /* ===== INFORME STYLES END ===== */
     </style>
 </head>
@@ -23851,6 +23950,11 @@ bluetooth.startIOPinService()</pre>
             <button class="inf-close" id="informe-close">Cerrar ✕</button>
         </div>
 
+        <div class="inf-tabsbar" id="inf-tabsbar">
+            <button class="inf-toptab active" data-t="armado">Armado</button>
+            <button class="inf-toptab" data-t="editor">Editor del documento</button>
+        </div>
+
         <div class="inf-body">
             <aside class="inf-side" id="inf-side">
                 <div class="inf-section">
@@ -23928,6 +24032,34 @@ bluetooth.startIOPinService()</pre>
             <section class="inf-preview" id="inf-preview">
                 <div class="inf-preview-inner" id="inf-preview-inner"></div>
             </section>
+        </div>
+
+        <!-- Pestaña: Editor del documento (WYSIWYG + tarjetas + LaTeX + APA) -->
+        <div class="inf-editor-panel" id="inf-editor-panel" style="display:none;">
+            <div class="inf-wp-toolbar" id="inf-wp-toolbar"></div>
+            <div class="inf-editor-opts" id="inf-editor-opts"></div>
+            <div class="inf-doc-wrap">
+                <div class="inf-doc-canvas rep-doc" id="inf-doc-canvas"></div>
+                <div class="inf-biblio-mgr" id="inf-biblio-mgr" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menús flotantes del editor -->
+    <div class="inf-menu" id="inf-cite-menu"></div>
+    <div class="inf-menu" id="inf-img-menu"></div>
+
+    <!-- Modal: editor de ecuaciones LaTeX -->
+    <div class="inf-eq-modal" id="inf-eq-modal">
+        <div class="inf-eq-box">
+            <div class="inf-eq-head">Insertar / editar ecuación (LaTeX)</div>
+            <div class="inf-latex-tools" id="inf-eq-syms"></div>
+            <textarea class="inf-blk-latex" id="inf-eq-latex" placeholder="Ej:  E_c = \frac{1}{2} m v^{2}"></textarea>
+            <div class="inf-latex-preview" id="inf-eq-preview"></div>
+            <div class="inf-eq-actions">
+                <button class="inf-btn" id="inf-eq-cancel" style="width:auto;margin:0;">Cancelar</button>
+                <button class="inf-btn primary" id="inf-eq-insert" style="width:auto;margin:0;">Insertar ✓</button>
+            </div>
         </div>
     </div>
 
@@ -24015,7 +24147,22 @@ bluetooth.startIOPinService()</pre>
         ".rep-doc .rep-foot{padding:10px 46px;border-top:2px solid #0a0a0a;font-size:9.5px;color:#9a9a9a;letter-spacing:1.5px;text-transform:uppercase;display:flex;justify-content:space-between;gap:10px;}",
         ".rep-doc .rep-formula{text-align:center;margin:10px 0;}",
         ".rep-doc .rep-formula img{max-width:100%;height:auto;vertical-align:middle;}",
-        ".rep-doc .rep-formula-fallback{font-family:'Courier New',monospace;font-size:12.5px;background:#f4f4f4;border:1px solid #e2e2e2;padding:8px 10px;margin:8px 0;text-align:center;word-break:break-word;}"
+        ".rep-doc .rep-formula-fallback{font-family:'Courier New',monospace;font-size:12.5px;background:#f4f4f4;border:1px solid #e2e2e2;padding:8px 10px;margin:8px 0;text-align:center;word-break:break-word;}",
+        ".rep-doc .rep-rich{font-size:12.5px;line-height:1.6;}",
+        ".rep-doc .rep-rich p{margin:0 0 8px;}",
+        ".rep-doc .rep-rich h2{font-size:16px;font-weight:700;margin:10px 0 6px;}",
+        ".rep-doc .rep-rich h3{font-size:14px;font-weight:700;margin:9px 0 5px;}",
+        ".rep-doc .rep-rich ul,.rep-doc .rep-rich ol{margin:0 0 8px 22px;}",
+        ".rep-doc .rep-rich li{margin:2px 0;}",
+        ".rep-doc .rep-rich .doc-eq{display:inline-block;vertical-align:middle;margin:0 2px;}",
+        ".rep-doc .rep-rich .doc-eq img{height:1.35em;vertical-align:middle;}",
+        ".rep-doc .rep-rich figure.doc-fig{margin:10px auto;text-align:center;max-width:70%;}",
+        ".rep-doc .rep-rich figure.doc-fig img{max-width:100%;display:block;margin:0 auto;border:1px solid #e6e6e6;}",
+        ".rep-doc .rep-rich figure.doc-fig figcaption{font-size:11px;color:#6a6a6a;margin-top:5px;}",
+        ".rep-doc .rep-toc-row{display:flex;gap:10px;padding:4px 0;border-bottom:1px dotted #ddd;font-size:12.5px;}",
+        ".rep-doc .rep-toc-n{color:#888;min-width:26px;font-weight:700;}",
+        ".rep-doc .rep-biblio{font-size:12px;line-height:1.55;}",
+        ".rep-doc .rep-ref{padding:5px 0 5px 22px;text-indent:-22px;}"
       ].join('\n');
 
       // --- Estado del módulo ---
@@ -24025,8 +24172,10 @@ bluetooth.startIOPinService()</pre>
         devicePhotos: [],     // [{dataUrl, name}]
         selected: {},         // {itemId: bool}
         imgOpts: {},          // {imgId: {size:'small'|'medium'|'large', caption}}
-        sections: [],         // [{id, title, pos:'start'|'end', blocks:[...]}]
+        sections: [],         // [{id, title, pos, html}]  (texto enriquecido)
+        doc: null,            // {order, toc, tocTitle, biblioOn, biblio, font, _bibSeq}
         _secSeq: 0, _secActive: 0, _blkSeq: 0,
+        _infTab: 'armado', _focusEd: null, _savedRange: null,
         drawTool: 'pen', drawColor: '#111111', drawSize: 4,
         drawingData: null,    // dataURL del dibujo (fuente única de verdad)
         hasDrawing: function () { return !!this.drawingData; },
@@ -24304,27 +24453,6 @@ bluetooth.startIOPinService()</pre>
         var t = I.notesText.trim(); if (!t) return '';
         return '<div class="rep-block">' + band('Apuntes', '') + '<div class="rep-pad"><div class="rep-notes">' + esc(t) + '</div></div></div>';
       }
-      // Normaliza una sección al modelo por bloques (migra formato viejo {text}).
-      function normSection(s) {
-        if (!s) return s;
-        if (!Array.isArray(s.blocks)) {
-          s.blocks = [];
-          if (typeof s.text === 'string' && s.text.trim()) s.blocks.push({ type: 'text', text: s.text });
-        }
-        s.blocks.forEach(function (b) { if (b && !b.id) b.id = 'blk' + (++I._blkSeq); });
-        if (!s.id) s.id = 'sec' + (++I._secSeq);
-        if (!s.pos) s.pos = 'start';
-        delete s.text;
-        return s;
-      }
-      function sectionHasContent(s) {
-        if ((s.title || '').trim()) return true;
-        return (s.blocks || []).some(function (b) {
-          return (b.type === 'text' && (b.text || '').trim()) ||
-            (b.type === 'formula' && (b.latex || '').trim()) ||
-            (b.type === 'image' && b.dataUrl);
-        });
-      }
       // LaTeX -> imagen SVG (data URL) vía MathJax; robusto para PDF/ZIP.
       function latexToImg(latex, display) {
         try {
@@ -24336,30 +24464,45 @@ bluetooth.startIOPinService()</pre>
           return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(str)));
         } catch (e) { return null; }
       }
-      function renderSectionBlockHTML(b) {
-        if (!b) return '';
-        if (b.type === 'text') { var t = (b.text || '').trim(); return t ? '<div class="rep-notes" style="margin-bottom:9px;">' + esc(t) + '</div>' : ''; }
-        if (b.type === 'formula') {
-          if (!(b.latex || '').trim()) return '';
-          var url = latexToImg(b.latex, true);
-          if (url) return '<div class="rep-formula"><img src="' + url + '"></div>';
-          return '<div class="rep-formula-fallback">' + esc(b.latex) + '</div>';
-        }
-        if (b.type === 'image') {
-          if (!b.dataUrl) return '';
-          var w = SIZE_W[b.size] || '72%';
-          var cap = (b.caption || '').trim() ? ('<div class="rep-cap" style="text-align:center;">' + esc(b.caption) + '</div>') : '';
-          return '<div class="rep-figure" style="max-width:' + w + ';margin:8px auto 2px;"><img src="' + b.dataUrl + '"></div>' + cap;
-        }
-        return '';
+      // Migra el modelo viejo por bloques a HTML enriquecido (texto/fórmula/imagen).
+      function blocksToHtml(s) {
+        var parts = [];
+        (s.blocks || []).forEach(function (b) {
+          if (b.type === 'text' && (b.text || '').trim()) parts.push('<p>' + esc(b.text).replace(/\n/g, '<br>') + '</p>');
+          else if (b.type === 'formula' && (b.latex || '').trim()) {
+            var u = latexToImg(b.latex, false);
+            parts.push('<p>' + (u ? '<span class="doc-eq" contenteditable="false" data-latex="' + encodeURIComponent(b.latex) + '"><img src="' + u + '"></span>' : esc(b.latex)) + '</p>');
+          } else if (b.type === 'image' && b.dataUrl) {
+            parts.push('<figure class="doc-fig"><img src="' + b.dataUrl + '">' + ((b.caption || '').trim() ? '<figcaption>' + esc(b.caption) + '</figcaption>' : '') + '</figure>');
+          } else if (typeof b === 'string') { parts.push('<p>' + esc(b) + '</p>'); }
+        });
+        s.html = parts.join('');
+        delete s.blocks;
       }
-      function sectionBlock(s) {
+      function normSection(s) {
+        if (!s) return s;
+        if (typeof s.html !== 'string') {
+          if (Array.isArray(s.blocks)) blocksToHtml(s);
+          else if (typeof s.text === 'string') { s.html = s.text.trim() ? '<p>' + esc(s.text).replace(/\n/g, '<br>') + '</p>' : ''; delete s.text; }
+        }
+        if (typeof s.html !== 'string') s.html = '';
+        if (!s.id) s.id = 'sec' + (++I._secSeq);
+        if (!s.pos) s.pos = 'start';
+        return s;
+      }
+      function sectionHasContent(s) {
+        if ((s.title || '').trim()) return true;
+        var h = s.html || '';
+        if (/<img|<figure|doc-eq/.test(h)) return true;
+        return h.replace(/<[^>]*>/g, '').replace(/&nbsp;|​|\s/g, '').length > 0;
+      }
+      function sectionReportHTML(s) {
         normSection(s);
-        var title = (s.title || '').trim();
-        var inner = (s.blocks || []).map(renderSectionBlockHTML).filter(Boolean).join('');
-        if (!title && !inner) return '';
-        return '<div class="rep-block">' + band(title || 'Sección', '') + '<div class="rep-pad">' + (inner || '') + '</div></div>';
+        var title = (s.title || '').trim(), html = (s.html || '').trim();
+        if (!title && !html) return '';
+        return '<div class="rep-block">' + band(title || 'Sección', '') + '<div class="rep-pad"><div class="rep-rich">' + (html || '') + '</div></div></div>';
       }
+      function sectionBlock(s) { return sectionReportHTML(s); }
       function drawingBlock() {
         var url = I.drawingDataURL(); if (!url) return '';
         var o = imgOpt('drawing'); var w = SIZE_W[o.size] || '100%';
@@ -24372,21 +24515,115 @@ bluetooth.startIOPinService()</pre>
           esc(I.meta.student || '') + '</span><span>' + esc(I.meta.date || todayStr()) + '</span></div></div>';
       }
 
-      function buildReportHTML(sel) {
+      // ===== Documento: registro de items, orden e índice/bibliografía =====
+      function defaultDoc() { return { order: [], toc: false, tocTitle: 'Índice', biblioOn: false, biblio: [], font: '', _bibSeq: 0 }; }
+      function findSec(sid) { var r = null; (I.sections || []).forEach(function (s) { if (s.id === sid) r = s; }); return r; }
+      function friendlyItemName(id) {
+        if (id === 'cover') return 'Portada';
+        if (id === 'toc') return I.doc.tocTitle || 'Índice';
+        if (id === 'data') return 'Tabla de datos';
+        if (/^graph\d+$/.test(id)) return 'Gráfica ' + (parseInt(id.slice(5)) + 1);
+        if (id === 'fit') return 'Ajuste de curva';
+        if (id === 'segfit') return 'Ajuste por tramos';
+        if (id === 'stats') return 'Estadísticas';
+        if (id === 'photos') return 'Montaje experimental';
+        if (id === 'dataphotos') return 'Fotos de datos';
+        if (id === 'notes') return 'Apuntes';
+        if (id === 'drawing') return 'Diagramas y esquemas';
+        if (id === 'biblio') return 'Bibliografía';
+        if (id.indexOf('sec:') === 0) { var s = findSec(id.slice(4)); return (s && (s.title || '').trim()) || 'Sección'; }
+        return id;
+      }
+      function availableItemIds() {
+        var ids = [], st = state, n = (st.rawData || []).length;
+        ids.push('cover');
+        if (I.doc.toc) ids.push('toc');
+        if (n > 0) ids.push('data');
+        var ng = st.numGraphs || 1;
+        for (var i = 0; i < ng; i++) if (st.charts && st.charts[i] && n > 0) ids.push('graph' + i);
+        if (st.fitResult) ids.push('fit');
+        if ((st.segmentFits || []).length) ids.push('segfit');
+        if (n > 0) ids.push('stats');
+        if ((I.devicePhotos || []).length) ids.push('photos');
+        if ((st.sensorPhotos || []).filter(function (p) { return p && p.photoDataURL; }).length) ids.push('dataphotos');
+        if (I.notesText.trim()) ids.push('notes');
+        if (I.hasDrawing()) ids.push('drawing');
+        (I.sections || []).forEach(function (s) { ids.push('sec:' + s.id); });
+        if (I.doc.biblioOn && (I.doc.biblio || []).length) ids.push('biblio');
+        return ids;
+      }
+      // Fusiona el orden guardado con los items disponibles (inserta nuevos en su lugar canónico).
+      function resolveOrder() {
+        var avail = availableItemIds();
+        if (!I.doc.order) I.doc.order = [];
+        var ordered = I.doc.order.filter(function (id) { return avail.indexOf(id) >= 0; });
+        avail.forEach(function (id) {
+          if (ordered.indexOf(id) >= 0) return;
+          var ci = avail.indexOf(id), insertAt = ordered.length;
+          for (var k = ci - 1; k >= 0; k--) { var pj = ordered.indexOf(avail[k]); if (pj >= 0) { insertAt = pj + 1; break; } if (k === 0) insertAt = 0; }
+          ordered.splice(insertAt, 0, id);
+        });
+        I.doc.order = ordered;
+        return ordered;
+      }
+      function reportItemHTML(id) {
+        if (id === 'cover') return coverBlock();
+        if (id === 'toc') return tocBlock();
+        if (id === 'data') return dataBlocks().join('');
+        if (/^graph\d+$/.test(id)) return graphBlock(parseInt(id.slice(5))) || '';
+        if (id === 'fit') return state.fitResult ? fitBlock() : '';
+        if (id === 'segfit') return (state.segmentFits || []).length ? segfitBlock() : '';
+        if (id === 'stats') return (state.rawData || []).length ? statsBlock() : '';
+        if (id === 'photos') return (I.devicePhotos || []).length ? photosBlock() : '';
+        if (id === 'dataphotos') return dataPhotosBlock();
+        if (id === 'notes') return I.notesText.trim() ? notesBlock() : '';
+        if (id === 'drawing') return I.hasDrawing() ? drawingBlock() : '';
+        if (id === 'biblio') return biblioBlock();
+        if (id.indexOf('sec:') === 0) { var s = findSec(id.slice(4)); return s ? sectionReportHTML(s) : ''; }
+        return '';
+      }
+      function tocBlock() {
+        var order = resolveOrder(), items = [];
+        order.forEach(function (id) {
+          if (id === 'cover' || id === 'toc') return;
+          if (I.selected[id] === false) return;
+          if (id.indexOf('sec:') === 0) { var s = findSec(id.slice(4)); if (!s || !sectionHasContent(s)) return; }
+          if (id === 'biblio' && !(I.doc.biblioOn && (I.doc.biblio || []).length)) return;
+          if (!reportItemHTML(id)) return;
+          items.push(friendlyItemName(id));
+        });
+        if (!items.length) return '';
+        var rows = items.map(function (nm, i) { return '<div class="rep-toc-row"><span class="rep-toc-n">' + (i + 1) + '.</span><span>' + esc(nm) + '</span></div>'; }).join('');
+        return '<div class="rep-block">' + band(I.doc.tocTitle || 'Índice', '') + '<div class="rep-pad"><div class="rep-toc">' + rows + '</div></div></div>';
+      }
+      function biblioAPA(r) {
         var parts = [];
-        if (sel.cover) parts.push(coverBlock());
-        (I.sections || []).forEach(function (s) { if (s.pos !== 'end' && sel['sec:' + s.id]) { var b = sectionBlock(s); if (b) parts.push(b); } });
-        if (sel.data) dataBlocks().forEach(function (b) { parts.push(b); });
-        var ng = (state.numGraphs || 1);
-        for (var i = 0; i < ng; i++) { if (sel['graph' + i]) { var b = graphBlock(i); if (b) parts.push(b); } }
-        if (sel.fit && state.fitResult) parts.push(fitBlock());
-        if (sel.segfit && (state.segmentFits || []).length) parts.push(segfitBlock());
-        if (sel.stats && (state.rawData || []).length) parts.push(statsBlock());
-        if (sel.photos && I.devicePhotos.length) parts.push(photosBlock());
-        if (sel.dataphotos && (state.sensorPhotos || []).length) parts.push(dataPhotosBlock());
-        if (sel.notes && I.notesText.trim()) parts.push(notesBlock());
-        if (sel.drawing && I.hasDrawing()) parts.push(drawingBlock());
-        (I.sections || []).forEach(function (s) { if (s.pos === 'end' && sel['sec:' + s.id]) { var b = sectionBlock(s); if (b) parts.push(b); } });
+        if ((r.authors || '').trim()) parts.push(esc(r.authors.trim()));
+        parts.push('(' + esc((r.year || '').trim() || 's. f.') + ').');
+        if ((r.title || '').trim()) parts.push(esc(r.title.trim()) + '.');
+        if ((r.source || '').trim()) parts.push('<i>' + esc(r.source.trim()) + '</i>.');
+        if ((r.url || '').trim()) parts.push(esc(r.url.trim()));
+        return parts.join(' ');
+      }
+      function citeInText(r) {
+        var a = (r.authors || '').trim();
+        var sur = a ? a.split(',')[0].split(';')[0].trim() : ((r.title || '').trim() || 'Ref');
+        var etal = (a.split(';').length > 1) ? ' et al.' : '';
+        return '(' + sur + etal + ', ' + ((r.year || '').trim() || 's. f.') + ')';
+      }
+      function biblioBlock() {
+        var refs = (I.doc.biblio || []).slice();
+        if (!refs.length) return '';
+        refs.sort(function (a, b) { return (a.authors || a.title || '').localeCompare(b.authors || b.title || ''); });
+        var lis = refs.map(function (r) { return '<div class="rep-ref">' + biblioAPA(r) + '</div>'; }).join('');
+        return '<div class="rep-block">' + band('Bibliografía', 'APA') + '<div class="rep-pad"><div class="rep-biblio">' + lis + '</div></div></div>';
+      }
+      function buildReportHTML(sel) {
+        var order = resolveOrder(), parts = [];
+        order.forEach(function (id) {
+          if (sel[id] === false) return;
+          var h = reportItemHTML(id); if (h) parts.push(h);
+        });
         if (parts.length) parts.push(footBlock());
         return parts.join('');
       }
@@ -24424,7 +24661,7 @@ bluetooth.startIOPinService()</pre>
         });
       }
 
-      function refresh() { buildChecklist(); buildImgControls(); buildSectionsUI(); renderDrawPreview(); renderPreview(); }
+      function refresh() { buildChecklist(); buildImgControls(); buildSectionsUI(); renderDrawPreview(); if (I._infTab === 'editor') buildEditor(); renderPreview(); }
 
       // --- Controles de tamaño y pie de cada imagen ---
       function imgList() {
@@ -24465,7 +24702,7 @@ bluetooth.startIOPinService()</pre>
         });
       }
 
-      // --- Secciones de texto propias (pestañas + bloques + LaTeX) ---
+      // ===== SECCIONES + EDITOR DEL DOCUMENTO (WYSIWYG + tarjetas + LaTeX + APA) =====
       var QUICK_SECS = ['Fundamento teórico', 'Objetivo', 'Materiales', 'Marco teórico', 'Procedimiento', 'Resultados', 'Conclusión'];
       var LATEX_SNIPPETS = [
         ['x²', '^{2}'], ['xₙ', '_{n}'], ['a/b', '\\frac{a}{b}'], ['√', '\\sqrt{x}'], ['ⁿ√', '\\sqrt[n]{x}'],
@@ -24473,9 +24710,10 @@ bluetooth.startIOPinService()</pre>
         ['Δ', '\\Delta '], ['α', '\\alpha '], ['β', '\\beta '], ['θ', '\\theta '], ['π', '\\pi '], ['ω', '\\omega '], ['μ', '\\mu '],
         ['Σ', '\\sum_{i=1}^{n} '], ['∫', '\\int_{a}^{b} '], ['d/dx', '\\frac{d}{dx}'], ['vec', '\\vec{v}'], ['x̄', '\\bar{x}'], ['10ⁿ', '\\times 10^{-3}'], ['abc', '\\text{texto}']
       ];
+      var DOC_FONTS = [['', 'Montserrat (predet.)'], ['Georgia, serif', 'Georgia (serif)'], ["'Times New Roman', serif", 'Times New Roman'], ['Arial, sans-serif', 'Arial'], ["'Courier New', monospace", 'Courier'], ['Verdana, sans-serif', 'Verdana']];
+      var WP_FONTS = ['Montserrat', 'Georgia', 'Times New Roman', 'Arial', 'Courier New', 'Verdana'];
+      var WP_SIZES = [['2', 'Chica'], ['3', 'Normal'], ['4', 'Media'], ['5', 'Grande'], ['6', 'Muy grande']];
       function chip(txt) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-chip'; b.textContent = txt; return b; }
-      function markSecSel(s) { I.selected['sec:' + s.id] = true; }
-      function onSectionsChange() { buildSectionsUI(); buildChecklist(); renderPreviewDebounced(); schedule(); }
       function insertAtCursor(ta, text) {
         var s = ta.selectionStart || 0, e = ta.selectionEnd || 0, v = ta.value;
         ta.value = v.slice(0, s) + text + v.slice(e);
@@ -24489,67 +24727,25 @@ bluetooth.startIOPinService()</pre>
         else if (window.MathJax && MathJax.startup && MathJax.startup.promise) { elm.textContent = 'cargando MathJax…'; MathJax.startup.promise.then(go); }
         else { elm.innerHTML = '<span class="inf-math-empty">Sin conexión no se ve el render, pero el LaTeX se guarda igual.</span>'; }
       }
-      function moveBlock(s, bi, dir) { var j = bi + dir; if (j < 0 || j >= s.blocks.length) return; var t = s.blocks[bi]; s.blocks[bi] = s.blocks[j]; s.blocks[j] = t; buildSectionsUI(); renderPreviewDebounced(); schedule(); }
-      function insertBlock(s, block) { block.id = 'blk' + (++I._blkSeq); s.blocks.push(block); markSecSel(s); onSectionsChange(); }
-      function moveSection(dir) {
-        var i = I._secActive, j = i + dir; if (j < 0 || j >= I.sections.length) return;
-        var t = I.sections[i]; I.sections[i] = I.sections[j]; I.sections[j] = t; I._secActive = j;
-        buildSectionsUI(); buildChecklist(); renderPreviewDebounced(); schedule();
+
+      // ---- Selección/rango dentro de los editores enriquecidos ----
+      function saveRange() {
+        try {
+          var sel = window.getSelection(); if (!sel || !sel.rangeCount) return;
+          var r = sel.getRangeAt(0), node = r.commonAncestorContainer;
+          var elx = node.nodeType === 1 ? node : node.parentNode;
+          if (elx && elx.closest && elx.closest('.inf-rich')) { I._savedRange = r.cloneRange(); I._focusEd = elx.closest('.inf-rich'); }
+        } catch (e) {}
       }
-      function sectionGraphOptions() {
-        var opts = [], st = state, n = (st.rawData || []).length, ng = st.numGraphs || 1;
-        for (var i = 0; i < ng; i++) { if (st.charts && st.charts[i] && n > 0) opts.push({ label: 'Gráfica ' + (i + 1), idx: i }); }
-        return opts;
+      function restoreRange() { try { if (I._savedRange) { var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(I._savedRange); } } catch (e) {} }
+      function onEditableInput(ed) {
+        if (!ed) return;
+        var s = findSec(ed.dataset.sec);
+        if (s) { s.html = ed.innerHTML; if (sectionHasContent(s)) I.selected['sec:' + s.id] = true; }
+        renderPreviewDebounced(); schedule();
       }
-      function renderBlockEditor(s, b, bi) {
-        var wrap = document.createElement('div'); wrap.className = 'inf-blk';
-        var head = document.createElement('div'); head.className = 'inf-blk-head';
-        var label = { text: 'Texto', formula: 'Fórmula (LaTeX)', image: 'Imagen' }[b.type] || b.type;
-        head.innerHTML = '<span class="inf-blk-type">' + label + '</span>' +
-          '<span class="inf-blk-actions">' +
-          '<button class="inf-blk-btn" data-a="up" title="Subir">▲</button>' +
-          '<button class="inf-blk-btn" data-a="down" title="Bajar">▼</button>' +
-          '<button class="inf-blk-btn del" data-a="del" title="Quitar bloque">✕</button>' +
-          '</span>';
-        head.querySelector('[data-a=up]').addEventListener('click', function () { moveBlock(s, bi, -1); });
-        head.querySelector('[data-a=down]').addEventListener('click', function () { moveBlock(s, bi, 1); });
-        head.querySelector('[data-a=del]').addEventListener('click', function () { s.blocks.splice(bi, 1); onSectionsChange(); });
-        wrap.appendChild(head);
-        var body = document.createElement('div'); body.className = 'inf-blk-body'; wrap.appendChild(body);
-        if (b.type === 'text') {
-          var ta = document.createElement('textarea'); ta.className = 'inf-blk-text'; ta.placeholder = 'Escribí el texto…'; ta.value = b.text || '';
-          ta.addEventListener('input', function () { b.text = ta.value; markSecSel(s); buildChecklist(); renderPreviewDebounced(); schedule(); });
-          body.appendChild(ta);
-        } else if (b.type === 'formula') {
-          var tools = document.createElement('div'); tools.className = 'inf-latex-tools';
-          var taF = document.createElement('textarea'); taF.className = 'inf-blk-latex'; taF.placeholder = 'Ej:  v = v_0 + a\\,t'; taF.value = b.latex || '';
-          var prev = document.createElement('div'); prev.className = 'inf-latex-preview';
-          LATEX_SNIPPETS.forEach(function (sn) {
-            var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'inf-latex-sym'; btn.textContent = sn[0]; btn.title = sn[1];
-            btn.addEventListener('click', function () { insertAtCursor(taF, sn[1]); b.latex = taF.value; renderMath(prev, b.latex); markSecSel(s); buildChecklist(); renderPreviewDebounced(); schedule(); });
-            tools.appendChild(btn);
-          });
-          taF.addEventListener('input', function () { b.latex = taF.value; renderMath(prev, b.latex); markSecSel(s); buildChecklist(); renderPreviewDebounced(); schedule(); });
-          var help = document.createElement('div'); help.className = 'inf-latex-help';
-          help.innerHTML = 'Escribí la fórmula en <b>LaTeX</b>. Ej: <code>\\frac{1}{2} m v^{2}</code>, <code>\\vec{F} = m\\,\\vec{a}</code>, <code>x_0</code>, <code>10^{-3}</code>. Tocá los botones para aprender los comandos.';
-          body.appendChild(tools); body.appendChild(taF); body.appendChild(prev); body.appendChild(help);
-          renderMath(prev, b.latex);
-        } else if (b.type === 'image') {
-          body.className = 'inf-blk-body inf-blk-imgbody';
-          var thumb = document.createElement('img'); thumb.className = 'inf-blk-thumb'; thumb.src = b.dataUrl || '';
-          var fields = document.createElement('div'); fields.className = 'inf-blk-imgfields';
-          var row = document.createElement('div'); row.className = 'inf-blk-imgrow'; row.innerHTML = '<span>Tamaño</span>';
-          var sizeSel = document.createElement('select'); sizeSel.className = 'inf-blk-size';
-          SIZE_LABELS.forEach(function (sz) { var o = document.createElement('option'); o.value = sz[0]; o.textContent = sz[1]; if ((b.size || 'medium') === sz[0]) o.selected = true; sizeSel.appendChild(o); });
-          sizeSel.addEventListener('change', function () { b.size = sizeSel.value; renderPreviewDebounced(); schedule(); });
-          row.appendChild(sizeSel);
-          var cap = document.createElement('input'); cap.type = 'text'; cap.className = 'inf-blk-cap'; cap.placeholder = 'Pie de imagen…'; cap.value = b.caption || '';
-          cap.addEventListener('input', function () { b.caption = cap.value; renderPreviewDebounced(); schedule(); });
-          fields.appendChild(row); fields.appendChild(cap);
-          body.appendChild(thumb); body.appendChild(fields);
-        }
-        return wrap;
-      }
+
+      // ---- Armado: puntero a la pestaña Editor ----
       function renderSecQuick() {
         var q = el('inf-sec-quick'); if (!q) return; q.innerHTML = '';
         QUICK_SECS.forEach(function (name) { var b = chip('＋ ' + name); b.addEventListener('click', function () { addSection(name); }); q.appendChild(b); });
@@ -24557,72 +24753,266 @@ bluetooth.startIOPinService()</pre>
       }
       function buildSectionsUI() {
         renderSecQuick();
-        var tabs = el('inf-sec-tabs'), ed = el('inf-sec-editor'); if (!tabs || !ed) return;
-        var secs = I.sections || []; secs.forEach(normSection);
-        if (I._secActive >= secs.length) I._secActive = secs.length - 1;
-        if (I._secActive < 0) I._secActive = 0;
-        tabs.innerHTML = '';
-        secs.forEach(function (s, idx) {
-          var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-tab' + (idx === I._secActive ? ' active' : '');
-          b.textContent = (s.title || '').trim() || ('Sección ' + (idx + 1));
-          b.addEventListener('click', function () { I._secActive = idx; buildSectionsUI(); });
-          tabs.appendChild(b);
-        });
-        if (secs.length) { var addTab = document.createElement('button'); addTab.type = 'button'; addTab.className = 'inf-tab add'; addTab.textContent = '＋'; addTab.title = 'Nueva sección'; addTab.addEventListener('click', function () { addSection(''); }); tabs.appendChild(addTab); }
-        ed.innerHTML = '';
-        if (!secs.length) { ed.innerHTML = '<div class="inf-hint">Todavía no hay secciones. Creá una con los botones de arriba (ej: <b>Fundamento teórico</b>) para escribir texto, fórmulas en LaTeX e insertar gráficas o fotos.</div>'; return; }
-        var s = secs[I._secActive];
-        var head = document.createElement('div'); head.className = 'inf-sec-ehead';
-        head.innerHTML =
-          '<input class="inf-sec-title" type="text" placeholder="Título de la sección (ej: Fundamento teórico)" value="' + esc(s.title || '') + '">' +
-          '<div class="inf-sec-row2">' +
-          '<button class="inf-sec-mv" data-a="left" title="Mover sección antes">◀</button>' +
-          '<button class="inf-sec-mv" data-a="right" title="Mover sección después">▶</button>' +
-          '<select class="inf-sec-pos"><option value="start"' + (s.pos !== 'end' ? ' selected' : '') + '>Al inicio</option><option value="end"' + (s.pos === 'end' ? ' selected' : '') + '>Al final</option></select>' +
-          '<button class="inf-sec-del" title="Quitar sección">✕ Quitar</button>' +
-          '</div>';
-        var ti = head.querySelector('.inf-sec-title');
-        ti.addEventListener('input', function () {
-          s.title = ti.value;
-          var btns = tabs.querySelectorAll('.inf-tab:not(.add)');
-          if (btns[I._secActive]) btns[I._secActive].textContent = (s.title || '').trim() || ('Sección ' + (I._secActive + 1));
-          buildChecklist(); renderPreviewDebounced(); schedule();
-        });
-        head.querySelector('[data-a=left]').addEventListener('click', function () { moveSection(-1); });
-        head.querySelector('[data-a=right]').addEventListener('click', function () { moveSection(1); });
-        head.querySelector('.inf-sec-pos').addEventListener('change', function () { s.pos = this.value; buildChecklist(); renderPreviewDebounced(); schedule(); });
-        head.querySelector('.inf-sec-del').addEventListener('click', function () { if (!confirm('¿Quitar esta sección completa?')) return; var id = s.id; I.sections.splice(I._secActive, 1); delete I.selected['sec:' + id]; buildSectionsUI(); buildChecklist(); renderPreview(); schedule(); });
-        ed.appendChild(head);
-        var list = document.createElement('div'); list.className = 'inf-blk-list';
-        (s.blocks || []).forEach(function (b, bi) { list.appendChild(renderBlockEditor(s, b, bi)); });
-        ed.appendChild(list);
-        var ins = document.createElement('div'); ins.className = 'inf-ins';
-        ins.innerHTML = '<div class="inf-ins-title">Insertar en esta sección</div>';
-        var row1 = document.createElement('div'); row1.className = 'inf-ins-row';
-        var bText = chip('＋ Texto'); bText.addEventListener('click', function () { insertBlock(s, { type: 'text', text: '' }); });
-        var bFx = chip('＋ Fórmula (LaTeX)'); bFx.addEventListener('click', function () { insertBlock(s, { type: 'formula', latex: '', display: true }); });
-        row1.appendChild(bText); row1.appendChild(bFx); ins.appendChild(row1);
-        var gopts = sectionGraphOptions(), photos = I.devicePhotos || [];
-        if (gopts.length || photos.length) {
-          var row2 = document.createElement('div'); row2.className = 'inf-ins-row';
-          row2.innerHTML = '<span class="inf-ins-lbl">Imágenes:</span>';
-          gopts.forEach(function (g) { var c = chip('📈 ' + g.label); c.addEventListener('click', function () { insertBlock(s, { type: 'image', dataUrl: chartToDataURL(g.idx), caption: (fn('computeGraphTitle') ? computeGraphTitle(g.idx) : g.label), size: 'medium' }); }); row2.appendChild(c); });
-          photos.forEach(function (p, k) { var c = chip('📷 Foto ' + (k + 1)); c.addEventListener('click', function () { insertBlock(s, { type: 'image', dataUrl: p.dataUrl, caption: 'Montaje experimental', size: 'medium' }); }); row2.appendChild(c); });
-          ins.appendChild(row2);
-        } else {
-          var hint = document.createElement('div'); hint.className = 'inf-hint'; hint.textContent = 'Cargá datos (para insertar gráficas) o agregá una foto del montaje para poder insertarlas acá.'; ins.appendChild(hint);
-        }
-        ed.appendChild(ins);
+        var tabs = el('inf-sec-tabs'); if (tabs) tabs.innerHTML = '';
+        var ed = el('inf-sec-editor'); if (!ed) return;
+        var cnt = (I.sections || []).length;
+        ed.innerHTML = '<div class="inf-hint">Las secciones de texto (fundamento teórico, objetivo, conclusión…) se escriben en la pestaña <b>«Editor del documento»</b> (arriba), con procesador de texto, ecuaciones LaTeX, citas y ordenamiento por tarjetas.' + (cnt ? (' Tenés <b>' + cnt + '</b> sección(es).') : '') + '</div>' +
+          '<button class="inf-btn primary" id="inf-goto-editor">Abrir editor del documento →</button>';
+        var g = el('inf-goto-editor'); if (g) g.addEventListener('click', function () { switchInfTab('editor'); });
       }
       function addSection(title) {
         I._secSeq = (I._secSeq || 0) + 1;
         var id = 'sec' + I._secSeq;
-        var blocks = [{ id: 'blk' + (++I._blkSeq), type: 'text', text: '' }];
-        I.sections.push({ id: id, title: title || '', pos: 'start', blocks: blocks });
+        I.sections.push({ id: id, title: title || '', pos: 'start', html: '' });
         I.selected['sec:' + id] = true;
-        I._secActive = I.sections.length - 1;
-        buildSectionsUI(); buildChecklist(); renderPreview(); schedule();
+        resolveOrder();
+        switchInfTab('editor');
+        buildSectionsUI(); buildChecklist(); buildEditor();
+        setTimeout(function () { var eds = document.querySelectorAll('#inf-doc-canvas .inf-rich'); var last = eds[eds.length - 1]; if (last) { last.focus(); last.scrollIntoView({ block: 'center' }); } }, 30);
+        renderPreviewDebounced(); schedule();
       }
+      function delSection(sid) {
+        var i = -1; (I.sections || []).forEach(function (s, k) { if (s.id === sid) i = k; });
+        if (i < 0) return;
+        var id = 'sec:' + sid; I.sections.splice(i, 1); delete I.selected[id];
+        var oi = (I.doc.order || []).indexOf(id); if (oi >= 0) I.doc.order.splice(oi, 1);
+        buildEditor(); buildChecklist(); buildSectionsUI(); renderPreviewDebounced(); schedule();
+      }
+
+      // ---- Pestañas superiores (Armado / Editor del documento) ----
+      function switchInfTab(t) {
+        I._infTab = t;
+        var body = document.querySelector('.inf-body'), edp = el('inf-editor-panel'), tb = el('inf-tabsbar');
+        if (tb) tb.querySelectorAll('.inf-toptab').forEach(function (b) { b.classList.toggle('active', b.dataset.t === t); });
+        if (t === 'editor') { if (body) body.style.display = 'none'; if (edp) edp.style.display = 'flex'; buildEditor(); }
+        else { if (edp) edp.style.display = 'none'; if (body) body.style.display = 'flex'; refresh(); }
+      }
+
+      // ---- Barra de procesador de texto (aplica al bloque enfocado) ----
+      var _wpBuilt = false;
+      function exec(cmd, val) {
+        var ed = I._focusEd;
+        if (!ed || !ed.isConnected) { toast('Poné el cursor dentro de un bloque de texto para dar formato.'); return; }
+        ed.focus(); restoreRange();
+        try { document.execCommand(cmd, false, val === undefined ? null : val); } catch (e) {}
+        onEditableInput(ed);
+      }
+      function buildWpToolbar() {
+        var bar = el('inf-wp-toolbar'); if (!bar || _wpBuilt) return; _wpBuilt = true;
+        function grp() { var d = document.createElement('span'); d.className = 'inf-wp-grp'; return d; }
+        function tbtn(txt, title, fn, cls) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-wp-btn' + (cls ? ' ' + cls : ''); b.title = title || txt; b.innerHTML = txt; b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', fn); return b; }
+        bar.innerHTML = '';
+        var g1 = grp();
+        var fsel = document.createElement('select'); fsel.className = 'inf-wp-sel'; fsel.title = 'Fuente';
+        WP_FONTS.forEach(function (f) { var o = document.createElement('option'); o.value = f; o.textContent = f; fsel.appendChild(o); });
+        fsel.addEventListener('mousedown', function () { saveRange(); });
+        fsel.addEventListener('change', function () { exec('fontName', fsel.value); });
+        g1.appendChild(fsel);
+        var ssel = document.createElement('select'); ssel.className = 'inf-wp-sel'; ssel.title = 'Tamaño';
+        WP_SIZES.forEach(function (s) { var o = document.createElement('option'); o.value = s[0]; o.textContent = s[1]; if (s[0] === '3') o.selected = true; ssel.appendChild(o); });
+        ssel.addEventListener('mousedown', function () { saveRange(); });
+        ssel.addEventListener('change', function () { exec('fontSize', ssel.value); });
+        g1.appendChild(ssel); bar.appendChild(g1);
+        var g2 = grp();
+        g2.appendChild(tbtn('<b>N</b>', 'Negrita', function () { exec('bold'); }));
+        g2.appendChild(tbtn('<i>C</i>', 'Cursiva', function () { exec('italic'); }));
+        g2.appendChild(tbtn('<u>S</u>', 'Subrayado', function () { exec('underline'); }));
+        bar.appendChild(g2);
+        var g3 = grp();
+        g3.appendChild(tbtn('T1', 'Título', function () { exec('formatBlock', 'H2'); }));
+        g3.appendChild(tbtn('T2', 'Subtítulo', function () { exec('formatBlock', 'H3'); }));
+        g3.appendChild(tbtn('¶', 'Párrafo normal', function () { exec('formatBlock', 'P'); }));
+        bar.appendChild(g3);
+        var g4 = grp();
+        g4.appendChild(tbtn('•', 'Lista con viñetas', function () { exec('insertUnorderedList'); }));
+        g4.appendChild(tbtn('1.', 'Lista numerada', function () { exec('insertOrderedList'); }));
+        g4.appendChild(tbtn('⯇', 'Izquierda', function () { exec('justifyLeft'); }));
+        g4.appendChild(tbtn('≡', 'Centrar', function () { exec('justifyCenter'); }));
+        g4.appendChild(tbtn('⯈', 'Derecha', function () { exec('justifyRight'); }));
+        bar.appendChild(g4);
+        var g5 = grp();
+        var color = document.createElement('input'); color.type = 'color'; color.className = 'inf-wp-color'; color.title = 'Color del texto'; color.value = '#111111';
+        color.addEventListener('mousedown', function () { saveRange(); });
+        color.addEventListener('input', function () { exec('foreColor', color.value); });
+        g5.appendChild(color);
+        g5.appendChild(tbtn('T✕', 'Quitar formato', function () { exec('removeFormat'); }));
+        bar.appendChild(g5);
+        var g6 = grp();
+        g6.appendChild(tbtn('∑ Ecuación', 'Insertar ecuación (LaTeX)', function () { openEqEditor(I._focusEd, null); }, 'wide'));
+        g6.appendChild(tbtn('“ Cita', 'Insertar cita (APA)', function (e) { toggleCiteMenu(e); }, 'wide'));
+        g6.appendChild(tbtn('🖼 Imagen', 'Insertar gráfica o foto', function (e) { toggleImgMenu(e); }, 'wide'));
+        bar.appendChild(g6);
+      }
+
+      // ---- Opciones del editor (índice, bibliografía, fuente, agregar) ----
+      function buildEditorOpts() {
+        var box = el('inf-editor-opts'); if (!box) return; box.innerHTML = '';
+        var add = document.createElement('div'); add.className = 'inf-eo-row';
+        add.innerHTML = '<span class="inf-eo-lbl">Agregar sección:</span>';
+        QUICK_SECS.forEach(function (name) { var c = chip('＋ ' + name); c.addEventListener('click', function () { addSection(name); }); add.appendChild(c); });
+        var blank = chip('＋ En blanco'); blank.addEventListener('click', function () { addSection(''); }); add.appendChild(blank);
+        box.appendChild(add);
+        var row = document.createElement('div'); row.className = 'inf-eo-row';
+        var tocL = document.createElement('label'); tocL.className = 'inf-eo-check'; tocL.innerHTML = '<input type="checkbox"' + (I.doc.toc ? ' checked' : '') + '> Índice';
+        tocL.querySelector('input').addEventListener('change', function (e) { setToc(e.target.checked); });
+        var bibL = document.createElement('label'); bibL.className = 'inf-eo-check'; bibL.innerHTML = '<input type="checkbox"' + (I.doc.biblioOn ? ' checked' : '') + '> Bibliografía';
+        bibL.querySelector('input').addEventListener('change', function (e) { setBiblio(e.target.checked); });
+        row.appendChild(tocL); row.appendChild(bibL);
+        var fspan = document.createElement('span'); fspan.className = 'inf-eo-font'; fspan.innerHTML = '<span class="inf-eo-lbl">Fuente:</span>';
+        var fsel = document.createElement('select'); fsel.className = 'inf-wp-sel';
+        DOC_FONTS.forEach(function (f) { var o = document.createElement('option'); o.value = f[0]; o.textContent = f[1]; if ((I.doc.font || '') === f[0]) o.selected = true; fsel.appendChild(o); });
+        fsel.addEventListener('change', function () { I.doc.font = fsel.value; applyDocFont(); renderPreviewDebounced(); schedule(); });
+        fspan.appendChild(fsel); row.appendChild(fspan);
+        box.appendChild(row);
+      }
+      function applyDocFont() { var c = el('inf-doc-canvas'); if (c) c.style.fontFamily = I.doc.font || ''; }
+      function setToc(on) { I.doc.toc = !!on; if (on) I.selected['toc'] = true; buildEditor(); renderPreviewDebounced(); schedule(); }
+      function setBiblio(on) { I.doc.biblioOn = !!on; if (on) I.selected['biblio'] = true; buildEditor(); renderPreviewDebounced(); schedule(); }
+
+      // ---- Lienzo de tarjetas del documento ----
+      function cbtn(txt, title) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-card-btn'; b.title = title || ''; b.textContent = txt; return b; }
+      function moveDocItem(id, dir) { var order = resolveOrder(), i = order.indexOf(id), j = i + dir; if (i < 0 || j < 0 || j >= order.length) return; var t = order[i]; order[i] = order[j]; order[j] = t; I.doc.order = order; buildEditorDoc(); renderPreviewDebounced(); schedule(); }
+      function reorderDocItem(from, to) { var order = resolveOrder(), fi = order.indexOf(from); if (fi < 0) return; order.splice(fi, 1); var ti = order.indexOf(to); if (ti < 0) ti = order.length; order.splice(ti, 0, from); I.doc.order = order; buildEditorDoc(); renderPreviewDebounced(); schedule(); }
+      function buildEditorDoc() {
+        var canvas = el('inf-doc-canvas'); if (!canvas) return;
+        applyDocFont();
+        var order = resolveOrder(); canvas.innerHTML = '';
+        if (!order.length) { canvas.innerHTML = '<div class="inf-card-empty" style="padding:30px;text-align:center;">El documento está vacío. Cargá datos o agregá una sección de texto.</div>'; return; }
+        order.forEach(function (id) {
+          var included = I.selected[id] !== false, isSec = id.indexOf('sec:') === 0;
+          var card = document.createElement('div'); card.className = 'inf-card' + (included ? '' : ' excluded'); card.dataset.id = id;
+          var bar = document.createElement('div'); bar.className = 'inf-card-bar';
+          var handle = document.createElement('span'); handle.className = 'inf-card-handle'; handle.title = 'Arrastrá para reordenar'; handle.textContent = '⠿'; handle.setAttribute('draggable', 'true');
+          var name = document.createElement('span'); name.className = 'inf-card-name'; name.textContent = friendlyItemName(id);
+          var acts = document.createElement('span'); acts.className = 'inf-card-actions';
+          var up = cbtn('▲', 'Subir'), dn = cbtn('▼', 'Bajar'), inc = cbtn(included ? '●' : '○', included ? 'Incluido (clic para ocultar)' : 'Oculto (clic para incluir)'); inc.classList.toggle('on', included);
+          up.addEventListener('click', function () { moveDocItem(id, -1); });
+          dn.addEventListener('click', function () { moveDocItem(id, 1); });
+          inc.addEventListener('click', function () { I.selected[id] = (I.selected[id] === false); buildEditorDoc(); buildChecklist(); renderPreviewDebounced(); schedule(); });
+          acts.appendChild(up); acts.appendChild(dn); acts.appendChild(inc);
+          if (isSec) { var del = cbtn('✕', 'Quitar sección'); del.classList.add('del'); del.addEventListener('click', function () { if (confirm('¿Quitar esta sección?')) delSection(id.slice(4)); }); acts.appendChild(del); }
+          bar.appendChild(handle); bar.appendChild(name); bar.appendChild(acts); card.appendChild(bar);
+          var content = document.createElement('div'); content.className = 'inf-card-content';
+          if (isSec) {
+            var s = findSec(id.slice(4)); normSection(s);
+            var ti = document.createElement('input'); ti.className = 'inf-card-sectitle'; ti.value = s.title || ''; ti.placeholder = 'Título de la sección';
+            ti.addEventListener('input', function () { s.title = ti.value; name.textContent = (s.title || '').trim() || 'Sección'; buildChecklist(); renderPreviewDebounced(); schedule(); });
+            content.appendChild(ti);
+            var rich = document.createElement('div'); rich.className = 'inf-rich'; rich.contentEditable = 'true'; rich.dataset.sec = s.id; rich.innerHTML = s.html || '';
+            rich.addEventListener('focus', function () { I._focusEd = rich; });
+            rich.addEventListener('input', function () { onEditableInput(rich); });
+            rich.addEventListener('mouseup', function () { I._focusEd = rich; saveRange(); });
+            rich.addEventListener('keyup', function () { saveRange(); });
+            rich.addEventListener('click', function (e) { var t = e.target && e.target.closest ? e.target.closest('.doc-eq') : null; if (t) openEqEditor(rich, t); });
+            content.appendChild(rich);
+          } else {
+            var h = reportItemHTML(id);
+            content.innerHTML = '<div class="inf-card-auto rep-doc">' + (h || '<div class="inf-card-empty">(se genera de los datos)</div>') + '</div>';
+          }
+          card.appendChild(content);
+          handle.addEventListener('dragstart', function (e) { I._dragId = id; card.classList.add('dragging'); try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id); } catch (_) {} });
+          handle.addEventListener('dragend', function () { card.classList.remove('dragging'); canvas.querySelectorAll('.drop-target').forEach(function (x) { x.classList.remove('drop-target'); }); });
+          card.addEventListener('dragover', function (e) { e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch (_) {} card.classList.add('drop-target'); });
+          card.addEventListener('dragleave', function () { card.classList.remove('drop-target'); });
+          card.addEventListener('drop', function (e) { e.preventDefault(); card.classList.remove('drop-target'); if (I._dragId && I._dragId !== id) reorderDocItem(I._dragId, id); });
+          canvas.appendChild(card);
+        });
+      }
+
+      // ---- Editor de ecuaciones (modal) ----
+      var _eqEditable = null, _eqTarget = null, _eqSymsBuilt = false;
+      function buildEqSyms() {
+        var box = el('inf-eq-syms'); if (!box || _eqSymsBuilt) return; _eqSymsBuilt = true;
+        LATEX_SNIPPETS.forEach(function (sn) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-latex-sym'; b.textContent = sn[0]; b.title = sn[1]; b.addEventListener('click', function () { var ta = el('inf-eq-latex'); insertAtCursor(ta, sn[1]); renderMath(el('inf-eq-preview'), ta.value); }); box.appendChild(b); });
+      }
+      function openEqEditor(editable, existingSpan) {
+        editable = editable || I._focusEd;
+        if (!editable) { toast('Poné el cursor en un bloque de texto.'); return; }
+        _eqEditable = editable; _eqTarget = existingSpan || null; I._focusEd = editable;
+        if (!existingSpan) saveRange();
+        var ta = el('inf-eq-latex'); ta.value = existingSpan ? decodeURIComponent(existingSpan.getAttribute('data-latex') || '') : '';
+        renderMath(el('inf-eq-preview'), ta.value);
+        el('inf-eq-modal').classList.add('open'); setTimeout(function () { ta.focus(); }, 20);
+      }
+      function closeEqEditor() { var m = el('inf-eq-modal'); if (m) m.classList.remove('open'); _eqTarget = null; }
+      function commitEq() {
+        var ta = el('inf-eq-latex'), latex = (ta.value || '').trim();
+        if (!latex) { if (_eqTarget && _eqTarget.parentNode) { _eqTarget.parentNode.removeChild(_eqTarget); onEditableInput(_eqEditable); } closeEqEditor(); return; }
+        var url = latexToImg(latex, false), inner = url ? ('<img src="' + url + '">') : esc(latex);
+        if (_eqTarget) { _eqTarget.setAttribute('data-latex', encodeURIComponent(latex)); _eqTarget.innerHTML = inner; }
+        else {
+          var span = '<span class="doc-eq" contenteditable="false" data-latex="' + encodeURIComponent(latex) + '">' + inner + '</span>​';
+          _eqEditable.focus(); restoreRange();
+          try { document.execCommand('insertHTML', false, span); } catch (e) { _eqEditable.innerHTML += span; }
+        }
+        onEditableInput(_eqEditable); closeEqEditor();
+      }
+
+      // ---- Menús (cita / imagen) ----
+      function positionMenu(m, anchor) { try { var r = anchor.getBoundingClientRect(); m.style.left = Math.max(6, Math.min(r.left, window.innerWidth - 240)) + 'px'; m.style.top = (r.bottom + 4) + 'px'; } catch (e) {} }
+      function closeMenus() { document.querySelectorAll('.inf-menu.open').forEach(function (m) { m.classList.remove('open'); }); }
+      function toggleCiteMenu(evt) {
+        if (!(I.doc.biblio || []).length) { toast('Agregá referencias en «Bibliografía» primero.'); return; }
+        var m = el('inf-cite-menu'); if (!m) return;
+        if (m.classList.contains('open')) { m.classList.remove('open'); return; }
+        closeMenus(); m.innerHTML = '';
+        (I.doc.biblio || []).forEach(function (r) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = citeInText(r) + ' — ' + ((r.title || r.authors || '').slice(0, 38)); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertCite(r); m.classList.remove('open'); }); m.appendChild(b); });
+        positionMenu(m, evt.currentTarget); m.classList.add('open');
+      }
+      function toggleImgMenu(evt) {
+        var m = el('inf-img-menu'); if (!m) return;
+        if (m.classList.contains('open')) { m.classList.remove('open'); return; }
+        m.innerHTML = ''; var st = state, n = (st.rawData || []).length, ng = st.numGraphs || 1, any = false;
+        for (var i = 0; i < ng; i++) { if (st.charts && st.charts[i] && n > 0) { (function (idx) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '📈 Gráfica ' + (idx + 1); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(chartToDataURL(idx), (fn('computeGraphTitle') ? computeGraphTitle(idx) : ('Gráfica ' + (idx + 1)))); m.classList.remove('open'); }); m.appendChild(b); any = true; })(i); } }
+        (I.devicePhotos || []).forEach(function (p, k) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '📷 Foto ' + (k + 1); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(p.dataUrl, 'Montaje experimental'); m.classList.remove('open'); }); m.appendChild(b); any = true; });
+        if (!any) { toast('No hay gráficas ni fotos para insertar todavía.'); return; }
+        closeMenus(); positionMenu(m, evt.currentTarget); m.classList.add('open');
+      }
+      function insertCite(r) { var ed = I._focusEd; if (!ed) { toast('Poné el cursor en un bloque de texto.'); return; } ed.focus(); restoreRange(); try { document.execCommand('insertHTML', false, citeInText(r) + ' '); } catch (e) {} onEditableInput(ed); }
+      function insertImageIntoDoc(dataUrl, caption) {
+        if (!dataUrl) { toast('No se pudo capturar la imagen.'); return; }
+        var ed = I._focusEd; if (!ed) { toast('Poné el cursor en un bloque de texto.'); return; }
+        var fig = '<figure class="doc-fig" contenteditable="false"><img src="' + dataUrl + '">' + (caption ? '<figcaption>' + esc(caption) + '</figcaption>' : '') + '</figure><p>​</p>';
+        ed.focus(); restoreRange(); try { document.execCommand('insertHTML', false, fig); } catch (e) { ed.innerHTML += fig; } onEditableInput(ed);
+      }
+
+      // ---- Bibliografía (APA) ----
+      function bv(id) { var e = el(id); return e ? e.value.trim() : ''; }
+      function buildBiblioManager() {
+        var box = el('inf-biblio-mgr'); if (!box) return;
+        if (!I.doc.biblioOn) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        box.style.display = '';
+        box.innerHTML = '<div class="inf-bib-title">Bibliografía consultada (APA)</div>' +
+          '<div class="inf-bib-form">' +
+          '<input id="inf-bib-authors" placeholder="Autor(es) — Apellido, N.; Apellido, N.">' +
+          '<div class="inf-bib-row2"><input id="inf-bib-year" class="inf-bib-year" placeholder="Año"><input id="inf-bib-title" placeholder="Título"></div>' +
+          '<input id="inf-bib-source" placeholder="Fuente (revista, editorial o sitio web)">' +
+          '<input id="inf-bib-url" placeholder="URL (opcional)">' +
+          '<button class="inf-btn" id="inf-bib-add">＋ Agregar referencia</button>' +
+          '</div><div class="inf-bib-list" id="inf-bib-list"></div>';
+        el('inf-bib-add').addEventListener('click', addRef);
+        renderBibList();
+      }
+      function addRef() {
+        var r = { id: 'ref' + (I.doc._bibSeq = (I.doc._bibSeq || 0) + 1), authors: bv('inf-bib-authors'), year: bv('inf-bib-year'), title: bv('inf-bib-title'), source: bv('inf-bib-source'), url: bv('inf-bib-url') };
+        if (!(r.authors || r.title)) { toast('Completá al menos autor o título.'); return; }
+        I.doc.biblio.push(r);
+        ['inf-bib-authors', 'inf-bib-year', 'inf-bib-title', 'inf-bib-source', 'inf-bib-url'].forEach(function (id) { var e = el(id); if (e) e.value = ''; });
+        renderBibList(); buildEditorDoc(); renderPreviewDebounced(); schedule();
+      }
+      function renderBibList() {
+        var l = el('inf-bib-list'); if (!l) return; l.innerHTML = '';
+        (I.doc.biblio || []).forEach(function (r, i) {
+          var d = document.createElement('div'); d.className = 'inf-bib-item';
+          d.innerHTML = '<div class="inf-bib-apa">' + biblioAPA(r) + '</div>';
+          var acts = document.createElement('div'); acts.className = 'inf-bib-acts';
+          var citeB = chip('Insertar cita'); citeB.addEventListener('mousedown', function (e) { e.preventDefault(); }); citeB.addEventListener('click', function () { insertCite(r); });
+          var delB = chip('✕'); delB.classList.add('del'); delB.addEventListener('click', function () { I.doc.biblio.splice(i, 1); renderBibList(); buildEditorDoc(); renderPreviewDebounced(); schedule(); });
+          acts.appendChild(citeB); acts.appendChild(delB); d.appendChild(acts); l.appendChild(d);
+        });
+      }
+
+      function buildEditor() { buildWpToolbar(); buildEqSyms(); buildEditorOpts(); buildEditorDoc(); buildBiblioManager(); }
 
       // ==================== EXPORTAR A PDF ====================
       function slugTitle() {
@@ -24951,7 +25341,7 @@ bluetooth.startIOPinService()</pre>
         var report = {
           meta: I.meta, notes: I.notesText, drawing: I.drawingDataURL(),
           devicePhotos: I.devicePhotos, selected: I.selected,
-          imgOpts: I.imgOpts, sections: I.sections
+          imgOpts: I.imgOpts, sections: I.sections, doc: I.doc
         };
         return JSON.parse(JSON.stringify({ schema: 2, savedAt: Date.now(), app: app, report: report }));
       }
@@ -25023,6 +25413,9 @@ bluetooth.startIOPinService()</pre>
           I._secSeq = I.sections.reduce(function (m, s) { var nn = parseInt(String(s.id).replace(/\D/g, '')) || 0; return Math.max(m, nn); }, 0);
           I._blkSeq = 0; I._secActive = 0;
           I.sections.forEach(normSection);
+          I.doc = Object.assign(defaultDoc(), rep.doc || {});
+          if (!Array.isArray(I.doc.order)) I.doc.order = [];
+          if (!Array.isArray(I.doc.biblio)) I.doc.biblio = [];
           I.drawingData = rep.drawing || null;
           syncReportInputs();
           renderPhotos();
@@ -25049,7 +25442,7 @@ bluetooth.startIOPinService()</pre>
           (st.segmentFits || []).length, (st.sensorPhotos || []).length,
           I.meta.title, I.meta.student, I.meta.course, I.meta.institution, I.meta.date,
           I.notesText.length, (I.drawingData ? I.drawingData.length : 0), I.devicePhotos.length,
-          JSON.stringify(I.selected), JSON.stringify(I.imgOpts), JSON.stringify(I.sections)].join('|');
+          JSON.stringify(I.selected), JSON.stringify(I.imgOpts), JSON.stringify(I.sections), JSON.stringify(I.doc)].join('|');
       }
       async function autosaveNow() {
         var st = state || {};
@@ -25153,6 +25546,7 @@ bluetooth.startIOPinService()</pre>
         I.meta = { title: '', student: '', course: '', institution: '', date: todayStr() };
         I.notesText = ''; I.devicePhotos = []; I.selected = {};
         I.imgOpts = {}; I.sections = []; I._secSeq = 0; I._secActive = 0; I._blkSeq = 0; I.drawingData = null;
+        I.doc = defaultDoc(); I._infTab = 'armado'; switchInfTab('armado');
         syncReportInputs(); renderPhotos(); renderDrawPreview();
         try { await idbDel(AUTOSAVE_KEY); } catch (e) {}
         try { localStorage.removeItem(LS_KEY); } catch (e) {}
@@ -25209,13 +25603,25 @@ bluetooth.startIOPinService()</pre>
         if (el('inf-open-input')) el('inf-open-input').addEventListener('change', function (e) { if (e.target.files && e.target.files[0]) openProjectFile(e.target.files[0]); e.target.value = ''; });
         if (el('inf-reset')) el('inf-reset').addEventListener('click', resetAll);
 
+        // Pestañas superiores (Armado / Editor del documento)
+        var tb = el('inf-tabsbar');
+        if (tb) tb.querySelectorAll('.inf-toptab').forEach(function (b) { b.addEventListener('click', function () { switchInfTab(b.dataset.t); }); });
+
+        // Editor de ecuaciones (modal)
+        var eqTa = el('inf-eq-latex');
+        if (eqTa) eqTa.addEventListener('input', function () { renderMath(el('inf-eq-preview'), eqTa.value); });
+        if (el('inf-eq-insert')) el('inf-eq-insert').addEventListener('click', commitEq);
+        if (el('inf-eq-cancel')) el('inf-eq-cancel').addEventListener('click', closeEqEditor);
+
         // Abrir / cerrar panel
         var btn = el('btn-informe'); if (btn) btn.addEventListener('click', openPanel);
         var closeBtn = el('informe-close'); if (closeBtn) closeBtn.addEventListener('click', closePanel);
         document.addEventListener('keydown', function (e) {
           if (e.key !== 'Escape') return;
-          var m = el('inf-draw-modal');
-          if (m && m.classList.contains('open')) { closeDrawModal(false); }
+          var eqm = el('inf-eq-modal');
+          var dm = el('inf-draw-modal');
+          if (eqm && eqm.classList.contains('open')) { closeEqEditor(); }
+          else if (dm && dm.classList.contains('open')) { closeDrawModal(false); }
           else if (el('informe-panel').classList.contains('open')) { closePanel(); }
         });
 
@@ -25234,6 +25640,7 @@ bluetooth.startIOPinService()</pre>
 
       function init() {
         injectStyles();
+        if (!I.doc) I.doc = defaultDoc();
         I.meta.date = I.meta.date || todayStr();
         wire();
         setupDrawBig();
@@ -25241,6 +25648,13 @@ bluetooth.startIOPinService()</pre>
         refresh();
         startAutosave();
         checkRestore();
+        // Guardar la selección activa dentro de los editores enriquecidos
+        document.addEventListener('selectionchange', saveRange);
+        // Cerrar menús flotantes al hacer clic afuera
+        document.addEventListener('mousedown', function (e) {
+          if (e.target && e.target.closest && (e.target.closest('.inf-menu') || e.target.closest('.inf-wp-btn'))) return;
+          closeMenus();
+        });
       }
 
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
