@@ -26350,11 +26350,6 @@ bluetooth.startIOPinService()</pre>
       function closeDrivePop() { var pop = el('gdrive-pop'); if (pop) pop.classList.remove('open'); }
       function toggleDrivePop() { var pop = el('gdrive-pop'); if (pop && pop.classList.contains('open')) closeDrivePop(); else openDrivePop(); }
       I.driveTopClick = driveTopClick;
-      async function gAutoConnect() {
-        try { if (gConfigured() && !gConnected() && localStorage.getItem('fbit_gdrive') === '1') { await gConnect(false); } } catch (e) {}
-        if (gConnected()) gSyncStart();
-        gUpdateDriveUI();
-      }
 
       // --- Sincronización continua del EXPERIMENTO ACTIVO con Google Drive ---
       // Cada experimento es un archivo con su nombre (el Título) en la carpeta fisicabit y se
@@ -26446,7 +26441,7 @@ bluetooth.startIOPinService()</pre>
       }
 
       // --- Panel ---
-      function openPanel() { refresh(); el('informe-panel').classList.add('open'); gAutoConnect(); }
+      function openPanel() { refresh(); el('informe-panel').classList.add('open'); gUpdateDriveUI(); }
       function closePanel() { el('informe-panel').classList.remove('open'); }
 
       function wire() {
@@ -26575,8 +26570,7 @@ bluetooth.startIOPinService()</pre>
         refresh();
         startAutosave();
         checkRestore();
-        // Reconexión silenciosa con Google Drive al abrir fisicabit (si ya te conectaste antes en este navegador)
-        setTimeout(function () { gAutoConnect(); }, 1500);
+        gUpdateDriveUI();   // solo refresca el botón; NO conecta con Google (la conexión es siempre manual)
         // Guardar la selección activa dentro de los editores enriquecidos
         document.addEventListener('selectionchange', saveRange);
         buildFigTools();
