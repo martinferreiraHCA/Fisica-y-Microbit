@@ -4311,6 +4311,21 @@
         .inf-dd-sep { height:1px; background:#2b303b; margin:5px 6px; }
         .inf-dd-status { padding:7px 10px 3px; font-size:10px; opacity:.65; margin:0; }
 
+        /* Google Drive: modal de proyectos guardados */
+        .inf-drive-modal { display:none; position:fixed; inset:0; z-index:9720; background:rgba(0,0,0,.6); align-items:center; justify-content:center; padding:20px; }
+        .inf-drive-modal.open { display:flex; }
+        .inf-drive-box { background:#23272e; border:1px solid #444; border-radius:9px; width:520px; max-width:100%; max-height:80vh; display:flex; flex-direction:column; overflow:hidden; }
+        .inf-drive-head { display:flex; align-items:center; gap:10px; padding:14px 16px; background:#0f1115; color:#fff; font-weight:700; letter-spacing:.5px; border-bottom:1px solid #2b303b; }
+        .inf-drive-x { background:transparent; border:none; color:#cfd3da; font-size:16px; cursor:pointer; line-height:1; }
+        .inf-drive-x:hover { color:#fff; }
+        .inf-drive-list { overflow-y:auto; padding:8px; }
+        .inf-drive-row { display:flex; align-items:center; gap:12px; padding:10px; border-bottom:1px solid #2b303b; }
+        .inf-drive-row:last-child { border-bottom:none; }
+        .inf-drive-info { flex:1; min-width:0; }
+        .inf-drive-name { color:#e8eaed; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .inf-drive-date { color:#8a93a0; font-size:10.5px; margin-top:2px; }
+        .inf-drive-empty { color:#9aa0a8; text-align:center; padding:26px 12px; font-size:12.5px; }
+
         /* Pestaña Apuntes */
         .inf-apuntes-panel { flex:1; min-height:0; flex-direction:column; background:#1a1d23; overflow:hidden; }
         .inf-apuntes-scroll { flex:1; overflow-y:auto; padding:22px; }
@@ -24091,10 +24106,18 @@ bluetooth.startIOPinService()</pre>
                     <button class="inf-dd-item" id="inf-graphs">📈 Gráficos PNG</button>
                     <button class="inf-dd-item" id="inf-csv">📄 Datos CSV</button>
                     <div class="inf-dd-sep"></div>
-                    <div class="inf-dd-group">Guardar / Proyecto</div>
+                    <div class="inf-dd-group">Guardar / Proyecto (archivo)</div>
                     <button class="inf-dd-item" id="inf-save">💾 Guardar proyecto</button>
                     <button class="inf-dd-item" id="inf-open">📂 Abrir proyecto</button>
                     <button class="inf-dd-item danger" id="inf-reset">🗑 Reiniciar todo</button>
+                    <div class="inf-dd-sep"></div>
+                    <div class="inf-dd-group">Google Drive</div>
+                    <button class="inf-dd-item" id="inf-gdrive-signin">☁ Iniciar sesión con Google</button>
+                    <button class="inf-dd-item" id="inf-gdrive-save" style="display:none;">☁ Guardar en Drive</button>
+                    <button class="inf-dd-item" id="inf-gdrive-open" style="display:none;">☁ Abrir de Drive</button>
+                    <button class="inf-dd-item" id="inf-gdrive-signout" style="display:none;">Cerrar sesión de Google</button>
+                    <div class="inf-dd-status inf-hint" id="inf-gdrive-status">Guardá tu progreso y retomalo en cualquier navegador.</div>
+                    <div class="inf-dd-sep"></div>
                     <div class="inf-dd-status inf-hint" id="inf-autosave-status">Autoguardado en el navegador activado.</div>
                 </div>
                 <input type="file" id="inf-open-input" accept=".json,.zip,application/json,application/zip" style="display:none;">
@@ -24248,6 +24271,14 @@ bluetooth.startIOPinService()</pre>
             <button class="inf-btn primary inf-tip inf-tip-left" data-tip="Guardar el dibujo y cerrar el lienzo" id="inf-draw-done" style="width:auto;margin:0;">Listo ✓</button>
         </div>
         <div class="inf-draw-stage"><canvas id="inf-draw-big"></canvas></div>
+    </div>
+
+    <!-- Modal: proyectos guardados en Google Drive -->
+    <div class="inf-drive-modal" id="inf-drive-modal">
+        <div class="inf-drive-box">
+            <div class="inf-drive-head"><span>Tus proyectos en Google Drive</span><span class="inf-spacer"></span><button class="inf-drive-x" id="inf-drive-close">✕</button></div>
+            <div class="inf-drive-list" id="inf-drive-list"></div>
+        </div>
     </div>
 
     <div class="inf-toast" id="inf-toast"></div>
@@ -26040,6 +26071,7 @@ bluetooth.startIOPinService()</pre>
       }
       function openProjectFile(file) {
         if (!file) return;
+        I._driveFileId = null;
         var name = (file.name || '').toLowerCase();
         if (name.endsWith('.zip') || file.type === 'application/zip') { openProjectZip(file); return; }
         var reader = new FileReader();
@@ -26066,6 +26098,169 @@ bluetooth.startIOPinService()</pre>
         } catch (e) { console.error('[INFORME] Error abriendo ZIP:', e); toast('No se pudo abrir el ZIP.'); }
       }
 
+      // ==================== GOOGLE DRIVE (guardar/retomar el progreso en la nube) ====================
+      // El Client ID de OAuth es PÚBLICO por diseño: se puede dejar en el repositorio sin riesgo.
+      // NUNCA pongas acá el "client secret" (el flujo de navegador NO lo usa). La seguridad la da la
+      // lista de "Orígenes autorizados de JavaScript" que configurás en Google Cloud (ej. https://fisicabit.com):
+      // aunque cualquiera vea este ID, Google solo lo acepta desde ese dominio.
+      //
+      // Para activarlo (una sola vez):
+      //   1) console.cloud.google.com → creá un proyecto.
+      //   2) "APIs y servicios" → "Biblioteca" → habilitá "Google Drive API".
+      //   3) "APIs y servicios" → "Pantalla de consentimiento de OAuth" → configurala (tipo Externo).
+      //   4) "Credenciales" → "Crear credencial" → "ID de cliente de OAuth" → tipo "Aplicación web".
+      //   5) En "Orígenes autorizados de JavaScript" agregá tu dominio (ej. https://fisicabit.com).
+      //   6) Copiá el "ID de cliente" y pegalo abajo en GOOGLE_CLIENT_ID.
+      var GOOGLE_CLIENT_ID = '';   // ej: '1234567890-abcdefg.apps.googleusercontent.com'
+      var GDRIVE_FOLDER = 'fisicabit';
+      var GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+      var _gTok = null, _gTokExp = 0, _gTokenClient = null, _gPending = null, _gFolderId = null, _gUser = null, _gGisReady = false;
+
+      function gConfigured() { return !!GOOGLE_CLIENT_ID; }
+      function gConnected() { return !!_gTok && Date.now() < _gTokExp; }
+      function ensureGis() {
+        if (window.google && google.accounts && google.accounts.oauth2) { _gGisReady = true; return Promise.resolve(true); }
+        return new Promise(function (res) {
+          var s = document.createElement('script');
+          s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.defer = true;
+          s.onload = function () { _gGisReady = true; res(true); };
+          s.onerror = function () { res(false); };
+          document.head.appendChild(s);
+        });
+      }
+      function gRequestToken(interactive) {
+        return new Promise(function (resolve) {
+          _gPending = resolve;
+          try {
+            if (!_gTokenClient) {
+              _gTokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID, scope: GDRIVE_SCOPE,
+                callback: function (resp) {
+                  var r = _gPending; _gPending = null;
+                  if (resp && resp.access_token) {
+                    _gTok = resp.access_token;
+                    _gTokExp = Date.now() + ((parseInt(resp.expires_in, 10) || 3600) * 1000) - 60000;
+                    if (r) r(true);
+                  } else if (r) r(false);
+                },
+                error_callback: function () { var r = _gPending; _gPending = null; if (r) r(false); }
+              });
+            }
+            _gTokenClient.requestAccessToken({ prompt: interactive ? '' : 'none' });
+          } catch (e) { var r = _gPending; _gPending = null; if (r) r(false); }
+        });
+      }
+      async function gConnect(interactive) {
+        if (!gConfigured()) { if (interactive) toast('Falta configurar el Client ID de Google (ver GOOGLE_CLIENT_ID en el código).'); return false; }
+        if (gConnected()) return true;
+        var ok = await ensureGis(); if (!ok) { if (interactive) toast('No se pudo cargar Google (¿sin internet?).'); return false; }
+        var got = await gRequestToken(interactive);
+        if (got) { try { localStorage.setItem('fbit_gdrive', '1'); } catch (e) {} await gFetchUser(); }
+        gUpdateDriveUI();
+        return got;
+      }
+      function gDisconnect() {
+        try { if (_gTok && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(_gTok, function () {}); } catch (e) {}
+        _gTok = null; _gTokExp = 0; _gUser = null; _gFolderId = null;
+        try { localStorage.removeItem('fbit_gdrive'); } catch (e) {}
+        gUpdateDriveUI(); toast('Sesión de Google cerrada.');
+      }
+      function gApi(path, opts) {
+        opts = opts || {}; opts.headers = opts.headers || {};
+        opts.headers['Authorization'] = 'Bearer ' + _gTok;
+        return fetch('https://www.googleapis.com/' + path, opts);
+      }
+      async function gFetchUser() {
+        try { var r = await gApi('drive/v3/about?fields=user(displayName,emailAddress)'); var j = await r.json(); _gUser = (j && j.user) ? j.user : null; } catch (e) { _gUser = null; }
+      }
+      async function gEnsureToken() { if (gConnected()) return true; await gConnect(false); return gConnected(); }
+      async function gGetFolderId() {
+        if (_gFolderId) return _gFolderId;
+        var q = "mimeType='application/vnd.google-apps.folder' and name='" + GDRIVE_FOLDER + "' and trashed=false";
+        var r = await gApi('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&spaces=drive');
+        var j = await r.json();
+        if (j.files && j.files.length) { _gFolderId = j.files[0].id; return _gFolderId; }
+        var cr = await gApi('drive/v3/files?fields=id', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: GDRIVE_FOLDER, mimeType: 'application/vnd.google-apps.folder' }) });
+        var cj = await cr.json(); _gFolderId = cj.id; return _gFolderId;
+      }
+      async function gSaveToDrive() {
+        if (!(await gEnsureToken())) { toast('Iniciá sesión con Google primero.'); return; }
+        toast('Guardando en Google Drive…');
+        try {
+          var content = JSON.stringify(serialize());
+          var name = 'proyecto_' + slugTitle() + '.fisicabit.json';
+          var folderId = await gGetFolderId();
+          var fileId = I._driveFileId;
+          if (!fileId) {
+            var q = "name='" + name + "' and '" + folderId + "' in parents and trashed=false";
+            var sr = await gApi('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&spaces=drive');
+            var sj = await sr.json(); if (sj.files && sj.files.length) fileId = sj.files[0].id;
+          }
+          var res;
+          if (fileId) {
+            res = await gApi('upload/drive/v3/files/' + fileId + '?uploadType=media&fields=id,name', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: content });
+          } else {
+            var boundary = 'fbit' + Date.now().toString(16);
+            var meta = { name: name, mimeType: 'application/json', parents: [folderId] };
+            var body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
+              '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + content + '\r\n--' + boundary + '--';
+            res = await gApi('upload/drive/v3/files?uploadType=multipart&fields=id,name', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: body });
+          }
+          var rj = await res.json();
+          if (rj && rj.id) { I._driveFileId = rj.id; toast('Guardado en Google Drive (carpeta «' + GDRIVE_FOLDER + '») ✓'); }
+          else toast('No se pudo guardar en Drive.');
+        } catch (e) { console.error('[INFORME] Drive save', e); toast('Error guardando en Drive.'); }
+      }
+      function gFmtDate(iso) { try { var d = new Date(iso); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+      async function gOpenFromDrive() {
+        if (!(await gEnsureToken())) { toast('Iniciá sesión con Google primero.'); return; }
+        var modal = el('inf-drive-modal'), list = el('inf-drive-list'); if (!modal || !list) return;
+        list.innerHTML = '<div class="inf-drive-empty">Cargando tus proyectos…</div>'; modal.classList.add('open');
+        try {
+          var folderId = await gGetFolderId();
+          var q = "'" + folderId + "' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'";
+          var r = await gApi('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc&spaces=drive');
+          var j = await r.json(); var files = j.files || [];
+          if (!files.length) { list.innerHTML = '<div class="inf-drive-empty">Todavía no hay proyectos guardados en la carpeta «' + GDRIVE_FOLDER + '».</div>'; return; }
+          list.innerHTML = '';
+          files.forEach(function (f) {
+            var nm = (f.name || '').replace(/^proyecto_/, '').replace(/\.fisicabit\.json$/, '').replace(/\.json$/, '');
+            var row = document.createElement('div'); row.className = 'inf-drive-row';
+            row.innerHTML = '<div class="inf-drive-info"><div class="inf-drive-name">' + esc(nm || f.name) + '</div><div class="inf-drive-date">' + gFmtDate(f.modifiedTime) + '</div></div>';
+            var open = document.createElement('button'); open.className = 'inf-btn'; open.style.width = 'auto'; open.style.margin = '0'; open.textContent = 'Abrir';
+            open.addEventListener('click', function () { gLoadFile(f.id); });
+            row.appendChild(open); list.appendChild(row);
+          });
+        } catch (e) { console.error(e); list.innerHTML = '<div class="inf-drive-empty">No se pudieron cargar los proyectos.</div>'; }
+      }
+      async function gLoadFile(fileId) {
+        toast('Abriendo proyecto de Drive…');
+        try {
+          var r = await gApi('drive/v3/files/' + fileId + '?alt=media');
+          var txt = await r.text(); var blob = null;
+          try { blob = JSON.parse(txt); } catch (er) { toast('El proyecto de Drive está dañado.'); return; }
+          var modal = el('inf-drive-modal'); if (modal) modal.classList.remove('open');
+          I._driveFileId = fileId; applyOpenedBlob(blob, false);
+        } catch (e) { console.error(e); toast('No se pudo abrir el proyecto de Drive.'); }
+      }
+      function gUpdateDriveUI() {
+        var connected = gConnected();
+        var signin = el('inf-gdrive-signin'), save = el('inf-gdrive-save'), open = el('inf-gdrive-open'), out = el('inf-gdrive-signout'), status = el('inf-gdrive-status');
+        if (signin) signin.style.display = connected ? 'none' : 'block';
+        if (save) save.style.display = connected ? 'block' : 'none';
+        if (open) open.style.display = connected ? 'block' : 'none';
+        if (out) out.style.display = connected ? 'block' : 'none';
+        if (status) {
+          if (!gConfigured()) status.textContent = 'Google Drive: pendiente de configurar.';
+          else if (connected) status.textContent = 'Conectado' + (_gUser && _gUser.emailAddress ? (' como ' + _gUser.emailAddress) : '') + ' · carpeta «' + GDRIVE_FOLDER + '».';
+          else status.textContent = 'Guardá tu progreso y retomalo en cualquier navegador.';
+        }
+      }
+      function gAutoConnect() {
+        try { if (gConfigured() && !gConnected() && localStorage.getItem('fbit_gdrive') === '1') gConnect(false); } catch (e) {}
+        gUpdateDriveUI();
+      }
+
       async function resetAll() {
         if (!confirm('¿Reiniciar TODO?\n\nSe borrarán los datos capturados, los ajustes, los apuntes escritos/dibujados y las fotos de este proyecto. Esta acción no se puede deshacer.')) return;
         var st = state;
@@ -26075,7 +26270,7 @@ bluetooth.startIOPinService()</pre>
         st.fitResult = null; st.segmentFits = []; st.extraDataSets = [];
         I.meta = { title: '', student: '', course: '', institution: '', date: todayStr() };
         I.notesText = ''; I.devicePhotos = []; I.selected = {};
-        I.imgOpts = {}; I.sections = []; I._secSeq = 0; I._secActive = 0; I._blkSeq = 0; I.drawingData = null;
+        I.imgOpts = {}; I.sections = []; I._secSeq = 0; I._secActive = 0; I._blkSeq = 0; I.drawingData = null; I._driveFileId = null;
         I.doc = defaultDoc(); I._infTab = 'armado'; switchInfTab('armado');
         syncReportInputs(); renderPhotos(); renderDrawPreview();
         try { await idbDel(AUTOSAVE_KEY); } catch (e) {}
@@ -26091,7 +26286,7 @@ bluetooth.startIOPinService()</pre>
       }
 
       // --- Panel ---
-      function openPanel() { refresh(); el('informe-panel').classList.add('open'); }
+      function openPanel() { refresh(); el('informe-panel').classList.add('open'); gAutoConnect(); }
       function closePanel() { el('informe-panel').classList.remove('open'); }
 
       function wire() {
@@ -26132,6 +26327,15 @@ bluetooth.startIOPinService()</pre>
         if (el('inf-open')) el('inf-open').addEventListener('click', function () { el('inf-open-input').click(); });
         if (el('inf-open-input')) el('inf-open-input').addEventListener('change', function (e) { if (e.target.files && e.target.files[0]) openProjectFile(e.target.files[0]); e.target.value = ''; });
         if (el('inf-reset')) el('inf-reset').addEventListener('click', resetAll);
+
+        // Google Drive (guardar/retomar en la nube)
+        if (el('inf-gdrive-signin')) el('inf-gdrive-signin').addEventListener('click', function () { gConnect(true); });
+        if (el('inf-gdrive-save')) el('inf-gdrive-save').addEventListener('click', gSaveToDrive);
+        if (el('inf-gdrive-open')) el('inf-gdrive-open').addEventListener('click', gOpenFromDrive);
+        if (el('inf-gdrive-signout')) el('inf-gdrive-signout').addEventListener('click', gDisconnect);
+        if (el('inf-drive-close')) el('inf-drive-close').addEventListener('click', function () { el('inf-drive-modal').classList.remove('open'); });
+        if (el('inf-drive-modal')) el('inf-drive-modal').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
+        gUpdateDriveUI();
 
         // Menú desplegable «Exportar / Guardar» (arriba a la derecha)
         var expBtn = el('inf-export-btn'), expMenu = el('inf-export-menu');
