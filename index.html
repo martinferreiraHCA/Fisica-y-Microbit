@@ -4465,6 +4465,7 @@
         .inf-rich table.doc-data-table, .inf-page-body table.doc-data-table { border-collapse:collapse; max-width:100%; margin:10px 0; font-size:12px; }
         .inf-rich table.doc-data-table th, .inf-rich table.doc-data-table td, .inf-page-body table.doc-data-table th, .inf-page-body table.doc-data-table td { border:1px solid #d3d3d3; padding:3px 8px; text-align:right; }
         .inf-rich table.doc-data-table th, .inf-page-body table.doc-data-table th { background:#f0f3f8; font-weight:700; text-align:center; }
+        .inf-rich table.doc-cmp-table td, .inf-page-body table.doc-cmp-table td { text-align:left; min-width:70px; }
         .inf-rich h4, .inf-page-body h4 { font-size:13px; font-weight:700; margin:7px 0 4px; color:#333; }
         .inf-rich figure.doc-fig, .inf-page-body figure.doc-fig { width:60%; margin:12px auto; text-align:center; cursor:grab; }
         .inf-rich figure.doc-fig:active, .inf-page-body figure.doc-fig:active { cursor:grabbing; }
@@ -24468,6 +24469,7 @@ bluetooth.startIOPinService()</pre>
         ".rep-doc .rep-rich table.doc-data-table{border-collapse:collapse;margin:10px 0;font-size:12px;}",
         ".rep-doc .rep-rich table.doc-data-table th,.rep-doc .rep-rich table.doc-data-table td{border:1px solid #cfcfcf;padding:3px 8px;text-align:right;}",
         ".rep-doc .rep-rich table.doc-data-table th{background:#f0f3f8;font-weight:700;text-align:center;}",
+        ".rep-doc .rep-rich table.doc-cmp-table td{text-align:left;}",
         ".rep-doc .rep-rich h4{font-size:12.5px;font-weight:700;margin:8px 0 4px;color:#333;}",
         ".rep-doc .rep-rich figure.doc-fig{width:60%;margin:12px auto;text-align:center;}",
         ".rep-doc .rep-rich figure.doc-fig.fig-left{margin:12px auto 12px 0;text-align:left;}",
@@ -25473,6 +25475,25 @@ bluetooth.startIOPinService()</pre>
         if (!body) return '';
         return '<table class="doc-data-table"><thead><tr><th>Variable</th><th>Media</th><th>Mínimo</th><th>Máximo</th><th>Desv. est.</th><th>N</th></tr></thead><tbody>' + body + '</tbody></table><p>​</p>';
       }
+      // Tabla editable para contrastar modelo teórico, ajuste obtenido y datos reales.
+      function comparisonTableEditableHTML() {
+        var f = state.fitResult, rows = [];
+        var header = '<tr><th>Magnitud</th><th>Modelo teórico</th><th>Ajuste obtenido</th><th>Datos / observado</th></tr>';
+        if (f && Array.isArray(f.coeffs)) {
+          var names = f.paramNames || (fn('getParamNames') ? getParamNames(f.type) : []);
+          f.coeffs.forEach(function (v, k) {
+            var nm = (names && names[k]) || ('p' + k), e = f.errors && f.errors[k];
+            var fit = (isFinite(v) ? num(v) : '') + ((e != null && isFinite(e)) ? (' ± ' + num(e)) : '');
+            rows.push('<tr><td>' + esc(nm) + '</td><td></td><td>' + fit + '</td><td></td></tr>');
+          });
+          rows.push('<tr><td>R²</td><td>—</td><td>' + (isFinite(f.r2) ? num(f.r2) : 'N/A') + '</td><td></td></tr>');
+        } else {
+          rows.push('<tr><td></td><td></td><td></td><td></td></tr>', '<tr><td></td><td></td><td></td><td></td></tr>');
+        }
+        return '<p><b>Comparación: modelo teórico · ajuste · datos reales</b></p>' +
+          '<table class="doc-data-table doc-cmp-table"><thead>' + header + '</thead><tbody>' + rows.join('') + '</tbody></table>' +
+          '<p><i>Completá la columna del modelo teórico y las observaciones para contrastar los resultados.</i></p>';
+      }
       function insertDataTableIntoDoc() {
         var rows = (state.rawData || []).length;
         if (rows > 120 && !confirm('La tabla tiene ' + rows + ' filas. ¿Insertar toda la tabla en el texto? Podés colapsar la sección después para que no ocupe tanto.')) return;
@@ -25496,6 +25517,7 @@ bluetooth.startIOPinService()</pre>
         addItem('🧩  Ajuste por tramos', (st.segmentFits || []).length > 0, function () { insertHTMLIntoDoc(segfitEditableHTML()); });
         addItem('🔢  Tabla de datos', n > 0, function () { insertDataTableIntoDoc(); });
         addItem('📊  Estadísticas', n > 0, function () { insertHTMLIntoDoc(statsEditableHTML()); });
+        addItem('⚖️  Comparación modelo · ajuste · datos', n > 0 || !!st.fitResult, function () { insertHTMLIntoDoc(comparisonTableEditableHTML()); });
         closeMenus(); positionMenu(m, evt.currentTarget); m.classList.add('open');
       }
 
