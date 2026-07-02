@@ -144,11 +144,25 @@
         }
 
         .toolbar-separator {
-            width: 2px;
-            height: 24px;
-            background: black;
-            margin: 0 4px;
+            width: 1px;
+            height: 22px;
+            background: #dcdcdc;
+            margin: 0 3px;
+            flex-shrink: 0;
         }
+        /* Grupos de botones de la barra superior (se mantienen juntos al reacomodarse) */
+        .tb-group { display: inline-flex; align-items: center; gap: 6px; }
+        /* Chip del experimento actual (nombre siempre visible, clic para renombrar) */
+        .tb-experiment {
+            display: inline-flex; align-items: center; gap: 6px; max-width: 260px;
+            background: #eef4ff; border: 1.5px solid #a9c6ff; border-radius: 20px;
+            padding: 6px 14px; font-family: inherit; font-size: clamp(0.72rem, 1.6vw, 0.86rem); font-weight: 700;
+            color: #14448c; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0;
+            transition: background .15s, border-color .15s;
+        }
+        .tb-experiment:hover { background: #dbe8ff; border-color: #7aa8ff; }
+        .tb-experiment #tbExperimentName { overflow: hidden; text-overflow: ellipsis; }
+        .tb-experiment.tb-experiment-empty { background: #f5f5f5; border-color: #d8d8d8; color: #8a8a8a; font-weight: 600; }
 
         .status-text {
             margin-left: auto;
@@ -2170,6 +2184,10 @@
             .toolbar-secondary {
                 display: none;
             }
+            /* Hamburguesa siempre visible aunque la barra se desplace de costado */
+            .toolbar-menu-btn { position: sticky; right: 4px; z-index: 5; box-shadow: -10px 0 10px -6px rgba(0,0,0,.28); }
+            .toolbar-separator { display: none; }
+            .tb-experiment { max-width: 132px; padding: 5px 10px; }
 
             .toolbar-btn {
                 padding: 8px 10px;
@@ -4332,9 +4350,12 @@
           background:#1b1e24; border:1px solid #3a3f48; border-radius:20px; color:#e8eaed;
           font-size:12px; font-weight:600; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
         }
-        /* Botón «Conectar con Google» (barra superior, junto a AYUDA) */
-        .toolbar-btn.gdrive-top { max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .toolbar-btn.gdrive-top.gdrive-on { background:#0b3d2e; border-color:#1f7a5a; color:#d9f7e9; }
+        /* Botón «Guardar / Retomar» (barra superior): puntito de estado */
+        .sess-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#9aa0a8; margin-right:7px; vertical-align:middle; transition:background .2s, box-shadow .2s; }
+        #sessionTopBtn.gdrive-connected, #sessionTopBtn2.gdrive-connected { border-color:#1f7a5a; }
+        #sessionTopBtn.gdrive-connected .sess-dot, #sessionTopBtn2.gdrive-connected .sess-dot { background:#42d17a; box-shadow:0 0 7px rgba(66,209,122,.75); }
+        #sessionTopBtn.gdrive-manual, #sessionTopBtn2.gdrive-manual { border-color:#8a6d1f; }
+        #sessionTopBtn.gdrive-manual .sess-dot, #sessionTopBtn2.gdrive-manual .sess-dot { background:#e0a92e; box-shadow:0 0 7px rgba(224,169,46,.7); }
         /* Popover de opciones de Google Drive */
         .gdrive-pop { display:none; position:fixed; top:58px; right:12px; z-index:9800; width:300px; max-width:calc(100vw - 20px);
           background:#0f1115; border:1px solid #3a3f48; border-radius:9px; box-shadow:0 14px 40px rgba(0,0,0,.6); padding:14px; font-family:'Montserrat',-apple-system,sans-serif; }
@@ -4556,52 +4577,68 @@
     </div>
     <!-- Toolbar -->
     <div class="toolbar">
-        <!-- Primary actions: always visible (Tidwell: "prominent actions first") -->
+        <!-- 1) Dispositivo: conectar y capturar (siempre visible) -->
         <span class="toolbar-primary">
-            <button id="connectBtn" class="toolbar-btn primary">CONECTAR</button>
-            <button id="connectBluetoothBtn" class="toolbar-btn bluetooth">BLUETOOTH</button>
-            <button id="collectBtn" class="toolbar-btn primary" style="display:none;">CAPTURAR</button>
-            <button id="stopBtn" class="toolbar-btn" style="display:none;">DETENER</button>
-            <div class="toolbar-separator"></div>
-            <button id="cameraBtn" class="toolbar-btn">CÁMARA</button>
+            <span class="tb-group">
+                <button id="connectBtn" class="toolbar-btn primary">CONECTAR</button>
+                <button id="connectBluetoothBtn" class="toolbar-btn bluetooth">BLUETOOTH</button>
+                <button id="collectBtn" class="toolbar-btn primary" style="display:none;">CAPTURAR</button>
+                <button id="stopBtn" class="toolbar-btn" style="display:none;">DETENER</button>
+                <button id="cameraBtn" class="toolbar-btn">CÁMARA</button>
+            </span>
         </span>
 
-        <!-- Mode buttons for desktop -->
-        <button id="sensorModeBtn" class="toolbar-btn" style="background: #2e7d32; color: white; border-color: #2e7d32;" onclick="enterSensorMode()">SENSORES</button>
-        <button id="desktopLabBtn" class="toolbar-btn" style="background: #1976d2; color: white; border-color: #1976d2;" onclick="enterExperimentMode()">LAB</button>
-        <button id="btn-mapeo" class="toolbar-btn">MAPEO</button>
-        <button id="btn-informe" class="toolbar-btn" style="background:#111; color:#fff; border-color:#111;">INFORME</button>
+        <div class="toolbar-separator"></div>
 
-        <!-- Secondary actions: hidden in hamburger on mobile -->
+        <!-- 2) Herramientas / modos (siempre visible) -->
+        <span class="tb-group">
+            <button id="sensorModeBtn" class="toolbar-btn" style="background: #2e7d32; color: white; border-color: #2e7d32;" onclick="enterSensorMode()">SENSORES</button>
+            <button id="desktopLabBtn" class="toolbar-btn" style="background: #1976d2; color: white; border-color: #1976d2;" onclick="enterExperimentMode()">LAB</button>
+            <button id="btn-mapeo" class="toolbar-btn">MAPEO</button>
+            <button id="btn-informe" class="toolbar-btn" style="background:#111; color:#fff; border-color:#111;">INFORME</button>
+        </span>
+
+        <div class="toolbar-separator"></div>
+
+        <!-- 3) Experimento actual (nombre siempre visible; clic para renombrar) -->
+        <button class="tb-experiment tb-experiment-empty" id="tbExperiment" title="Nombre del experimento — clic para cambiarlo" onclick="window.Informe &amp;&amp; Informe.renameExperiment &amp;&amp; Informe.renameExperiment()">🧪 <span id="tbExperimentName">Experimento sin nombre</span></button>
+
+        <!-- Secundario: se guarda en el menú ☰ en pantallas chicas -->
         <span class="toolbar-secondary">
-            <div style="position:relative; display:inline-block;">
-                <button id="dataEntryBtn" class="toolbar-btn" onclick="toggleDataEntryMenu()">INGRESO DE DATOS ▾</button>
-                <div id="dataEntryMenu" class="data-entry-dropdown" style="display:none;">
-                    <button onclick="openImportDialog(); closeDataEntryMenu();">IMPORTAR CSV</button>
-                    <button onclick="openManualTableModal(); closeDataEntryMenu();">TABLA DE VALORES</button>
+            <div class="toolbar-separator"></div>
+            <!-- 4) Datos -->
+            <span class="tb-group">
+                <div style="position:relative; display:inline-block;">
+                    <button id="dataEntryBtn" class="toolbar-btn" onclick="toggleDataEntryMenu()">INGRESO DE DATOS ▾</button>
+                    <div id="dataEntryMenu" class="data-entry-dropdown" style="display:none;">
+                        <button onclick="openImportDialog(); closeDataEntryMenu();">IMPORTAR CSV</button>
+                        <button onclick="openManualTableModal(); closeDataEntryMenu();">TABLA DE VALORES</button>
+                    </div>
                 </div>
-            </div>
-            <input type="file" id="importFile" accept=".csv" style="display: none;">
+                <input type="file" id="importFile" accept=".csv" style="display: none;">
+                <button id="exportBtn" class="toolbar-btn" disabled>EXPORTAR CSV</button>
+                <button id="photoFrameBtn" class="toolbar-btn" style="display:none;" onclick="smFrameOpen()">FOTOS</button>
+                <button id="clearBtn" class="toolbar-btn">LIMPIAR</button>
+            </span>
+
             <div class="toolbar-separator"></div>
-            <button id="exportBtn" class="toolbar-btn" disabled>EXPORTAR CSV</button>
-            <button id="photoFrameBtn" class="toolbar-btn" style="display:none;" onclick="smFrameOpen()">FOTOS</button>
-            <button id="clearBtn" class="toolbar-btn">LIMPIAR</button>
+
+            <!-- 5) Guardar / retomar el trabajo -->
+            <button id="sessionTopBtn" class="toolbar-btn" onclick="window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()"><span class="sess-dot"></span>💾 Guardar / Retomar ▾</button>
+
             <div class="toolbar-separator"></div>
-            <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: inline-flex; align-items: center;">
-                MAKECODE ↗
-            </a>
-            <div class="toolbar-separator"></div>
-            <button id="examplesBtn" class="toolbar-btn" onclick="openExamplesModal()">EJEMPLOS</button>
-            <div class="toolbar-separator"></div>
-            <button id="helpBtn" class="toolbar-btn">AYUDA</button>
-            <div class="toolbar-separator"></div>
-            <button id="sessionTopBtn" class="toolbar-btn" onclick="window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()">💾 Guardar / Retomar ▾</button>
-            <div class="toolbar-separator"></div>
-            <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
-                <option value="es">ES</option>
-                <option value="en">EN</option>
-                <option value="pt">PT</option>
-            </select>
+
+            <!-- 6) Ayuda / utilidades -->
+            <span class="tb-group">
+                <button id="examplesBtn" class="toolbar-btn" onclick="openExamplesModal()">EJEMPLOS</button>
+                <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: inline-flex; align-items: center;">MAKECODE ↗</a>
+                <button id="helpBtn" class="toolbar-btn">AYUDA</button>
+                <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
+                    <option value="es">ES</option>
+                    <option value="en">EN</option>
+                    <option value="pt">PT</option>
+                </select>
+            </span>
         </span>
 
         <!-- Hamburger button (mobile only) -->
@@ -4624,7 +4661,7 @@
         <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: flex; align-items: center;">MAKECODE ↗</a>
         <button id="examplesBtn2" class="toolbar-btn" onclick="openExamplesModal(); closeToolbarMenu();">EJEMPLOS</button>
         <button id="helpBtn2" class="toolbar-btn" onclick="document.getElementById('helpBtn').click(); closeToolbarMenu();">AYUDA</button>
-        <button id="sessionTopBtn2" class="toolbar-btn" onclick="closeToolbarMenu(); window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()">💾 Guardar / Retomar</button>
+        <button id="sessionTopBtn2" class="toolbar-btn" onclick="closeToolbarMenu(); window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()"><span class="sess-dot"></span>💾 Guardar / Retomar</button>
         <select id="languageSelector2" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
             <option value="es">ES</option>
             <option value="en">EN</option>
@@ -26345,6 +26382,12 @@ bluetooth.startIOPinService()</pre>
         var disc = el('sess-gdrive-disc'), conn = el('sess-gdrive-conn');
         if (disc) disc.style.display = connected ? 'none' : 'block';
         if (conn) conn.style.display = connected ? 'block' : 'none';
+        // Puntito de estado en el botón de arriba: verde = conectado y guardando, ámbar = conectado sin auto-guardado, gris = sin conectar
+        var cls = connected ? (_gAutoSync ? 'gdrive-connected' : 'gdrive-manual') : '';
+        var ttl = !connected ? 'Guardá o retomá tu trabajo (no conectado a Google Drive)'
+          : (_gAutoSync ? ('Conectado a Google como ' + ((_gUser && _gUser.emailAddress) || 'tu cuenta') + ' · guardando automáticamente')
+            : 'Conectado a Google · guardado manual (auto-guardado apagado)');
+        ['sessionTopBtn', 'sessionTopBtn2'].forEach(function (id) { var b = el(id); if (!b) return; b.classList.remove('gdrive-connected', 'gdrive-manual'); if (cls) b.classList.add(cls); b.title = ttl; });
         var status = el('inf-gdrive-status');
         if (status) {
           if (!gConfigured()) status.textContent = 'Google Drive: pendiente de configurar (falta el Client ID).';
@@ -26436,12 +26479,26 @@ bluetooth.startIOPinService()</pre>
       }
       function gSetSyncStatus() { var s = el('inf-gdrive-status'); if (s && gConnected() && _gSyncOn) s.textContent = '«' + gProjectDisplayName() + '» · sincronizado ' + gClock() + '.'; }
 
-      // Muestra el nombre del experimento activo en la barra superior (para saber en qué estás).
+      // Muestra el nombre del experimento activo (chip de la barra principal + badge del informe).
       function updateProjectBadge() {
-        var b = el('inf-project-badge'); if (!b) return;
         var t = (I.meta && I.meta.title || '').trim();
-        if (t) { b.textContent = '📄 ' + t; b.style.display = ''; } else { b.textContent = ''; b.style.display = 'none'; }
+        var b = el('inf-project-badge');
+        if (b) { if (t) { b.textContent = '📄 ' + t; b.style.display = ''; } else { b.textContent = ''; b.style.display = 'none'; } }
+        var tn = el('tbExperimentName'), tc = el('tbExperiment');
+        if (tn) tn.textContent = t || 'Experimento sin nombre';
+        if (tc) { tc.classList.toggle('tb-experiment-empty', !t); tc.title = t ? ('Experimento: ' + t + ' — clic para renombrar') : 'Ponele un nombre a tu experimento — clic para escribirlo'; }
       }
+      // Renombrar el experimento desde el chip de arriba (simple y rápido).
+      function renameExperiment() {
+        var name = prompt('¿Cómo se llama este experimento?', (I.meta && I.meta.title) || '');
+        if (name === null) return;
+        I.meta.title = (name || '').trim();
+        setInputVal('inf-title', I.meta.title);
+        var gp = el('gdrive-proj-name'); if (gp) gp.value = I.meta.title;
+        updateProjectBadge(); gSetSyncStatus(); renderPreviewDebounced(); schedule();
+        if (I.meta.title) toast('Experimento: «' + I.meta.title + '»');
+      }
+      I.renameExperiment = renameExperiment;
       // Limpia toda la sesión en memoria (opcionalmente con un título nuevo). No toca la conexión de Drive.
       function _clearSession(newTitle) {
         var st = state;
