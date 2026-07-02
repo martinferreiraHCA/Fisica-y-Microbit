@@ -4436,6 +4436,11 @@
         .inf-card-btn.on { color:#7fdca0; }
         .inf-card-btn.del { color:#ef8a88; border-color:#5a2b2b; }
         .inf-card-btn.del:hover { background:#ef5350; color:#000; }
+        .inf-card-caret { background:none; border:none; color:#8a93a0; cursor:pointer; font-size:11px; padding:0 2px; line-height:1; width:16px; user-select:none; }
+        .inf-card-caret:hover { color:#fff; }
+        .inf-card.inf-card-collapsed { box-shadow:0 1px 6px rgba(0,0,0,.22); }
+        .inf-card.inf-card-collapsed .inf-card-bar { border-bottom:none; }
+        .inf-card.inf-card-collapsed .inf-card-name { color:#cfd4dc; }
         .inf-card-empty { color:#999; font-size:12px; padding:18px 40px; text-align:center; font-style:italic; }
         .inf-card-auto { padding:12px 0 14px; }
         .inf-card-cover .inf-card-auto { padding:0; }
@@ -4455,6 +4460,8 @@
         .inf-rich .doc-eq img, .inf-page-body .doc-eq img { height:auto; max-height:2.1em; vertical-align:middle; }
         .inf-rich .doc-eq-block, .inf-page-body .doc-eq-block { display:block; text-align:center; margin:14px auto; background:#f4f8ff; border:1px solid #dbe7fb; border-radius:4px; padding:8px; cursor:pointer; max-width:96%; }
         .inf-rich .doc-eq-block img, .inf-page-body .doc-eq-block img { max-width:100%; height:auto; }
+        .inf-rich .doc-eq-cap, .inf-page-body .doc-eq-cap { display:block; font-size:11px; color:#777; margin-top:5px; text-align:center; }
+        .inf-rich .doc-eq-num, .inf-page-body .doc-eq-num { color:#999; font-weight:600; margin-left:6px; }
         .inf-rich h4, .inf-page-body h4 { font-size:13px; font-weight:700; margin:7px 0 4px; color:#333; }
         .inf-rich figure.doc-fig, .inf-page-body figure.doc-fig { width:60%; margin:12px auto; text-align:center; cursor:grab; }
         .inf-rich figure.doc-fig:active, .inf-page-body figure.doc-fig:active { cursor:grabbing; }
@@ -4517,6 +4524,10 @@
         .inf-latex-preview { font-size:22px; min-height:52px; }
         .inf-eq-mode { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#e0e0e0; cursor:pointer; }
         .inf-eq-mode input { accent-color:#fff; cursor:pointer; }
+        .inf-eq-caprow { display:flex; align-items:center; gap:8px; margin-top:10px; }
+        .inf-eq-caplbl { font-size:11px; color:#9aa0a8; white-space:nowrap; }
+        .inf-eq-capinput { flex:1; min-width:0; background:#0f1115; color:#e8e8e8; border:1px solid #444; padding:6px 8px; font-size:12.5px; font-family:inherit; }
+        .inf-eq-capinput:focus { outline:none; border-color:#fff; }
 
         /* Editor de página completa */
         .inf-page-editor { display:none; position:fixed; inset:0; z-index:9150; background:#2b2e33; flex-direction:column; }
@@ -24290,8 +24301,12 @@ bluetooth.startIOPinService()</pre>
             <div class="inf-latex-tools" id="inf-eq-syms"></div>
             <textarea class="inf-blk-latex" id="inf-eq-latex" placeholder="Ej:  E_c = \frac{1}{2} m v^{2}"></textarea>
             <div class="inf-latex-preview" id="inf-eq-preview"></div>
+            <div class="inf-eq-caprow" id="inf-eq-caprow">
+                <span class="inf-eq-caplbl">Pie de la ecuación (opcional):</span>
+                <input type="text" id="inf-eq-cap" class="inf-eq-capinput" placeholder="Ej: Ecuación 1 — Segunda ley de Newton">
+            </div>
             <div class="inf-eq-actions">
-                <label class="inf-eq-mode"><input type="checkbox" id="inf-eq-block" checked> Ecuación centrada (grande)</label>
+                <label class="inf-eq-mode inf-tip inf-tip-up" data-tip="Marcada: ecuación grande y centrada en su propio renglón. Desmarcada: ecuación chica dentro del texto."><input type="checkbox" id="inf-eq-block" checked> Ecuación centrada (grande)</label>
                 <span class="inf-spacer"></span>
                 <button class="inf-btn inf-tip inf-tip-up" data-tip="Cerrar sin insertar la ecuación" id="inf-eq-cancel" style="width:auto;margin:0;">Cancelar</button>
                 <button class="inf-btn primary inf-tip inf-tip-up inf-tip-left" data-tip="Insertar la ecuación en el documento" id="inf-eq-insert" style="width:auto;margin:0;">Insertar ✓</button>
@@ -24444,6 +24459,8 @@ bluetooth.startIOPinService()</pre>
         ".rep-doc .rep-rich .doc-eq img{height:auto;max-height:2.1em;vertical-align:middle;}",
         ".rep-doc .rep-rich .doc-eq-block{display:block;text-align:center;margin:14px 0;}",
         ".rep-doc .rep-rich .doc-eq-block img{max-width:94%;height:auto;}",
+        ".rep-doc .rep-rich .doc-eq-cap{display:block;font-size:11px;color:#6a6a6a;margin-top:5px;text-align:center;}",
+        ".rep-doc .rep-rich .doc-eq-num{color:#888;font-weight:600;margin-left:6px;}",
         ".rep-doc .rep-rich h4{font-size:12.5px;font-weight:700;margin:8px 0 4px;color:#333;}",
         ".rep-doc .rep-rich figure.doc-fig{width:60%;margin:12px auto;text-align:center;}",
         ".rep-doc .rep-rich figure.doc-fig.fig-left{margin:12px auto 12px 0;text-align:left;}",
@@ -24814,7 +24831,7 @@ bluetooth.startIOPinService()</pre>
       }
 
       // ===== Documento: registro de items, orden e índice/bibliografía =====
-      function defaultDoc() { return { order: [], toc: false, tocTitle: 'Índice', biblioOn: false, biblio: [], font: '', _bibSeq: 0 }; }
+      function defaultDoc() { return { order: [], toc: false, tocTitle: 'Índice', biblioOn: false, biblio: [], font: '', _bibSeq: 0, collapsed: {} }; }
       function findSec(sid) { var r = null; (I.sections || []).forEach(function (s) { if (s.id === sid) r = s; }); return r; }
       function friendlyItemName(id) {
         if (id === 'cover') return 'Portada';
@@ -25169,6 +25186,13 @@ bluetooth.startIOPinService()</pre>
         fsel.addEventListener('change', function () { I.doc.font = fsel.value; applyDocFont(); renderPreviewDebounced(); schedule(); });
         fspan.appendChild(fsel); row.appendChild(fspan);
         box.appendChild(row);
+        // Vista del editor: colapsar/expandir todas las tarjetas para reordenar más cómodo.
+        var vrow = document.createElement('div'); vrow.className = 'inf-eo-row';
+        vrow.innerHTML = '<span class="inf-eo-lbl">Vista del editor:</span>';
+        var cAll = chip('▸ Colapsar todo', 'Colapsar todas las partes: se ve solo el título de cada una, ideal para reordenar el informe'); cAll.addEventListener('click', function () { collapseAllDoc(true); });
+        var eAll = chip('▾ Expandir todo', 'Expandir todas las partes para editar su contenido'); eAll.addEventListener('click', function () { collapseAllDoc(false); });
+        vrow.appendChild(cAll); vrow.appendChild(eAll);
+        box.appendChild(vrow);
       }
       function applyDocFont() { var c = el('inf-doc-canvas'); if (c) c.style.fontFamily = I.doc.font || ''; }
       function setToc(on) { I.doc.toc = !!on; if (on) I.selected['toc'] = true; buildEditor(); renderPreviewDebounced(); schedule(); }
@@ -25178,15 +25202,22 @@ bluetooth.startIOPinService()</pre>
       function cbtn(txt, title) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-card-btn inf-tip'; if (title) b.setAttribute('data-tip', title); b.textContent = txt; return b; }
       function moveDocItem(id, dir) { var order = resolveOrder(), i = order.indexOf(id), j = i + dir; if (i < 0 || j < 0 || j >= order.length) return; var t = order[i]; order[i] = order[j]; order[j] = t; I.doc.order = order; buildEditorDoc(); renderPreviewDebounced(); schedule(); }
       function reorderDocItem(from, to) { var order = resolveOrder(), fi = order.indexOf(from); if (fi < 0) return; order.splice(fi, 1); var ti = order.indexOf(to); if (ti < 0) ti = order.length; order.splice(ti, 0, from); I.doc.order = order; buildEditorDoc(); renderPreviewDebounced(); schedule(); }
+      // Colapsar/expandir tarjetas del editor (no afecta el informe final, solo la vista de edición).
+      function toggleCollapseDoc(id) { if (!I.doc.collapsed) I.doc.collapsed = {}; if (I.doc.collapsed[id]) delete I.doc.collapsed[id]; else I.doc.collapsed[id] = true; buildEditorDoc(); schedule(); }
+      function collapseAllDoc(v) { I.doc.collapsed = {}; if (v) resolveOrder().forEach(function (id) { I.doc.collapsed[id] = true; }); buildEditorDoc(); schedule(); }
       function buildEditorDoc() {
         var canvas = el('inf-doc-canvas'); if (!canvas) return;
         applyDocFont();
         var order = resolveOrder(); canvas.innerHTML = '';
         if (!order.length) { canvas.innerHTML = '<div class="inf-card-empty" style="padding:30px;text-align:center;">El documento está vacío. Cargá datos o agregá una sección de texto.</div>'; return; }
+        var collapsedMap = I.doc.collapsed || (I.doc.collapsed = {});
         order.forEach(function (id) {
           var included = I.selected[id] !== false, isSec = id.indexOf('sec:') === 0;
-          var card = document.createElement('div'); card.className = 'inf-card ' + (isSec ? 'inf-card-sec' : 'inf-card-auto-c') + (id === 'cover' ? ' inf-card-cover' : '') + (included ? '' : ' excluded'); card.dataset.id = id;
+          var isCollapsed = !!collapsedMap[id];
+          var card = document.createElement('div'); card.className = 'inf-card ' + (isSec ? 'inf-card-sec' : 'inf-card-auto-c') + (id === 'cover' ? ' inf-card-cover' : '') + (included ? '' : ' excluded') + (isCollapsed ? ' inf-card-collapsed' : ''); card.dataset.id = id;
           var bar = document.createElement('div'); bar.className = 'inf-card-bar';
+          var caret = document.createElement('button'); caret.type = 'button'; caret.className = 'inf-card-caret inf-tip'; caret.setAttribute('data-tip', isCollapsed ? 'Mostrar el contenido de esta parte' : 'Colapsar: mostrar solo el título de esta parte'); caret.textContent = isCollapsed ? '▸' : '▾';
+          caret.addEventListener('click', function () { toggleCollapseDoc(id); });
           var handle = document.createElement('span'); handle.className = 'inf-card-handle inf-tip'; handle.setAttribute('data-tip', 'Arrastrá para reordenar esta parte del documento'); handle.textContent = '⠿'; handle.setAttribute('draggable', 'true');
           var name = document.createElement('span'); name.className = 'inf-card-name'; name.textContent = isSec ? 'Sección de texto' : friendlyItemName(id);
           var acts = document.createElement('span'); acts.className = 'inf-card-actions';
@@ -25199,9 +25230,13 @@ bluetooth.startIOPinService()</pre>
             var expand = cbtn('⤢', 'Editar en página completa'); expand.addEventListener('click', function () { openPageEditor(id.slice(4)); }); acts.appendChild(expand);
             var del = cbtn('✕', 'Quitar sección'); del.classList.add('del'); del.addEventListener('click', function () { if (confirm('¿Quitar esta sección?')) delSection(id.slice(4)); }); acts.appendChild(del);
           }
-          bar.appendChild(handle); bar.appendChild(name); bar.appendChild(acts); card.appendChild(bar);
+          bar.appendChild(caret); bar.appendChild(handle); bar.appendChild(name); bar.appendChild(acts); card.appendChild(bar);
           var content = document.createElement('div'); content.className = 'inf-card-content';
-          if (isSec) {
+          if (isCollapsed) {
+            // Colapsada: no construimos el interior (más liviano y rápido para reordenar,
+            // sobre todo con tablas de datos largas). El contenido de texto queda guardado en s.html.
+            content.style.display = 'none';
+          } else if (isSec) {
             var s = findSec(id.slice(4)); normSection(s);
             var ti = document.createElement('input'); ti.className = 'inf-card-sectitle'; ti.value = s.title || ''; ti.placeholder = 'Título de la sección (ej: Fundamento teórico)';
             ti.addEventListener('input', function () { s.title = ti.value; buildChecklist(); renderPreviewDebounced(); schedule(); });
@@ -25258,23 +25293,32 @@ bluetooth.startIOPinService()</pre>
         if (!existingSpan) saveRange();
         var ta = el('inf-eq-latex'); ta.value = existingSpan ? decodeURIComponent(existingSpan.getAttribute('data-latex') || '') : '';
         var bl = el('inf-eq-block'); if (bl) bl.checked = existingSpan ? existingSpan.classList.contains('doc-eq-block') : true;
+        var cap = el('inf-eq-cap'); if (cap) cap.value = existingSpan ? decodeURIComponent(existingSpan.getAttribute('data-cap') || '') : '';
+        updateEqCapVis();
         renderMath(el('inf-eq-preview'), ta.value);
         el('inf-eq-modal').classList.add('open'); setTimeout(function () { ta.focus(); }, 20);
       }
+      // El pie de la ecuación solo aplica a ecuaciones centradas (grandes); en línea no tiene sentido.
+      function updateEqCapVis() { var row = el('inf-eq-caprow'), bl = el('inf-eq-block'); if (row) row.style.display = (bl && bl.checked) ? 'flex' : 'none'; }
       function closeEqEditor() { var m = el('inf-eq-modal'); if (m) m.classList.remove('open'); _eqTarget = null; }
       function commitEq() {
         var ta = el('inf-eq-latex'), latex = (ta.value || '').trim();
         if (!latex) { if (_eqTarget && _eqTarget.parentNode) { _eqTarget.parentNode.removeChild(_eqTarget); onEditableInput(_eqEditable); } closeEqEditor(); return; }
         var block = el('inf-eq-block') ? el('inf-eq-block').checked : true;
+        var capEl = el('inf-eq-cap'); var cap = (block && capEl) ? (capEl.value || '').trim() : '';
         var url = latexToImg(latex, block), inner = url ? ('<img src="' + url + '">') : esc(latex);
+        if (block && cap) inner += '<div class="doc-eq-cap">' + esc(cap) + '</div>';
         var cls = block ? 'doc-eq-block' : 'doc-eq', tag = block ? 'div' : 'span';
+        var capAttr = (block && cap) ? (' data-cap="' + encodeURIComponent(cap) + '"') : '';
         if (_eqTarget) {
           var nw = document.createElement(tag); nw.className = cls; nw.setAttribute('contenteditable', 'false');
-          nw.setAttribute('data-latex', encodeURIComponent(latex)); nw.innerHTML = inner;
+          nw.setAttribute('data-latex', encodeURIComponent(latex));
+          if (block && cap) nw.setAttribute('data-cap', encodeURIComponent(cap));
+          nw.innerHTML = inner;
           _eqTarget.parentNode.replaceChild(nw, _eqTarget);
         } else {
           var html = block
-            ? ('<div class="doc-eq-block" contenteditable="false" data-latex="' + encodeURIComponent(latex) + '">' + inner + '</div><p>​</p>')
+            ? ('<div class="doc-eq-block" contenteditable="false" data-latex="' + encodeURIComponent(latex) + '"' + capAttr + '>' + inner + '</div><p>​</p>')
             : ('<span class="doc-eq" contenteditable="false" data-latex="' + encodeURIComponent(latex) + '">' + inner + '</span>​');
           _eqEditable.focus(); restoreRange();
           try { document.execCommand('insertHTML', false, html); } catch (e) { _eqEditable.innerHTML += html; }
@@ -26068,6 +26112,7 @@ bluetooth.startIOPinService()</pre>
           I.doc = Object.assign(defaultDoc(), rep.doc || {});
           if (!Array.isArray(I.doc.order)) I.doc.order = [];
           if (!Array.isArray(I.doc.biblio)) I.doc.biblio = [];
+          if (!I.doc.collapsed || typeof I.doc.collapsed !== 'object') I.doc.collapsed = {};
           I.drawingData = rep.drawing || null;
           syncReportInputs();
           renderPhotos();
@@ -26613,6 +26658,7 @@ bluetooth.startIOPinService()</pre>
         // Editor de ecuaciones (modal)
         var eqTa = el('inf-eq-latex');
         if (eqTa) eqTa.addEventListener('input', function () { renderMath(el('inf-eq-preview'), eqTa.value); });
+        if (el('inf-eq-block')) el('inf-eq-block').addEventListener('change', updateEqCapVis);
         if (el('inf-eq-insert')) el('inf-eq-insert').addEventListener('click', commitEq);
         if (el('inf-eq-cancel')) el('inf-eq-cancel').addEventListener('click', closeEqEditor);
 
