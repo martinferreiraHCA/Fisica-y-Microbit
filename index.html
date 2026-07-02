@@ -4347,6 +4347,12 @@
         .gdrive-pop-check input { width:15px; height:15px; flex-shrink:0; }
         .gdrive-pop-actions { display:flex; flex-direction:column; gap:7px; }
         .gdrive-pop-actions .inf-btn { margin:0; }
+        /* Menú «Guardar / Retomar» (usa items estilo desplegable) */
+        #session-menu { padding:6px; width:296px; }
+        #session-menu .gdrive-pop-lbl { padding:6px 11px 2px; margin:0; }
+        #session-menu .gdrive-pop-input { width:calc(100% - 22px); margin:2px 11px 9px; }
+        #session-menu .gdrive-pop-check { padding:2px 11px 9px; margin:0; }
+        #session-menu .inf-dd-status { margin:0; }
 
         /* Pestaña Apuntes */
         .inf-apuntes-panel { flex:1; min-height:0; flex-direction:column; background:#1a1d23; overflow:hidden; }
@@ -4589,7 +4595,7 @@
             <div class="toolbar-separator"></div>
             <button id="helpBtn" class="toolbar-btn">AYUDA</button>
             <div class="toolbar-separator"></div>
-            <button id="gdriveTopBtn" class="toolbar-btn gdrive-top" onclick="window.Informe &amp;&amp; Informe.driveTopClick &amp;&amp; Informe.driveTopClick()">☁ Conectar con Google</button>
+            <button id="sessionTopBtn" class="toolbar-btn" onclick="window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()">💾 Guardar / Retomar ▾</button>
             <div class="toolbar-separator"></div>
             <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
                 <option value="es">ES</option>
@@ -4618,7 +4624,7 @@
         <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: flex; align-items: center;">MAKECODE ↗</a>
         <button id="examplesBtn2" class="toolbar-btn" onclick="openExamplesModal(); closeToolbarMenu();">EJEMPLOS</button>
         <button id="helpBtn2" class="toolbar-btn" onclick="document.getElementById('helpBtn').click(); closeToolbarMenu();">AYUDA</button>
-        <button id="gdriveTopBtn2" class="toolbar-btn gdrive-top" onclick="closeToolbarMenu(); window.Informe &amp;&amp; Informe.driveTopClick &amp;&amp; Informe.driveTopClick()">☁ Conectar con Google</button>
+        <button id="sessionTopBtn2" class="toolbar-btn" onclick="closeToolbarMenu(); window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()">💾 Guardar / Retomar</button>
         <select id="languageSelector2" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
             <option value="es">ES</option>
             <option value="en">EN</option>
@@ -24301,19 +24307,33 @@ bluetooth.startIOPinService()</pre>
         </div>
     </div>
 
-    <!-- Popover de Google Drive (se abre desde el botón «Conectar con Google» de arriba) -->
-    <div class="gdrive-pop" id="gdrive-pop">
-        <div class="gdrive-pop-head" id="inf-gdrive-status">Conectá tu cuenta para guardar y retomar experimentos.</div>
-        <label class="gdrive-pop-lbl" for="gdrive-proj-name">Nombre del experimento</label>
-        <input type="text" class="gdrive-pop-input" id="gdrive-proj-name" placeholder="Ej: Caída libre 5ºB" autocomplete="off">
-        <label class="gdrive-pop-check"><input type="checkbox" id="gdrive-autosync" checked> Guardar automáticamente en Drive</label>
-        <div class="gdrive-pop-actions">
-            <button class="inf-btn" id="inf-gdrive-save">💾 Guardar ahora en Drive</button>
-            <button class="inf-btn" id="inf-gdrive-open">📂 Abrir / cambiar de experimento…</button>
-            <button class="inf-btn" id="inf-gdrive-new">＋ Nuevo experimento</button>
-            <button class="inf-btn danger" id="inf-gdrive-signout">Cerrar sesión de Google</button>
+    <!-- Menú «Guardar / Retomar» (se abre desde el botón de arriba, al lado de AYUDA) -->
+    <div class="gdrive-pop session-menu" id="session-menu">
+        <div class="inf-dd-group">Guardar / descargar</div>
+        <button class="inf-dd-item" id="sess-zip">📦 Descargar todo (informe + datos)</button>
+        <button class="inf-dd-item" id="sess-savefile">💾 Guardar mi trabajo en un archivo</button>
+        <div class="inf-dd-sep"></div>
+        <div class="inf-dd-group">Retomar trabajo</div>
+        <button class="inf-dd-item" id="sess-cache" style="display:none;">↺ Retomar mi último trabajo</button>
+        <button class="inf-dd-item" id="sess-openfile">📂 Abrir un trabajo guardado…</button>
+        <div class="inf-dd-sep"></div>
+        <div class="inf-dd-group">Google Drive · en la nube (opcional)</div>
+        <div id="sess-gdrive-disc">
+            <button class="inf-dd-item" id="sess-google-connect">☁ Conectar con Google</button>
+            <div class="inf-dd-status inf-hint">Guardá y retomá tus experimentos desde cualquier navegador.</div>
+        </div>
+        <div id="sess-gdrive-conn" style="display:none;">
+            <div class="inf-dd-status inf-hint" id="inf-gdrive-status"></div>
+            <label class="gdrive-pop-lbl gdrive-in-lbl" for="gdrive-proj-name">Nombre del experimento</label>
+            <input type="text" class="gdrive-pop-input gdrive-in-input" id="gdrive-proj-name" placeholder="Ej: Caída libre 5ºB" autocomplete="off">
+            <label class="gdrive-pop-check gdrive-in-check"><input type="checkbox" id="gdrive-autosync" checked> Guardar automáticamente en Drive</label>
+            <button class="inf-dd-item" id="inf-gdrive-save">☁ Guardar ahora en Drive</button>
+            <button class="inf-dd-item" id="inf-gdrive-open">📂 Abrir / cambiar de experimento…</button>
+            <button class="inf-dd-item" id="inf-gdrive-new">＋ Nuevo experimento</button>
+            <button class="inf-dd-item danger" id="inf-gdrive-signout">Cerrar sesión de Google</button>
         </div>
     </div>
+    <input type="file" id="sess-open-input" accept=".json,.zip,application/json,application/zip" style="display:none;">
 
     <div class="inf-toast" id="inf-toast"></div>
 
@@ -26072,22 +26092,26 @@ bluetooth.startIOPinService()</pre>
         window.addEventListener('pagehide', function () { try { autosaveNow(); } catch (e) {} });
       }
 
+      // Deja listo el trabajo guardado en el navegador para retomarlo A PEDIDO (sin cartel automático):
+      // se ofrece en el menú «Guardar / Retomar» → «Retomar mi último trabajo».
+      var _cachedBlob = null, _cachedAt = 0, _cachedPts = 0;
       async function checkRestore() {
         var blob = null;
         try { blob = await idbGet(AUTOSAVE_KEY); } catch (e) {}
         if (!blob) { try { var ls = localStorage.getItem(LS_KEY); if (ls) blob = JSON.parse(ls); } catch (e) {} }
-        if (!blob || !blob.app) return;
-        var n = (blob.app.rawData || []).length;
-        var rep = blob.report || {};
-        var hasR = n > 0 || rep.notes || rep.drawing || (rep.devicePhotos || []).length || (rep.meta && rep.meta.title);
-        if (!hasR) return;
-        var banner = el('inf-restore'); if (!banner) return;
-        var age = blob.savedAt ? (' · ' + timeAgoStr(blob.savedAt)) : '';
-        el('inf-restore-msg').textContent = 'Encontramos tu trabajo anterior' + (n ? (' (' + n + ' puntos' + age + ')') : (age ? ('(' + age.replace(' · ', '') + ')') : '')) + '. ¿Retomás donde lo dejaste?';
-        banner.classList.add('show');
-        var hideTimer = setTimeout(function () { banner.classList.remove('show'); }, 16000);
-        el('inf-restore-yes').onclick = function () { clearTimeout(hideTimer); banner.classList.remove('show'); restore(blob); toast('Trabajo restaurado ✓'); };
-        el('inf-restore-no').onclick = function () { clearTimeout(hideTimer); banner.classList.remove('show'); };
+        if (blob && blob.app) {
+          var n = (blob.app.rawData || []).length;
+          var rep = blob.report || {};
+          var hasR = n > 0 || rep.notes || rep.drawing || (rep.devicePhotos || []).length || (rep.meta && rep.meta.title);
+          if (hasR) { _cachedBlob = blob; _cachedAt = blob.savedAt || 0; _cachedPts = n; }
+        }
+        updateSessionMenu();
+      }
+      function restoreFromCache() {
+        if (!_cachedBlob) { toast('No hay trabajo guardado en este navegador.'); return; }
+        if (_sessionHasContent() && !confirm('Esto reemplazará lo que tenés abierto ahora.\n\n¿Retomar tu último trabajo guardado en este navegador?')) return;
+        closeSessionMenu();
+        restore(_cachedBlob); _lastSavedAt = _cachedAt || Date.now(); toast('Tu último trabajo fue restaurado ✓'); schedule();
       }
 
       // --- Guardar / Abrir proyecto (archivo) ---
@@ -26202,7 +26226,7 @@ bluetooth.startIOPinService()</pre>
         _gTok = null; _gTokExp = 0; _gUser = null; _gFolderId = null;
         _gSyncOn = false; _gSyncStarted = false; _gSessionFileId = null;
         try { localStorage.removeItem('fbit_gdrive'); } catch (e) {}
-        closeDrivePop(); gUpdateDriveUI(); toast('Sesión de Google cerrada.');
+        gUpdateDriveUI(); toast('Sesión de Google cerrada.');
       }
       function gApi(path, opts) {
         opts = opts || {}; opts.headers = opts.headers || {};
@@ -26269,7 +26293,7 @@ bluetooth.startIOPinService()</pre>
       }
       // Empezar un experimento NUEVO (guarda el actual en Drive antes de limpiar, para no perderlo).
       async function gNewProject() {
-        closeDrivePop();
+        closeSessionMenu();
         var name = prompt('Nombre del experimento nuevo (podés cambiarlo después en «Título del experimento»):', '');
         if (name === null) return;
         name = (name || '').trim();
@@ -26283,7 +26307,7 @@ bluetooth.startIOPinService()</pre>
       function gFmtDate(iso) { try { var d = new Date(iso); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
       async function gOpenFromDrive() {
         if (!(await gEnsureToken())) { toast('Iniciá sesión con Google primero.'); return; }
-        closeDrivePop();
+        closeSessionMenu();
         var modal = el('inf-drive-modal'), list = el('inf-drive-list'); if (!modal || !list) return;
         list.innerHTML = '<div class="inf-drive-empty">Cargando tus proyectos…</div>'; modal.classList.add('open');
         try {
@@ -26318,38 +26342,45 @@ bluetooth.startIOPinService()</pre>
       }
       function gUpdateDriveUI() {
         var connected = gConnected();
-        var label = connected ? ('Conectado a Google como: ' + ((_gUser && _gUser.emailAddress) || 'mi cuenta')) : '☁ Conectar con Google';
-        ['gdriveTopBtn', 'gdriveTopBtn2'].forEach(function (id) { var b = el(id); if (!b) return; b.textContent = label; b.classList.toggle('gdrive-on', connected); });
+        var disc = el('sess-gdrive-disc'), conn = el('sess-gdrive-conn');
+        if (disc) disc.style.display = connected ? 'none' : 'block';
+        if (conn) conn.style.display = connected ? 'block' : 'none';
         var status = el('inf-gdrive-status');
         if (status) {
           if (!gConfigured()) status.textContent = 'Google Drive: pendiente de configurar (falta el Client ID).';
-          else if (connected) status.textContent = 'Conectado a Google como: ' + ((_gUser && _gUser.emailAddress) || 'mi cuenta') + (_gSyncOn && _gAutoSync ? (' · guardando «' + gProjectDisplayName() + '».') : '.');
-          else status.textContent = 'Conectá tu cuenta para guardar y retomar experimentos (opcional).';
+          else if (connected) status.textContent = 'Conectado como: ' + ((_gUser && _gUser.emailAddress) || 'mi cuenta') + (_gSyncOn && _gAutoSync ? (' · guardando «' + gProjectDisplayName() + '».') : '.');
+          else status.textContent = '';
         }
         updateProjectBadge();
       }
       // --- Botón «Conectar con Google» (arriba, junto a AYUDA) y su popover de opciones ---
       var _gAutoSync = true;
       try { _gAutoSync = localStorage.getItem('fbit_gdrive_autosync') !== '0'; } catch (e) {}
-      function driveTopClick() {
+      function sessionMenuClick() { toggleSessionMenu(); }
+      function driveConnect() {
         if (!gConfigured()) { toast('Falta configurar el Client ID de Google (ver GOOGLE_CLIENT_ID en el código).'); return; }
-        if (!gConnected()) { gConnect(true).then(function (ok) { if (ok) { gSyncStart(); openDrivePop(); } else toast('No se pudo conectar con Google.'); }); return; }
-        toggleDrivePop();
+        if (gConnected()) { gUpdateDriveUI(); return; }
+        gConnect(true).then(function (ok) { if (ok) { gSyncStart(); gUpdateDriveUI(); positionSessionMenu(); } else toast('No se pudo conectar con Google.'); });
       }
-      function positionDrivePop() {
-        var pop = el('gdrive-pop'), btn = el('gdriveTopBtn'); if (!pop) return;
+      function positionSessionMenu() {
+        var pop = el('session-menu'), btn = el('sessionTopBtn'); if (!pop) return;
         if (btn && btn.offsetParent !== null) { var r = btn.getBoundingClientRect(); pop.style.top = (r.bottom + 6) + 'px'; pop.style.right = Math.max(8, window.innerWidth - r.right) + 'px'; pop.style.left = 'auto'; }
         else { pop.style.top = '58px'; pop.style.right = '12px'; pop.style.left = 'auto'; }
       }
-      function openDrivePop() {
-        var pop = el('gdrive-pop'); if (!pop) return;
+      function openSessionMenu() {
+        var pop = el('session-menu'); if (!pop) return;
         var nm = el('gdrive-proj-name'); if (nm) nm.value = (I.meta && I.meta.title) || '';
         var as = el('gdrive-autosync'); if (as) as.checked = _gAutoSync;
-        gUpdateDriveUI(); pop.classList.add('open'); positionDrivePop();
+        updateSessionMenu(); gUpdateDriveUI(); pop.classList.add('open'); positionSessionMenu();
       }
-      function closeDrivePop() { var pop = el('gdrive-pop'); if (pop) pop.classList.remove('open'); }
-      function toggleDrivePop() { var pop = el('gdrive-pop'); if (pop && pop.classList.contains('open')) closeDrivePop(); else openDrivePop(); }
-      I.driveTopClick = driveTopClick;
+      function closeSessionMenu() { var pop = el('session-menu'); if (pop) pop.classList.remove('open'); }
+      function toggleSessionMenu() { var pop = el('session-menu'); if (pop && pop.classList.contains('open')) closeSessionMenu(); else openSessionMenu(); }
+      function updateSessionMenu() {
+        var c = el('sess-cache'); if (!c) return;
+        if (_cachedBlob) { c.style.display = 'block'; c.textContent = '↺ Retomar mi último trabajo' + (_cachedAt ? (' · ' + timeAgoStr(_cachedAt) + (_cachedPts ? (' (' + _cachedPts + ' puntos)') : '')) : ''); }
+        else c.style.display = 'none';
+      }
+      I.sessionMenuClick = sessionMenuClick;
 
       // --- Sincronización continua del EXPERIMENTO ACTIVO con Google Drive ---
       // Cada experimento es un archivo con su nombre (el Título) en la carpeta fisicabit y se
@@ -26483,26 +26514,32 @@ bluetooth.startIOPinService()</pre>
         if (el('inf-open-input')) el('inf-open-input').addEventListener('change', function (e) { if (e.target.files && e.target.files[0]) openProjectFile(e.target.files[0]); e.target.value = ''; });
         if (el('inf-reset')) el('inf-reset').addEventListener('click', resetAll);
 
-        // Google Drive (guardar/retomar en la nube)
+        // Menú «Guardar / Retomar» (botón de arriba, junto a AYUDA)
+        if (el('sess-zip')) el('sess-zip').addEventListener('click', function () { downloadZip(); });
+        if (el('sess-savefile')) el('sess-savefile').addEventListener('click', function () { saveProjectFile(); });
+        if (el('sess-cache')) el('sess-cache').addEventListener('click', restoreFromCache);
+        if (el('sess-openfile')) el('sess-openfile').addEventListener('click', function () { var i = el('sess-open-input'); if (i) i.click(); });
+        if (el('sess-open-input')) el('sess-open-input').addEventListener('change', function (e) { if (e.target.files && e.target.files[0]) openProjectFile(e.target.files[0]); e.target.value = ''; closeSessionMenu(); });
+        if (el('sess-google-connect')) el('sess-google-connect').addEventListener('click', driveConnect);
+        // Google Drive (dentro del menú, cuando estás conectado)
         if (el('inf-gdrive-save')) el('inf-gdrive-save').addEventListener('click', gSaveToDrive);
         if (el('inf-gdrive-open')) el('inf-gdrive-open').addEventListener('click', gOpenFromDrive);
         if (el('inf-gdrive-new')) el('inf-gdrive-new').addEventListener('click', gNewProject);
         if (el('inf-gdrive-signout')) el('inf-gdrive-signout').addEventListener('click', gDisconnect);
         if (el('inf-drive-close')) el('inf-drive-close').addEventListener('click', function () { el('inf-drive-modal').classList.remove('open'); });
         if (el('inf-drive-modal')) el('inf-drive-modal').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
-        // Popover del botón «Conectar con Google»: nombre del experimento + guardado automático (opcional)
         var pn = el('gdrive-proj-name');
         if (pn) pn.addEventListener('input', function () { I.meta.title = pn.value; setInputVal('inf-title', pn.value); updateProjectBadge(); gSetSyncStatus(); renderPreviewDebounced(); schedule(); });
         var asw = el('gdrive-autosync');
         if (asw) asw.addEventListener('change', function () { _gAutoSync = asw.checked; try { localStorage.setItem('fbit_gdrive_autosync', asw.checked ? '1' : '0'); } catch (e) {} if (asw.checked) gSyncPush(true); gUpdateDriveUI(); toast(asw.checked ? 'Guardado automático en Drive activado.' : 'Guardado automático desactivado (usá «Guardar ahora»).'); });
         document.addEventListener('mousedown', function (e) {
-          var pop = el('gdrive-pop'); if (!pop || !pop.classList.contains('open')) return;
+          var pop = el('session-menu'); if (!pop || !pop.classList.contains('open')) return;
           var t = e.target;
-          if (pop.contains(t) || (t.closest && (t.closest('#gdriveTopBtn') || t.closest('#gdriveTopBtn2')))) return;
-          closeDrivePop();
+          if (pop.contains(t) || (t.closest && (t.closest('#sessionTopBtn') || t.closest('#sessionTopBtn2')))) return;
+          closeSessionMenu();
         });
-        window.addEventListener('resize', function () { var p = el('gdrive-pop'); if (p && p.classList.contains('open')) positionDrivePop(); });
-        gUpdateDriveUI();
+        window.addEventListener('resize', function () { var p = el('session-menu'); if (p && p.classList.contains('open')) positionSessionMenu(); });
+        updateSessionMenu(); gUpdateDriveUI();
 
         // Menú desplegable «Exportar / Guardar» (arriba a la derecha)
         var expBtn = el('inf-export-btn'), expMenu = el('inf-export-menu');
