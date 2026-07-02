@@ -4559,6 +4559,15 @@
 
         .inf-eq-modal { display:none; position:fixed; inset:0; z-index:9300; background:rgba(0,0,0,.6); align-items:center; justify-content:center; padding:20px; }
         .inf-eq-modal.open { display:flex; }
+        /* Diálogo propio (alert/confirm/prompt traducibles) */
+        .inf-dialog { display:none; position:fixed; inset:0; z-index:9900; background:rgba(0,0,0,.55); align-items:center; justify-content:center; padding:20px; }
+        .inf-dialog.open { display:flex; }
+        .inf-dialog-box { background:#fff; color:#161616; width:440px; max-width:100%; border-radius:10px; box-shadow:0 12px 40px rgba(0,0,0,.4); padding:20px 20px 16px; }
+        .inf-dialog-msg { font-size:14px; line-height:1.5; white-space:pre-line; color:#222; }
+        .inf-dialog-input { display:block; width:100%; box-sizing:border-box; margin-top:12px; padding:9px 10px; font-size:14px; font-family:inherit; border:1px solid #cfcfcf; border-radius:6px; }
+        .inf-dialog-input:focus { outline:none; border-color:#1976d2; }
+        .inf-dialog-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+        .inf-dialog .inf-btn { width:auto; }
         .inf-eq-box { background:#23272e; border:1px solid #444; width:640px; max-width:100%; max-height:92vh; overflow-y:auto; padding:16px; }
         .inf-eq-head { font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:#fff; margin-bottom:10px; }
         .inf-eq-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
@@ -7111,6 +7120,13 @@ basic.forever(function () {
             if (!replacements) return text;
             return text.replace(/\{(\w+)\}/g, (_, k) => replacements[k] !== undefined ? replacements[k] : `{${k}}`);
         }
+
+        // Diálogos propios (modal estilizado y traducible). El módulo INFORME instala
+        // la versión definitiva más abajo; acá dejamos un respaldo nativo por si se
+        // llaman antes de que ese módulo cargue.
+        if (typeof window.uiAlert !== 'function') window.uiAlert = function (m) { try { alert(m); } catch (e) {} return Promise.resolve(); };
+        if (typeof window.uiConfirm !== 'function') window.uiConfirm = function (m) { var r = false; try { r = confirm(m); } catch (e) {} return Promise.resolve(r); };
+        if (typeof window.uiPrompt !== 'function') window.uiPrompt = function (m, d) { var r = null; try { r = prompt(m, d); } catch (e) {} return Promise.resolve(r); };
 
         // Función para actualizar el footer según el idioma
         function updateFooter(lang) {
@@ -10199,7 +10215,7 @@ bluetooth.startIOPinService()</pre>
             updateIntegralVarOptions();
             updateIntegralGraphOptions();
 
-            alert(tr('alertConfigApplied', {num}));
+            uiAlert(tr('alertConfigApplied', {num}));
         }
 
         // ========== CONFIGURACIÓN DE GRÁFICAS ==========
@@ -10748,7 +10764,7 @@ bluetooth.startIOPinService()</pre>
 
             updateGraphsDisplay();
             updateFitGraphOptions();
-            alert(tr('alertGraphConfigApplied'));
+            uiAlert(tr('alertGraphConfigApplied'));
         }
 
         function updateGraphsDisplay() {
@@ -11379,7 +11395,7 @@ bluetooth.startIOPinService()</pre>
                 // Esto evita acumulación de datos en el buffer del puerto serial
                 startSerialLoop();
             } catch (err) {
-                alert('Error: ' + err.message);
+                uiAlert('Error: ' + err.message);
             }
         });
 
@@ -11980,7 +11996,7 @@ bluetooth.startIOPinService()</pre>
                 } catch (notifyErr) {
                     this.error('startNotifications falló:', notifyErr.message);
                     this.btLoopRunning = false;
-                    alert(currentLanguage === 'en' ?
+                    uiAlert(currentLanguage === 'en' ?
                         'Error: Could not enable UART notifications.\n\nVerify your MakeCode program has "bluetooth uart service".\nTry forgetting the device in Bluetooth settings and reconnect.' :
                         currentLanguage === 'pt' ?
                         'Erro: Não foi possível ativar notificações UART.\n\nVerifique que seu programa MakeCode tenha "bluetooth uart service".\nTente esquecer o dispositivo nas configurações Bluetooth e reconectar.' :
@@ -12356,13 +12372,13 @@ bluetooth.startIOPinService()</pre>
                     if (err.name === 'NotFoundError') {
                         this.log('Usuario canceló el selector');
                     } else if (err.message && err.message.includes('UART')) {
-                        alert(currentLanguage === 'en' ?
+                        uiAlert(currentLanguage === 'en' ?
                             'UART service not found on the micro:bit.\n\nVerify the MakeCode program has the block:\n"bluetooth uart service"' :
                             currentLanguage === 'pt' ?
                             'Serviço UART não encontrado na micro:bit.\n\nVerifique que o programa MakeCode tenha o bloco:\n"bluetooth uart service"' :
                             'No se encontró el servicio UART en la micro:bit.\n\nVerifica que el programa MakeCode tenga el bloque:\n"bluetooth uart service"');
                     } else {
-                        alert('Error Bluetooth: ' + err.message);
+                        uiAlert('Error Bluetooth: ' + err.message);
                     }
                     return false;
                 }
@@ -12579,7 +12595,7 @@ bluetooth.startIOPinService()</pre>
                     msg += '2. Verificá que tu programa MakeCode tenga "bluetooth uart service"\n';
                     msg += '3. Reseteá el micro:bit y volvé a intentar\n';
                 }
-                alert(msg);
+                uiAlert(msg);
             }
 
             // ── Info de conexión ──
@@ -12620,7 +12636,7 @@ bluetooth.startIOPinService()</pre>
             console.log('[BT] navigator.bluetooth disponible:', 'bluetooth' in navigator);
             console.log('[BT] User Agent:', navigator.userAgent);
             if (!('bluetooth' in navigator)) {
-                alert(currentLanguage === 'es'
+                uiAlert(currentLanguage === 'es'
                     ? 'Web Bluetooth API no soportada. Usa Chrome o Edge en escritorio/Android.'
                     : currentLanguage === 'pt'
                     ? 'Web Bluetooth API não suportada. Use Chrome ou Edge no desktop/Android.'
@@ -15643,7 +15659,7 @@ bluetooth.startIOPinService()</pre>
         function mtAutoFillTime() {
             const hasTime = state.microbitTimestamp;
             if (!hasTime) {
-                alert(tr('mtAutoFillDisabled'));
+                uiAlert(tr('mtAutoFillDisabled'));
                 return;
             }
             const t0 = parseFloat(document.getElementById('mtTimeStart').value);
@@ -15717,7 +15733,7 @@ bluetooth.startIOPinService()</pre>
             }
 
             if (imported.length === 0) {
-                alert(tr('alertNoValidRows'));
+                uiAlert(tr('alertNoValidRows'));
                 return;
             }
 
@@ -15747,7 +15763,7 @@ bluetooth.startIOPinService()</pre>
             updateDisplay();
             closeManualTableModal();
 
-            alert(tr('alertImportOk', {count: imported.length, vars: numVars}));
+            uiAlert(tr('alertImportOk', {count: imported.length, vars: numVars}));
         }
 
         // ========== INTEGRAL NUMÉRICA ==========
@@ -15935,7 +15951,7 @@ bluetooth.startIOPinService()</pre>
             }
 
             if (dataToUse.length < 2) {
-                alert(tr('alertMinPointsIntegral'));
+                uiAlert(tr('alertMinPointsIntegral'));
                 return;
             }
 
@@ -16382,7 +16398,7 @@ bluetooth.startIOPinService()</pre>
         // Photo gallery modal
         document.getElementById('photoGalleryBtn').addEventListener('click', () => {
             if (photoCaptureState.photos.length === 0) {
-                alert(tr('alertNoPhotos'));
+                uiAlert(tr('alertNoPhotos'));
                 return;
             }
             let html = '<div style="max-height:70vh; overflow:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:8px; padding:8px;">';
@@ -16617,25 +16633,25 @@ bluetooth.startIOPinService()</pre>
         }
         async function exDownloadExample() {
             try { _exDownloadBlob(await _exGetExampleBlob(), 'microbit-ejemplo.hex'); exToast('Descargado ✓'); }
-            catch (e) { alert('No se pudo descargar el .hex de ejemplo: ' + (e && e.message || e)); }
+            catch (e) { uiAlert('No se pudo descargar el .hex de ejemplo: ' + (e && e.message || e)); }
         }
         // Guardar el .hex directo (ideal: elegir el disco MICROBIT → la placa se programa sola).
         async function _exSaveToMicrobit(getBlob, suggested) {
             if (!window.showSaveFilePicker) {
-                alert('Tu navegador no permite guardar directo en el disco. Usá "Descargar .hex" y arrastrá el archivo al disco MICROBIT (Chrome/Edge en computadora sí lo permiten).');
+                uiAlert('Tu navegador no permite guardar directo en el disco. Usá "Descargar .hex" y arrastrá el archivo al disco MICROBIT (Chrome/Edge en computadora sí lo permiten).');
                 return;
             }
             let blob;
             try { blob = await getBlob(); }
-            catch (e) { alert('No se pudo leer el .hex: ' + (e && e.message || e)); return; }
+            catch (e) { uiAlert('No se pudo leer el .hex: ' + (e && e.message || e)); return; }
             try {
                 const h = await window.showSaveFilePicker({
                     suggestedName: suggested || 'microbit.hex',
                     types: [{ description: 'micro:bit hex', accept: { 'application/octet-stream': ['.hex'] } }]
                 });
                 const w = await h.createWritable(); await w.write(blob); await w.close();
-                alert('Guardado. Si elegiste el disco MICROBIT, la micro:bit se va a programar sola (la luz amarilla parpadea unos segundos).');
-            } catch (e) { if (e && e.name !== 'AbortError') alert('No se pudo guardar: ' + (e && e.message || e)); }
+                uiAlert('Guardado. Si elegiste el disco MICROBIT, la micro:bit se va a programar sola (la luz amarilla parpadea unos segundos).');
+            } catch (e) { if (e && e.name !== 'AbortError') uiAlert('No se pudo guardar: ' + (e && e.message || e)); }
         }
         function exFlashExample() { _exSaveToMicrobit(_exGetExampleBlob, 'microbit-ejemplo.hex'); }
         function _exUserFile() {
@@ -16644,8 +16660,8 @@ bluetooth.startIOPinService()</pre>
             if (!f) throw new Error('Elegí primero un archivo .hex');
             return f;
         }
-        function exDownloadUser() { try { const f = _exUserFile(); _exDownloadBlob(f, f.name || 'microbit.hex'); } catch (e) { alert(e.message); } }
-        function exFlashUser() { let f; try { f = _exUserFile(); } catch (e) { alert(e.message); return; } _exSaveToMicrobit(async () => f, f.name || 'microbit.hex'); }
+        function exDownloadUser() { try { const f = _exUserFile(); _exDownloadBlob(f, f.name || 'microbit.hex'); } catch (e) { uiAlert(e.message); } }
+        function exFlashUser() { let f; try { f = _exUserFile(); } catch (e) { uiAlert(e.message); return; } _exSaveToMicrobit(async () => f, f.name || 'microbit.hex'); }
 
         // ===== Programar la micro:bit por USB en 1 clic (estilo MakeCode) =====
         // Usa @microbit/microbit-connection (librería oficial de la Fundación micro:bit):
@@ -16751,13 +16767,13 @@ bluetooth.startIOPinService()</pre>
 
         async function _exProgramViaUSB(getHexText, label, fallbackDownload) {
             if (!(typeof navigator !== 'undefined' && navigator.usb)) {
-                alert('Tu navegador no permite programar por USB directo (WebUSB).\n\nUsá Chrome o Edge en una computadora (no funciona en iPhone/iPad, Safari ni Firefox).\n\nMientras tanto podés usar "Descargar .hex" y arrastrarlo al disco MICROBIT.');
+                uiAlert('Tu navegador no permite programar por USB directo (WebUSB).\n\nUsá Chrome o Edge en una computadora (no funciona en iPhone/iPad, Safari ni Firefox).\n\nMientras tanto podés usar "Descargar .hex" y arrastrarlo al disco MICROBIT.');
                 if (fallbackDownload) fallbackDownload();
                 return;
             }
             let mc;
             try { mc = await _mcPreload(); if (!mc) throw new Error('módulo no disponible'); }
-            catch (e) { alert('No se pudo cargar el programador USB (¿sin conexión a internet?). Probá "Descargar .hex".'); if (fallbackDownload) fallbackDownload(); return; }
+            catch (e) { uiAlert('No se pudo cargar el programador USB (¿sin conexión a internet?). Probá "Descargar .hex".'); if (fallbackDownload) fallbackDownload(); return; }
 
             const ui = _exFlashUIStart(label);
             const fb = fallbackDownload || null;
@@ -16796,7 +16812,7 @@ bluetooth.startIOPinService()</pre>
         }
         function exFlashExampleUSB() { _exProgramViaUSB(_exGetExampleHexText, 'programa de ejemplo', exDownloadExample); }
         function exFlashUserUSB() {
-            let f; try { f = _exUserFile(); } catch (e) { alert(e.message); return; }
+            let f; try { f = _exUserFile(); } catch (e) { uiAlert(e.message); return; }
             _exProgramViaUSB(() => f.text(), f.name || 'tu programa', exDownloadUser);
         }
 
@@ -16884,7 +16900,7 @@ bluetooth.startIOPinService()</pre>
 
         const _detectSegBtn = document.getElementById('detectSegmentsBtn');
         if (_detectSegBtn) _detectSegBtn.addEventListener('click', () => {
-            if (!state.rawData || state.rawData.length < 8) { alert(tr('alertMinPoints')); return; }
+            if (!state.rawData || state.rawData.length < 8) { uiAlert(tr('alertMinPoints')); return; }
             const graphIndex = parseInt(document.getElementById('fitGraphSelect').value) || 0;
             const varIndex = parseInt(document.getElementById('fitVariable').value) || 0;
             const config = state.graphs[graphIndex];
@@ -16896,7 +16912,7 @@ bluetooth.startIOPinService()</pre>
             const yData = state.rawData.map(d => d.values[varIndex]);
             const segs = detectSegments(xData, yData);
             try { performSegmentFits(graphIndex, varIndex, segs, null); }
-            catch (e) { alert((tr('alertFitError') || 'Error: ') + e.message); return; }
+            catch (e) { uiAlert((tr('alertFitError') || 'Error: ') + e.message); return; }
             // El modo por tramos reemplaza al ajuste único en la UI
             document.getElementById('fitResults').style.display = 'none';
             if (typeof updateCurveFitButtons === 'function') updateCurveFitButtons();
@@ -16939,12 +16955,12 @@ bluetooth.startIOPinService()</pre>
                     const to = parseInt(document.getElementById('fitRangeTo').value);
 
                     if (!from || !to || from < 1 || to < 1 || from > to) {
-                        alert(tr('alertInvalidRange'));
+                        uiAlert(tr('alertInvalidRange'));
                         return;
                     }
 
                     if (from > state.rawData.length || to > state.rawData.length) {
-                        alert(tr('alertRangeExceed', {max: state.rawData.length}));
+                        uiAlert(tr('alertRangeExceed', {max: state.rawData.length}));
                         return;
                     }
 
@@ -16958,7 +16974,7 @@ bluetooth.startIOPinService()</pre>
                 // Si fitMode === 'all', dataToFit ya es state.rawData
 
                 if (dataToFit.length < 2) {
-                    alert(tr('alertMinPoints'));
+                    uiAlert(tr('alertMinPoints'));
                     return;
                 }
 
@@ -16981,7 +16997,7 @@ bluetooth.startIOPinService()</pre>
                 console.log('Datos para ajuste:', { fitType, xData, yData, varIndex, graphConfig });
 
                 if (xData.some(x => isNaN(x)) || yData.some(y => isNaN(y))) {
-                    alert(tr('alertInvalidData'));
+                    uiAlert(tr('alertInvalidData'));
                     console.error('Datos inválidos:', { xData, yData });
                     return;
                 }
@@ -16991,11 +17007,11 @@ bluetooth.startIOPinService()</pre>
                 let fitOpts;
                 if (fitType === 'custom') {
                     const expr = (document.getElementById('customFitExpr').value || '').trim();
-                    if (!expr) { alert(tr('alertCustomNoExpr')); return; }
+                    if (!expr) { uiAlert(tr('alertCustomNoExpr')); return; }
                     let paramNames;
                     try { paramNames = detectCustomParams(expr); }
-                    catch (e) { alert(tr('alertCustomBadExpr') + e.message); return; }
-                    if (paramNames.length === 0) { alert(tr('alertCustomNoParams')); return; }
+                    catch (e) { uiAlert(tr('alertCustomBadExpr') + e.message); return; }
+                    if (paramNames.length === 0) { uiAlert(tr('alertCustomNoParams')); return; }
                     const initialValues = paramNames.map(n => {
                         const inp = document.querySelector(`#customFitParams input[data-pname="${n}"]`);
                         const v = inp ? parseFloat(inp.value) : NaN;
@@ -17071,7 +17087,7 @@ bluetooth.startIOPinService()</pre>
                 updateCurveFitButtons();
 
             } catch (error) {
-                alert(tr('alertFitError') + error.message);
+                uiAlert(tr('alertFitError') + error.message);
                 console.error('Error en curve fit:', error);
             }
         });
@@ -17638,7 +17654,7 @@ bluetooth.startIOPinService()</pre>
                 document.getElementById('importFileName').textContent = file.name;
                 _updateImportPreview();
             } catch (err) {
-                alert(tr('alertImportError') + err.message);
+                uiAlert(tr('alertImportError') + err.message);
             }
         }
 
@@ -17673,7 +17689,7 @@ bluetooth.startIOPinService()</pre>
             try {
                 const parsed = parseCSVForImport(_pendingImportText, format);
                 if (parsed.rows.length === 0) {
-                    alert(tr('alertImportFail'));
+                    uiAlert(tr('alertImportFail'));
                     return;
                 }
                 if (mode === 'compare') {
@@ -17685,7 +17701,7 @@ bluetooth.startIOPinService()</pre>
                 }
                 closeImportDialog();
             } catch (err) {
-                alert(tr('alertImportError') + err.message);
+                uiAlert(tr('alertImportError') + err.message);
             }
         }
 
@@ -17724,7 +17740,7 @@ bluetooth.startIOPinService()</pre>
             state.extraDataSets.push(setObj);
             _renderExtraDataSetsPanel();
             updateAllCharts();
-            alert(tr('alertExtraDataSetAdded', { name: name, count: points.length }) || ('Conjunto añadido: ' + name + ' (' + points.length + ' puntos)'));
+            uiAlert(tr('alertExtraDataSetAdded', { name: name, count: points.length }) || ('Conjunto añadido: ' + name + ' (' + points.length + ' puntos)'));
         }
         function _removeExtraDataSet(id) {
             state.extraDataSets = state.extraDataSets.filter(s => s.id !== id);
@@ -17837,7 +17853,7 @@ bluetooth.startIOPinService()</pre>
 
             state.rawData = importedData;
             updateDisplay();
-            alert(tr('alertImportOk', { count: importedData.length, vars: numVars }));
+            uiAlert(tr('alertImportOk', { count: importedData.length, vars: numVars }));
         }
 
         // Listeners para actualizar vista previa al cambiar formato
@@ -17863,7 +17879,8 @@ bluetooth.startIOPinService()</pre>
         // ========== LIMPIAR ==========
 
         document.getElementById('clearBtn').addEventListener('click', () => {
-            if (confirm(tr('alertClearConfirm'))) {
+            uiConfirm(tr('alertClearConfirm')).then((ok) => {
+                if (!ok) return;
                 state.rawData = [];
                 state.selectedPoints.clear();
                 state.timeZeroOffset = 0;
@@ -17893,7 +17910,7 @@ bluetooth.startIOPinService()</pre>
                     if (typeof _renderExtraDataSetsPanel === 'function') _renderExtraDataSetsPanel();
                 }
                 updateDisplay();
-            }
+            });
         });
 
         // ========== CÁMARA Y VIDEO ==========
@@ -17968,7 +17985,7 @@ bluetooth.startIOPinService()</pre>
                     document.getElementById('videoSection').style.display = 'block';
                     document.getElementById('cameraBtn').classList.add('primary');
                 } catch (err) {
-                    alert(tr('alertCameraError') + err.message);
+                    uiAlert(tr('alertCameraError') + err.message);
                 }
             }
         });
@@ -17981,7 +17998,7 @@ bluetooth.startIOPinService()</pre>
             try {
                 await startCameraStream(deviceId, null);
             } catch (err) {
-                alert(tr('alertCameraError') + err.message);
+                uiAlert(tr('alertCameraError') + err.message);
             }
         });
 
@@ -18001,7 +18018,7 @@ bluetooth.startIOPinService()</pre>
                     try {
                         await startCameraStream(state.availableCameras[nextIdx].deviceId, null);
                     } catch (err2) {
-                        alert(tr('alertCameraError') + err2.message);
+                        uiAlert(tr('alertCameraError') + err2.message);
                     }
                 }
             }
@@ -18247,7 +18264,7 @@ bluetooth.startIOPinService()</pre>
             if (!point) return;
 
             if (!state.videoBlob) {
-                alert(tr('alertNoVideo'));
+                uiAlert(tr('alertNoVideo'));
                 return;
             }
 
@@ -18289,7 +18306,7 @@ bluetooth.startIOPinService()</pre>
             }
 
             if (videoTime < 0) {
-                alert('Este punto fue capturado antes de iniciar la grabación');
+                uiAlert('Este punto fue capturado antes de iniciar la grabación');
                 return;
             }
 
@@ -18328,7 +18345,7 @@ bluetooth.startIOPinService()</pre>
 
         function downloadVideo() {
             if (!state.videoBlob) {
-                alert(tr('alertNoVideo'));
+                uiAlert(tr('alertNoVideo'));
                 return;
             }
             const ext = state.videoBlob.type.includes('mp4') ? 'mp4' : 'webm';
@@ -19364,15 +19381,18 @@ bluetooth.startIOPinService()</pre>
         function exitSensorMode(skipTransferPrompt) {
             // If there are registered data points, offer to transfer them
             if (!skipTransferPrompt && smState.registeredData.length > 0) {
-                const transfer = confirm(
+                uiConfirm(
                     `Hay ${smState.registeredData.length} datos registrados.\n¿Transferir datos y fotos a la vista principal?`
-                );
-                if (transfer) {
-                    smBuildGraphAndReturn();
-                    return; // smBuildGraphAndReturn calls exitSensorMode(true) at the end
-                }
+                ).then((transfer) => {
+                    // smBuildGraphAndReturn llama a exitSensorMode(true) al final (rama de limpieza)
+                    if (transfer) smBuildGraphAndReturn();
+                    else _exitSensorModeCleanup();
+                });
+                return;
             }
-
+            _exitSensorModeCleanup();
+        }
+        function _exitSensorModeCleanup() {
             smState.active = false;
             document.body.classList.remove('sensor-mode-active');
             document.getElementById('sensorMode').classList.remove('active');
@@ -19827,7 +19847,7 @@ bluetooth.startIOPinService()</pre>
 
         function smBuildGraphAndReturn() {
             if (smState.registeredData.length === 0) {
-                alert(tr('alertNoRegData'));
+                uiAlert(tr('alertNoRegData'));
                 return;
             }
 
@@ -19839,7 +19859,7 @@ bluetooth.startIOPinService()</pre>
                 if (cb && cb.checked) yVars.push(i);
             }
             if (yVars.length === 0) {
-                alert(tr('alertSelectYVar'));
+                uiAlert(tr('alertSelectYVar'));
                 return;
             }
 
@@ -19889,7 +19909,7 @@ bluetooth.startIOPinService()</pre>
         // ── Export .zip ──
         async function smExportZip() {
             if (smState.registeredData.length === 0) {
-                alert(tr('alertNoExportData'));
+                uiAlert(tr('alertNoExportData'));
                 return;
             }
 
@@ -24392,6 +24412,18 @@ bluetooth.startIOPinService()</pre>
     </div>
     <input type="file" id="sess-open-input" accept=".json,.zip,application/json,application/zip" style="display:none;">
 
+    <!-- Diálogo propio (reemplaza a alert/confirm/prompt del navegador; se traduce con la interfaz) -->
+    <div class="inf-dialog" id="inf-dialog">
+        <div class="inf-dialog-box">
+            <div class="inf-dialog-msg" id="inf-dialog-msg"></div>
+            <input type="text" class="inf-dialog-input" id="inf-dialog-input" style="display:none;">
+            <div class="inf-dialog-actions">
+                <button class="inf-btn inf-dialog-cancel" id="inf-dialog-cancel" style="width:auto;margin:0;">Cancelar</button>
+                <button class="inf-btn primary inf-dialog-ok" id="inf-dialog-ok" style="width:auto;margin:0;">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="inf-toast" id="inf-toast"></div>
 
     <script>
@@ -24522,6 +24554,37 @@ bluetooth.startIOPinService()</pre>
       function fn(name) { try { return typeof window[name] === 'function'; } catch (e) { return false; } }
       function el(id) { return document.getElementById(id); }
       function raf2() { return new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); }); }
+      // Traduce un texto al idioma de la interfaz usando el motor de i18n (si está).
+      function _t(s) { try { if (!window.FbitI18n || !window.FbitI18n.T) return s; var l = (typeof currentLanguage !== 'undefined' && currentLanguage) || 'es'; var v = window.FbitI18n.T(s, l); return v == null ? s : v; } catch (e) { return s; } }
+      // Diálogos propios (reemplazan alert/confirm/prompt del navegador; se traducen con la interfaz).
+      var _dlgOpts = null, _dlgResolve = null;
+      function _dlgFinish(val) { var m = el('inf-dialog'); if (m) m.classList.remove('open'); var r = _dlgResolve; _dlgResolve = null; _dlgOpts = null; if (r) r(val); }
+      function _dlgOk() { if (!_dlgOpts) return; _dlgFinish(_dlgOpts.prompt ? el('inf-dialog-input').value : true); }
+      function _dlgCancel() { if (!_dlgOpts) return; _dlgFinish(_dlgOpts.prompt ? null : false); }
+      function uiDialog(opts) {
+        return new Promise(function (resolve) {
+          var m = el('inf-dialog'), msg = el('inf-dialog-msg'), inp = el('inf-dialog-input'),
+            ok = el('inf-dialog-ok'), cancel = el('inf-dialog-cancel');
+          if (!m || !msg || !ok) { // Respaldo al diálogo nativo si faltara el modal
+            if (opts.prompt) return resolve(window.prompt(_t(opts.message), opts.def || ''));
+            if (opts.alert) { window.alert(_t(opts.message)); return resolve(true); }
+            return resolve(window.confirm(_t(opts.message)));
+          }
+          _dlgOpts = opts; _dlgResolve = resolve;
+          msg.textContent = _t(opts.message);
+          if (opts.prompt) { inp.style.display = ''; inp.value = opts.def || ''; } else { inp.style.display = 'none'; }
+          ok.textContent = _t(opts.okLabel || 'Aceptar');
+          cancel.style.display = opts.alert ? 'none' : '';
+          cancel.textContent = _t(opts.cancelLabel || 'Cancelar');
+          m.classList.add('open');
+          setTimeout(function () { (opts.prompt ? inp : ok).focus(); if (opts.prompt) inp.select(); }, 30);
+        });
+      }
+      function uiAlert(message) { return uiDialog({ message: message, alert: true }).then(function () { }); }
+      function uiConfirm(message) { return uiDialog({ message: message }); }
+      function uiPrompt(message, def) { return uiDialog({ message: message, prompt: true, def: def }); }
+      // Exponer los diálogos propios para todo el sitio (el app principal también los usa).
+      try { window.uiAlert = uiAlert; window.uiConfirm = uiConfirm; window.uiPrompt = uiPrompt; } catch (e) {}
       function todayStr() {
         var d = new Date();
         return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
@@ -25242,7 +25305,7 @@ bluetooth.startIOPinService()</pre>
           acts.appendChild(up); acts.appendChild(dn); acts.appendChild(inc);
           if (isSec) {
             var expand = cbtn('⤢', 'Editar en página completa'); expand.addEventListener('click', function () { openPageEditor(id.slice(4)); }); acts.appendChild(expand);
-            var del = cbtn('✕', 'Quitar sección'); del.classList.add('del'); del.addEventListener('click', function () { if (confirm('¿Quitar esta sección?')) delSection(id.slice(4)); }); acts.appendChild(del);
+            var del = cbtn('✕', 'Quitar sección'); del.classList.add('del'); del.addEventListener('click', function () { uiConfirm('¿Quitar esta sección?').then(function (ok) { if (ok) delSection(id.slice(4)); }); }); acts.appendChild(del);
           }
           bar.appendChild(caret); bar.appendChild(handle); bar.appendChild(name); bar.appendChild(acts); card.appendChild(bar);
           var content = document.createElement('div'); content.className = 'inf-card-content';
@@ -25500,8 +25563,9 @@ bluetooth.startIOPinService()</pre>
       }
       function insertDataTableIntoDoc() {
         var rows = (state.rawData || []).length;
-        if (rows > 120 && !confirm('La tabla tiene ' + rows + ' filas. ¿Insertar toda la tabla en el texto? Podés colapsar la sección después para que no ocupe tanto.')) return;
-        insertHTMLIntoDoc(dataTableEditableHTML());
+        var doIt = function () { insertHTMLIntoDoc(dataTableEditableHTML()); };
+        if (rows > 120) uiConfirm('La tabla tiene ' + rows + ' filas. ¿Insertar toda la tabla en el texto? Podés colapsar la sección después para que no ocupe tanto.').then(function (ok) { if (ok) doIt(); });
+        else doIt();
       }
       function toggleDataMenu(evt) {
         var m = el('inf-data-menu'); if (!m) return;
@@ -26339,9 +26403,9 @@ bluetooth.startIOPinService()</pre>
       }
       function restoreFromCache() {
         if (!_cachedBlob) { toast('No hay trabajo guardado en este navegador.'); return; }
-        if (_sessionHasContent() && !confirm('Esto reemplazará lo que tenés abierto ahora.\n\n¿Retomar tu último trabajo guardado en este navegador?')) return;
-        closeSessionMenu();
-        restore(_cachedBlob); _lastSavedAt = _cachedAt || Date.now(); toast('Tu último trabajo fue restaurado ✓'); schedule();
+        var go = function () { closeSessionMenu(); restore(_cachedBlob); _lastSavedAt = _cachedAt || Date.now(); toast('Tu último trabajo fue restaurado ✓'); schedule(); };
+        if (_sessionHasContent()) uiConfirm('Esto reemplazará lo que tenés abierto ahora.\n\n¿Retomar tu último trabajo guardado en este navegador?').then(function (ok) { if (ok) go(); });
+        else go();
       }
 
       // --- Guardar / Abrir proyecto (archivo) ---
@@ -26358,8 +26422,9 @@ bluetooth.startIOPinService()</pre>
       }
       function applyOpenedBlob(blob, fromZip) {
         if (!blob || !blob.app) { toast('El archivo no es un proyecto de fisicabit.'); return; }
-        if ((state.rawData || []).length && !confirm('Abrir este proyecto reemplazará los datos actuales. ¿Continuar?')) return;
-        restore(blob); toast(fromZip ? 'Proyecto abierto desde ZIP ✓' : 'Proyecto abierto ✓'); schedule();
+        var go = function () { restore(blob); toast(fromZip ? 'Proyecto abierto desde ZIP ✓' : 'Proyecto abierto ✓'); schedule(); };
+        if ((state.rawData || []).length) uiConfirm('Abrir este proyecto reemplazará los datos actuales. ¿Continuar?').then(function (ok) { if (ok) go(); });
+        else go();
       }
       function openProjectFile(file) {
         if (!file) return;
@@ -26524,7 +26589,7 @@ bluetooth.startIOPinService()</pre>
       // Empezar un experimento NUEVO (guarda el actual en Drive antes de limpiar, para no perderlo).
       async function gNewProject() {
         closeSessionMenu();
-        var name = prompt('Nombre del experimento nuevo (podés cambiarlo después en «Título del experimento»):', '');
+        var name = await uiPrompt('Nombre del experimento nuevo (podés cambiarlo después en «Título del experimento»):', '');
         if (name === null) return;
         name = (name || '').trim();
         if (_sessionHasContent() && gConnected()) { toast('Guardando el experimento actual en Drive…'); try { await gWriteProject(); } catch (e) {} }
@@ -26653,7 +26718,7 @@ bluetooth.startIOPinService()</pre>
         var enable = function () { _gSyncOn = true; gUpdateDriveUI(); };
         var doResume = function () { _gSessionFileId = f.id; _gSessionName = f.name; restore(cloud); _lastSavedAt = savedAt; enable(); updateProjectBadge(); toast('«' + nm + '» restaurado de Drive ✓'); };
         var banner = el('inf-restore');
-        if (!banner) { if (confirm(msg)) doResume(); else enable(); return; }
+        if (!banner) { if (await uiConfirm(msg)) doResume(); else enable(); return; }
         el('inf-restore-msg').textContent = msg; banner.classList.add('show');
         var ht = setTimeout(function () { banner.classList.remove('show'); enable(); }, 22000);
         el('inf-restore-yes').onclick = function () { clearTimeout(ht); banner.classList.remove('show'); doResume(); };
@@ -26682,8 +26747,8 @@ bluetooth.startIOPinService()</pre>
         if (tc) { tc.classList.toggle('tb-experiment-empty', !t); tc.title = t ? ('Experimento: ' + t + ' — clic para renombrar') : 'Ponele un nombre a tu experimento — clic para escribirlo'; }
       }
       // Renombrar el experimento desde el chip de arriba (simple y rápido).
-      function renameExperiment() {
-        var name = prompt('¿Cómo se llama este experimento?', (I.meta && I.meta.title) || '');
+      async function renameExperiment() {
+        var name = await uiPrompt('¿Cómo se llama este experimento?', (I.meta && I.meta.title) || '');
         if (name === null) return;
         I.meta.title = (name || '').trim();
         setInputVal('inf-title', I.meta.title);
@@ -26713,7 +26778,7 @@ bluetooth.startIOPinService()</pre>
         lastSig = sig(); refresh(); updateProjectBadge();
       }
       async function resetAll() {
-        if (!confirm('¿Reiniciar TODO?\n\nSe borrarán los datos capturados, los ajustes, los apuntes escritos/dibujados y las fotos de este proyecto. Esta acción no se puede deshacer.')) return;
+        if (!(await uiConfirm('¿Reiniciar TODO?\n\nSe borrarán los datos capturados, los ajustes, los apuntes escritos/dibujados y las fotos de este proyecto. Esta acción no se puede deshacer.'))) return;
         _clearSession('');
         try { await idbDel(AUTOSAVE_KEY); } catch (e) {}
         try { localStorage.removeItem(LS_KEY); } catch (e) {}
@@ -26738,7 +26803,7 @@ bluetooth.startIOPinService()</pre>
         // Dibujo (lienzo grande en modal)
         if (el('inf-draw-open')) el('inf-draw-open').addEventListener('click', openDrawModal);
         if (el('inf-draw-preview')) el('inf-draw-preview').addEventListener('click', openDrawModal);
-        if (el('inf-draw-clear2')) el('inf-draw-clear2').addEventListener('click', function () { if (confirm('¿Borrar el dibujo?')) clearDrawing(false); });
+        if (el('inf-draw-clear2')) el('inf-draw-clear2').addEventListener('click', function () { uiConfirm('¿Borrar el dibujo?').then(function (ok) { if (ok) clearDrawing(false); }); });
         if (el('inf-pen-big')) el('inf-pen-big').addEventListener('click', function () { setTool('pen'); });
         if (el('inf-eraser-big')) el('inf-eraser-big').addEventListener('click', function () { setTool('eraser'); });
         if (el('inf-draw-color-big')) el('inf-draw-color-big').addEventListener('input', function (e) { I.drawColor = e.target.value; if (I.drawTool === 'eraser') setTool('pen'); });
@@ -26810,6 +26875,12 @@ bluetooth.startIOPinService()</pre>
         if (el('inf-eq-insert')) el('inf-eq-insert').addEventListener('click', commitEq);
         if (el('inf-eq-cancel')) el('inf-eq-cancel').addEventListener('click', closeEqEditor);
 
+        // Diálogo propio (alert/confirm/prompt)
+        if (el('inf-dialog-ok')) el('inf-dialog-ok').addEventListener('click', _dlgOk);
+        if (el('inf-dialog-cancel')) el('inf-dialog-cancel').addEventListener('click', _dlgCancel);
+        if (el('inf-dialog-input')) el('inf-dialog-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); _dlgOk(); } });
+        if (el('inf-dialog')) el('inf-dialog').addEventListener('mousedown', function (e) { if (e.target === el('inf-dialog') && _dlgOpts && !_dlgOpts.alert) _dlgCancel(); });
+
         // Editor de página completa
         if (el('inf-page-done')) el('inf-page-done').addEventListener('click', closePageEditor);
 
@@ -26826,6 +26897,8 @@ bluetooth.startIOPinService()</pre>
         var closeBtn = el('informe-close'); if (closeBtn) closeBtn.addEventListener('click', closePanel);
         document.addEventListener('keydown', function (e) {
           if (e.key !== 'Escape') return;
+          var dlg = el('inf-dialog');
+          if (dlg && dlg.classList.contains('open')) { if (_dlgOpts && !_dlgOpts.alert) _dlgCancel(); else _dlgOk(); return; }
           var eqm = el('inf-eq-modal');
           var dm = el('inf-draw-modal');
           var pe = el('inf-page-editor');
@@ -27191,6 +27264,13 @@ bluetooth.startIOPinService()</pre>
     'Completá al menos autor o título.': { en: 'Fill in at least author or title.', pt: 'Preencha ao menos autor ou título.' },
     '¿Cómo se llama este experimento?': { en: 'What is this experiment called?', pt: 'Como se chama este experimento?' },
     '¿Quitar esta sección?': { en: 'Remove this section?', pt: 'Remover esta seção?' },
+    // Diálogos propios (alert/confirm/prompt)
+    'Aceptar': { en: 'OK', pt: 'OK' },
+    '¿Borrar el dibujo?': { en: 'Clear the drawing?', pt: 'Apagar o desenho?' },
+    'Nombre del experimento nuevo (podés cambiarlo después en «Título del experimento»):': { en: 'Name of the new experiment (you can change it later in “Experiment title”):', pt: 'Nome do novo experimento (você pode alterá-lo depois em «Título do experimento»):' },
+    'Abrir este proyecto reemplazará los datos actuales. ¿Continuar?': { en: 'Opening this project will replace the current data. Continue?', pt: 'Abrir este projeto substituirá os dados atuais. Continuar?' },
+    'Esto reemplazará lo que tenés abierto ahora.\n\n¿Retomar tu último trabajo guardado en este navegador?': { en: 'This will replace what you have open now.\n\nResume your last work saved in this browser?', pt: 'Isto substituirá o que você tem aberto agora.\n\nRetomar seu último trabalho salvo neste navegador?' },
+    '¿Reiniciar TODO?\n\nSe borrarán los datos capturados, los ajustes, los apuntes escritos/dibujados y las fotos de este proyecto. Esta acción no se puede deshacer.': { en: 'Reset EVERYTHING?\n\nThe captured data, fits, written/drawn notes and photos of this project will be deleted. This action cannot be undone.', pt: 'Reiniciar TUDO?\n\nOs dados capturados, os ajustes, as anotações escritas/desenhadas e as fotos deste projeto serão apagados. Esta ação não pode ser desfeita.' },
 
     // ========== MAPEO ==========
     'MAPEO': { en: 'MAPPING', pt: 'MAPEAMENTO' },
@@ -27380,7 +27460,8 @@ bluetooth.startIOPinService()</pre>
     { es: 'Mostrando %n% de %n% fotos.', en: 'Showing %n% of %n% photos.', pt: 'Mostrando %n% de %n% fotos.' },
     { es: 'Experimento: «%s%»', en: 'Experiment: «%s%»', pt: 'Experimento: «%s%»' },
     { es: 'convergió en %n% iteraciones', en: 'converged in %n% iterations', pt: 'convergiu em %n% iterações' },
-    { es: 'no convergió en %n% iteraciones', en: 'did not converge in %n% iterations', pt: 'não convergiu em %n% iterações' }
+    { es: 'no convergió en %n% iteraciones', en: 'did not converge in %n% iterations', pt: 'não convergiu em %n% iterações' },
+    { es: 'La tabla tiene %n% filas. ¿Insertar toda la tabla en el texto? Podés colapsar la sección después para que no ocupe tanto.', en: 'The table has %n% rows. Insert the whole table into the text? You can collapse the section afterwards so it does not take up so much space.', pt: 'A tabela tem %n% linhas. Inserir toda a tabela no texto? Você pode recolher a seção depois para que não ocupe tanto espaço.' }
   ];
   var RULES = RULE_DEFS.map(function (d) { return { res: { es: tmplToRe(d.es), en: tmplToRe(d.en), pt: tmplToRe(d.pt) }, out: { es: d.es, en: d.en, pt: d.pt } }; });
   function ruleT(text, lang) {
