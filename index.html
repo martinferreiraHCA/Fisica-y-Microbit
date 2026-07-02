@@ -4332,9 +4332,12 @@
           background:#1b1e24; border:1px solid #3a3f48; border-radius:20px; color:#e8eaed;
           font-size:12px; font-weight:600; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
         }
-        /* Botón «Conectar con Google» (barra superior, junto a AYUDA) */
-        .toolbar-btn.gdrive-top { max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .toolbar-btn.gdrive-top.gdrive-on { background:#0b3d2e; border-color:#1f7a5a; color:#d9f7e9; }
+        /* Botón «Guardar / Retomar» (barra superior): puntito de estado */
+        .sess-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#9aa0a8; margin-right:7px; vertical-align:middle; transition:background .2s, box-shadow .2s; }
+        #sessionTopBtn.gdrive-connected, #sessionTopBtn2.gdrive-connected { border-color:#1f7a5a; }
+        #sessionTopBtn.gdrive-connected .sess-dot, #sessionTopBtn2.gdrive-connected .sess-dot { background:#42d17a; box-shadow:0 0 7px rgba(66,209,122,.75); }
+        #sessionTopBtn.gdrive-manual, #sessionTopBtn2.gdrive-manual { border-color:#8a6d1f; }
+        #sessionTopBtn.gdrive-manual .sess-dot, #sessionTopBtn2.gdrive-manual .sess-dot { background:#e0a92e; box-shadow:0 0 7px rgba(224,169,46,.7); }
         /* Popover de opciones de Google Drive */
         .gdrive-pop { display:none; position:fixed; top:58px; right:12px; z-index:9800; width:300px; max-width:calc(100vw - 20px);
           background:#0f1115; border:1px solid #3a3f48; border-radius:9px; box-shadow:0 14px 40px rgba(0,0,0,.6); padding:14px; font-family:'Montserrat',-apple-system,sans-serif; }
@@ -4595,7 +4598,7 @@
             <div class="toolbar-separator"></div>
             <button id="helpBtn" class="toolbar-btn">AYUDA</button>
             <div class="toolbar-separator"></div>
-            <button id="sessionTopBtn" class="toolbar-btn" onclick="window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()">💾 Guardar / Retomar ▾</button>
+            <button id="sessionTopBtn" class="toolbar-btn" onclick="window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()"><span class="sess-dot"></span>💾 Guardar / Retomar ▾</button>
             <div class="toolbar-separator"></div>
             <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
                 <option value="es">ES</option>
@@ -4624,7 +4627,7 @@
         <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: flex; align-items: center;">MAKECODE ↗</a>
         <button id="examplesBtn2" class="toolbar-btn" onclick="openExamplesModal(); closeToolbarMenu();">EJEMPLOS</button>
         <button id="helpBtn2" class="toolbar-btn" onclick="document.getElementById('helpBtn').click(); closeToolbarMenu();">AYUDA</button>
-        <button id="sessionTopBtn2" class="toolbar-btn" onclick="closeToolbarMenu(); window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()">💾 Guardar / Retomar</button>
+        <button id="sessionTopBtn2" class="toolbar-btn" onclick="closeToolbarMenu(); window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()"><span class="sess-dot"></span>💾 Guardar / Retomar</button>
         <select id="languageSelector2" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
             <option value="es">ES</option>
             <option value="en">EN</option>
@@ -26345,6 +26348,12 @@ bluetooth.startIOPinService()</pre>
         var disc = el('sess-gdrive-disc'), conn = el('sess-gdrive-conn');
         if (disc) disc.style.display = connected ? 'none' : 'block';
         if (conn) conn.style.display = connected ? 'block' : 'none';
+        // Puntito de estado en el botón de arriba: verde = conectado y guardando, ámbar = conectado sin auto-guardado, gris = sin conectar
+        var cls = connected ? (_gAutoSync ? 'gdrive-connected' : 'gdrive-manual') : '';
+        var ttl = !connected ? 'Guardá o retomá tu trabajo (no conectado a Google Drive)'
+          : (_gAutoSync ? ('Conectado a Google como ' + ((_gUser && _gUser.emailAddress) || 'tu cuenta') + ' · guardando automáticamente')
+            : 'Conectado a Google · guardado manual (auto-guardado apagado)');
+        ['sessionTopBtn', 'sessionTopBtn2'].forEach(function (id) { var b = el(id); if (!b) return; b.classList.remove('gdrive-connected', 'gdrive-manual'); if (cls) b.classList.add(cls); b.title = ttl; });
         var status = el('inf-gdrive-status');
         if (status) {
           if (!gConfigured()) status.textContent = 'Google Drive: pendiente de configurar (falta el Client ID).';
