@@ -4462,6 +4462,9 @@
         .inf-rich .doc-eq-block img, .inf-page-body .doc-eq-block img { max-width:100%; height:auto; }
         .inf-rich .doc-eq-cap, .inf-page-body .doc-eq-cap { display:block; font-size:11px; color:#777; margin-top:5px; text-align:center; }
         .inf-rich .doc-eq-num, .inf-page-body .doc-eq-num { color:#999; font-weight:600; margin-left:6px; }
+        .inf-rich table.doc-data-table, .inf-page-body table.doc-data-table { border-collapse:collapse; max-width:100%; margin:10px 0; font-size:12px; }
+        .inf-rich table.doc-data-table th, .inf-rich table.doc-data-table td, .inf-page-body table.doc-data-table th, .inf-page-body table.doc-data-table td { border:1px solid #d3d3d3; padding:3px 8px; text-align:right; }
+        .inf-rich table.doc-data-table th, .inf-page-body table.doc-data-table th { background:#f0f3f8; font-weight:700; text-align:center; }
         .inf-rich h4, .inf-page-body h4 { font-size:13px; font-weight:700; margin:7px 0 4px; color:#333; }
         .inf-rich figure.doc-fig, .inf-page-body figure.doc-fig { width:60%; margin:12px auto; text-align:center; cursor:grab; }
         .inf-rich figure.doc-fig:active, .inf-page-body figure.doc-fig:active { cursor:grabbing; }
@@ -24290,6 +24293,7 @@ bluetooth.startIOPinService()</pre>
     <!-- Menús flotantes del editor -->
     <div class="inf-menu" id="inf-cite-menu"></div>
     <div class="inf-menu" id="inf-img-menu"></div>
+    <div class="inf-menu" id="inf-data-menu"></div>
     <input type="file" id="inf-doc-img-input" accept="image/*" style="display:none;">
     <!-- Barra flotante de edición de imagen -->
     <div class="inf-fig-tools" id="inf-fig-tools"></div>
@@ -24461,6 +24465,9 @@ bluetooth.startIOPinService()</pre>
         ".rep-doc .rep-rich .doc-eq-block img{max-width:94%;height:auto;}",
         ".rep-doc .rep-rich .doc-eq-cap{display:block;font-size:11px;color:#6a6a6a;margin-top:5px;text-align:center;}",
         ".rep-doc .rep-rich .doc-eq-num{color:#888;font-weight:600;margin-left:6px;}",
+        ".rep-doc .rep-rich table.doc-data-table{border-collapse:collapse;margin:10px 0;font-size:12px;}",
+        ".rep-doc .rep-rich table.doc-data-table th,.rep-doc .rep-rich table.doc-data-table td{border:1px solid #cfcfcf;padding:3px 8px;text-align:right;}",
+        ".rep-doc .rep-rich table.doc-data-table th{background:#f0f3f8;font-weight:700;text-align:center;}",
         ".rep-doc .rep-rich h4{font-size:12.5px;font-weight:700;margin:8px 0 4px;color:#333;}",
         ".rep-doc .rep-rich figure.doc-fig{width:60%;margin:12px auto;text-align:center;}",
         ".rep-doc .rep-rich figure.doc-fig.fig-left{margin:12px auto 12px 0;text-align:left;}",
@@ -25163,6 +25170,7 @@ bluetooth.startIOPinService()</pre>
         g6.appendChild(tbtn('∑ Ecuación', 'Insertar ecuación (LaTeX)', function () { openEqEditor(ensureFocusEd(), null); }, 'wide'));
         g6.appendChild(tbtn('“ Cita', 'Insertar cita (APA)', function (e) { ensureFocusEd(); toggleCiteMenu(e); }, 'wide'));
         g6.appendChild(tbtn('🖼 Imagen', 'Subir o insertar una imagen (gráfica, foto…)', function (e) { toggleImgMenu(e); }, 'wide'));
+        g6.appendChild(tbtn('📊 Datos y ajustes', 'Insertar en el texto y editar: resultados de los ajustes, tabla de datos o estadísticas del experimento', function (e) { ensureFocusEd(); toggleDataMenu(e); }, 'wide'));
         bar.appendChild(g6);
       }
 
@@ -25375,6 +25383,92 @@ bluetooth.startIOPinService()</pre>
         var ed = I._focusEd || ensureFocusEd(); if (!ed) { toast('Creá una sección de texto para insertar la imagen.'); return; }
         var fig = '<figure class="doc-fig fig-center" contenteditable="false" draggable="true" title="Arrastrá para mover · clic para ver opciones" style="width:60%"><img src="' + dataUrl + '"><figcaption contenteditable="true">' + (caption ? esc(caption) : '') + '</figcaption></figure><p>​</p>';
         ed.focus(); restoreRange(); try { document.execCommand('insertHTML', false, fig); } catch (e) { ed.innerHTML += fig; } onEditableInput(ed);
+      }
+      // Inserta HTML arbitrario (texto/tabla) en el bloque de texto enfocado; queda editable.
+      function insertHTMLIntoDoc(html) {
+        if (!html) { toast('No hay contenido para insertar.'); return; }
+        var ed = I._focusEd || ensureFocusEd(); if (!ed) { toast('Creá una sección de texto para insertar el contenido.'); return; }
+        ed.focus(); restoreRange();
+        try { document.execCommand('insertHTML', false, html); } catch (e) { ed.innerHTML += html; }
+        onEditableInput(ed);
+      }
+      // --- Contenido del experimento como texto/tabla editable (se puede corregir a mano) ---
+      function fitEditableHTML() {
+        var f = state.fitResult; if (!f) return '';
+        var names = f.paramNames || (fn('getParamNames') ? getParamNames(f.type) : []);
+        var params = Array.isArray(f.coeffs) ? f.coeffs.map(function (v, k) {
+          var nm = (names && names[k]) || ('p' + k), e = f.errors && f.errors[k];
+          return esc(nm) + ' = ' + (isFinite(v) ? num(v) : 'N/A') + ((e != null && isFinite(e)) ? (' ± ' + num(e)) : '');
+        }).join('; ') : '';
+        return '<p><b>Ajuste de curva (' + esc(fitTypeLabel(f.type)) + '):</b> ' + esc(f.equation || '') + '</p>' +
+          '<p>R² = ' + (isFinite(f.r2) ? num(f.r2) : 'N/A') + ' · Puntos usados: ' + (f.dataPoints || (state.rawData || []).length) + (params ? (' · ' + params) : '') + '</p>';
+      }
+      function segfitEditableHTML() {
+        var fits = state.segmentFits || []; if (!fits.length) return '';
+        var out = ['<p><b>Ajuste por tramos:</b></p>'];
+        fits.forEach(function (sf, i) {
+          if (sf.error) { out.push('<p>Tramo ' + (i + 1) + ': ' + esc(sf.error) + '</p>'); return; }
+          var rng = (sf.from != null && sf.to != null) ? (' (puntos ' + (sf.from + 1) + '–' + (sf.to + 1) + ')') : '';
+          out.push('<p>Tramo ' + (i + 1) + ' — ' + esc(fitTypeLabel(sf.type)) + rng + ': ' + esc(sf.equation || '') + ' · R² = ' + (isFinite(sf.r2) ? num(sf.r2) : 'N/A') + '</p>');
+        });
+        return out.join('');
+      }
+      function dataTableEditableHTML() {
+        var rows = state.rawData || []; if (!rows.length) return '';
+        var tuEl = el('timeUnit'); var tuv = tuEl ? parseFloat(tuEl.value) : 1000;
+        var unit = tuv === 1 ? 'ms' : (tuv === 60000 ? 'min' : 's');
+        var nv = state.numVariables || 1, showT = state.microbitTimestamp !== false;
+        var hdr = '<tr>' + (showT ? '<th>Tiempo (' + unit + ')</th>' : '<th>#</th>');
+        for (var i = 0; i < nv; i++) hdr += '<th>' + esc(state.variables[i] ? state.variables[i].name : ('V' + (i + 1))) + '</th>';
+        hdr += '</tr>';
+        var body = '';
+        rows.forEach(function (d, idx) {
+          var first = showT ? num((d.time - (state.timeZeroOffset || 0)) / tuv) : String(idx + 1);
+          var tds = '<td>' + first + '</td>';
+          for (var k = 0; k < nv; k++) tds += '<td>' + num(d.values[k]) + '</td>';
+          body += '<tr>' + tds + '</tr>';
+        });
+        return '<table class="doc-data-table"><thead>' + hdr + '</thead><tbody>' + body + '</tbody></table><p>​</p>';
+      }
+      function statsEditableHTML() {
+        var rows = state.rawData || []; if (!rows.length) return '';
+        var nv = state.numVariables || 1, body = '';
+        for (var i = 0; i < nv; i++) {
+          var vals = rows.map(function (d) { return d.values[i]; }).filter(function (v) { return typeof v === 'number' && isFinite(v); });
+          if (!vals.length) continue;
+          var n = vals.length, mean = vals.reduce(function (a, b) { return a + b; }, 0) / n;
+          var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+          var sd = Math.sqrt(vals.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0) / n);
+          var nm = esc((state.variables[i] && state.variables[i].name) || ('V' + (i + 1)));
+          body += '<tr><td>' + nm + '</td><td>' + num(mean) + '</td><td>' + num(min) + '</td><td>' + num(max) + '</td><td>' + num(sd) + '</td><td>' + n + '</td></tr>';
+        }
+        if (!body) return '';
+        return '<table class="doc-data-table"><thead><tr><th>Variable</th><th>Media</th><th>Mínimo</th><th>Máximo</th><th>Desv. est.</th><th>N</th></tr></thead><tbody>' + body + '</tbody></table><p>​</p>';
+      }
+      function insertDataTableIntoDoc() {
+        var rows = (state.rawData || []).length;
+        if (rows > 120 && !confirm('La tabla tiene ' + rows + ' filas. ¿Insertar toda la tabla en el texto? Podés colapsar la sección después para que no ocupe tanto.')) return;
+        insertHTMLIntoDoc(dataTableEditableHTML());
+      }
+      function toggleDataMenu(evt) {
+        var m = el('inf-data-menu'); if (!m) return;
+        if (m.classList.contains('open')) { m.classList.remove('open'); return; }
+        ensureFocusEd();
+        m.innerHTML = ''; var st = state, n = (st.rawData || []).length;
+        function addItem(label, enabled, act) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = label;
+          b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+          if (enabled) b.addEventListener('click', function () { act(); m.classList.remove('open'); });
+          else { b.disabled = true; b.style.opacity = '0.4'; b.style.cursor = 'default'; }
+          m.appendChild(b);
+        }
+        var head = document.createElement('div'); head.className = 'inf-menu-item inf-menu-upload'; head.textContent = 'Insertar como texto/tabla editable';
+        m.appendChild(head);
+        addItem('🧮  Ajuste de curva', !!st.fitResult, function () { insertHTMLIntoDoc(fitEditableHTML()); });
+        addItem('🧩  Ajuste por tramos', (st.segmentFits || []).length > 0, function () { insertHTMLIntoDoc(segfitEditableHTML()); });
+        addItem('🔢  Tabla de datos', n > 0, function () { insertDataTableIntoDoc(); });
+        addItem('📊  Estadísticas', n > 0, function () { insertHTMLIntoDoc(statsEditableHTML()); });
+        closeMenus(); positionMenu(m, evt.currentTarget); m.classList.add('open');
       }
 
       // ---- Arrastrar imágenes para moverlas dentro del documento ----
