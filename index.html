@@ -14,6 +14,11 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-MYS89QH11B');
+      // Contador de uso de funciones: envía un evento GA4 con el nombre de la acción.
+      // Solo registra la acción (ej. "abrir_mapeo"), nunca datos del experimento ni
+      // información personal. Es defensivo: si GA está bloqueado, no hace nada ni rompe.
+      function track(action, grupo){ try { if (typeof gtag === 'function') gtag('event', action, grupo ? { grupo: grupo } : {}); } catch (e) {} }
+      window.track = track;
     </script>
     <!-- Favicon (SVG, blanco y negro): cuadrado negro + curva blanca de datos -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23111111'/><path d='M20 74 H82' fill='none' stroke='%23ffffff' stroke-width='5' stroke-linecap='round' opacity='0.55'/><path d='M22 76 C46 76 58 30 80 28' fill='none' stroke='%23ffffff' stroke-width='8' stroke-linecap='round'/><circle cx='80' cy='28' r='8' fill='%23ffffff'/></svg>">
@@ -9673,6 +9678,7 @@ bluetooth.startIOPinService()</pre>
 
         // Event listener para cambio de idioma
         document.getElementById('languageSelector').addEventListener('change', function() {
+            track('cambiar_idioma', 'otros');
             changeLanguage(this.value);
         });
 
@@ -11370,6 +11376,7 @@ bluetooth.startIOPinService()</pre>
         let chartDatasetsInitialized = false; // Flag de datasets inicializados
 
         document.getElementById('connectBtn').addEventListener('click', async () => {
+            track('conectar_usb', 'microbit');
             try {
                 const filters = [
                     { usbVendorId: 0x0d28, usbProductId: 0x0204 },
@@ -12636,6 +12643,7 @@ bluetooth.startIOPinService()</pre>
         const UART_RX_CHAR_UUID = BLE_UUIDS.UART_RX;
 
         document.getElementById('connectBluetoothBtn').addEventListener('click', () => {
+            track('conectar_bluetooth', 'microbit');
             // Ignorar clicks si ya hay conexión en progreso
             if (microbitBT && microbitBT.connecting) {
                 console.log('[BT] Conexión en progreso, ignorando click');
@@ -12685,6 +12693,7 @@ bluetooth.startIOPinService()</pre>
         }
 
         document.getElementById('collectBtn').addEventListener('click', () => {
+            track('capturar_datos', 'microbit');
             // Establecer tiempo inicial en el momento de comenzar a capturar
             // Se sobrescribe al recibir el primer timestamp del micro:bit (formato N+1)
             state.timeZeroOffset = Date.now();
@@ -12735,6 +12744,7 @@ bluetooth.startIOPinService()</pre>
         });
 
         document.getElementById('stopBtn').addEventListener('click', async () => {
+            track('detener_captura', 'microbit');
             state.isCollecting = false;
             chartDatasetsInitialized = false;
             stopVideoRecording();
@@ -14394,6 +14404,7 @@ bluetooth.startIOPinService()</pre>
         // Construye state.segmentFits para los tramos dados (modo por tramos).
         const _SEGMENT_PALETTE = ['#d32f2f', '#1565c0', '#2e7d32', '#ef6c00', '#6a1b9a', '#00838f', '#c2185b'];
         function performSegmentFits(graphIndex, varIndex, segDefs, requestedTypes) {
+            track('ajuste_tramos', 'datos');
             const config = state.graphs[graphIndex];
             const timeUnit = parseFloat(document.getElementById('timeUnit').value);
             const xOf = (d) => config.xAxis === 'time'
@@ -15447,6 +15458,7 @@ bluetooth.startIOPinService()</pre>
         // ========== TABLA DE VALORES MANUAL (MODAL) ==========
 
         function openManualTableModal() {
+            track('tabla_manual', 'datos');
             const modal = document.getElementById('manualTableModal');
             modal.classList.add('active');
             // Sync current variable count
@@ -16609,7 +16621,7 @@ bluetooth.startIOPinService()</pre>
 
         // ===== Modal de PROGRAMAS DE EJEMPLO (ver/editar código, cargar .hex por USB) =====
         const EXAMPLE_HEX_URL = 'microbit-example-bluetooth.hex';
-        function openExamplesModal() { _mcPreload(); const m = document.getElementById('examplesModal'); if (m) m.classList.add('active'); }
+        function openExamplesModal() { track('abrir_ejemplos', 'otros'); _mcPreload(); const m = document.getElementById('examplesModal'); if (m) m.classList.add('active'); }
         function closeExamplesModal() { const m = document.getElementById('examplesModal'); if (m) m.classList.remove('active'); }
         function exOpenMakeCode() { window.open('https://makecode.microbit.org/', '_blank', 'noopener'); }
         function exToast(msg) {
@@ -16943,6 +16955,7 @@ bluetooth.startIOPinService()</pre>
         }
 
         document.getElementById('performFitBtn').addEventListener('click', () => {
+            track('ajuste_curva', 'datos');
             try {
                 const fitType = document.getElementById('fitType').value;
                 const varIndex = parseInt(document.getElementById('fitVariable').value);
@@ -17291,6 +17304,7 @@ bluetooth.startIOPinService()</pre>
         // ========== EXPORTAR/IMPORTAR ==========
 
         document.getElementById('exportBtn').addEventListener('click', () => {
+            track('exportar_csv', 'exportar');
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
 
             // Header
@@ -17873,6 +17887,7 @@ bluetooth.startIOPinService()</pre>
         document.getElementById('importFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
+            track('importar_csv', 'datos');
             // Si el diálogo de importación está abierto, cargar vista previa.
             if (document.getElementById('importModal').classList.contains('active')) {
                 _onImportFileChosen(file);
@@ -18371,6 +18386,7 @@ bluetooth.startIOPinService()</pre>
         // ========== AYUDA ==========
 
         document.getElementById('helpBtn').addEventListener('click', () => {
+            track('abrir_ayuda', 'otros');
             document.getElementById('helpModal').classList.add('active');
         });
 
@@ -18450,6 +18466,7 @@ bluetooth.startIOPinService()</pre>
         };
 
         function enterExperimentMode() {
+            track('abrir_lab', 'modo');
             // Desktop: use desktop LAB mode with larger layout
             if (isDesktopView()) {
                 enterDesktopLabMode();
@@ -19361,6 +19378,7 @@ bluetooth.startIOPinService()</pre>
         };
 
         function enterSensorMode() {
+            track('abrir_sensores', 'modo');
             smState.active = true;
             smState.stopped = false;
             smState.registeredData = [];
@@ -24081,7 +24099,7 @@ bluetooth.startIOPinService()</pre>
         const closeBtn = document.getElementById('mapeo-close');
         const ctrl = new MapeoController(panel, canvas, sidebar);
         window.__mapeoCtrl = ctrl;
-        btn.addEventListener('click', () => ctrl.open());
+        btn.addEventListener('click', () => { track('abrir_mapeo', 'modo'); ctrl.open(); });
         closeBtn.addEventListener('click', () => ctrl.close());
         window.addEventListener('resize', () => {
           if (panel.classList.contains('open')) { ctrl._resize(); ctrl._draw(); }
@@ -26412,7 +26430,7 @@ bluetooth.startIOPinService()</pre>
       }
       function restoreFromCache() {
         if (!_cachedBlob) { toast('No hay trabajo guardado en este navegador.'); return; }
-        var go = function () { closeSessionMenu(); restore(_cachedBlob); _lastSavedAt = _cachedAt || Date.now(); toast('Tu último trabajo fue restaurado ✓'); schedule(); };
+        var go = function () { track('retomar_cache', 'guardar'); closeSessionMenu(); restore(_cachedBlob); _lastSavedAt = _cachedAt || Date.now(); toast('Tu último trabajo fue restaurado ✓'); schedule(); };
         if (_sessionHasContent()) uiConfirm('Esto reemplazará lo que tenés abierto ahora.\n\n¿Retomar tu último trabajo guardado en este navegador?').then(function (ok) { if (ok) go(); });
         else go();
       }
@@ -26517,6 +26535,7 @@ bluetooth.startIOPinService()</pre>
         });
       }
       async function gConnect(interactive) {
+        if (interactive) track('conectar_drive', 'guardar');
         if (!gConfigured()) { if (interactive) toast('Falta configurar el Client ID de Google (ver GOOGLE_CLIENT_ID en el código).'); return false; }
         if (gConnected()) return true;
         var ok = await ensureGis(); if (!ok) { if (interactive) toast('No se pudo cargar Google (¿sin internet?).'); return false; }
@@ -26796,7 +26815,7 @@ bluetooth.startIOPinService()</pre>
       }
 
       // --- Panel ---
-      function openPanel() { refresh(); el('informe-panel').classList.add('open'); gUpdateDriveUI(); }
+      function openPanel() { track('abrir_informe', 'modo'); refresh(); el('informe-panel').classList.add('open'); gUpdateDriveUI(); }
       function closePanel() { el('informe-panel').classList.remove('open'); }
 
       function wire() {
@@ -26826,21 +26845,21 @@ bluetooth.startIOPinService()</pre>
         if (el('inf-photo-input')) el('inf-photo-input').addEventListener('change', function (e) { var fs = e.target.files; if (fs) { for (var k = 0; k < fs.length; k++) addPhotoFromFile(fs[k]); } e.target.value = ''; });
 
         // Exportar
-        if (el('inf-pdf')) el('inf-pdf').addEventListener('click', downloadPDF);
-        if (el('inf-docx')) el('inf-docx').addEventListener('click', downloadDocx);
-        if (el('inf-graphs')) el('inf-graphs').addEventListener('click', downloadGraphs);
-        if (el('inf-csv')) el('inf-csv').addEventListener('click', downloadCSV);
-        if (el('inf-zip')) el('inf-zip').addEventListener('click', downloadZip);
+        if (el('inf-pdf')) el('inf-pdf').addEventListener('click', function () { track('exportar_pdf', 'exportar'); downloadPDF(); });
+        if (el('inf-docx')) el('inf-docx').addEventListener('click', function () { track('exportar_word', 'exportar'); downloadDocx(); });
+        if (el('inf-graphs')) el('inf-graphs').addEventListener('click', function () { track('exportar_png', 'exportar'); downloadGraphs(); });
+        if (el('inf-csv')) el('inf-csv').addEventListener('click', function () { track('exportar_csv', 'exportar'); downloadCSV(); });
+        if (el('inf-zip')) el('inf-zip').addEventListener('click', function () { track('exportar_zip', 'exportar'); downloadZip(); });
 
         // Proyecto
-        if (el('inf-save')) el('inf-save').addEventListener('click', saveProjectFile);
+        if (el('inf-save')) el('inf-save').addEventListener('click', function () { track('guardar_archivo', 'guardar'); saveProjectFile(); });
         if (el('inf-open')) el('inf-open').addEventListener('click', function () { el('inf-open-input').click(); });
         if (el('inf-open-input')) el('inf-open-input').addEventListener('change', function (e) { if (e.target.files && e.target.files[0]) openProjectFile(e.target.files[0]); e.target.value = ''; });
         if (el('inf-reset')) el('inf-reset').addEventListener('click', resetAll);
 
         // Menú «Guardar / Retomar» (botón de arriba, junto a AYUDA)
-        if (el('sess-zip')) el('sess-zip').addEventListener('click', function () { downloadZip(); });
-        if (el('sess-savefile')) el('sess-savefile').addEventListener('click', function () { saveProjectFile(); });
+        if (el('sess-zip')) el('sess-zip').addEventListener('click', function () { track('exportar_zip', 'exportar'); downloadZip(); });
+        if (el('sess-savefile')) el('sess-savefile').addEventListener('click', function () { track('guardar_archivo', 'guardar'); saveProjectFile(); });
         if (el('sess-cache')) el('sess-cache').addEventListener('click', restoreFromCache);
         if (el('sess-openfile')) el('sess-openfile').addEventListener('click', function () { var i = el('sess-open-input'); if (i) i.click(); });
         if (el('sess-open-input')) el('sess-open-input').addEventListener('change', function (e) { if (e.target.files && e.target.files[0]) openProjectFile(e.target.files[0]); e.target.value = ''; closeSessionMenu(); });
