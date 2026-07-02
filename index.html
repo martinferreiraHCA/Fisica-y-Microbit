@@ -4325,6 +4325,28 @@
         .inf-drive-name { color:#e8eaed; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .inf-drive-date { color:#8a93a0; font-size:10.5px; margin-top:2px; }
         .inf-drive-empty { color:#9aa0a8; text-align:center; padding:26px 12px; font-size:12.5px; }
+        .inf-drive-cur { color:#57c98a; font-weight:700; font-size:11px; }
+        /* Chip del experimento activo en la barra superior */
+        .inf-project-badge {
+          display:inline-flex; align-items:center; max-width:280px; margin-left:14px; padding:5px 11px;
+          background:#1b1e24; border:1px solid #3a3f48; border-radius:20px; color:#e8eaed;
+          font-size:12px; font-weight:600; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        /* Botón «Conectar con Google» (barra superior, junto a AYUDA) */
+        .toolbar-btn.gdrive-top { max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .toolbar-btn.gdrive-top.gdrive-on { background:#0b3d2e; border-color:#1f7a5a; color:#d9f7e9; }
+        /* Popover de opciones de Google Drive */
+        .gdrive-pop { display:none; position:fixed; top:58px; right:12px; z-index:9800; width:300px; max-width:calc(100vw - 20px);
+          background:#0f1115; border:1px solid #3a3f48; border-radius:9px; box-shadow:0 14px 40px rgba(0,0,0,.6); padding:14px; font-family:'Montserrat',-apple-system,sans-serif; }
+        .gdrive-pop.open { display:block; animation:infDDin .12s ease-out; }
+        .gdrive-pop-head { color:#e8eaed; font-size:12px; font-weight:600; line-height:1.45; margin-bottom:12px; }
+        .gdrive-pop-lbl { display:block; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#8a93a0; font-weight:700; margin-bottom:4px; }
+        .gdrive-pop-input { width:100%; box-sizing:border-box; background:#1b1e24; border:1px solid #3a3f48; border-radius:5px; color:#fff; font-size:13px; font-family:inherit; padding:8px 10px; margin-bottom:12px; }
+        .gdrive-pop-input:focus { outline:none; border-color:#6ea8fe; }
+        .gdrive-pop-check { display:flex; align-items:center; gap:8px; color:#cfd3da; font-size:12px; margin-bottom:12px; cursor:pointer; }
+        .gdrive-pop-check input { width:15px; height:15px; flex-shrink:0; }
+        .gdrive-pop-actions { display:flex; flex-direction:column; gap:7px; }
+        .gdrive-pop-actions .inf-btn { margin:0; }
 
         /* Pestaña Apuntes */
         .inf-apuntes-panel { flex:1; min-height:0; flex-direction:column; background:#1a1d23; overflow:hidden; }
@@ -4567,6 +4589,8 @@
             <div class="toolbar-separator"></div>
             <button id="helpBtn" class="toolbar-btn">AYUDA</button>
             <div class="toolbar-separator"></div>
+            <button id="gdriveTopBtn" class="toolbar-btn gdrive-top" onclick="window.Informe &amp;&amp; Informe.driveTopClick &amp;&amp; Informe.driveTopClick()">☁ Conectar con Google</button>
+            <div class="toolbar-separator"></div>
             <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
                 <option value="es">ES</option>
                 <option value="en">EN</option>
@@ -4594,6 +4618,7 @@
         <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: flex; align-items: center;">MAKECODE ↗</a>
         <button id="examplesBtn2" class="toolbar-btn" onclick="openExamplesModal(); closeToolbarMenu();">EJEMPLOS</button>
         <button id="helpBtn2" class="toolbar-btn" onclick="document.getElementById('helpBtn').click(); closeToolbarMenu();">AYUDA</button>
+        <button id="gdriveTopBtn2" class="toolbar-btn gdrive-top" onclick="closeToolbarMenu(); window.Informe &amp;&amp; Informe.driveTopClick &amp;&amp; Informe.driveTopClick()">☁ Conectar con Google</button>
         <select id="languageSelector2" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
             <option value="es">ES</option>
             <option value="en">EN</option>
@@ -24091,6 +24116,7 @@ bluetooth.startIOPinService()</pre>
     <div id="informe-panel" class="informe-panel">
         <div class="inf-topbar">
             <div class="inf-brand">INFORME DE LABORATORIO<small>fisicabit · micro:bit datalab</small></div>
+            <span class="inf-project-badge inf-tip" id="inf-project-badge" data-tip="Experimento activo. Cambiá el nombre en «Título del experimento»." style="display:none;"></span>
             <div class="inf-view-toggle" id="inf-view-toggle">
                 <button data-v="side" class="active inf-tip" data-tip="Mostrar el panel para armar el informe">Controles</button>
                 <button data-v="preview" class="inf-tip" data-tip="Mostrar la vista previa del informe">Vista previa</button>
@@ -24111,13 +24137,7 @@ bluetooth.startIOPinService()</pre>
                     <button class="inf-dd-item" id="inf-open">📂 Abrir proyecto</button>
                     <button class="inf-dd-item danger" id="inf-reset">🗑 Reiniciar todo</button>
                     <div class="inf-dd-sep"></div>
-                    <div class="inf-dd-group">Google Drive</div>
-                    <button class="inf-dd-item" id="inf-gdrive-signin">☁ Iniciar sesión con Google</button>
-                    <button class="inf-dd-item" id="inf-gdrive-save" style="display:none;">☁ Guardar en Drive</button>
-                    <button class="inf-dd-item" id="inf-gdrive-open" style="display:none;">☁ Abrir de Drive</button>
-                    <button class="inf-dd-item" id="inf-gdrive-signout" style="display:none;">Cerrar sesión de Google</button>
-                    <div class="inf-dd-status inf-hint" id="inf-gdrive-status">Guardá tu progreso y retomalo en cualquier navegador.</div>
-                    <div class="inf-dd-sep"></div>
+                    <div class="inf-dd-status inf-hint">☁ Google Drive (opcional): usá el botón «Conectar con Google» de arriba, al lado de AYUDA.</div>
                     <div class="inf-dd-status inf-hint" id="inf-autosave-status">Autoguardado en el navegador activado.</div>
                 </div>
                 <input type="file" id="inf-open-input" accept=".json,.zip,application/json,application/zip" style="display:none;">
@@ -24278,6 +24298,20 @@ bluetooth.startIOPinService()</pre>
         <div class="inf-drive-box">
             <div class="inf-drive-head"><span>Tus proyectos en Google Drive</span><span class="inf-spacer"></span><button class="inf-drive-x" id="inf-drive-close">✕</button></div>
             <div class="inf-drive-list" id="inf-drive-list"></div>
+        </div>
+    </div>
+
+    <!-- Popover de Google Drive (se abre desde el botón «Conectar con Google» de arriba) -->
+    <div class="gdrive-pop" id="gdrive-pop">
+        <div class="gdrive-pop-head" id="inf-gdrive-status">Conectá tu cuenta para guardar y retomar experimentos.</div>
+        <label class="gdrive-pop-lbl" for="gdrive-proj-name">Nombre del experimento</label>
+        <input type="text" class="gdrive-pop-input" id="gdrive-proj-name" placeholder="Ej: Caída libre 5ºB" autocomplete="off">
+        <label class="gdrive-pop-check"><input type="checkbox" id="gdrive-autosync" checked> Guardar automáticamente en Drive</label>
+        <div class="gdrive-pop-actions">
+            <button class="inf-btn" id="inf-gdrive-save">💾 Guardar ahora en Drive</button>
+            <button class="inf-btn" id="inf-gdrive-open">📂 Abrir / cambiar de experimento…</button>
+            <button class="inf-btn" id="inf-gdrive-new">＋ Nuevo experimento</button>
+            <button class="inf-btn danger" id="inf-gdrive-signout">Cerrar sesión de Google</button>
         </div>
     </div>
 
@@ -25993,6 +26027,7 @@ bluetooth.startIOPinService()</pre>
         setInputVal('inf-course', I.meta.course); setInputVal('inf-institution', I.meta.institution);
         setInputVal('inf-date', I.meta.date);
         var nt = el('inf-notes'); if (nt) nt.value = I.notesText;
+        updateProjectBadge();
       }
 
       // --- Autoguardado ---
@@ -26074,7 +26109,7 @@ bluetooth.startIOPinService()</pre>
       }
       function openProjectFile(file) {
         if (!file) return;
-        I._driveFileId = null;
+        _gSessionFileId = null; _gSessionName = null;
         var name = (file.name || '').toLowerCase();
         if (name.endsWith('.zip') || file.type === 'application/zip') { openProjectZip(file); return; }
         var reader = new FileReader();
@@ -26167,7 +26202,7 @@ bluetooth.startIOPinService()</pre>
         _gTok = null; _gTokExp = 0; _gUser = null; _gFolderId = null;
         _gSyncOn = false; _gSyncStarted = false; _gSessionFileId = null;
         try { localStorage.removeItem('fbit_gdrive'); } catch (e) {}
-        gUpdateDriveUI(); toast('Sesión de Google cerrada.');
+        closeDrivePop(); gUpdateDriveUI(); toast('Sesión de Google cerrada.');
       }
       function gApi(path, opts) {
         opts = opts || {}; opts.headers = opts.headers || {};
@@ -26187,37 +26222,68 @@ bluetooth.startIOPinService()</pre>
         var cr = await gApi('drive/v3/files?fields=id', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: GDRIVE_FOLDER, mimeType: 'application/vnd.google-apps.folder' }) });
         var cj = await cr.json(); _gFolderId = cj.id; return _gFolderId;
       }
+      // El nombre del proyecto activo = «Título del experimento» (el identificador que ves y elegís).
+      function gProjectDisplayName() { var t = (I.meta && I.meta.title || '').trim(); return t || 'Experimento sin nombre'; }
+      function gProjectFileName() {
+        var t = (I.meta && I.meta.title || '').trim();
+        if (t) return 'proyecto_' + slugTitle() + '.fisicabit.json';
+        var d = new Date();
+        var st = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '-' + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+        return 'proyecto_sin-nombre-' + st + '.fisicabit.json';
+      }
+      function gCleanName(name) { return (name || '').replace(/^proyecto_/, '').replace(/\.fisicabit\.json$/, '').replace(/\.json$/, '').replace(/-/g, ' '); }
+      // Escribe el proyecto ACTIVO en Drive: crea o actualiza su archivo, y lo renombra si cambió el título.
+      async function gWriteProject() {
+        var content = JSON.stringify(serialize());
+        var name = gProjectFileName();
+        var folderId = await gGetFolderId();
+        if (!_gSessionFileId) {
+          try {
+            var sq = "name='" + name + "' and '" + folderId + "' in parents and trashed=false";
+            var sr = await gApi('drive/v3/files?q=' + encodeURIComponent(sq) + '&fields=files(id)&spaces=drive');
+            var sj = await sr.json(); if (sj.files && sj.files.length) { _gSessionFileId = sj.files[0].id; _gSessionName = name; }
+          } catch (e) {}
+        }
+        if (_gSessionFileId) {
+          await gApi('upload/drive/v3/files/' + _gSessionFileId + '?uploadType=media', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: content });
+          if (_gSessionName && _gSessionName !== name) {
+            try { await gApi('drive/v3/files/' + _gSessionFileId + '?fields=id', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name }) }); } catch (e) {}
+          }
+          _gSessionName = name;
+        } else {
+          var boundary = 'fbit' + Date.now().toString(16);
+          var meta = { name: name, mimeType: 'application/json', parents: [folderId] };
+          var body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
+            '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + content + '\r\n--' + boundary + '--';
+          var cr = await gApi('upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: body });
+          var cj = await cr.json(); _gSessionFileId = cj.id; _gSessionName = name;
+        }
+        return _gSessionFileId;
+      }
       async function gSaveToDrive() {
         if (!(await gEnsureToken())) { toast('Iniciá sesión con Google primero.'); return; }
+        if (!_sessionHasContent()) { toast('Todavía no hay nada para guardar.'); return; }
         toast('Guardando en Google Drive…');
-        try {
-          var content = JSON.stringify(serialize());
-          var name = 'proyecto_' + slugTitle() + '.fisicabit.json';
-          var folderId = await gGetFolderId();
-          var fileId = I._driveFileId;
-          if (!fileId) {
-            var q = "name='" + name + "' and '" + folderId + "' in parents and trashed=false";
-            var sr = await gApi('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&spaces=drive');
-            var sj = await sr.json(); if (sj.files && sj.files.length) fileId = sj.files[0].id;
-          }
-          var res;
-          if (fileId) {
-            res = await gApi('upload/drive/v3/files/' + fileId + '?uploadType=media&fields=id,name', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: content });
-          } else {
-            var boundary = 'fbit' + Date.now().toString(16);
-            var meta = { name: name, mimeType: 'application/json', parents: [folderId] };
-            var body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
-              '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + content + '\r\n--' + boundary + '--';
-            res = await gApi('upload/drive/v3/files?uploadType=multipart&fields=id,name', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: body });
-          }
-          var rj = await res.json();
-          if (rj && rj.id) { I._driveFileId = rj.id; toast('Guardado en Google Drive (carpeta «' + GDRIVE_FOLDER + '») ✓'); }
-          else toast('No se pudo guardar en Drive.');
-        } catch (e) { console.error('[INFORME] Drive save', e); toast('Error guardando en Drive.'); }
+        try { await gWriteProject(); _gSyncOn = true; updateProjectBadge(); gSetSyncStatus(); toast('«' + gProjectDisplayName() + '» guardado en Google Drive ✓'); }
+        catch (e) { console.error('[INFORME] Drive save', e); toast('Error guardando en Drive.'); }
+      }
+      // Empezar un experimento NUEVO (guarda el actual en Drive antes de limpiar, para no perderlo).
+      async function gNewProject() {
+        closeDrivePop();
+        var name = prompt('Nombre del experimento nuevo (podés cambiarlo después en «Título del experimento»):', '');
+        if (name === null) return;
+        name = (name || '').trim();
+        if (_sessionHasContent() && gConnected()) { toast('Guardando el experimento actual en Drive…'); try { await gWriteProject(); } catch (e) {} }
+        _clearSession(name);
+        try { await idbDel(AUTOSAVE_KEY); } catch (e) {}
+        try { localStorage.removeItem(LS_KEY); } catch (e) {}
+        gUpdateDriveUI();
+        toast(name ? ('Nuevo experimento: «' + name + '» ✓') : 'Nuevo experimento en blanco ✓');
       }
       function gFmtDate(iso) { try { var d = new Date(iso); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
       async function gOpenFromDrive() {
         if (!(await gEnsureToken())) { toast('Iniciá sesión con Google primero.'); return; }
+        closeDrivePop();
         var modal = el('inf-drive-modal'), list = el('inf-drive-list'); if (!modal || !list) return;
         list.innerHTML = '<div class="inf-drive-empty">Cargando tus proyectos…</div>'; modal.classList.add('open');
         try {
@@ -26225,53 +26291,76 @@ bluetooth.startIOPinService()</pre>
           var q = "'" + folderId + "' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'";
           var r = await gApi('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc&spaces=drive');
           var j = await r.json(); var files = j.files || [];
-          if (!files.length) { list.innerHTML = '<div class="inf-drive-empty">Todavía no hay proyectos guardados en la carpeta «' + GDRIVE_FOLDER + '».</div>'; return; }
+          if (!files.length) { list.innerHTML = '<div class="inf-drive-empty">Todavía no hay experimentos guardados en la carpeta «' + GDRIVE_FOLDER + '».</div>'; return; }
           list.innerHTML = '';
           files.forEach(function (f) {
-            var nm = (f.name || '').replace(/^proyecto_/, '').replace(/\.fisicabit\.json$/, '').replace(/\.json$/, '');
+            var nm = gCleanName(f.name), active = (f.id === _gSessionFileId);
             var row = document.createElement('div'); row.className = 'inf-drive-row';
-            row.innerHTML = '<div class="inf-drive-info"><div class="inf-drive-name">' + esc(nm || f.name) + '</div><div class="inf-drive-date">' + gFmtDate(f.modifiedTime) + '</div></div>';
-            var open = document.createElement('button'); open.className = 'inf-btn'; open.style.width = 'auto'; open.style.margin = '0'; open.textContent = 'Abrir';
-            open.addEventListener('click', function () { gLoadFile(f.id); });
+            row.innerHTML = '<div class="inf-drive-info"><div class="inf-drive-name">' + esc(nm || f.name) + (active ? ' <span class="inf-drive-cur">· en uso</span>' : '') + '</div><div class="inf-drive-date">' + gFmtDate(f.modifiedTime) + '</div></div>';
+            var open = document.createElement('button'); open.className = 'inf-btn'; open.style.width = 'auto'; open.style.margin = '0'; open.textContent = active ? 'En uso' : 'Abrir';
+            if (active) open.disabled = true;
+            open.addEventListener('click', function () { gLoadFile(f.id, f.name); });
             row.appendChild(open); list.appendChild(row);
           });
         } catch (e) { console.error(e); list.innerHTML = '<div class="inf-drive-empty">No se pudieron cargar los proyectos.</div>'; }
       }
-      async function gLoadFile(fileId) {
-        toast('Abriendo proyecto de Drive…');
+      async function gLoadFile(fileId, fileName) {
+        toast('Abriendo experimento de Drive…');
         try {
           var r = await gApi('drive/v3/files/' + fileId + '?alt=media');
           var txt = await r.text(); var blob = null;
           try { blob = JSON.parse(txt); } catch (er) { toast('El proyecto de Drive está dañado.'); return; }
           var modal = el('inf-drive-modal'); if (modal) modal.classList.remove('open');
-          I._driveFileId = fileId; applyOpenedBlob(blob, false);
+          _gSessionFileId = fileId; _gSessionName = fileName || null;
+          applyOpenedBlob(blob, false);
+          _gSyncOn = true; updateProjectBadge(); gUpdateDriveUI();
         } catch (e) { console.error(e); toast('No se pudo abrir el proyecto de Drive.'); }
       }
       function gUpdateDriveUI() {
         var connected = gConnected();
-        var signin = el('inf-gdrive-signin'), save = el('inf-gdrive-save'), open = el('inf-gdrive-open'), out = el('inf-gdrive-signout'), status = el('inf-gdrive-status');
-        if (signin) signin.style.display = connected ? 'none' : 'block';
-        if (save) save.style.display = connected ? 'block' : 'none';
-        if (open) open.style.display = connected ? 'block' : 'none';
-        if (out) out.style.display = connected ? 'block' : 'none';
+        var label = connected ? ('Conectado a Google como: ' + ((_gUser && _gUser.emailAddress) || 'mi cuenta')) : '☁ Conectar con Google';
+        ['gdriveTopBtn', 'gdriveTopBtn2'].forEach(function (id) { var b = el(id); if (!b) return; b.textContent = label; b.classList.toggle('gdrive-on', connected); });
+        var status = el('inf-gdrive-status');
         if (status) {
-          if (!gConfigured()) status.textContent = 'Google Drive: pendiente de configurar.';
-          else if (connected) status.textContent = 'Conectado' + (_gUser && _gUser.emailAddress ? (' como ' + _gUser.emailAddress) : '') + (_gSyncOn ? ' · sincronizando toda tu sesión.' : ' · carpeta «' + GDRIVE_FOLDER + '».');
-          else status.textContent = 'Guardá toda tu sesión y retomala en cualquier navegador.';
+          if (!gConfigured()) status.textContent = 'Google Drive: pendiente de configurar (falta el Client ID).';
+          else if (connected) status.textContent = 'Conectado a Google como: ' + ((_gUser && _gUser.emailAddress) || 'mi cuenta') + (_gSyncOn && _gAutoSync ? (' · guardando «' + gProjectDisplayName() + '».') : '.');
+          else status.textContent = 'Conectá tu cuenta para guardar y retomar experimentos (opcional).';
         }
+        updateProjectBadge();
       }
+      // --- Botón «Conectar con Google» (arriba, junto a AYUDA) y su popover de opciones ---
+      var _gAutoSync = true;
+      try { _gAutoSync = localStorage.getItem('fbit_gdrive_autosync') !== '0'; } catch (e) {}
+      function driveTopClick() {
+        if (!gConfigured()) { toast('Falta configurar el Client ID de Google (ver GOOGLE_CLIENT_ID en el código).'); return; }
+        if (!gConnected()) { gConnect(true).then(function (ok) { if (ok) { gSyncStart(); openDrivePop(); } else toast('No se pudo conectar con Google.'); }); return; }
+        toggleDrivePop();
+      }
+      function positionDrivePop() {
+        var pop = el('gdrive-pop'), btn = el('gdriveTopBtn'); if (!pop) return;
+        if (btn && btn.offsetParent !== null) { var r = btn.getBoundingClientRect(); pop.style.top = (r.bottom + 6) + 'px'; pop.style.right = Math.max(8, window.innerWidth - r.right) + 'px'; pop.style.left = 'auto'; }
+        else { pop.style.top = '58px'; pop.style.right = '12px'; pop.style.left = 'auto'; }
+      }
+      function openDrivePop() {
+        var pop = el('gdrive-pop'); if (!pop) return;
+        var nm = el('gdrive-proj-name'); if (nm) nm.value = (I.meta && I.meta.title) || '';
+        var as = el('gdrive-autosync'); if (as) as.checked = _gAutoSync;
+        gUpdateDriveUI(); pop.classList.add('open'); positionDrivePop();
+      }
+      function closeDrivePop() { var pop = el('gdrive-pop'); if (pop) pop.classList.remove('open'); }
+      function toggleDrivePop() { var pop = el('gdrive-pop'); if (pop && pop.classList.contains('open')) closeDrivePop(); else openDrivePop(); }
+      I.driveTopClick = driveTopClick;
       async function gAutoConnect() {
         try { if (gConfigured() && !gConnected() && localStorage.getItem('fbit_gdrive') === '1') { await gConnect(false); } } catch (e) {}
         if (gConnected()) gSyncStart();
         gUpdateDriveUI();
       }
 
-      // --- Sincronización continua de TODA la sesión de fisicabit con Google Drive ---
-      // Un único archivo "sesion-actual" en la carpeta fisicabit refleja el trabajo completo
-      // (mediciones, gráficos, ajustes + informe). Se actualiza solo mientras estás conectado,
-      // igual que el autoguardado del navegador pero en la nube, para retomar en otro dispositivo.
-      var GDRIVE_SESSION_NAME = 'sesion-actual.fisicabit.json';
-      var _gSyncOn = false, _gSyncStarted = false, _gSessionFileId = null, _gLastPush = 0, _gPushTimer = null, _lastSavedAt = 0;
+      // --- Sincronización continua del EXPERIMENTO ACTIVO con Google Drive ---
+      // Cada experimento es un archivo con su nombre (el Título) en la carpeta fisicabit y se
+      // actualiza solo mientras estás conectado, como el autoguardado pero en la nube. Podés tener
+      // muchos, elegir cuál abrir y empezar uno nuevo. Nunca sube algo vacío ni pisa la nube antes de decidir.
+      var _gSyncOn = false, _gSyncStarted = false, _gSessionFileId = null, _gSessionName = null, _gLastPush = 0, _gPushTimer = null, _lastSavedAt = 0;
       function _sessionHasContent() {
         var st = state || {};
         return !!((st.rawData && st.rawData.length) || (I.notesText && I.notesText.trim()) || I.hasDrawing() ||
@@ -26283,36 +26372,33 @@ bluetooth.startIOPinService()</pre>
         _gSyncStarted = true;
         try {
           var folderId = await gGetFolderId();
-          var q = "name='" + GDRIVE_SESSION_NAME + "' and '" + folderId + "' in parents and trashed=false";
-          var r = await gApi('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,modifiedTime)&spaces=drive');
-          var j = await r.json();
-          if (j.files && j.files.length) {
-            _gSessionFileId = j.files[0].id;
-            var cr = await gApi('drive/v3/files/' + _gSessionFileId + '?alt=media');
-            var txt = await cr.text(); var cloud = null; try { cloud = JSON.parse(txt); } catch (e) {}
-            if (cloud && cloud.app) {
-              var cloudSaved = cloud.savedAt || Date.parse(j.files[0].modifiedTime) || 0;
-              // Solo ofrecer retomar si acá no hay nada, o si la nube es claramente más nueva (>2 min).
-              if (!_sessionHasContent() || cloudSaved > _lastSavedAt + 120000) { gOfferResume(cloud, cloudSaved); return; }
-            }
-          }
+          var q = "'" + folderId + "' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'";
+          var r = await gApi('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc&spaces=drive');
+          var j = await r.json(); var files = j.files || [];
+          // Si acá no hay nada y en Drive tenés experimentos, ofrecer retomar el último.
+          if (files.length && !_sessionHasContent()) { await gOfferResumeFile(files[0]); return; }
         } catch (e) { /* silencioso */ }
         _gSyncOn = true; gUpdateDriveUI(); gSyncPush(true);
       }
-      function gOfferResume(cloud, savedAt) {
+      async function gOfferResumeFile(f) {
+        var cloud = null;
+        try { var cr = await gApi('drive/v3/files/' + f.id + '?alt=media'); cloud = JSON.parse(await cr.text()); } catch (e) {}
+        if (!cloud || !cloud.app) { _gSyncOn = true; gUpdateDriveUI(); return; }
+        var nm = (cloud.report && cloud.report.meta && (cloud.report.meta.title || '').trim()) || gCleanName(f.name);
+        var savedAt = cloud.savedAt || Date.parse(f.modifiedTime) || 0;
         var n = ((cloud.app && cloud.app.rawData) || []).length;
-        var msg = 'Tenés tu sesión de fisicabit guardada en Google Drive' + (savedAt ? (' (' + timeAgoStr(savedAt) + ')') : '') +
-          (n ? (' · ' + n + ' puntos') : '') + '. ¿Retomarla?';
+        var msg = 'Tu último experimento en Google Drive es «' + nm + '»' + (savedAt ? (' (' + timeAgoStr(savedAt) + ')') : '') + (n ? (' · ' + n + ' puntos') : '') + '. ¿Retomarlo?';
         var enable = function () { _gSyncOn = true; gUpdateDriveUI(); };
+        var doResume = function () { _gSessionFileId = f.id; _gSessionName = f.name; restore(cloud); _lastSavedAt = savedAt; enable(); updateProjectBadge(); toast('«' + nm + '» restaurado de Drive ✓'); };
         var banner = el('inf-restore');
-        if (!banner) { if (confirm(msg)) { restore(cloud); _lastSavedAt = savedAt; } enable(); return; }
+        if (!banner) { if (confirm(msg)) doResume(); else enable(); return; }
         el('inf-restore-msg').textContent = msg; banner.classList.add('show');
         var ht = setTimeout(function () { banner.classList.remove('show'); enable(); }, 22000);
-        el('inf-restore-yes').onclick = function () { clearTimeout(ht); banner.classList.remove('show'); restore(cloud); _lastSavedAt = savedAt; enable(); toast('Sesión de Drive restaurada ✓'); };
+        el('inf-restore-yes').onclick = function () { clearTimeout(ht); banner.classList.remove('show'); doResume(); };
         el('inf-restore-no').onclick = function () { clearTimeout(ht); banner.classList.remove('show'); enable(); };
       }
       async function gSyncPush(force) {
-        if (!_gSyncOn || !gConnected() || !_sessionHasContent()) return;   // nunca sube una sesión vacía
+        if (!_gSyncOn || !_gAutoSync || !gConnected() || !_sessionHasContent()) return;   // respeta el guardado automático opcional; nunca sube algo vacío
         var now = Date.now();
         if (!force && now - _gLastPush < 18000) {   // no más de ~1 subida cada 18 s
           if (!_gPushTimer) _gPushTimer = setTimeout(function () { _gPushTimer = null; gSyncPush(false); }, 18000 - (now - _gLastPush));
@@ -26320,45 +26406,42 @@ bluetooth.startIOPinService()</pre>
         }
         if (_gPushTimer) { clearTimeout(_gPushTimer); _gPushTimer = null; }
         _gLastPush = now;
-        try {
-          var content = JSON.stringify(serialize());
-          var folderId = await gGetFolderId();
-          if (_gSessionFileId) {
-            await gApi('upload/drive/v3/files/' + _gSessionFileId + '?uploadType=media', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: content });
-          } else {
-            var boundary = 'fbit' + now.toString(16);
-            var meta = { name: GDRIVE_SESSION_NAME, mimeType: 'application/json', parents: [folderId] };
-            var body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
-              '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + content + '\r\n--' + boundary + '--';
-            var cr = await gApi('upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: body });
-            var cj = await cr.json(); _gSessionFileId = cj.id;
-          }
-          gSetSyncStatus();
-        } catch (e) { /* silencioso: reintenta en el próximo autoguardado */ }
+        try { await gWriteProject(); gSetSyncStatus(); } catch (e) { /* silencioso: reintenta en el próximo autoguardado */ }
       }
-      function gSetSyncStatus() { var s = el('inf-gdrive-status'); if (s && gConnected() && _gSyncOn) s.textContent = 'Sesión sincronizada con Drive · ' + gClock() + '.'; }
+      function gSetSyncStatus() { var s = el('inf-gdrive-status'); if (s && gConnected() && _gSyncOn) s.textContent = '«' + gProjectDisplayName() + '» · sincronizado ' + gClock() + '.'; }
 
-      async function resetAll() {
-        if (!confirm('¿Reiniciar TODO?\n\nSe borrarán los datos capturados, los ajustes, los apuntes escritos/dibujados y las fotos de este proyecto. Esta acción no se puede deshacer.')) return;
+      // Muestra el nombre del experimento activo en la barra superior (para saber en qué estás).
+      function updateProjectBadge() {
+        var b = el('inf-project-badge'); if (!b) return;
+        var t = (I.meta && I.meta.title || '').trim();
+        if (t) { b.textContent = '📄 ' + t; b.style.display = ''; } else { b.textContent = ''; b.style.display = 'none'; }
+      }
+      // Limpia toda la sesión en memoria (opcionalmente con un título nuevo). No toca la conexión de Drive.
+      function _clearSession(newTitle) {
         var st = state;
         st.rawData = [];
         if (st.selectedPoints && st.selectedPoints.clear) st.selectedPoints.clear();
         st.timeZeroOffset = 0; st.sensorPhotos = []; st.videoBlob = null; st.recordedChunks = [];
         st.fitResult = null; st.segmentFits = []; st.extraDataSets = [];
-        I.meta = { title: '', student: '', course: '', institution: '', date: todayStr() };
+        I.meta = { title: newTitle || '', student: '', course: '', institution: '', date: todayStr() };
         I.notesText = ''; I.devicePhotos = []; I.selected = {};
-        I.imgOpts = {}; I.sections = []; I._secSeq = 0; I._secActive = 0; I._blkSeq = 0; I.drawingData = null; I._driveFileId = null; _lastSavedAt = 0;
+        I.imgOpts = {}; I.sections = []; I._secSeq = 0; I._secActive = 0; I._blkSeq = 0; I.drawingData = null;
+        _gSessionFileId = null; _gSessionName = null; _lastSavedAt = 0;
         I.doc = defaultDoc(); I._infTab = 'armado'; switchInfTab('armado');
         syncReportInputs(); renderPhotos(); renderDrawPreview();
-        try { await idbDel(AUTOSAVE_KEY); } catch (e) {}
-        try { localStorage.removeItem(LS_KEY); } catch (e) {}
         var fr = el('fitResults'); if (fr) fr.style.display = 'none';
         if (fn('renderSegmentFitResults')) renderSegmentFitResults();
         if (fn('updateCurveFitButtons')) updateCurveFitButtons();
         if (fn('_renderExtraDataSetsPanel')) _renderExtraDataSetsPanel();
         if (fn('updateDisplay')) updateDisplay();
-        lastSig = sig(); setStatus('Autoguardado en el navegador activado.');
-        refresh();
+        lastSig = sig(); refresh(); updateProjectBadge();
+      }
+      async function resetAll() {
+        if (!confirm('¿Reiniciar TODO?\n\nSe borrarán los datos capturados, los ajustes, los apuntes escritos/dibujados y las fotos de este proyecto. Esta acción no se puede deshacer.')) return;
+        _clearSession('');
+        try { await idbDel(AUTOSAVE_KEY); } catch (e) {}
+        try { localStorage.removeItem(LS_KEY); } catch (e) {}
+        setStatus('Autoguardado en el navegador activado.');
         toast('Todo reiniciado.');
       }
 
@@ -26371,7 +26454,7 @@ bluetooth.startIOPinService()</pre>
         [['inf-title', 'title'], ['inf-student', 'student'], ['inf-course', 'course'], ['inf-institution', 'institution'], ['inf-date', 'date']].forEach(function (pair) {
           var e = el(pair[0]); if (!e) return;
           e.value = I.meta[pair[1]] || '';
-          e.addEventListener('input', function () { I.meta[pair[1]] = e.value; renderPreviewDebounced(); schedule(); });
+          e.addEventListener('input', function () { I.meta[pair[1]] = e.value; if (pair[1] === 'title') { updateProjectBadge(); gSetSyncStatus(); } renderPreviewDebounced(); schedule(); });
         });
         var notesEl = el('inf-notes');
         if (notesEl) { notesEl.value = I.notesText; notesEl.addEventListener('input', function () { I.notesText = notesEl.value; if (I.notesText.trim()) I.selected['notes'] = true; buildChecklist(); renderPreviewDebounced(); schedule(); }); }
@@ -26406,12 +26489,24 @@ bluetooth.startIOPinService()</pre>
         if (el('inf-reset')) el('inf-reset').addEventListener('click', resetAll);
 
         // Google Drive (guardar/retomar en la nube)
-        if (el('inf-gdrive-signin')) el('inf-gdrive-signin').addEventListener('click', function () { gConnect(true).then(function (ok) { if (ok) gSyncStart(); }); });
         if (el('inf-gdrive-save')) el('inf-gdrive-save').addEventListener('click', gSaveToDrive);
         if (el('inf-gdrive-open')) el('inf-gdrive-open').addEventListener('click', gOpenFromDrive);
+        if (el('inf-gdrive-new')) el('inf-gdrive-new').addEventListener('click', gNewProject);
         if (el('inf-gdrive-signout')) el('inf-gdrive-signout').addEventListener('click', gDisconnect);
         if (el('inf-drive-close')) el('inf-drive-close').addEventListener('click', function () { el('inf-drive-modal').classList.remove('open'); });
         if (el('inf-drive-modal')) el('inf-drive-modal').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
+        // Popover del botón «Conectar con Google»: nombre del experimento + guardado automático (opcional)
+        var pn = el('gdrive-proj-name');
+        if (pn) pn.addEventListener('input', function () { I.meta.title = pn.value; setInputVal('inf-title', pn.value); updateProjectBadge(); gSetSyncStatus(); renderPreviewDebounced(); schedule(); });
+        var asw = el('gdrive-autosync');
+        if (asw) asw.addEventListener('change', function () { _gAutoSync = asw.checked; try { localStorage.setItem('fbit_gdrive_autosync', asw.checked ? '1' : '0'); } catch (e) {} if (asw.checked) gSyncPush(true); gUpdateDriveUI(); toast(asw.checked ? 'Guardado automático en Drive activado.' : 'Guardado automático desactivado (usá «Guardar ahora»).'); });
+        document.addEventListener('mousedown', function (e) {
+          var pop = el('gdrive-pop'); if (!pop || !pop.classList.contains('open')) return;
+          var t = e.target;
+          if (pop.contains(t) || (t.closest && (t.closest('#gdriveTopBtn') || t.closest('#gdriveTopBtn2')))) return;
+          closeDrivePop();
+        });
+        window.addEventListener('resize', function () { var p = el('gdrive-pop'); if (p && p.classList.contains('open')) positionDrivePop(); });
         gUpdateDriveUI();
 
         // Menú desplegable «Exportar / Guardar» (arriba a la derecha)
