@@ -24949,7 +24949,11 @@ bluetooth.startIOPinService()</pre>
           var h = reportItemHTML(id); if (h) parts.push(h);
         });
         if (parts.length) parts.push(footBlock());
-        return parts.join('');
+        var out = parts.join('');
+        // Traducir los rótulos estructurales al idioma de la interfaz (el texto que
+        // escribe el alumno queda intacto). Afecta vista previa y exportaciones PDF/Word/ZIP.
+        try { if (window.FbitI18n && window.FbitI18n.localizeHTML) out = window.FbitI18n.localizeHTML(out); } catch (e) {}
+        return out;
       }
 
       // --- Vista previa ---
@@ -27347,6 +27351,50 @@ bluetooth.startIOPinService()</pre>
     'Valor inválido': { en: 'Invalid value', pt: 'Valor inválido' }
   };
 
+  // ---- Reglas para textos con números/nombres interpolados ----
+  // Plantillas con %n% (número) y %s% (texto libre); iguales en es/en/pt (mismo orden de grupos).
+  function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function tmplToRe(tmpl) {
+    var re = '^', last = 0, rx = /%([ns])%/g, m;
+    while ((m = rx.exec(tmpl))) { re += escRe(tmpl.slice(last, m.index)); re += (m[1] === 'n') ? '(\\d+(?:[.,]\\d+)?)' : '(.+?)'; last = m.index + m[0].length; }
+    re += escRe(tmpl.slice(last)) + '$';
+    return new RegExp(re);
+  }
+  function fillTmpl(tmpl, groups) { var i = 0; return tmpl.replace(/%[ns]%/g, function () { var v = groups[i++]; return v === undefined ? '' : v; }); }
+  var RULE_DEFS = [
+    { es: 'Gráfica %n%', en: 'Graph %n%', pt: 'Gráfico %n%' },
+    { es: 'Gráfica: %s%', en: 'Graph: %s%', pt: 'Gráfico: %s%' },
+    { es: 'Sección: %s%', en: 'Section: %s%', pt: 'Seção: %s%' },
+    { es: '%n% puntos', en: '%n% points', pt: '%n% pontos' },
+    { es: '%n% pts', en: '%n% pts', pt: '%n% pts' },
+    { es: '%n% tramos', en: '%n% segments', pt: '%n% trechos' },
+    { es: '%n% imágenes', en: '%n% images', pt: '%n% imagens' },
+    { es: '%n% imagen', en: '%n% image', pt: '%n% imagem' },
+    { es: '%n% fotos', en: '%n% photos', pt: '%n% fotos' },
+    { es: 'Tramo %n%', en: 'Segment %n%', pt: 'Trecho %n%' },
+    { es: 'filas %n%–%n%', en: 'rows %n%–%n%', pt: 'linhas %n%–%n%' },
+    { es: 'puntos %n%–%n%', en: 'points %n%–%n%', pt: 'pontos %n%–%n%' },
+    { es: 'Tiempo (%s%)', en: 'Time (%s%)', pt: 'Tempo (%s%)' },
+    { es: 'Tabla de datos (continuación)', en: 'Data table (continued)', pt: 'Tabela de dados (continuação)' },
+    { es: 'Unidad de tiempo: %s% · Total de puntos registrados: %n%.', en: 'Time unit: %s% · Total points recorded: %n%.', pt: 'Unidade de tempo: %s% · Total de pontos registrados: %n%.' },
+    { es: 'Mostrando %n% de %n% fotos.', en: 'Showing %n% of %n% photos.', pt: 'Mostrando %n% de %n% fotos.' },
+    { es: 'Experimento: «%s%»', en: 'Experiment: «%s%»', pt: 'Experimento: «%s%»' },
+    { es: 'convergió en %n% iteraciones', en: 'converged in %n% iterations', pt: 'convergiu em %n% iterações' },
+    { es: 'no convergió en %n% iteraciones', en: 'did not converge in %n% iterations', pt: 'não convergiu em %n% iterações' }
+  ];
+  var RULES = RULE_DEFS.map(function (d) { return { res: { es: tmplToRe(d.es), en: tmplToRe(d.en), pt: tmplToRe(d.pt) }, out: { es: d.es, en: d.en, pt: d.pt } }; });
+  function ruleT(text, lang) {
+    var t = norm(text);
+    for (var i = 0; i < RULES.length; i++) {
+      var r = RULES[i], langs = ['es', 'en', 'pt'];
+      for (var k = 0; k < langs.length; k++) {
+        var m = r.res[langs[k]].exec(t);
+        if (m) return fillTmpl(r.out[lang] || r.out.es, m.slice(1));
+      }
+    }
+    return null;
+  }
+
   // ---- Motor de traducción por DOM ----
   var canonOf = null;
   function norm(s) { return (s == null ? '' : String(s)).replace(/\s+/g, ' ').trim(); }
@@ -27363,10 +27411,8 @@ bluetooth.startIOPinService()</pre>
   function T(text, lang) {
     index();
     var canon = canonOf[norm(text)];
-    if (canon === undefined) return null;
-    if (lang === 'es') return canon;
-    var e = D[canon];
-    return (e && e[lang]) || canon;
+    if (canon !== undefined) { if (lang === 'es') return canon; var e = D[canon]; return (e && e[lang]) || canon; }
+    return ruleT(text, lang);
   }
   var SKIP_TAGS = { TEXTAREA: 1, SCRIPT: 1, STYLE: 1, INPUT: 1, SELECT: 1 };
   function skip(node) {
@@ -27454,7 +27500,16 @@ bluetooth.startIOPinService()</pre>
     }
   } catch (e) {}
 
-  window.FbitI18n = { localizeAll: localizeAll, T: T };
+  // Traduce un fragmento HTML (para exportar informe en el idioma de la interfaz).
+  // No toca el texto del usuario (.rep-rich / .inf-rich / contenteditable).
+  function localizeHTML(html, lang) {
+    if (!html) return html;
+    lang = lang || curLang();
+    try { var box = document.createElement('div'); box.innerHTML = html; locEl(box, lang); return box.innerHTML; }
+    catch (e) { return html; }
+  }
+
+  window.FbitI18n = { localizeAll: localizeAll, T: T, localizeHTML: localizeHTML, lang: curLang };
 })();
 /* ===== INFORME + MAPEO I18N END ===== */
 
