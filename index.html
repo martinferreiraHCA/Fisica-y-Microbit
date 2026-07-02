@@ -25981,6 +25981,7 @@ bluetooth.startIOPinService()</pre>
           syncReportInputs();
           renderPhotos();
           refresh();
+          _lastSavedAt = blob.savedAt || Date.now();
         } catch (e) {
           console.error('[INFORME] Error restaurando proyecto:', e);
           toast('Hubo un problema al restaurar el proyecto.');
@@ -26025,6 +26026,8 @@ bluetooth.startIOPinService()</pre>
             setStatus('No se pudo autoguardar (espacio del navegador lleno).');
           }
         }
+        _lastSavedAt = Date.now();
+        gSyncPush(false);   // además, subir toda la sesión a Google Drive si está conectado
       }
       function schedule() { if (saveTimer) clearTimeout(saveTimer); saveTimer = setTimeout(function () { lastSig = sig(); autosaveNow(); }, 1500); }
       function startAutosave() {
@@ -26162,6 +26165,7 @@ bluetooth.startIOPinService()</pre>
       function gDisconnect() {
         try { if (_gTok && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(_gTok, function () {}); } catch (e) {}
         _gTok = null; _gTokExp = 0; _gUser = null; _gFolderId = null;
+        _gSyncOn = false; _gSyncStarted = false; _gSessionFileId = null;
         try { localStorage.removeItem('fbit_gdrive'); } catch (e) {}
         gUpdateDriveUI(); toast('Sesión de Google cerrada.');
       }
@@ -26252,14 +26256,87 @@ bluetooth.startIOPinService()</pre>
         if (out) out.style.display = connected ? 'block' : 'none';
         if (status) {
           if (!gConfigured()) status.textContent = 'Google Drive: pendiente de configurar.';
-          else if (connected) status.textContent = 'Conectado' + (_gUser && _gUser.emailAddress ? (' como ' + _gUser.emailAddress) : '') + ' · carpeta «' + GDRIVE_FOLDER + '».';
-          else status.textContent = 'Guardá tu progreso y retomalo en cualquier navegador.';
+          else if (connected) status.textContent = 'Conectado' + (_gUser && _gUser.emailAddress ? (' como ' + _gUser.emailAddress) : '') + (_gSyncOn ? ' · sincronizando toda tu sesión.' : ' · carpeta «' + GDRIVE_FOLDER + '».');
+          else status.textContent = 'Guardá toda tu sesión y retomala en cualquier navegador.';
         }
       }
-      function gAutoConnect() {
-        try { if (gConfigured() && !gConnected() && localStorage.getItem('fbit_gdrive') === '1') gConnect(false); } catch (e) {}
+      async function gAutoConnect() {
+        try { if (gConfigured() && !gConnected() && localStorage.getItem('fbit_gdrive') === '1') { await gConnect(false); } } catch (e) {}
+        if (gConnected()) gSyncStart();
         gUpdateDriveUI();
       }
+
+      // --- Sincronización continua de TODA la sesión de fisicabit con Google Drive ---
+      // Un único archivo "sesion-actual" en la carpeta fisicabit refleja el trabajo completo
+      // (mediciones, gráficos, ajustes + informe). Se actualiza solo mientras estás conectado,
+      // igual que el autoguardado del navegador pero en la nube, para retomar en otro dispositivo.
+      var GDRIVE_SESSION_NAME = 'sesion-actual.fisicabit.json';
+      var _gSyncOn = false, _gSyncStarted = false, _gSessionFileId = null, _gLastPush = 0, _gPushTimer = null, _lastSavedAt = 0;
+      function _sessionHasContent() {
+        var st = state || {};
+        return !!((st.rawData && st.rawData.length) || (I.notesText && I.notesText.trim()) || I.hasDrawing() ||
+          (I.devicePhotos && I.devicePhotos.length) || (I.meta && (I.meta.title || I.meta.student)) || (I.sections && I.sections.length));
+      }
+      function gClock() { try { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+      async function gSyncStart() {
+        if (_gSyncStarted || !gConnected()) return;
+        _gSyncStarted = true;
+        try {
+          var folderId = await gGetFolderId();
+          var q = "name='" + GDRIVE_SESSION_NAME + "' and '" + folderId + "' in parents and trashed=false";
+          var r = await gApi('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,modifiedTime)&spaces=drive');
+          var j = await r.json();
+          if (j.files && j.files.length) {
+            _gSessionFileId = j.files[0].id;
+            var cr = await gApi('drive/v3/files/' + _gSessionFileId + '?alt=media');
+            var txt = await cr.text(); var cloud = null; try { cloud = JSON.parse(txt); } catch (e) {}
+            if (cloud && cloud.app) {
+              var cloudSaved = cloud.savedAt || Date.parse(j.files[0].modifiedTime) || 0;
+              // Solo ofrecer retomar si acá no hay nada, o si la nube es claramente más nueva (>2 min).
+              if (!_sessionHasContent() || cloudSaved > _lastSavedAt + 120000) { gOfferResume(cloud, cloudSaved); return; }
+            }
+          }
+        } catch (e) { /* silencioso */ }
+        _gSyncOn = true; gUpdateDriveUI(); gSyncPush(true);
+      }
+      function gOfferResume(cloud, savedAt) {
+        var n = ((cloud.app && cloud.app.rawData) || []).length;
+        var msg = 'Tenés tu sesión de fisicabit guardada en Google Drive' + (savedAt ? (' (' + timeAgoStr(savedAt) + ')') : '') +
+          (n ? (' · ' + n + ' puntos') : '') + '. ¿Retomarla?';
+        var enable = function () { _gSyncOn = true; gUpdateDriveUI(); };
+        var banner = el('inf-restore');
+        if (!banner) { if (confirm(msg)) { restore(cloud); _lastSavedAt = savedAt; } enable(); return; }
+        el('inf-restore-msg').textContent = msg; banner.classList.add('show');
+        var ht = setTimeout(function () { banner.classList.remove('show'); enable(); }, 22000);
+        el('inf-restore-yes').onclick = function () { clearTimeout(ht); banner.classList.remove('show'); restore(cloud); _lastSavedAt = savedAt; enable(); toast('Sesión de Drive restaurada ✓'); };
+        el('inf-restore-no').onclick = function () { clearTimeout(ht); banner.classList.remove('show'); enable(); };
+      }
+      async function gSyncPush(force) {
+        if (!_gSyncOn || !gConnected() || !_sessionHasContent()) return;   // nunca sube una sesión vacía
+        var now = Date.now();
+        if (!force && now - _gLastPush < 18000) {   // no más de ~1 subida cada 18 s
+          if (!_gPushTimer) _gPushTimer = setTimeout(function () { _gPushTimer = null; gSyncPush(false); }, 18000 - (now - _gLastPush));
+          return;
+        }
+        if (_gPushTimer) { clearTimeout(_gPushTimer); _gPushTimer = null; }
+        _gLastPush = now;
+        try {
+          var content = JSON.stringify(serialize());
+          var folderId = await gGetFolderId();
+          if (_gSessionFileId) {
+            await gApi('upload/drive/v3/files/' + _gSessionFileId + '?uploadType=media', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: content });
+          } else {
+            var boundary = 'fbit' + now.toString(16);
+            var meta = { name: GDRIVE_SESSION_NAME, mimeType: 'application/json', parents: [folderId] };
+            var body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
+              '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + content + '\r\n--' + boundary + '--';
+            var cr = await gApi('upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: body });
+            var cj = await cr.json(); _gSessionFileId = cj.id;
+          }
+          gSetSyncStatus();
+        } catch (e) { /* silencioso: reintenta en el próximo autoguardado */ }
+      }
+      function gSetSyncStatus() { var s = el('inf-gdrive-status'); if (s && gConnected() && _gSyncOn) s.textContent = 'Sesión sincronizada con Drive · ' + gClock() + '.'; }
 
       async function resetAll() {
         if (!confirm('¿Reiniciar TODO?\n\nSe borrarán los datos capturados, los ajustes, los apuntes escritos/dibujados y las fotos de este proyecto. Esta acción no se puede deshacer.')) return;
@@ -26270,7 +26347,7 @@ bluetooth.startIOPinService()</pre>
         st.fitResult = null; st.segmentFits = []; st.extraDataSets = [];
         I.meta = { title: '', student: '', course: '', institution: '', date: todayStr() };
         I.notesText = ''; I.devicePhotos = []; I.selected = {};
-        I.imgOpts = {}; I.sections = []; I._secSeq = 0; I._secActive = 0; I._blkSeq = 0; I.drawingData = null; I._driveFileId = null;
+        I.imgOpts = {}; I.sections = []; I._secSeq = 0; I._secActive = 0; I._blkSeq = 0; I.drawingData = null; I._driveFileId = null; _lastSavedAt = 0;
         I.doc = defaultDoc(); I._infTab = 'armado'; switchInfTab('armado');
         syncReportInputs(); renderPhotos(); renderDrawPreview();
         try { await idbDel(AUTOSAVE_KEY); } catch (e) {}
@@ -26329,7 +26406,7 @@ bluetooth.startIOPinService()</pre>
         if (el('inf-reset')) el('inf-reset').addEventListener('click', resetAll);
 
         // Google Drive (guardar/retomar en la nube)
-        if (el('inf-gdrive-signin')) el('inf-gdrive-signin').addEventListener('click', function () { gConnect(true); });
+        if (el('inf-gdrive-signin')) el('inf-gdrive-signin').addEventListener('click', function () { gConnect(true).then(function (ok) { if (ok) gSyncStart(); }); });
         if (el('inf-gdrive-save')) el('inf-gdrive-save').addEventListener('click', gSaveToDrive);
         if (el('inf-gdrive-open')) el('inf-gdrive-open').addEventListener('click', gOpenFromDrive);
         if (el('inf-gdrive-signout')) el('inf-gdrive-signout').addEventListener('click', gDisconnect);
@@ -26403,6 +26480,8 @@ bluetooth.startIOPinService()</pre>
         refresh();
         startAutosave();
         checkRestore();
+        // Reconexión silenciosa con Google Drive al abrir fisicabit (si ya te conectaste antes en este navegador)
+        setTimeout(function () { gAutoConnect(); }, 1500);
         // Guardar la selección activa dentro de los editores enriquecidos
         document.addEventListener('selectionchange', saveRange);
         buildFigTools();
