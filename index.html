@@ -4559,6 +4559,15 @@
 
         .inf-eq-modal { display:none; position:fixed; inset:0; z-index:9300; background:rgba(0,0,0,.6); align-items:center; justify-content:center; padding:20px; }
         .inf-eq-modal.open { display:flex; }
+        /* Diálogo propio (alert/confirm/prompt traducibles) */
+        .inf-dialog { display:none; position:fixed; inset:0; z-index:9600; background:rgba(0,0,0,.55); align-items:center; justify-content:center; padding:20px; }
+        .inf-dialog.open { display:flex; }
+        .inf-dialog-box { background:#fff; color:#161616; width:440px; max-width:100%; border-radius:10px; box-shadow:0 12px 40px rgba(0,0,0,.4); padding:20px 20px 16px; }
+        .inf-dialog-msg { font-size:14px; line-height:1.5; white-space:pre-line; color:#222; }
+        .inf-dialog-input { display:block; width:100%; box-sizing:border-box; margin-top:12px; padding:9px 10px; font-size:14px; font-family:inherit; border:1px solid #cfcfcf; border-radius:6px; }
+        .inf-dialog-input:focus { outline:none; border-color:#1976d2; }
+        .inf-dialog-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+        .inf-dialog .inf-btn { width:auto; }
         .inf-eq-box { background:#23272e; border:1px solid #444; width:640px; max-width:100%; max-height:92vh; overflow-y:auto; padding:16px; }
         .inf-eq-head { font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:#fff; margin-bottom:10px; }
         .inf-eq-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
@@ -24392,6 +24401,18 @@ bluetooth.startIOPinService()</pre>
     </div>
     <input type="file" id="sess-open-input" accept=".json,.zip,application/json,application/zip" style="display:none;">
 
+    <!-- Diálogo propio (reemplaza a alert/confirm/prompt del navegador; se traduce con la interfaz) -->
+    <div class="inf-dialog" id="inf-dialog">
+        <div class="inf-dialog-box">
+            <div class="inf-dialog-msg" id="inf-dialog-msg"></div>
+            <input type="text" class="inf-dialog-input" id="inf-dialog-input" style="display:none;">
+            <div class="inf-dialog-actions">
+                <button class="inf-btn inf-dialog-cancel" id="inf-dialog-cancel" style="width:auto;margin:0;">Cancelar</button>
+                <button class="inf-btn primary inf-dialog-ok" id="inf-dialog-ok" style="width:auto;margin:0;">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="inf-toast" id="inf-toast"></div>
 
     <script>
@@ -24522,6 +24543,35 @@ bluetooth.startIOPinService()</pre>
       function fn(name) { try { return typeof window[name] === 'function'; } catch (e) { return false; } }
       function el(id) { return document.getElementById(id); }
       function raf2() { return new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); }); }
+      // Traduce un texto al idioma de la interfaz usando el motor de i18n (si está).
+      function _t(s) { try { if (!window.FbitI18n || !window.FbitI18n.T) return s; var l = (typeof currentLanguage !== 'undefined' && currentLanguage) || 'es'; var v = window.FbitI18n.T(s, l); return v == null ? s : v; } catch (e) { return s; } }
+      // Diálogos propios (reemplazan alert/confirm/prompt del navegador; se traducen con la interfaz).
+      var _dlgOpts = null, _dlgResolve = null;
+      function _dlgFinish(val) { var m = el('inf-dialog'); if (m) m.classList.remove('open'); var r = _dlgResolve; _dlgResolve = null; _dlgOpts = null; if (r) r(val); }
+      function _dlgOk() { if (!_dlgOpts) return; _dlgFinish(_dlgOpts.prompt ? el('inf-dialog-input').value : true); }
+      function _dlgCancel() { if (!_dlgOpts) return; _dlgFinish(_dlgOpts.prompt ? null : false); }
+      function uiDialog(opts) {
+        return new Promise(function (resolve) {
+          var m = el('inf-dialog'), msg = el('inf-dialog-msg'), inp = el('inf-dialog-input'),
+            ok = el('inf-dialog-ok'), cancel = el('inf-dialog-cancel');
+          if (!m || !msg || !ok) { // Respaldo al diálogo nativo si faltara el modal
+            if (opts.prompt) return resolve(window.prompt(_t(opts.message), opts.def || ''));
+            if (opts.alert) { window.alert(_t(opts.message)); return resolve(true); }
+            return resolve(window.confirm(_t(opts.message)));
+          }
+          _dlgOpts = opts; _dlgResolve = resolve;
+          msg.textContent = _t(opts.message);
+          if (opts.prompt) { inp.style.display = ''; inp.value = opts.def || ''; } else { inp.style.display = 'none'; }
+          ok.textContent = _t(opts.okLabel || 'Aceptar');
+          cancel.style.display = opts.alert ? 'none' : '';
+          cancel.textContent = _t(opts.cancelLabel || 'Cancelar');
+          m.classList.add('open');
+          setTimeout(function () { (opts.prompt ? inp : ok).focus(); if (opts.prompt) inp.select(); }, 30);
+        });
+      }
+      function uiAlert(message) { return uiDialog({ message: message, alert: true }).then(function () { }); }
+      function uiConfirm(message) { return uiDialog({ message: message }); }
+      function uiPrompt(message, def) { return uiDialog({ message: message, prompt: true, def: def }); }
       function todayStr() {
         var d = new Date();
         return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
@@ -25242,7 +25292,7 @@ bluetooth.startIOPinService()</pre>
           acts.appendChild(up); acts.appendChild(dn); acts.appendChild(inc);
           if (isSec) {
             var expand = cbtn('⤢', 'Editar en página completa'); expand.addEventListener('click', function () { openPageEditor(id.slice(4)); }); acts.appendChild(expand);
-            var del = cbtn('✕', 'Quitar sección'); del.classList.add('del'); del.addEventListener('click', function () { if (confirm('¿Quitar esta sección?')) delSection(id.slice(4)); }); acts.appendChild(del);
+            var del = cbtn('✕', 'Quitar sección'); del.classList.add('del'); del.addEventListener('click', function () { uiConfirm('¿Quitar esta sección?').then(function (ok) { if (ok) delSection(id.slice(4)); }); }); acts.appendChild(del);
           }
           bar.appendChild(caret); bar.appendChild(handle); bar.appendChild(name); bar.appendChild(acts); card.appendChild(bar);
           var content = document.createElement('div'); content.className = 'inf-card-content';
@@ -25500,8 +25550,9 @@ bluetooth.startIOPinService()</pre>
       }
       function insertDataTableIntoDoc() {
         var rows = (state.rawData || []).length;
-        if (rows > 120 && !confirm('La tabla tiene ' + rows + ' filas. ¿Insertar toda la tabla en el texto? Podés colapsar la sección después para que no ocupe tanto.')) return;
-        insertHTMLIntoDoc(dataTableEditableHTML());
+        var doIt = function () { insertHTMLIntoDoc(dataTableEditableHTML()); };
+        if (rows > 120) uiConfirm('La tabla tiene ' + rows + ' filas. ¿Insertar toda la tabla en el texto? Podés colapsar la sección después para que no ocupe tanto.').then(function (ok) { if (ok) doIt(); });
+        else doIt();
       }
       function toggleDataMenu(evt) {
         var m = el('inf-data-menu'); if (!m) return;
@@ -26339,9 +26390,9 @@ bluetooth.startIOPinService()</pre>
       }
       function restoreFromCache() {
         if (!_cachedBlob) { toast('No hay trabajo guardado en este navegador.'); return; }
-        if (_sessionHasContent() && !confirm('Esto reemplazará lo que tenés abierto ahora.\n\n¿Retomar tu último trabajo guardado en este navegador?')) return;
-        closeSessionMenu();
-        restore(_cachedBlob); _lastSavedAt = _cachedAt || Date.now(); toast('Tu último trabajo fue restaurado ✓'); schedule();
+        var go = function () { closeSessionMenu(); restore(_cachedBlob); _lastSavedAt = _cachedAt || Date.now(); toast('Tu último trabajo fue restaurado ✓'); schedule(); };
+        if (_sessionHasContent()) uiConfirm('Esto reemplazará lo que tenés abierto ahora.\n\n¿Retomar tu último trabajo guardado en este navegador?').then(function (ok) { if (ok) go(); });
+        else go();
       }
 
       // --- Guardar / Abrir proyecto (archivo) ---
@@ -26358,8 +26409,9 @@ bluetooth.startIOPinService()</pre>
       }
       function applyOpenedBlob(blob, fromZip) {
         if (!blob || !blob.app) { toast('El archivo no es un proyecto de fisicabit.'); return; }
-        if ((state.rawData || []).length && !confirm('Abrir este proyecto reemplazará los datos actuales. ¿Continuar?')) return;
-        restore(blob); toast(fromZip ? 'Proyecto abierto desde ZIP ✓' : 'Proyecto abierto ✓'); schedule();
+        var go = function () { restore(blob); toast(fromZip ? 'Proyecto abierto desde ZIP ✓' : 'Proyecto abierto ✓'); schedule(); };
+        if ((state.rawData || []).length) uiConfirm('Abrir este proyecto reemplazará los datos actuales. ¿Continuar?').then(function (ok) { if (ok) go(); });
+        else go();
       }
       function openProjectFile(file) {
         if (!file) return;
@@ -26524,7 +26576,7 @@ bluetooth.startIOPinService()</pre>
       // Empezar un experimento NUEVO (guarda el actual en Drive antes de limpiar, para no perderlo).
       async function gNewProject() {
         closeSessionMenu();
-        var name = prompt('Nombre del experimento nuevo (podés cambiarlo después en «Título del experimento»):', '');
+        var name = await uiPrompt('Nombre del experimento nuevo (podés cambiarlo después en «Título del experimento»):', '');
         if (name === null) return;
         name = (name || '').trim();
         if (_sessionHasContent() && gConnected()) { toast('Guardando el experimento actual en Drive…'); try { await gWriteProject(); } catch (e) {} }
@@ -26653,7 +26705,7 @@ bluetooth.startIOPinService()</pre>
         var enable = function () { _gSyncOn = true; gUpdateDriveUI(); };
         var doResume = function () { _gSessionFileId = f.id; _gSessionName = f.name; restore(cloud); _lastSavedAt = savedAt; enable(); updateProjectBadge(); toast('«' + nm + '» restaurado de Drive ✓'); };
         var banner = el('inf-restore');
-        if (!banner) { if (confirm(msg)) doResume(); else enable(); return; }
+        if (!banner) { if (await uiConfirm(msg)) doResume(); else enable(); return; }
         el('inf-restore-msg').textContent = msg; banner.classList.add('show');
         var ht = setTimeout(function () { banner.classList.remove('show'); enable(); }, 22000);
         el('inf-restore-yes').onclick = function () { clearTimeout(ht); banner.classList.remove('show'); doResume(); };
@@ -26682,8 +26734,8 @@ bluetooth.startIOPinService()</pre>
         if (tc) { tc.classList.toggle('tb-experiment-empty', !t); tc.title = t ? ('Experimento: ' + t + ' — clic para renombrar') : 'Ponele un nombre a tu experimento — clic para escribirlo'; }
       }
       // Renombrar el experimento desde el chip de arriba (simple y rápido).
-      function renameExperiment() {
-        var name = prompt('¿Cómo se llama este experimento?', (I.meta && I.meta.title) || '');
+      async function renameExperiment() {
+        var name = await uiPrompt('¿Cómo se llama este experimento?', (I.meta && I.meta.title) || '');
         if (name === null) return;
         I.meta.title = (name || '').trim();
         setInputVal('inf-title', I.meta.title);
@@ -26713,7 +26765,7 @@ bluetooth.startIOPinService()</pre>
         lastSig = sig(); refresh(); updateProjectBadge();
       }
       async function resetAll() {
-        if (!confirm('¿Reiniciar TODO?\n\nSe borrarán los datos capturados, los ajustes, los apuntes escritos/dibujados y las fotos de este proyecto. Esta acción no se puede deshacer.')) return;
+        if (!(await uiConfirm('¿Reiniciar TODO?\n\nSe borrarán los datos capturados, los ajustes, los apuntes escritos/dibujados y las fotos de este proyecto. Esta acción no se puede deshacer.'))) return;
         _clearSession('');
         try { await idbDel(AUTOSAVE_KEY); } catch (e) {}
         try { localStorage.removeItem(LS_KEY); } catch (e) {}
@@ -26738,7 +26790,7 @@ bluetooth.startIOPinService()</pre>
         // Dibujo (lienzo grande en modal)
         if (el('inf-draw-open')) el('inf-draw-open').addEventListener('click', openDrawModal);
         if (el('inf-draw-preview')) el('inf-draw-preview').addEventListener('click', openDrawModal);
-        if (el('inf-draw-clear2')) el('inf-draw-clear2').addEventListener('click', function () { if (confirm('¿Borrar el dibujo?')) clearDrawing(false); });
+        if (el('inf-draw-clear2')) el('inf-draw-clear2').addEventListener('click', function () { uiConfirm('¿Borrar el dibujo?').then(function (ok) { if (ok) clearDrawing(false); }); });
         if (el('inf-pen-big')) el('inf-pen-big').addEventListener('click', function () { setTool('pen'); });
         if (el('inf-eraser-big')) el('inf-eraser-big').addEventListener('click', function () { setTool('eraser'); });
         if (el('inf-draw-color-big')) el('inf-draw-color-big').addEventListener('input', function (e) { I.drawColor = e.target.value; if (I.drawTool === 'eraser') setTool('pen'); });
@@ -26810,6 +26862,12 @@ bluetooth.startIOPinService()</pre>
         if (el('inf-eq-insert')) el('inf-eq-insert').addEventListener('click', commitEq);
         if (el('inf-eq-cancel')) el('inf-eq-cancel').addEventListener('click', closeEqEditor);
 
+        // Diálogo propio (alert/confirm/prompt)
+        if (el('inf-dialog-ok')) el('inf-dialog-ok').addEventListener('click', _dlgOk);
+        if (el('inf-dialog-cancel')) el('inf-dialog-cancel').addEventListener('click', _dlgCancel);
+        if (el('inf-dialog-input')) el('inf-dialog-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); _dlgOk(); } });
+        if (el('inf-dialog')) el('inf-dialog').addEventListener('mousedown', function (e) { if (e.target === el('inf-dialog') && _dlgOpts && !_dlgOpts.alert) _dlgCancel(); });
+
         // Editor de página completa
         if (el('inf-page-done')) el('inf-page-done').addEventListener('click', closePageEditor);
 
@@ -26826,6 +26884,8 @@ bluetooth.startIOPinService()</pre>
         var closeBtn = el('informe-close'); if (closeBtn) closeBtn.addEventListener('click', closePanel);
         document.addEventListener('keydown', function (e) {
           if (e.key !== 'Escape') return;
+          var dlg = el('inf-dialog');
+          if (dlg && dlg.classList.contains('open')) { if (_dlgOpts && !_dlgOpts.alert) _dlgCancel(); else _dlgOk(); return; }
           var eqm = el('inf-eq-modal');
           var dm = el('inf-draw-modal');
           var pe = el('inf-page-editor');
@@ -27191,6 +27251,13 @@ bluetooth.startIOPinService()</pre>
     'Completá al menos autor o título.': { en: 'Fill in at least author or title.', pt: 'Preencha ao menos autor ou título.' },
     '¿Cómo se llama este experimento?': { en: 'What is this experiment called?', pt: 'Como se chama este experimento?' },
     '¿Quitar esta sección?': { en: 'Remove this section?', pt: 'Remover esta seção?' },
+    // Diálogos propios (alert/confirm/prompt)
+    'Aceptar': { en: 'OK', pt: 'OK' },
+    '¿Borrar el dibujo?': { en: 'Clear the drawing?', pt: 'Apagar o desenho?' },
+    'Nombre del experimento nuevo (podés cambiarlo después en «Título del experimento»):': { en: 'Name of the new experiment (you can change it later in “Experiment title”):', pt: 'Nome do novo experimento (você pode alterá-lo depois em «Título do experimento»):' },
+    'Abrir este proyecto reemplazará los datos actuales. ¿Continuar?': { en: 'Opening this project will replace the current data. Continue?', pt: 'Abrir este projeto substituirá os dados atuais. Continuar?' },
+    'Esto reemplazará lo que tenés abierto ahora.\n\n¿Retomar tu último trabajo guardado en este navegador?': { en: 'This will replace what you have open now.\n\nResume your last work saved in this browser?', pt: 'Isto substituirá o que você tem aberto agora.\n\nRetomar seu último trabalho salvo neste navegador?' },
+    '¿Reiniciar TODO?\n\nSe borrarán los datos capturados, los ajustes, los apuntes escritos/dibujados y las fotos de este proyecto. Esta acción no se puede deshacer.': { en: 'Reset EVERYTHING?\n\nThe captured data, fits, written/drawn notes and photos of this project will be deleted. This action cannot be undone.', pt: 'Reiniciar TUDO?\n\nOs dados capturados, os ajustes, as anotações escritas/desenhadas e as fotos deste projeto serão apagados. Esta ação não pode ser desfeita.' },
 
     // ========== MAPEO ==========
     'MAPEO': { en: 'MAPPING', pt: 'MAPEAMENTO' },
@@ -27380,7 +27447,8 @@ bluetooth.startIOPinService()</pre>
     { es: 'Mostrando %n% de %n% fotos.', en: 'Showing %n% of %n% photos.', pt: 'Mostrando %n% de %n% fotos.' },
     { es: 'Experimento: «%s%»', en: 'Experiment: «%s%»', pt: 'Experimento: «%s%»' },
     { es: 'convergió en %n% iteraciones', en: 'converged in %n% iterations', pt: 'convergiu em %n% iterações' },
-    { es: 'no convergió en %n% iteraciones', en: 'did not converge in %n% iterations', pt: 'não convergiu em %n% iterações' }
+    { es: 'no convergió en %n% iteraciones', en: 'did not converge in %n% iterations', pt: 'não convergiu em %n% iterações' },
+    { es: 'La tabla tiene %n% filas. ¿Insertar toda la tabla en el texto? Podés colapsar la sección después para que no ocupe tanto.', en: 'The table has %n% rows. Insert the whole table into the text? You can collapse the section afterwards so it does not take up so much space.', pt: 'A tabela tem %n% linhas. Inserir toda a tabela no texto? Você pode recolher a seção depois para que não ocupe tanto espaço.' }
   ];
   var RULES = RULE_DEFS.map(function (d) { return { res: { es: tmplToRe(d.es), en: tmplToRe(d.en), pt: tmplToRe(d.pt) }, out: { es: d.es, en: d.en, pt: d.pt } }; });
   function ruleT(text, lang) {
