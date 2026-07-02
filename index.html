@@ -4332,6 +4332,21 @@
           background:#1b1e24; border:1px solid #3a3f48; border-radius:20px; color:#e8eaed;
           font-size:12px; font-weight:600; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
         }
+        /* Botón «Conectar con Google» (barra superior, junto a AYUDA) */
+        .toolbar-btn.gdrive-top { max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .toolbar-btn.gdrive-top.gdrive-on { background:#0b3d2e; border-color:#1f7a5a; color:#d9f7e9; }
+        /* Popover de opciones de Google Drive */
+        .gdrive-pop { display:none; position:fixed; top:58px; right:12px; z-index:9800; width:300px; max-width:calc(100vw - 20px);
+          background:#0f1115; border:1px solid #3a3f48; border-radius:9px; box-shadow:0 14px 40px rgba(0,0,0,.6); padding:14px; font-family:'Montserrat',-apple-system,sans-serif; }
+        .gdrive-pop.open { display:block; animation:infDDin .12s ease-out; }
+        .gdrive-pop-head { color:#e8eaed; font-size:12px; font-weight:600; line-height:1.45; margin-bottom:12px; }
+        .gdrive-pop-lbl { display:block; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#8a93a0; font-weight:700; margin-bottom:4px; }
+        .gdrive-pop-input { width:100%; box-sizing:border-box; background:#1b1e24; border:1px solid #3a3f48; border-radius:5px; color:#fff; font-size:13px; font-family:inherit; padding:8px 10px; margin-bottom:12px; }
+        .gdrive-pop-input:focus { outline:none; border-color:#6ea8fe; }
+        .gdrive-pop-check { display:flex; align-items:center; gap:8px; color:#cfd3da; font-size:12px; margin-bottom:12px; cursor:pointer; }
+        .gdrive-pop-check input { width:15px; height:15px; flex-shrink:0; }
+        .gdrive-pop-actions { display:flex; flex-direction:column; gap:7px; }
+        .gdrive-pop-actions .inf-btn { margin:0; }
 
         /* Pestaña Apuntes */
         .inf-apuntes-panel { flex:1; min-height:0; flex-direction:column; background:#1a1d23; overflow:hidden; }
@@ -4574,6 +4589,8 @@
             <div class="toolbar-separator"></div>
             <button id="helpBtn" class="toolbar-btn">AYUDA</button>
             <div class="toolbar-separator"></div>
+            <button id="gdriveTopBtn" class="toolbar-btn gdrive-top" onclick="window.Informe &amp;&amp; Informe.driveTopClick &amp;&amp; Informe.driveTopClick()">☁ Conectar con Google</button>
+            <div class="toolbar-separator"></div>
             <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
                 <option value="es">ES</option>
                 <option value="en">EN</option>
@@ -4601,6 +4618,7 @@
         <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: flex; align-items: center;">MAKECODE ↗</a>
         <button id="examplesBtn2" class="toolbar-btn" onclick="openExamplesModal(); closeToolbarMenu();">EJEMPLOS</button>
         <button id="helpBtn2" class="toolbar-btn" onclick="document.getElementById('helpBtn').click(); closeToolbarMenu();">AYUDA</button>
+        <button id="gdriveTopBtn2" class="toolbar-btn gdrive-top" onclick="closeToolbarMenu(); window.Informe &amp;&amp; Informe.driveTopClick &amp;&amp; Informe.driveTopClick()">☁ Conectar con Google</button>
         <select id="languageSelector2" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
             <option value="es">ES</option>
             <option value="en">EN</option>
@@ -24119,14 +24137,7 @@ bluetooth.startIOPinService()</pre>
                     <button class="inf-dd-item" id="inf-open">📂 Abrir proyecto</button>
                     <button class="inf-dd-item danger" id="inf-reset">🗑 Reiniciar todo</button>
                     <div class="inf-dd-sep"></div>
-                    <div class="inf-dd-group">Google Drive · mis experimentos</div>
-                    <button class="inf-dd-item" id="inf-gdrive-signin">☁ Iniciar sesión con Google</button>
-                    <button class="inf-dd-item" id="inf-gdrive-save" style="display:none;">☁ Guardar experimento en Drive</button>
-                    <button class="inf-dd-item" id="inf-gdrive-open" style="display:none;">📂 Abrir / cambiar de experimento…</button>
-                    <button class="inf-dd-item" id="inf-gdrive-new" style="display:none;">＋ Nuevo experimento</button>
-                    <button class="inf-dd-item" id="inf-gdrive-signout" style="display:none;">Cerrar sesión de Google</button>
-                    <div class="inf-dd-status inf-hint" id="inf-gdrive-status">Guardá tu progreso y retomalo en cualquier navegador.</div>
-                    <div class="inf-dd-sep"></div>
+                    <div class="inf-dd-status inf-hint">☁ Google Drive (opcional): usá el botón «Conectar con Google» de arriba, al lado de AYUDA.</div>
                     <div class="inf-dd-status inf-hint" id="inf-autosave-status">Autoguardado en el navegador activado.</div>
                 </div>
                 <input type="file" id="inf-open-input" accept=".json,.zip,application/json,application/zip" style="display:none;">
@@ -24287,6 +24298,20 @@ bluetooth.startIOPinService()</pre>
         <div class="inf-drive-box">
             <div class="inf-drive-head"><span>Tus proyectos en Google Drive</span><span class="inf-spacer"></span><button class="inf-drive-x" id="inf-drive-close">✕</button></div>
             <div class="inf-drive-list" id="inf-drive-list"></div>
+        </div>
+    </div>
+
+    <!-- Popover de Google Drive (se abre desde el botón «Conectar con Google» de arriba) -->
+    <div class="gdrive-pop" id="gdrive-pop">
+        <div class="gdrive-pop-head" id="inf-gdrive-status">Conectá tu cuenta para guardar y retomar experimentos.</div>
+        <label class="gdrive-pop-lbl" for="gdrive-proj-name">Nombre del experimento</label>
+        <input type="text" class="gdrive-pop-input" id="gdrive-proj-name" placeholder="Ej: Caída libre 5ºB" autocomplete="off">
+        <label class="gdrive-pop-check"><input type="checkbox" id="gdrive-autosync" checked> Guardar automáticamente en Drive</label>
+        <div class="gdrive-pop-actions">
+            <button class="inf-btn" id="inf-gdrive-save">💾 Guardar ahora en Drive</button>
+            <button class="inf-btn" id="inf-gdrive-open">📂 Abrir / cambiar de experimento…</button>
+            <button class="inf-btn" id="inf-gdrive-new">＋ Nuevo experimento</button>
+            <button class="inf-btn danger" id="inf-gdrive-signout">Cerrar sesión de Google</button>
         </div>
     </div>
 
@@ -26177,7 +26202,7 @@ bluetooth.startIOPinService()</pre>
         _gTok = null; _gTokExp = 0; _gUser = null; _gFolderId = null;
         _gSyncOn = false; _gSyncStarted = false; _gSessionFileId = null;
         try { localStorage.removeItem('fbit_gdrive'); } catch (e) {}
-        gUpdateDriveUI(); toast('Sesión de Google cerrada.');
+        closeDrivePop(); gUpdateDriveUI(); toast('Sesión de Google cerrada.');
       }
       function gApi(path, opts) {
         opts = opts || {}; opts.headers = opts.headers || {};
@@ -26244,6 +26269,7 @@ bluetooth.startIOPinService()</pre>
       }
       // Empezar un experimento NUEVO (guarda el actual en Drive antes de limpiar, para no perderlo).
       async function gNewProject() {
+        closeDrivePop();
         var name = prompt('Nombre del experimento nuevo (podés cambiarlo después en «Título del experimento»):', '');
         if (name === null) return;
         name = (name || '').trim();
@@ -26257,6 +26283,7 @@ bluetooth.startIOPinService()</pre>
       function gFmtDate(iso) { try { var d = new Date(iso); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
       async function gOpenFromDrive() {
         if (!(await gEnsureToken())) { toast('Iniciá sesión con Google primero.'); return; }
+        closeDrivePop();
         var modal = el('inf-drive-modal'), list = el('inf-drive-list'); if (!modal || !list) return;
         list.innerHTML = '<div class="inf-drive-empty">Cargando tus proyectos…</div>'; modal.classList.add('open');
         try {
@@ -26291,19 +26318,38 @@ bluetooth.startIOPinService()</pre>
       }
       function gUpdateDriveUI() {
         var connected = gConnected();
-        var signin = el('inf-gdrive-signin'), save = el('inf-gdrive-save'), open = el('inf-gdrive-open'), neu = el('inf-gdrive-new'), out = el('inf-gdrive-signout'), status = el('inf-gdrive-status');
-        if (signin) signin.style.display = connected ? 'none' : 'block';
-        if (save) save.style.display = connected ? 'block' : 'none';
-        if (open) open.style.display = connected ? 'block' : 'none';
-        if (neu) neu.style.display = connected ? 'block' : 'none';
-        if (out) out.style.display = connected ? 'block' : 'none';
+        var label = connected ? ('Conectado a Google como: ' + ((_gUser && _gUser.emailAddress) || 'mi cuenta')) : '☁ Conectar con Google';
+        ['gdriveTopBtn', 'gdriveTopBtn2'].forEach(function (id) { var b = el(id); if (!b) return; b.textContent = label; b.classList.toggle('gdrive-on', connected); });
+        var status = el('inf-gdrive-status');
         if (status) {
-          if (!gConfigured()) status.textContent = 'Google Drive: pendiente de configurar.';
-          else if (connected) status.textContent = 'Proyecto: «' + gProjectDisplayName() + '»' + (_gUser && _gUser.emailAddress ? (' · ' + _gUser.emailAddress) : '') + '.';
-          else status.textContent = 'Guardá cada experimento con su nombre y retomalo en cualquier navegador.';
+          if (!gConfigured()) status.textContent = 'Google Drive: pendiente de configurar (falta el Client ID).';
+          else if (connected) status.textContent = 'Conectado a Google como: ' + ((_gUser && _gUser.emailAddress) || 'mi cuenta') + (_gSyncOn && _gAutoSync ? (' · guardando «' + gProjectDisplayName() + '».') : '.');
+          else status.textContent = 'Conectá tu cuenta para guardar y retomar experimentos (opcional).';
         }
         updateProjectBadge();
       }
+      // --- Botón «Conectar con Google» (arriba, junto a AYUDA) y su popover de opciones ---
+      var _gAutoSync = true;
+      try { _gAutoSync = localStorage.getItem('fbit_gdrive_autosync') !== '0'; } catch (e) {}
+      function driveTopClick() {
+        if (!gConfigured()) { toast('Falta configurar el Client ID de Google (ver GOOGLE_CLIENT_ID en el código).'); return; }
+        if (!gConnected()) { gConnect(true).then(function (ok) { if (ok) { gSyncStart(); openDrivePop(); } else toast('No se pudo conectar con Google.'); }); return; }
+        toggleDrivePop();
+      }
+      function positionDrivePop() {
+        var pop = el('gdrive-pop'), btn = el('gdriveTopBtn'); if (!pop) return;
+        if (btn && btn.offsetParent !== null) { var r = btn.getBoundingClientRect(); pop.style.top = (r.bottom + 6) + 'px'; pop.style.right = Math.max(8, window.innerWidth - r.right) + 'px'; pop.style.left = 'auto'; }
+        else { pop.style.top = '58px'; pop.style.right = '12px'; pop.style.left = 'auto'; }
+      }
+      function openDrivePop() {
+        var pop = el('gdrive-pop'); if (!pop) return;
+        var nm = el('gdrive-proj-name'); if (nm) nm.value = (I.meta && I.meta.title) || '';
+        var as = el('gdrive-autosync'); if (as) as.checked = _gAutoSync;
+        gUpdateDriveUI(); pop.classList.add('open'); positionDrivePop();
+      }
+      function closeDrivePop() { var pop = el('gdrive-pop'); if (pop) pop.classList.remove('open'); }
+      function toggleDrivePop() { var pop = el('gdrive-pop'); if (pop && pop.classList.contains('open')) closeDrivePop(); else openDrivePop(); }
+      I.driveTopClick = driveTopClick;
       async function gAutoConnect() {
         try { if (gConfigured() && !gConnected() && localStorage.getItem('fbit_gdrive') === '1') { await gConnect(false); } } catch (e) {}
         if (gConnected()) gSyncStart();
@@ -26352,7 +26398,7 @@ bluetooth.startIOPinService()</pre>
         el('inf-restore-no').onclick = function () { clearTimeout(ht); banner.classList.remove('show'); enable(); };
       }
       async function gSyncPush(force) {
-        if (!_gSyncOn || !gConnected() || !_sessionHasContent()) return;   // nunca sube un experimento vacío
+        if (!_gSyncOn || !_gAutoSync || !gConnected() || !_sessionHasContent()) return;   // respeta el guardado automático opcional; nunca sube algo vacío
         var now = Date.now();
         if (!force && now - _gLastPush < 18000) {   // no más de ~1 subida cada 18 s
           if (!_gPushTimer) _gPushTimer = setTimeout(function () { _gPushTimer = null; gSyncPush(false); }, 18000 - (now - _gLastPush));
@@ -26443,13 +26489,24 @@ bluetooth.startIOPinService()</pre>
         if (el('inf-reset')) el('inf-reset').addEventListener('click', resetAll);
 
         // Google Drive (guardar/retomar en la nube)
-        if (el('inf-gdrive-signin')) el('inf-gdrive-signin').addEventListener('click', function () { gConnect(true).then(function (ok) { if (ok) gSyncStart(); }); });
         if (el('inf-gdrive-save')) el('inf-gdrive-save').addEventListener('click', gSaveToDrive);
         if (el('inf-gdrive-open')) el('inf-gdrive-open').addEventListener('click', gOpenFromDrive);
         if (el('inf-gdrive-new')) el('inf-gdrive-new').addEventListener('click', gNewProject);
         if (el('inf-gdrive-signout')) el('inf-gdrive-signout').addEventListener('click', gDisconnect);
         if (el('inf-drive-close')) el('inf-drive-close').addEventListener('click', function () { el('inf-drive-modal').classList.remove('open'); });
         if (el('inf-drive-modal')) el('inf-drive-modal').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
+        // Popover del botón «Conectar con Google»: nombre del experimento + guardado automático (opcional)
+        var pn = el('gdrive-proj-name');
+        if (pn) pn.addEventListener('input', function () { I.meta.title = pn.value; setInputVal('inf-title', pn.value); updateProjectBadge(); gSetSyncStatus(); renderPreviewDebounced(); schedule(); });
+        var asw = el('gdrive-autosync');
+        if (asw) asw.addEventListener('change', function () { _gAutoSync = asw.checked; try { localStorage.setItem('fbit_gdrive_autosync', asw.checked ? '1' : '0'); } catch (e) {} if (asw.checked) gSyncPush(true); gUpdateDriveUI(); toast(asw.checked ? 'Guardado automático en Drive activado.' : 'Guardado automático desactivado (usá «Guardar ahora»).'); });
+        document.addEventListener('mousedown', function (e) {
+          var pop = el('gdrive-pop'); if (!pop || !pop.classList.contains('open')) return;
+          var t = e.target;
+          if (pop.contains(t) || (t.closest && (t.closest('#gdriveTopBtn') || t.closest('#gdriveTopBtn2')))) return;
+          closeDrivePop();
+        });
+        window.addEventListener('resize', function () { var p = el('gdrive-pop'); if (p && p.classList.contains('open')) positionDrivePop(); });
         gUpdateDriveUI();
 
         // Menú desplegable «Exportar / Guardar» (arriba a la derecha)
