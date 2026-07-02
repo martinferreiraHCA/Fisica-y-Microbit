@@ -4436,6 +4436,11 @@
         .inf-card-btn.on { color:#7fdca0; }
         .inf-card-btn.del { color:#ef8a88; border-color:#5a2b2b; }
         .inf-card-btn.del:hover { background:#ef5350; color:#000; }
+        .inf-card-caret { background:none; border:none; color:#8a93a0; cursor:pointer; font-size:11px; padding:0 2px; line-height:1; width:16px; user-select:none; }
+        .inf-card-caret:hover { color:#fff; }
+        .inf-card.inf-card-collapsed { box-shadow:0 1px 6px rgba(0,0,0,.22); }
+        .inf-card.inf-card-collapsed .inf-card-bar { border-bottom:none; }
+        .inf-card.inf-card-collapsed .inf-card-name { color:#cfd4dc; }
         .inf-card-empty { color:#999; font-size:12px; padding:18px 40px; text-align:center; font-style:italic; }
         .inf-card-auto { padding:12px 0 14px; }
         .inf-card-cover .inf-card-auto { padding:0; }
@@ -4455,6 +4460,12 @@
         .inf-rich .doc-eq img, .inf-page-body .doc-eq img { height:auto; max-height:2.1em; vertical-align:middle; }
         .inf-rich .doc-eq-block, .inf-page-body .doc-eq-block { display:block; text-align:center; margin:14px auto; background:#f4f8ff; border:1px solid #dbe7fb; border-radius:4px; padding:8px; cursor:pointer; max-width:96%; }
         .inf-rich .doc-eq-block img, .inf-page-body .doc-eq-block img { max-width:100%; height:auto; }
+        .inf-rich .doc-eq-cap, .inf-page-body .doc-eq-cap { display:block; font-size:11px; color:#777; margin-top:5px; text-align:center; }
+        .inf-rich .doc-eq-num, .inf-page-body .doc-eq-num { color:#999; font-weight:600; margin-left:6px; }
+        .inf-rich table.doc-data-table, .inf-page-body table.doc-data-table { border-collapse:collapse; max-width:100%; margin:10px 0; font-size:12px; }
+        .inf-rich table.doc-data-table th, .inf-rich table.doc-data-table td, .inf-page-body table.doc-data-table th, .inf-page-body table.doc-data-table td { border:1px solid #d3d3d3; padding:3px 8px; text-align:right; }
+        .inf-rich table.doc-data-table th, .inf-page-body table.doc-data-table th { background:#f0f3f8; font-weight:700; text-align:center; }
+        .inf-rich table.doc-cmp-table td, .inf-page-body table.doc-cmp-table td { text-align:left; min-width:70px; }
         .inf-rich h4, .inf-page-body h4 { font-size:13px; font-weight:700; margin:7px 0 4px; color:#333; }
         .inf-rich figure.doc-fig, .inf-page-body figure.doc-fig { width:60%; margin:12px auto; text-align:center; cursor:grab; }
         .inf-rich figure.doc-fig:active, .inf-page-body figure.doc-fig:active { cursor:grabbing; }
@@ -4517,6 +4528,10 @@
         .inf-latex-preview { font-size:22px; min-height:52px; }
         .inf-eq-mode { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#e0e0e0; cursor:pointer; }
         .inf-eq-mode input { accent-color:#fff; cursor:pointer; }
+        .inf-eq-caprow { display:flex; align-items:center; gap:8px; margin-top:10px; }
+        .inf-eq-caplbl { font-size:11px; color:#9aa0a8; white-space:nowrap; }
+        .inf-eq-capinput { flex:1; min-width:0; background:#0f1115; color:#e8e8e8; border:1px solid #444; padding:6px 8px; font-size:12.5px; font-family:inherit; }
+        .inf-eq-capinput:focus { outline:none; border-color:#fff; }
 
         /* Editor de página completa */
         .inf-page-editor { display:none; position:fixed; inset:0; z-index:9150; background:#2b2e33; flex-direction:column; }
@@ -24279,6 +24294,7 @@ bluetooth.startIOPinService()</pre>
     <!-- Menús flotantes del editor -->
     <div class="inf-menu" id="inf-cite-menu"></div>
     <div class="inf-menu" id="inf-img-menu"></div>
+    <div class="inf-menu" id="inf-data-menu"></div>
     <input type="file" id="inf-doc-img-input" accept="image/*" style="display:none;">
     <!-- Barra flotante de edición de imagen -->
     <div class="inf-fig-tools" id="inf-fig-tools"></div>
@@ -24290,8 +24306,12 @@ bluetooth.startIOPinService()</pre>
             <div class="inf-latex-tools" id="inf-eq-syms"></div>
             <textarea class="inf-blk-latex" id="inf-eq-latex" placeholder="Ej:  E_c = \frac{1}{2} m v^{2}"></textarea>
             <div class="inf-latex-preview" id="inf-eq-preview"></div>
+            <div class="inf-eq-caprow" id="inf-eq-caprow">
+                <span class="inf-eq-caplbl">Pie de la ecuación (opcional):</span>
+                <input type="text" id="inf-eq-cap" class="inf-eq-capinput" placeholder="Ej: Ecuación 1 — Segunda ley de Newton">
+            </div>
             <div class="inf-eq-actions">
-                <label class="inf-eq-mode"><input type="checkbox" id="inf-eq-block" checked> Ecuación centrada (grande)</label>
+                <label class="inf-eq-mode inf-tip inf-tip-up" data-tip="Marcada: ecuación grande y centrada en su propio renglón. Desmarcada: ecuación chica dentro del texto."><input type="checkbox" id="inf-eq-block" checked> Ecuación centrada (grande)</label>
                 <span class="inf-spacer"></span>
                 <button class="inf-btn inf-tip inf-tip-up" data-tip="Cerrar sin insertar la ecuación" id="inf-eq-cancel" style="width:auto;margin:0;">Cancelar</button>
                 <button class="inf-btn primary inf-tip inf-tip-up inf-tip-left" data-tip="Insertar la ecuación en el documento" id="inf-eq-insert" style="width:auto;margin:0;">Insertar ✓</button>
@@ -24444,6 +24464,12 @@ bluetooth.startIOPinService()</pre>
         ".rep-doc .rep-rich .doc-eq img{height:auto;max-height:2.1em;vertical-align:middle;}",
         ".rep-doc .rep-rich .doc-eq-block{display:block;text-align:center;margin:14px 0;}",
         ".rep-doc .rep-rich .doc-eq-block img{max-width:94%;height:auto;}",
+        ".rep-doc .rep-rich .doc-eq-cap{display:block;font-size:11px;color:#6a6a6a;margin-top:5px;text-align:center;}",
+        ".rep-doc .rep-rich .doc-eq-num{color:#888;font-weight:600;margin-left:6px;}",
+        ".rep-doc .rep-rich table.doc-data-table{border-collapse:collapse;margin:10px 0;font-size:12px;}",
+        ".rep-doc .rep-rich table.doc-data-table th,.rep-doc .rep-rich table.doc-data-table td{border:1px solid #cfcfcf;padding:3px 8px;text-align:right;}",
+        ".rep-doc .rep-rich table.doc-data-table th{background:#f0f3f8;font-weight:700;text-align:center;}",
+        ".rep-doc .rep-rich table.doc-cmp-table td{text-align:left;}",
         ".rep-doc .rep-rich h4{font-size:12.5px;font-weight:700;margin:8px 0 4px;color:#333;}",
         ".rep-doc .rep-rich figure.doc-fig{width:60%;margin:12px auto;text-align:center;}",
         ".rep-doc .rep-rich figure.doc-fig.fig-left{margin:12px auto 12px 0;text-align:left;}",
@@ -24814,7 +24840,7 @@ bluetooth.startIOPinService()</pre>
       }
 
       // ===== Documento: registro de items, orden e índice/bibliografía =====
-      function defaultDoc() { return { order: [], toc: false, tocTitle: 'Índice', biblioOn: false, biblio: [], font: '', _bibSeq: 0 }; }
+      function defaultDoc() { return { order: [], toc: false, tocTitle: 'Índice', biblioOn: false, biblio: [], font: '', _bibSeq: 0, collapsed: {} }; }
       function findSec(sid) { var r = null; (I.sections || []).forEach(function (s) { if (s.id === sid) r = s; }); return r; }
       function friendlyItemName(id) {
         if (id === 'cover') return 'Portada';
@@ -25146,6 +25172,7 @@ bluetooth.startIOPinService()</pre>
         g6.appendChild(tbtn('∑ Ecuación', 'Insertar ecuación (LaTeX)', function () { openEqEditor(ensureFocusEd(), null); }, 'wide'));
         g6.appendChild(tbtn('“ Cita', 'Insertar cita (APA)', function (e) { ensureFocusEd(); toggleCiteMenu(e); }, 'wide'));
         g6.appendChild(tbtn('🖼 Imagen', 'Subir o insertar una imagen (gráfica, foto…)', function (e) { toggleImgMenu(e); }, 'wide'));
+        g6.appendChild(tbtn('📊 Datos y ajustes', 'Insertar en el texto y editar: resultados de los ajustes, tabla de datos o estadísticas del experimento', function (e) { ensureFocusEd(); toggleDataMenu(e); }, 'wide'));
         bar.appendChild(g6);
       }
 
@@ -25169,6 +25196,13 @@ bluetooth.startIOPinService()</pre>
         fsel.addEventListener('change', function () { I.doc.font = fsel.value; applyDocFont(); renderPreviewDebounced(); schedule(); });
         fspan.appendChild(fsel); row.appendChild(fspan);
         box.appendChild(row);
+        // Vista del editor: colapsar/expandir todas las tarjetas para reordenar más cómodo.
+        var vrow = document.createElement('div'); vrow.className = 'inf-eo-row';
+        vrow.innerHTML = '<span class="inf-eo-lbl">Vista del editor:</span>';
+        var cAll = chip('▸ Colapsar todo', 'Colapsar todas las partes: se ve solo el título de cada una, ideal para reordenar el informe'); cAll.addEventListener('click', function () { collapseAllDoc(true); });
+        var eAll = chip('▾ Expandir todo', 'Expandir todas las partes para editar su contenido'); eAll.addEventListener('click', function () { collapseAllDoc(false); });
+        vrow.appendChild(cAll); vrow.appendChild(eAll);
+        box.appendChild(vrow);
       }
       function applyDocFont() { var c = el('inf-doc-canvas'); if (c) c.style.fontFamily = I.doc.font || ''; }
       function setToc(on) { I.doc.toc = !!on; if (on) I.selected['toc'] = true; buildEditor(); renderPreviewDebounced(); schedule(); }
@@ -25178,15 +25212,22 @@ bluetooth.startIOPinService()</pre>
       function cbtn(txt, title) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-card-btn inf-tip'; if (title) b.setAttribute('data-tip', title); b.textContent = txt; return b; }
       function moveDocItem(id, dir) { var order = resolveOrder(), i = order.indexOf(id), j = i + dir; if (i < 0 || j < 0 || j >= order.length) return; var t = order[i]; order[i] = order[j]; order[j] = t; I.doc.order = order; buildEditorDoc(); renderPreviewDebounced(); schedule(); }
       function reorderDocItem(from, to) { var order = resolveOrder(), fi = order.indexOf(from); if (fi < 0) return; order.splice(fi, 1); var ti = order.indexOf(to); if (ti < 0) ti = order.length; order.splice(ti, 0, from); I.doc.order = order; buildEditorDoc(); renderPreviewDebounced(); schedule(); }
+      // Colapsar/expandir tarjetas del editor (no afecta el informe final, solo la vista de edición).
+      function toggleCollapseDoc(id) { if (!I.doc.collapsed) I.doc.collapsed = {}; if (I.doc.collapsed[id]) delete I.doc.collapsed[id]; else I.doc.collapsed[id] = true; buildEditorDoc(); schedule(); }
+      function collapseAllDoc(v) { I.doc.collapsed = {}; if (v) resolveOrder().forEach(function (id) { I.doc.collapsed[id] = true; }); buildEditorDoc(); schedule(); }
       function buildEditorDoc() {
         var canvas = el('inf-doc-canvas'); if (!canvas) return;
         applyDocFont();
         var order = resolveOrder(); canvas.innerHTML = '';
         if (!order.length) { canvas.innerHTML = '<div class="inf-card-empty" style="padding:30px;text-align:center;">El documento está vacío. Cargá datos o agregá una sección de texto.</div>'; return; }
+        var collapsedMap = I.doc.collapsed || (I.doc.collapsed = {});
         order.forEach(function (id) {
           var included = I.selected[id] !== false, isSec = id.indexOf('sec:') === 0;
-          var card = document.createElement('div'); card.className = 'inf-card ' + (isSec ? 'inf-card-sec' : 'inf-card-auto-c') + (id === 'cover' ? ' inf-card-cover' : '') + (included ? '' : ' excluded'); card.dataset.id = id;
+          var isCollapsed = !!collapsedMap[id];
+          var card = document.createElement('div'); card.className = 'inf-card ' + (isSec ? 'inf-card-sec' : 'inf-card-auto-c') + (id === 'cover' ? ' inf-card-cover' : '') + (included ? '' : ' excluded') + (isCollapsed ? ' inf-card-collapsed' : ''); card.dataset.id = id;
           var bar = document.createElement('div'); bar.className = 'inf-card-bar';
+          var caret = document.createElement('button'); caret.type = 'button'; caret.className = 'inf-card-caret inf-tip'; caret.setAttribute('data-tip', isCollapsed ? 'Mostrar el contenido de esta parte' : 'Colapsar: mostrar solo el título de esta parte'); caret.textContent = isCollapsed ? '▸' : '▾';
+          caret.addEventListener('click', function () { toggleCollapseDoc(id); });
           var handle = document.createElement('span'); handle.className = 'inf-card-handle inf-tip'; handle.setAttribute('data-tip', 'Arrastrá para reordenar esta parte del documento'); handle.textContent = '⠿'; handle.setAttribute('draggable', 'true');
           var name = document.createElement('span'); name.className = 'inf-card-name'; name.textContent = isSec ? 'Sección de texto' : friendlyItemName(id);
           var acts = document.createElement('span'); acts.className = 'inf-card-actions';
@@ -25199,9 +25240,13 @@ bluetooth.startIOPinService()</pre>
             var expand = cbtn('⤢', 'Editar en página completa'); expand.addEventListener('click', function () { openPageEditor(id.slice(4)); }); acts.appendChild(expand);
             var del = cbtn('✕', 'Quitar sección'); del.classList.add('del'); del.addEventListener('click', function () { if (confirm('¿Quitar esta sección?')) delSection(id.slice(4)); }); acts.appendChild(del);
           }
-          bar.appendChild(handle); bar.appendChild(name); bar.appendChild(acts); card.appendChild(bar);
+          bar.appendChild(caret); bar.appendChild(handle); bar.appendChild(name); bar.appendChild(acts); card.appendChild(bar);
           var content = document.createElement('div'); content.className = 'inf-card-content';
-          if (isSec) {
+          if (isCollapsed) {
+            // Colapsada: no construimos el interior (más liviano y rápido para reordenar,
+            // sobre todo con tablas de datos largas). El contenido de texto queda guardado en s.html.
+            content.style.display = 'none';
+          } else if (isSec) {
             var s = findSec(id.slice(4)); normSection(s);
             var ti = document.createElement('input'); ti.className = 'inf-card-sectitle'; ti.value = s.title || ''; ti.placeholder = 'Título de la sección (ej: Fundamento teórico)';
             ti.addEventListener('input', function () { s.title = ti.value; buildChecklist(); renderPreviewDebounced(); schedule(); });
@@ -25258,23 +25303,32 @@ bluetooth.startIOPinService()</pre>
         if (!existingSpan) saveRange();
         var ta = el('inf-eq-latex'); ta.value = existingSpan ? decodeURIComponent(existingSpan.getAttribute('data-latex') || '') : '';
         var bl = el('inf-eq-block'); if (bl) bl.checked = existingSpan ? existingSpan.classList.contains('doc-eq-block') : true;
+        var cap = el('inf-eq-cap'); if (cap) cap.value = existingSpan ? decodeURIComponent(existingSpan.getAttribute('data-cap') || '') : '';
+        updateEqCapVis();
         renderMath(el('inf-eq-preview'), ta.value);
         el('inf-eq-modal').classList.add('open'); setTimeout(function () { ta.focus(); }, 20);
       }
+      // El pie de la ecuación solo aplica a ecuaciones centradas (grandes); en línea no tiene sentido.
+      function updateEqCapVis() { var row = el('inf-eq-caprow'), bl = el('inf-eq-block'); if (row) row.style.display = (bl && bl.checked) ? 'flex' : 'none'; }
       function closeEqEditor() { var m = el('inf-eq-modal'); if (m) m.classList.remove('open'); _eqTarget = null; }
       function commitEq() {
         var ta = el('inf-eq-latex'), latex = (ta.value || '').trim();
         if (!latex) { if (_eqTarget && _eqTarget.parentNode) { _eqTarget.parentNode.removeChild(_eqTarget); onEditableInput(_eqEditable); } closeEqEditor(); return; }
         var block = el('inf-eq-block') ? el('inf-eq-block').checked : true;
+        var capEl = el('inf-eq-cap'); var cap = (block && capEl) ? (capEl.value || '').trim() : '';
         var url = latexToImg(latex, block), inner = url ? ('<img src="' + url + '">') : esc(latex);
+        if (block && cap) inner += '<div class="doc-eq-cap">' + esc(cap) + '</div>';
         var cls = block ? 'doc-eq-block' : 'doc-eq', tag = block ? 'div' : 'span';
+        var capAttr = (block && cap) ? (' data-cap="' + encodeURIComponent(cap) + '"') : '';
         if (_eqTarget) {
           var nw = document.createElement(tag); nw.className = cls; nw.setAttribute('contenteditable', 'false');
-          nw.setAttribute('data-latex', encodeURIComponent(latex)); nw.innerHTML = inner;
+          nw.setAttribute('data-latex', encodeURIComponent(latex));
+          if (block && cap) nw.setAttribute('data-cap', encodeURIComponent(cap));
+          nw.innerHTML = inner;
           _eqTarget.parentNode.replaceChild(nw, _eqTarget);
         } else {
           var html = block
-            ? ('<div class="doc-eq-block" contenteditable="false" data-latex="' + encodeURIComponent(latex) + '">' + inner + '</div><p>​</p>')
+            ? ('<div class="doc-eq-block" contenteditable="false" data-latex="' + encodeURIComponent(latex) + '"' + capAttr + '>' + inner + '</div><p>​</p>')
             : ('<span class="doc-eq" contenteditable="false" data-latex="' + encodeURIComponent(latex) + '">' + inner + '</span>​');
           _eqEditable.focus(); restoreRange();
           try { document.execCommand('insertHTML', false, html); } catch (e) { _eqEditable.innerHTML += html; }
@@ -25323,7 +25377,35 @@ bluetooth.startIOPinService()</pre>
         m.appendChild(up);
         for (var i = 0; i < ng; i++) { if (st.charts && st.charts[i] && n > 0) { (function (idx) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '📈 Gráfica ' + (idx + 1); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(chartToDataURL(idx), (fn('computeGraphTitle') ? computeGraphTitle(idx) : ('Gráfica ' + (idx + 1)))); m.classList.remove('open'); }); m.appendChild(b); })(i); } }
         (I.devicePhotos || []).forEach(function (p, k) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '🖼 Imagen ' + (k + 1) + ((p.caption || '').trim() ? (' · ' + p.caption.slice(0, 26)) : ''); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(p.dataUrl, (p.caption || '').trim()); m.classList.remove('open'); }); m.appendChild(b); });
+        // Gráficas del panel MAPEO (Plotly) que estén renderizadas: se capturan como imagen.
+        mapeoPlots().forEach(function (mp) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = mp.label;
+          b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+          b.addEventListener('click', function () { m.classList.remove('open'); insertMapeoImage(mp.el, mp.caption); });
+          m.appendChild(b);
+        });
         closeMenus(); positionMenu(m, evt.currentTarget); m.classList.add('open');
+      }
+      // Devuelve las gráficas de MAPEO (Plotly) actualmente renderizadas en el DOM.
+      function mapeoPlots() {
+        if (!window.Plotly) return [];
+        var out = [];
+        var defs = [['mapeo-pro-plot', '📐 Mapeo · mapa del campo (actual)', 'Mapa del campo — Mapeo'],
+                    ['mapeo-1d-plot', '📐 Mapeo · corte 1D y ajuste (actual)', 'Corte 1D y ajuste — Mapeo']];
+        defs.forEach(function (d) {
+          var pe = document.getElementById(d[0]);
+          if (pe && pe.classList.contains('js-plotly-plot') && pe.data && pe.data.length) out.push({ el: pe, label: d[1], caption: d[2] });
+        });
+        return out;
+      }
+      function insertMapeoImage(plotEl, caption) {
+        if (!window.Plotly || !plotEl) { toast('Abrí MAPEO y generá la gráfica primero.'); return; }
+        toast('Capturando la gráfica de MAPEO…');
+        try {
+          window.Plotly.toImage(plotEl, { format: 'png', width: (plotEl.clientWidth || 900), height: (plotEl.clientHeight || 600), scale: 2 })
+            .then(function (url) { insertImageIntoDoc(url, caption); })
+            .catch(function () { toast('No se pudo capturar la gráfica de MAPEO.'); });
+        } catch (e) { toast('No se pudo capturar la gráfica de MAPEO.'); }
       }
       function insertCite(r) { var ed = I._focusEd || ensureFocusEd(); if (!ed) { toast('Creá una sección de texto para insertar la cita.'); return; } ed.focus(); restoreRange(); try { document.execCommand('insertHTML', false, citeInText(r) + ' '); } catch (e) {} onEditableInput(ed); }
       function insertImageIntoDoc(dataUrl, caption) {
@@ -25331,6 +25413,112 @@ bluetooth.startIOPinService()</pre>
         var ed = I._focusEd || ensureFocusEd(); if (!ed) { toast('Creá una sección de texto para insertar la imagen.'); return; }
         var fig = '<figure class="doc-fig fig-center" contenteditable="false" draggable="true" title="Arrastrá para mover · clic para ver opciones" style="width:60%"><img src="' + dataUrl + '"><figcaption contenteditable="true">' + (caption ? esc(caption) : '') + '</figcaption></figure><p>​</p>';
         ed.focus(); restoreRange(); try { document.execCommand('insertHTML', false, fig); } catch (e) { ed.innerHTML += fig; } onEditableInput(ed);
+      }
+      // Inserta HTML arbitrario (texto/tabla) en el bloque de texto enfocado; queda editable.
+      function insertHTMLIntoDoc(html) {
+        if (!html) { toast('No hay contenido para insertar.'); return; }
+        var ed = I._focusEd || ensureFocusEd(); if (!ed) { toast('Creá una sección de texto para insertar el contenido.'); return; }
+        ed.focus(); restoreRange();
+        try { document.execCommand('insertHTML', false, html); } catch (e) { ed.innerHTML += html; }
+        onEditableInput(ed);
+      }
+      // --- Contenido del experimento como texto/tabla editable (se puede corregir a mano) ---
+      function fitEditableHTML() {
+        var f = state.fitResult; if (!f) return '';
+        var names = f.paramNames || (fn('getParamNames') ? getParamNames(f.type) : []);
+        var params = Array.isArray(f.coeffs) ? f.coeffs.map(function (v, k) {
+          var nm = (names && names[k]) || ('p' + k), e = f.errors && f.errors[k];
+          return esc(nm) + ' = ' + (isFinite(v) ? num(v) : 'N/A') + ((e != null && isFinite(e)) ? (' ± ' + num(e)) : '');
+        }).join('; ') : '';
+        return '<p><b>Ajuste de curva (' + esc(fitTypeLabel(f.type)) + '):</b> ' + esc(f.equation || '') + '</p>' +
+          '<p>R² = ' + (isFinite(f.r2) ? num(f.r2) : 'N/A') + ' · Puntos usados: ' + (f.dataPoints || (state.rawData || []).length) + (params ? (' · ' + params) : '') + '</p>';
+      }
+      function segfitEditableHTML() {
+        var fits = state.segmentFits || []; if (!fits.length) return '';
+        var out = ['<p><b>Ajuste por tramos:</b></p>'];
+        fits.forEach(function (sf, i) {
+          if (sf.error) { out.push('<p>Tramo ' + (i + 1) + ': ' + esc(sf.error) + '</p>'); return; }
+          var rng = (sf.from != null && sf.to != null) ? (' (puntos ' + (sf.from + 1) + '–' + (sf.to + 1) + ')') : '';
+          out.push('<p>Tramo ' + (i + 1) + ' — ' + esc(fitTypeLabel(sf.type)) + rng + ': ' + esc(sf.equation || '') + ' · R² = ' + (isFinite(sf.r2) ? num(sf.r2) : 'N/A') + '</p>');
+        });
+        return out.join('');
+      }
+      function dataTableEditableHTML() {
+        var rows = state.rawData || []; if (!rows.length) return '';
+        var tuEl = el('timeUnit'); var tuv = tuEl ? parseFloat(tuEl.value) : 1000;
+        var unit = tuv === 1 ? 'ms' : (tuv === 60000 ? 'min' : 's');
+        var nv = state.numVariables || 1, showT = state.microbitTimestamp !== false;
+        var hdr = '<tr>' + (showT ? '<th>Tiempo (' + unit + ')</th>' : '<th>#</th>');
+        for (var i = 0; i < nv; i++) hdr += '<th>' + esc(state.variables[i] ? state.variables[i].name : ('V' + (i + 1))) + '</th>';
+        hdr += '</tr>';
+        var body = '';
+        rows.forEach(function (d, idx) {
+          var first = showT ? num((d.time - (state.timeZeroOffset || 0)) / tuv) : String(idx + 1);
+          var tds = '<td>' + first + '</td>';
+          for (var k = 0; k < nv; k++) tds += '<td>' + num(d.values[k]) + '</td>';
+          body += '<tr>' + tds + '</tr>';
+        });
+        return '<table class="doc-data-table"><thead>' + hdr + '</thead><tbody>' + body + '</tbody></table><p>​</p>';
+      }
+      function statsEditableHTML() {
+        var rows = state.rawData || []; if (!rows.length) return '';
+        var nv = state.numVariables || 1, body = '';
+        for (var i = 0; i < nv; i++) {
+          var vals = rows.map(function (d) { return d.values[i]; }).filter(function (v) { return typeof v === 'number' && isFinite(v); });
+          if (!vals.length) continue;
+          var n = vals.length, mean = vals.reduce(function (a, b) { return a + b; }, 0) / n;
+          var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+          var sd = Math.sqrt(vals.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0) / n);
+          var nm = esc((state.variables[i] && state.variables[i].name) || ('V' + (i + 1)));
+          body += '<tr><td>' + nm + '</td><td>' + num(mean) + '</td><td>' + num(min) + '</td><td>' + num(max) + '</td><td>' + num(sd) + '</td><td>' + n + '</td></tr>';
+        }
+        if (!body) return '';
+        return '<table class="doc-data-table"><thead><tr><th>Variable</th><th>Media</th><th>Mínimo</th><th>Máximo</th><th>Desv. est.</th><th>N</th></tr></thead><tbody>' + body + '</tbody></table><p>​</p>';
+      }
+      // Tabla editable para contrastar modelo teórico, ajuste obtenido y datos reales.
+      function comparisonTableEditableHTML() {
+        var f = state.fitResult, rows = [];
+        var header = '<tr><th>Magnitud</th><th>Modelo teórico</th><th>Ajuste obtenido</th><th>Datos / observado</th></tr>';
+        if (f && Array.isArray(f.coeffs)) {
+          var names = f.paramNames || (fn('getParamNames') ? getParamNames(f.type) : []);
+          f.coeffs.forEach(function (v, k) {
+            var nm = (names && names[k]) || ('p' + k), e = f.errors && f.errors[k];
+            var fit = (isFinite(v) ? num(v) : '') + ((e != null && isFinite(e)) ? (' ± ' + num(e)) : '');
+            rows.push('<tr><td>' + esc(nm) + '</td><td></td><td>' + fit + '</td><td></td></tr>');
+          });
+          rows.push('<tr><td>R²</td><td>—</td><td>' + (isFinite(f.r2) ? num(f.r2) : 'N/A') + '</td><td></td></tr>');
+        } else {
+          rows.push('<tr><td></td><td></td><td></td><td></td></tr>', '<tr><td></td><td></td><td></td><td></td></tr>');
+        }
+        return '<p><b>Comparación: modelo teórico · ajuste · datos reales</b></p>' +
+          '<table class="doc-data-table doc-cmp-table"><thead>' + header + '</thead><tbody>' + rows.join('') + '</tbody></table>' +
+          '<p><i>Completá la columna del modelo teórico y las observaciones para contrastar los resultados.</i></p>';
+      }
+      function insertDataTableIntoDoc() {
+        var rows = (state.rawData || []).length;
+        if (rows > 120 && !confirm('La tabla tiene ' + rows + ' filas. ¿Insertar toda la tabla en el texto? Podés colapsar la sección después para que no ocupe tanto.')) return;
+        insertHTMLIntoDoc(dataTableEditableHTML());
+      }
+      function toggleDataMenu(evt) {
+        var m = el('inf-data-menu'); if (!m) return;
+        if (m.classList.contains('open')) { m.classList.remove('open'); return; }
+        ensureFocusEd();
+        m.innerHTML = ''; var st = state, n = (st.rawData || []).length;
+        function addItem(label, enabled, act) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = label;
+          b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+          if (enabled) b.addEventListener('click', function () { act(); m.classList.remove('open'); });
+          else { b.disabled = true; b.style.opacity = '0.4'; b.style.cursor = 'default'; }
+          m.appendChild(b);
+        }
+        var head = document.createElement('div'); head.className = 'inf-menu-item inf-menu-upload'; head.textContent = 'Insertar como texto/tabla editable';
+        m.appendChild(head);
+        addItem('🧮  Ajuste de curva', !!st.fitResult, function () { insertHTMLIntoDoc(fitEditableHTML()); });
+        addItem('🧩  Ajuste por tramos', (st.segmentFits || []).length > 0, function () { insertHTMLIntoDoc(segfitEditableHTML()); });
+        addItem('🔢  Tabla de datos', n > 0, function () { insertDataTableIntoDoc(); });
+        addItem('📊  Estadísticas', n > 0, function () { insertHTMLIntoDoc(statsEditableHTML()); });
+        addItem('⚖️  Comparación modelo · ajuste · datos', n > 0 || !!st.fitResult, function () { insertHTMLIntoDoc(comparisonTableEditableHTML()); });
+        closeMenus(); positionMenu(m, evt.currentTarget); m.classList.add('open');
       }
 
       // ---- Arrastrar imágenes para moverlas dentro del documento ----
@@ -26068,6 +26256,7 @@ bluetooth.startIOPinService()</pre>
           I.doc = Object.assign(defaultDoc(), rep.doc || {});
           if (!Array.isArray(I.doc.order)) I.doc.order = [];
           if (!Array.isArray(I.doc.biblio)) I.doc.biblio = [];
+          if (!I.doc.collapsed || typeof I.doc.collapsed !== 'object') I.doc.collapsed = {};
           I.drawingData = rep.drawing || null;
           syncReportInputs();
           renderPhotos();
@@ -26613,6 +26802,7 @@ bluetooth.startIOPinService()</pre>
         // Editor de ecuaciones (modal)
         var eqTa = el('inf-eq-latex');
         if (eqTa) eqTa.addEventListener('input', function () { renderMath(el('inf-eq-preview'), eqTa.value); });
+        if (el('inf-eq-block')) el('inf-eq-block').addEventListener('change', updateEqCapVis);
         if (el('inf-eq-insert')) el('inf-eq-insert').addEventListener('click', commitEq);
         if (el('inf-eq-cancel')) el('inf-eq-cancel').addEventListener('click', closeEqEditor);
 
