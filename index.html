@@ -24949,7 +24949,11 @@ bluetooth.startIOPinService()</pre>
           var h = reportItemHTML(id); if (h) parts.push(h);
         });
         if (parts.length) parts.push(footBlock());
-        return parts.join('');
+        var out = parts.join('');
+        // Traducir los rótulos estructurales al idioma de la interfaz (el texto que
+        // escribe el alumno queda intacto). Afecta vista previa y exportaciones PDF/Word/ZIP.
+        try { if (window.FbitI18n && window.FbitI18n.localizeHTML) out = window.FbitI18n.localizeHTML(out); } catch (e) {}
+        return out;
       }
 
       // --- Vista previa ---
@@ -26874,5 +26878,641 @@ bluetooth.startIOPinService()</pre>
     })();
     </script>
     <!-- ===== INFORME PANEL END ===== -->
+    <script>
+/* ===== INFORME + MAPEO I18N START ===== */
+/* Traducción de los paneles INFORME y MAPEO (EN/PT) sin tocar su lógica:
+   un diccionario español->{en,pt} + un pase sobre el DOM que se re-aplica
+   automáticamente cuando esos paneles cambian (MutationObserver) y cuando
+   se cambia de idioma. El texto que escribe el usuario (contenteditable,
+   .inf-rich, .rep-rich, textareas) nunca se toca. */
+(function () {
+  'use strict';
+  var D = {
+    // ---------- INFORME · pestañas / cabecera ----------
+    'Armado': { en: 'Assembly', pt: 'Montagem' },
+    'Apuntes': { en: 'Notes', pt: 'Anotações' },
+    'Editor del documento': { en: 'Document editor', pt: 'Editor do documento' },
+    'Vista previa': { en: 'Preview', pt: 'Pré-visualização' },
+    'Abrir editor del documento →': { en: 'Open document editor →', pt: 'Abrir editor do documento →' },
+    'Abrir el armador de informe': { en: 'Open the report builder', pt: 'Abrir o construtor de relatório' },
+    'Cerrar el armador de informe': { en: 'Close the report builder', pt: 'Fechar o construtor de relatório' },
+    'Mostrar el panel para armar el informe': { en: 'Show the report builder panel', pt: 'Mostrar o painel para montar o relatório' },
+    'Mostrar la vista previa del informe': { en: 'Show the report preview', pt: 'Mostrar a pré-visualização do relatório' },
+    'Armá el informe: datos, contenido y secciones de texto': { en: 'Build the report: data, content and text sections', pt: 'Monte o relatório: dados, conteúdo e seções de texto' },
+    'Tomá apuntes: datos importantes, dibujos a mano e imágenes del experimento': { en: 'Take notes: key data, hand drawings and photos of the experiment', pt: 'Faça anotações: dados importantes, desenhos à mão e imagens do experimento' },
+    'Editor tipo procesador de texto para dar formato al documento': { en: 'Word-processor style editor to format the document', pt: 'Editor tipo processador de texto para formatar o documento' },
+
+    // ---------- INFORME · datos del informe (portada) ----------
+    'Datos del informe': { en: 'Report details', pt: 'Dados do relatório' },
+    'Título': { en: 'Title', pt: 'Título' },
+    'Título del experimento': { en: 'Experiment title', pt: 'Título do experimento' },
+    'Estudiante(s)': { en: 'Student(s)', pt: 'Estudante(s)' },
+    'Curso / Grupo': { en: 'Course / Group', pt: 'Curso / Turma' },
+    'Institución / Docente': { en: 'Institution / Teacher', pt: 'Instituição / Professor' },
+    'Fecha': { en: 'Date', pt: 'Data' },
+    'Nombre y apellido': { en: 'First and last name', pt: 'Nome e sobrenome' },
+    'Ej: 5º Física': { en: 'e.g.: Physics 5th', pt: 'Ex.: Física 5º' },
+    'Liceo / Profesor/a': { en: 'School / Teacher', pt: 'Colégio / Professor(a)' },
+    'Ej: Caída libre 5ºB': { en: 'e.g.: Free fall 5B', pt: 'Ex.: Queda livre 5B' },
+
+    // ---------- INFORME · estructura / checklist ----------
+    'Estructura': { en: 'Structure', pt: 'Estrutura' },
+    'Contenido a exportar': { en: 'Content to export', pt: 'Conteúdo a exportar' },
+    'Tildá lo que querés incluir en el documento. La vista previa se actualiza a la derecha.': { en: 'Check what you want to include in the document. The preview updates on the right.', pt: 'Marque o que deseja incluir no documento. A pré-visualização é atualizada à direita.' },
+    'Secciones de texto': { en: 'Text sections', pt: 'Seções de texto' },
+    'Las secciones de texto (fundamento teórico, objetivo, conclusión…) se escriben en la pestaña': { en: 'Text sections (theoretical background, objective, conclusion…) are written in the tab', pt: 'As seções de texto (fundamentação teórica, objetivo, conclusão…) são escritas na aba' },
+    '«Editor del documento»': { en: '“Document editor”', pt: '«Editor do documento»' },
+    'Escribí el fundamento teórico y otras partes: texto, fórmulas en': { en: 'Write the theoretical background and other parts: text, formulas in', pt: 'Escreva a fundamentação teórica e outras partes: texto, fórmulas em' },
+    ', y gráficas o fotos insertadas. Cada sección es una pestaña; podés reordenarlas.': { en: ', and inserted graphs or photos. Each section is a tab; you can reorder them.', pt: ', e gráficos ou fotos inseridas. Cada seção é uma aba; você pode reordená-las.' },
+    '(arriba), con procesador de texto, ecuaciones LaTeX, citas y ordenamiento por tarjetas.': { en: '(above), with a word processor, LaTeX equations, citations and card ordering.', pt: '(acima), com processador de texto, equações LaTeX, citações e ordenação por cartões.' },
+    'Tenés': { en: 'You have', pt: 'Você tem' },
+    'sección(es).': { en: 'section(s).', pt: 'seção(ões).' },
+    'sin datos': { en: 'no data', pt: 'sem dados' },
+    'gráfico': { en: 'chart', pt: 'gráfico' },
+    'Vista previa del informe': { en: 'Report preview', pt: 'Pré-visualização do relatório' },
+    'Gráficas y dibujo: tamaño y pie': { en: 'Graphs and drawing: size and caption', pt: 'Gráficos e desenho: tamanho e legenda' },
+    'Ajustá el tamaño y el pie de las gráficas y del dibujo. (Las imágenes que subís se ajustan en la sección «Imágenes».)': { en: 'Adjust the size and caption of the graphs and drawing. (Images you upload are adjusted in the “Images” section.)', pt: 'Ajuste o tamanho e a legenda dos gráficos e do desenho. (As imagens que você envia são ajustadas na seção «Imagens».)' },
+
+    // ---------- INFORME · apuntes ----------
+    'Apuntes del experimento': { en: 'Experiment notes', pt: 'Anotações do experimento' },
+    'Apuntes escritos': { en: 'Written notes', pt: 'Anotações escritas' },
+    'Apuntes dibujados': { en: 'Drawn notes', pt: 'Anotações desenhadas' },
+    'Imágenes del experimento': { en: 'Experiment images', pt: 'Imagens do experimento' },
+    'Anotá los datos importantes, dibujá esquemas a mano y sumá fotos del experimento indicando sus partes. Todo esto se puede incluir en el informe.': { en: 'Write down the key data, sketch diagrams by hand and add photos of the experiment labeling their parts. All of this can be included in the report.', pt: 'Anote os dados importantes, desenhe esquemas à mão e adicione fotos do experimento indicando suas partes. Tudo isso pode ser incluído no relatório.' },
+    'Datos importantes, observaciones, procedimiento, análisis y conclusiones del experimento.': { en: 'Key data, observations, procedure, analysis and conclusions of the experiment.', pt: 'Dados importantes, observações, procedimento, análise e conclusões do experimento.' },
+    'Datos importantes, observaciones, procedimiento, análisis y conclusiones…': { en: 'Key data, observations, procedure, analysis and conclusions…', pt: 'Dados importantes, observações, procedimento, análise e conclusões…' },
+    'Esquemas del montaje, diagramas de fuerzas, croquis… Se abre un lienzo grande para dibujar a mano.': { en: 'Setup schematics, force diagrams, sketches… A large canvas opens to draw by hand.', pt: 'Esquemas da montagem, diagramas de forças, croquis… Abre-se uma tela grande para desenhar à mão.' },
+    'Sacá o subí fotos del montaje y, en el pie de cada una, indicá sus partes. Podés ajustar el tamaño y se agregan al informe.': { en: 'Take or upload photos of the setup and, in each caption, label their parts. You can adjust the size and they are added to the report.', pt: 'Tire ou envie fotos da montagem e, na legenda de cada uma, indique suas partes. Você pode ajustar o tamanho e elas são adicionadas ao relatório.' },
+    'Tocá acá para abrir el lienzo y dibujar tu esquema a mano': { en: 'Tap here to open the canvas and draw your schematic by hand', pt: 'Toque aqui para abrir a tela e desenhar seu esquema à mão' },
+    '✏ Abrir lienzo para dibujar': { en: '✏ Open canvas to draw', pt: '✏ Abrir tela para desenhar' },
+    'Borrar dibujo': { en: 'Clear drawing', pt: 'Apagar desenho' },
+    '＋ Subir / sacar imagen': { en: '＋ Upload / take photo', pt: '＋ Enviar / tirar imagem' },
+    'Subir o sacar una o varias fotos del experimento': { en: 'Upload or take one or more photos of the experiment', pt: 'Enviar ou tirar uma ou várias fotos do experimento' },
+    'Abrir un lienzo grande para dibujar a mano un esquema o diagrama': { en: 'Open a large canvas to hand-draw a schematic or diagram', pt: 'Abrir uma tela grande para desenhar à mão um esquema ou diagrama' },
+    'Borrar el dibujo hecho a mano': { en: 'Erase the hand-made drawing', pt: 'Apagar o desenho feito à mão' },
+
+    // ---------- INFORME · lienzo de dibujo ----------
+    'Lienzo de dibujo': { en: 'Drawing canvas', pt: 'Tela de desenho' },
+    '✏ Lápiz': { en: '✏ Pencil', pt: '✏ Lápis' },
+    'Lápiz para dibujar': { en: 'Pencil to draw', pt: 'Lápis para desenhar' },
+    'Goma para borrar parte del dibujo': { en: 'Eraser to remove part of the drawing', pt: 'Borracha para apagar parte do desenho' },
+    'Borrar todo el lienzo': { en: 'Clear the whole canvas', pt: 'Apagar toda a tela' },
+    'Cerrar el lienzo sin guardar el dibujo': { en: 'Close the canvas without saving the drawing', pt: 'Fechar a tela sem salvar o desenho' },
+    'Guardar el dibujo y cerrar el lienzo': { en: 'Save the drawing and close the canvas', pt: 'Salvar o desenho e fechar a tela' },
+    'Color': { en: 'Color', pt: 'Cor' },
+    'Grosor': { en: 'Thickness', pt: 'Espessura' },
+    'Fino': { en: 'Thin', pt: 'Fino' },
+    'Medio': { en: 'Medium', pt: 'Médio' },
+    'Grueso': { en: 'Thick', pt: 'Grosso' },
+    'Muy grueso': { en: 'Very thick', pt: 'Muito grosso' },
+    'Borrar todo': { en: 'Clear all', pt: 'Apagar tudo' },
+    'Goma': { en: 'Eraser', pt: 'Borracha' },
+
+    // ---------- INFORME · tamaños de imagen ----------
+    'Chico': { en: 'Small', pt: 'Pequeno' },
+    'Chica': { en: 'Small', pt: 'Pequena' },
+    'Mediano': { en: 'Medium', pt: 'Médio' },
+    'Normal': { en: 'Normal', pt: 'Normal' },
+    'Grande': { en: 'Large', pt: 'Grande' },
+    'Muy grande': { en: 'Very large', pt: 'Muito grande' },
+
+    // ---------- INFORME · nombres de partes (tarjetas / checklist) ----------
+    'Portada': { en: 'Cover', pt: 'Capa' },
+    'Índice': { en: 'Table of contents', pt: 'Índice' },
+    'Tabla de datos': { en: 'Data table', pt: 'Tabela de dados' },
+    'Tabla de datos (continuación)': { en: 'Data table (continued)', pt: 'Tabela de dados (continuação)' },
+    'Ajuste de curva': { en: 'Curve fit', pt: 'Ajuste de curva' },
+    'Ajuste por tramos': { en: 'Piecewise fit', pt: 'Ajuste por trechos' },
+    'Estadísticas': { en: 'Statistics', pt: 'Estatísticas' },
+    'Imágenes': { en: 'Images', pt: 'Imagens' },
+    'Fotos de datos': { en: 'Data photos', pt: 'Fotos de dados' },
+    'Diagramas y esquemas': { en: 'Diagrams and schematics', pt: 'Diagramas e esquemas' },
+    'Bibliografía': { en: 'Bibliography', pt: 'Bibliografia' },
+    'Bibliografía consultada (APA)': { en: 'References (APA)', pt: 'Bibliografia consultada (APA)' },
+    'Sección de texto': { en: 'Text section', pt: 'Seção de texto' },
+    'Gráfica 1': { en: 'Graph 1', pt: 'Gráfico 1' },
+    'Gráfica 2': { en: 'Graph 2', pt: 'Gráfico 2' },
+    'Gráfica 3': { en: 'Graph 3', pt: 'Gráfico 3' },
+    'Gráfica 4': { en: 'Graph 4', pt: 'Gráfico 4' },
+    'Gráfica 5': { en: 'Graph 5', pt: 'Gráfico 5' },
+    'Gráfica 6': { en: 'Graph 6', pt: 'Gráfico 6' },
+
+    // ---------- INFORME · estadísticas / ajuste (encabezados) ----------
+    'Variable': { en: 'Variable', pt: 'Variável' },
+    'Media': { en: 'Mean', pt: 'Média' },
+    'Mínimo': { en: 'Minimum', pt: 'Mínimo' },
+    'Máximo': { en: 'Maximum', pt: 'Máximo' },
+    'Desv. estándar': { en: 'Std. deviation', pt: 'Desv. padrão' },
+    'Desv. est.': { en: 'Std. dev.', pt: 'Desv. pad.' },
+    'R² (calidad del ajuste)': { en: 'R² (fit quality)', pt: 'R² (qualidade do ajuste)' },
+    'Puntos usados': { en: 'Points used', pt: 'Pontos usados' },
+    'Lineal': { en: 'Linear', pt: 'Linear' },
+
+    // ---------- INFORME · opciones del editor ----------
+    'Agregar sección:': { en: 'Add section:', pt: 'Adicionar seção:' },
+    'Fuente:': { en: 'Font:', pt: 'Fonte:' },
+    'Vista del editor:': { en: 'Editor view:', pt: 'Vista do editor:' },
+    '▸ Colapsar todo': { en: '▸ Collapse all', pt: '▸ Recolher tudo' },
+    '▾ Expandir todo': { en: '▾ Expand all', pt: '▾ Expandir tudo' },
+    '＋ En blanco': { en: '＋ Blank', pt: '＋ Em branco' },
+    '＋ Objetivo': { en: '＋ Objective', pt: '＋ Objetivo' },
+    '＋ Fundamento teórico': { en: '＋ Theoretical background', pt: '＋ Fundamentação teórica' },
+    '＋ Marco teórico': { en: '＋ Theoretical framework', pt: '＋ Marco teórico' },
+    '＋ Materiales': { en: '＋ Materials', pt: '＋ Materiais' },
+    '＋ Procedimiento': { en: '＋ Procedure', pt: '＋ Procedimento' },
+    '＋ Resultados': { en: '＋ Results', pt: '＋ Resultados' },
+    '＋ Conclusión': { en: '＋ Conclusion', pt: '＋ Conclusão' },
+    'Fundamento teórico': { en: 'Theoretical background', pt: 'Fundamentação teórica' },
+    'Georgia (serif)': { en: 'Georgia (serif)', pt: 'Georgia (serif)' },
+    'Montserrat (predet.)': { en: 'Montserrat (default)', pt: 'Montserrat (padrão)' },
+    'Agregar una sección vacía para escribir lo que quieras': { en: 'Add an empty section to write whatever you want', pt: 'Adicionar uma seção vazia para escrever o que quiser' },
+    'Colapsar todas las partes: se ve solo el título de cada una, ideal para reordenar el informe': { en: 'Collapse all parts: only each title is shown, ideal for reordering the report', pt: 'Recolher todas as partes: mostra só o título de cada uma, ideal para reordenar o relatório' },
+    'Expandir todas las partes para editar su contenido': { en: 'Expand all parts to edit their content', pt: 'Expandir todas as partes para editar seu conteúdo' },
+
+    // ---------- INFORME · tarjetas (acciones) ----------
+    'Sección de texto (ej: Fundamento teórico)': { en: 'Text section (e.g.: Theoretical background)', pt: 'Seção de texto (ex.: Fundamentação teórica)' },
+    'Título de la sección': { en: 'Section title', pt: 'Título da seção' },
+    'Título de la sección (ej: Fundamento teórico)': { en: 'Section title (e.g.: Theoretical background)', pt: 'Título da seção (ex.: Fundamentação teórica)' },
+    'Arrastrá para reordenar esta parte del documento': { en: 'Drag to reorder this part of the document', pt: 'Arraste para reordenar esta parte do documento' },
+    'Subir: mover esta parte más arriba': { en: 'Up: move this part higher', pt: 'Subir: mover esta parte para cima' },
+    'Bajar: mover esta parte más abajo': { en: 'Down: move this part lower', pt: 'Descer: mover esta parte para baixo' },
+    'Incluido en el informe (clic para ocultar)': { en: 'Included in the report (click to hide)', pt: 'Incluído no relatório (clique para ocultar)' },
+    'Oculto (clic para incluir en el informe)': { en: 'Hidden (click to include in the report)', pt: 'Oculto (clique para incluir no relatório)' },
+    'Colapsar: mostrar solo el título de esta parte': { en: 'Collapse: show only the title of this part', pt: 'Recolher: mostrar só o título desta parte' },
+    'Mostrar el contenido de esta parte': { en: 'Show the content of this part', pt: 'Mostrar o conteúdo desta parte' },
+    'Editar en página completa': { en: 'Edit in full page', pt: 'Editar em página inteira' },
+    'Quitar sección': { en: 'Remove section', pt: 'Remover seção' },
+    '(se genera automáticamente de los datos)': { en: '(generated automatically from the data)', pt: '(gerado automaticamente a partir dos dados)' },
+
+    // ---------- INFORME · barra de formato (procesador de texto) ----------
+    'Negrita: resalta el texto seleccionado': { en: 'Bold: highlight the selected text', pt: 'Negrito: destaca o texto selecionado' },
+    'Cursiva: inclina el texto seleccionado': { en: 'Italic: slant the selected text', pt: 'Itálico: inclina o texto selecionado' },
+    'Subrayado: subraya el texto seleccionado': { en: 'Underline: underline the selected text', pt: 'Sublinhado: sublinha o texto selecionado' },
+    'Título de sección (H2)': { en: 'Section title (H2)', pt: 'Título de seção (H2)' },
+    'Subsección (H3)': { en: 'Subsection (H3)', pt: 'Subseção (H3)' },
+    'Sub-subsección (H4)': { en: 'Sub-subsection (H4)', pt: 'Sub-subseção (H4)' },
+    'Texto normal (párrafo)': { en: 'Normal text (paragraph)', pt: 'Texto normal (parágrafo)' },
+    'Lista con viñetas': { en: 'Bulleted list', pt: 'Lista com marcadores' },
+    'Lista numerada': { en: 'Numbered list', pt: 'Lista numerada' },
+    'Alinear a la izquierda': { en: 'Align left', pt: 'Alinhar à esquerda' },
+    'Centrar el texto': { en: 'Center text', pt: 'Centralizar o texto' },
+    'Alinear a la derecha': { en: 'Align right', pt: 'Alinhar à direita' },
+    'Color del texto': { en: 'Text color', pt: 'Cor do texto' },
+    'Quitar el formato del texto': { en: 'Clear text formatting', pt: 'Remover a formatação do texto' },
+    'Título': { en: 'Title', pt: 'Título' },
+    'Subsec.': { en: 'Subsec.', pt: 'Subseç.' },
+    'Sub-sub': { en: 'Sub-sub', pt: 'Sub-sub' },
+    'Tamaño': { en: 'Size', pt: 'Tamanho' },
+    'Fuente': { en: 'Font', pt: 'Fonte' },
+    '∑ Ecuación': { en: '∑ Equation', pt: '∑ Equação' },
+    '“ Cita': { en: '“ Citation', pt: '“ Citação' },
+    '🖼 Imagen': { en: '🖼 Image', pt: '🖼 Imagem' },
+    '📊 Datos y ajustes': { en: '📊 Data and fits', pt: '📊 Dados e ajustes' },
+    'Insertar ecuación (LaTeX)': { en: 'Insert equation (LaTeX)', pt: 'Inserir equação (LaTeX)' },
+    'Insertar cita (APA)': { en: 'Insert citation (APA)', pt: 'Inserir citação (APA)' },
+    'Subir o insertar una imagen (gráfica, foto…)': { en: 'Upload or insert an image (graph, photo…)', pt: 'Enviar ou inserir uma imagem (gráfico, foto…)' },
+    'Insertar en el texto y editar: resultados de los ajustes, tabla de datos o estadísticas del experimento': { en: 'Insert into the text and edit: fit results, data table or experiment statistics', pt: 'Inserir no texto e editar: resultados dos ajustes, tabela de dados ou estatísticas do experimento' },
+
+    // ---------- INFORME · menú de imagen / datos ----------
+    '⬆ Subir imagen nueva…': { en: '⬆ Upload new image…', pt: '⬆ Enviar nova imagem…' },
+    '📈 Gráfica 1': { en: '📈 Graph 1', pt: '📈 Gráfico 1' },
+    '📈 Gráfica 2': { en: '📈 Graph 2', pt: '📈 Gráfico 2' },
+    '📈 Gráfica 3': { en: '📈 Graph 3', pt: '📈 Gráfico 3' },
+    '📐 Mapeo · mapa del campo (actual)': { en: '📐 Mapping · field map (current)', pt: '📐 Mapeamento · mapa do campo (atual)' },
+    '📐 Mapeo · corte 1D y ajuste (actual)': { en: '📐 Mapping · 1D cut and fit (current)', pt: '📐 Mapeamento · corte 1D e ajuste (atual)' },
+    'Insertar como texto/tabla editable': { en: 'Insert as editable text/table', pt: 'Inserir como texto/tabela editável' },
+    '🧮 Ajuste de curva': { en: '🧮 Curve fit', pt: '🧮 Ajuste de curva' },
+    '🧩 Ajuste por tramos': { en: '🧩 Piecewise fit', pt: '🧩 Ajuste por trechos' },
+    '🔢 Tabla de datos': { en: '🔢 Data table', pt: '🔢 Tabela de dados' },
+    '📊 Estadísticas': { en: '📊 Statistics', pt: '📊 Estatísticas' },
+    '⚖️ Comparación modelo · ajuste · datos': { en: '⚖️ Model · fit · data comparison', pt: '⚖️ Comparação modelo · ajuste · dados' },
+
+    // ---------- INFORME · ecuaciones (modal) ----------
+    'Insertar / editar ecuación (LaTeX)': { en: 'Insert / edit equation (LaTeX)', pt: 'Inserir / editar equação (LaTeX)' },
+    'La fórmula renderizada aparece acá.': { en: 'The rendered formula appears here.', pt: 'A fórmula renderizada aparece aqui.' },
+    'Ecuación centrada (grande)': { en: 'Centered equation (large)', pt: 'Equação centralizada (grande)' },
+    'Pie de la ecuación (opcional):': { en: 'Equation caption (optional):', pt: 'Legenda da equação (opcional):' },
+    'Ej: Ecuación 1 — Segunda ley de Newton': { en: 'e.g.: Equation 1 — Newton second law', pt: 'Ex.: Equação 1 — Segunda lei de Newton' },
+    'Marcada: ecuación grande y centrada en su propio renglón. Desmarcada: ecuación chica dentro del texto.': { en: 'Checked: large equation centered on its own line. Unchecked: small equation inside the text.', pt: 'Marcada: equação grande e centralizada em sua própria linha. Desmarcada: equação pequena dentro do texto.' },
+    'Cancelar': { en: 'Cancel', pt: 'Cancelar' },
+    'Insertar ✓': { en: 'Insert ✓', pt: 'Inserir ✓' },
+    'Cerrar sin insertar la ecuación': { en: 'Close without inserting the equation', pt: 'Fechar sem inserir a equação' },
+    'Insertar la ecuación en el documento': { en: 'Insert the equation into the document', pt: 'Inserir a equação no documento' },
+    'Símbolos': { en: 'Symbols', pt: 'Símbolos' },
+    'Letras griegas': { en: 'Greek letters', pt: 'Letras gregas' },
+    'Vectores y derivadas': { en: 'Vectors and derivatives', pt: 'Vetores e derivadas' },
+    'Unidades': { en: 'Units', pt: 'Unidades' },
+
+    // ---------- INFORME · editor de página / secciones ----------
+    'Editando sección': { en: 'Editing section', pt: 'Editando seção' },
+    'Listo ✓': { en: 'Done ✓', pt: 'Pronto ✓' },
+    'Guardar los cambios y volver al editor': { en: 'Save changes and return to the editor', pt: 'Salvar as alterações e voltar ao editor' },
+
+    // ---------- INFORME · bibliografía ----------
+    '＋ Agregar referencia': { en: '＋ Add reference', pt: '＋ Adicionar referência' },
+    'Agregar una nueva referencia a la bibliografía': { en: 'Add a new reference to the bibliography', pt: 'Adicionar uma nova referência à bibliografia' },
+    'Autor(es) — Apellido, N.; Apellido, N.': { en: 'Author(s) — Last name, N.; Last name, N.', pt: 'Autor(es) — Sobrenome, N.; Sobrenome, N.' },
+    'Año': { en: 'Year', pt: 'Ano' },
+    'Fuente (revista, editorial o sitio web)': { en: 'Source (journal, publisher or website)', pt: 'Fonte (revista, editora ou site)' },
+    'URL (opcional)': { en: 'URL (optional)', pt: 'URL (opcional)' },
+
+    // ---------- INFORME · menú superior Exportar / Guardar ----------
+    '⬇ Exportar / Guardar': { en: '⬇ Export / Save', pt: '⬇ Exportar / Salvar' },
+    '⬇ Descargar informe (PDF)': { en: '⬇ Download report (PDF)', pt: '⬇ Baixar relatório (PDF)' },
+    '⬇ Descargar informe (Word .docx)': { en: '⬇ Download report (Word .docx)', pt: '⬇ Baixar relatório (Word .docx)' },
+    '📦 Descargar todo (ZIP)': { en: '📦 Download everything (ZIP)', pt: '📦 Baixar tudo (ZIP)' },
+    '📦 Descargar todo (informe + datos)': { en: '📦 Download everything (report + data)', pt: '📦 Baixar tudo (relatório + dados)' },
+    '📈 Gráficos PNG': { en: '📈 PNG charts', pt: '📈 Gráficos PNG' },
+    '📄 Datos CSV': { en: '📄 CSV data', pt: '📄 Dados CSV' },
+    '💾 Guardar proyecto': { en: '💾 Save project', pt: '💾 Salvar projeto' },
+    '💾 Guardar mi trabajo en un archivo': { en: '💾 Save my work to a file', pt: '💾 Salvar meu trabalho em um arquivo' },
+    '📂 Abrir proyecto': { en: '📂 Open project', pt: '📂 Abrir projeto' },
+    '📂 Abrir un trabajo guardado…': { en: '📂 Open a saved work…', pt: '📂 Abrir um trabalho salvo…' },
+    '📂 Abrir / cambiar de experimento…': { en: '📂 Open / switch experiment…', pt: '📂 Abrir / trocar de experimento…' },
+    '＋ Nuevo experimento': { en: '＋ New experiment', pt: '＋ Novo experimento' },
+    '🗑 Reiniciar todo': { en: '🗑 Reset everything', pt: '🗑 Reiniciar tudo' },
+    'Guardar / Proyecto (archivo)': { en: 'Save / Project (file)', pt: 'Salvar / Projeto (arquivo)' },
+    'Guardar / descargar': { en: 'Save / download', pt: 'Salvar / baixar' },
+    'Retomar trabajo': { en: 'Resume work', pt: 'Retomar trabalho' },
+    '↺ Retomar mi último trabajo': { en: '↺ Resume my last work', pt: '↺ Retomar meu último trabalho' },
+    'Nombre del experimento': { en: 'Experiment name', pt: 'Nome do experimento' },
+    'Exportar': { en: 'Export', pt: 'Exportar' },
+    'Controles': { en: 'Controls', pt: 'Controles' },
+
+    // ---------- INFORME · Google Drive ----------
+    'Google Drive · en la nube (opcional)': { en: 'Google Drive · in the cloud (optional)', pt: 'Google Drive · na nuvem (opcional)' },
+    '☁ Conectar con Google': { en: '☁ Connect with Google', pt: '☁ Conectar com o Google' },
+    '☁ Guardar ahora en Drive': { en: '☁ Save to Drive now', pt: '☁ Salvar agora no Drive' },
+    '☁ Google Drive (opcional): usá el botón «Conectar con Google» de arriba, al lado de AYUDA.': { en: '☁ Google Drive (optional): use the “Connect with Google” button above, next to HELP.', pt: '☁ Google Drive (opcional): use o botão «Conectar com o Google» acima, ao lado de AJUDA.' },
+    'Guardar automáticamente en Drive': { en: 'Save automatically to Drive', pt: 'Salvar automaticamente no Drive' },
+    'Guardá y retomá tus experimentos desde cualquier navegador.': { en: 'Save and resume your experiments from any browser.', pt: 'Salve e retome seus experimentos de qualquer navegador.' },
+    'Cerrar sesión de Google': { en: 'Sign out of Google', pt: 'Sair da conta Google' },
+    'Tus proyectos en Google Drive': { en: 'Your projects in Google Drive', pt: 'Seus projetos no Google Drive' },
+    'Abrir proyecto': { en: 'Open project', pt: 'Abrir projeto' },
+
+    // ---------- INFORME · portada del informe (preview) ----------
+    'INFORME DE LABORATORIO': { en: 'LABORATORY REPORT', pt: 'RELATÓRIO DE LABORATÓRIO' },
+    'Informe de laboratorio': { en: 'Laboratory report', pt: 'Relatório de laboratório' },
+    'Informe de laboratorio · fisicabit': { en: 'Laboratory report · fisicabit', pt: 'Relatório de laboratório · fisicabit' },
+    'micro:bit DataLab · datos procesados, gráficos y ajustes': { en: 'micro:bit DataLab · processed data, charts and fits', pt: 'micro:bit DataLab · dados processados, gráficos e ajustes' },
+
+    // ---------- INFORME · toasts / mensajes (no interpolados) ----------
+    'Documento Word descargado ✓': { en: 'Word document downloaded ✓', pt: 'Documento Word baixado ✓' },
+    'PDF descargado ✓': { en: 'PDF downloaded ✓', pt: 'PDF baixado ✓' },
+    'ZIP descargado ✓': { en: 'ZIP downloaded ✓', pt: 'ZIP baixado ✓' },
+    'Datos exportados a CSV.': { en: 'Data exported to CSV.', pt: 'Dados exportados para CSV.' },
+    'Imagen agregada.': { en: 'Image added.', pt: 'Imagem adicionada.' },
+    'Todo reiniciado.': { en: 'Everything reset.', pt: 'Tudo reiniciado.' },
+    'Proyecto guardado en tu dispositivo.': { en: 'Project saved to your device.', pt: 'Projeto salvo no seu dispositivo.' },
+    'Tu último trabajo fue restaurado ✓': { en: 'Your last work was restored ✓', pt: 'Seu último trabalho foi restaurado ✓' },
+    'Sesión de Google cerrada.': { en: 'Google session closed.', pt: 'Sessão do Google encerrada.' },
+    'Generando PDF…': { en: 'Generating PDF…', pt: 'Gerando PDF…' },
+    'Generando documento Word…': { en: 'Generating Word document…', pt: 'Gerando documento Word…' },
+    'Preparando ZIP…': { en: 'Preparing ZIP…', pt: 'Preparando ZIP…' },
+    'Comprimiendo…': { en: 'Compressing…', pt: 'Compactando…' },
+    'Guardando en Google Drive…': { en: 'Saving to Google Drive…', pt: 'Salvando no Google Drive…' },
+    'No hay datos para exportar.': { en: 'No data to export.', pt: 'Não há dados para exportar.' },
+    'No hay contenido para insertar.': { en: 'No content to insert.', pt: 'Não há conteúdo para inserir.' },
+    'No hay gráficos para descargar.': { en: 'No charts to download.', pt: 'Não há gráficos para baixar.' },
+    'No hay contenido seleccionado para exportar.': { en: 'No content selected to export.', pt: 'Nenhum conteúdo selecionado para exportar.' },
+    'Creá una sección de texto para insertar el contenido.': { en: 'Create a text section to insert the content.', pt: 'Crie uma seção de texto para inserir o conteúdo.' },
+    'Creá una sección de texto para insertar la cita.': { en: 'Create a text section to insert the citation.', pt: 'Crie uma seção de texto para inserir a citação.' },
+    'Creá una sección de texto para insertar la imagen.': { en: 'Create a text section to insert the image.', pt: 'Crie uma seção de texto para inserir a imagem.' },
+    'Poné el cursor en un bloque de texto.': { en: 'Place the cursor in a text block.', pt: 'Coloque o cursor em um bloco de texto.' },
+    'Poné el cursor dentro de un bloque de texto para dar formato.': { en: 'Place the cursor inside a text block to format.', pt: 'Coloque o cursor dentro de um bloco de texto para formatar.' },
+    'Agregá referencias en «Bibliografía» primero.': { en: 'Add references in “Bibliography” first.', pt: 'Adicione referências em «Bibliografia» primeiro.' },
+    'Abrí MAPEO y generá la gráfica primero.': { en: 'Open MAPPING and generate the graph first.', pt: 'Abra o MAPEAMENTO e gere o gráfico primeiro.' },
+    'Capturando la gráfica de MAPEO…': { en: 'Capturing the MAPPING graph…', pt: 'Capturando o gráfico do MAPEAMENTO…' },
+    'No se pudo capturar la gráfica de MAPEO.': { en: 'Could not capture the MAPPING graph.', pt: 'Não foi possível capturar o gráfico do MAPEAMENTO.' },
+    'No se pudo capturar la imagen.': { en: 'Could not capture the image.', pt: 'Não foi possível capturar a imagem.' },
+    'No se pudo leer la imagen.': { en: 'Could not read the image.', pt: 'Não foi possível ler a imagem.' },
+    'Todavía no hay nada para guardar.': { en: 'There is nothing to save yet.', pt: 'Ainda não há nada para salvar.' },
+    'No hay trabajo guardado en este navegador.': { en: 'No work saved in this browser.', pt: 'Não há trabalho salvo neste navegador.' },
+    'Completá al menos autor o título.': { en: 'Fill in at least author or title.', pt: 'Preencha ao menos autor ou título.' },
+    '¿Cómo se llama este experimento?': { en: 'What is this experiment called?', pt: 'Como se chama este experimento?' },
+    '¿Quitar esta sección?': { en: 'Remove this section?', pt: 'Remover esta seção?' },
+
+    // ========== MAPEO ==========
+    'MAPEO': { en: 'MAPPING', pt: 'MAPEAMENTO' },
+    'CERRAR': { en: 'CLOSE', pt: 'FECHAR' },
+    'Cerrar': { en: 'Close', pt: 'Fechar' },
+    '☰ Controles': { en: '☰ Controls', pt: '☰ Controles' },
+    'Abrir controles': { en: 'Open controls', pt: 'Abrir controles' },
+    'Abrir menú': { en: 'Open menu', pt: 'Abrir menu' },
+    '← Volver': { en: '← Back', pt: '← Voltar' },
+    'Configuración': { en: 'Settings', pt: 'Configuração' },
+    'Conexión': { en: 'Connection', pt: 'Conexão' },
+    'Conectar BLE': { en: 'Connect BLE', pt: 'Conectar BLE' },
+    'Conectar USB': { en: 'Connect USB', pt: 'Conectar USB' },
+    'Desconectar': { en: 'Disconnect', pt: 'Desconectar' },
+    'Bluetooth (BLE)': { en: 'Bluetooth (BLE)', pt: 'Bluetooth (BLE)' },
+    'Sensor': { en: 'Sensor', pt: 'Sensor' },
+    'Transporte': { en: 'Transport', pt: 'Transporte' },
+    'Magnitud medida': { en: 'Measured quantity', pt: 'Grandeza medida' },
+    'Campo magnético': { en: 'Magnetic field', pt: 'Campo magnético' },
+    'Luz': { en: 'Light', pt: 'Luz' },
+    'Sonido': { en: 'Sound', pt: 'Som' },
+    'Temperatura': { en: 'Temperature', pt: 'Temperatura' },
+    'Voltaje': { en: 'Voltage', pt: 'Tensão' },
+    'Imán': { en: 'Magnet', pt: 'Ímã' },
+    'Luz': { en: 'Light', pt: 'Luz' },
+    'Unidad': { en: 'Unit', pt: 'Unidade' },
+    'Nombre': { en: 'Name', pt: 'Nome' },
+    'Dimensiones': { en: 'Dimensions', pt: 'Dimensões' },
+    'Ancho (cm)': { en: 'Width (cm)', pt: 'Largura (cm)' },
+    'Alto (cm)': { en: 'Height (cm)', pt: 'Altura (cm)' },
+    'Paso X (cm)': { en: 'Step X (cm)', pt: 'Passo X (cm)' },
+    'Paso Y (cm)': { en: 'Step Y (cm)', pt: 'Passo Y (cm)' },
+    'Generar grilla': { en: 'Generate grid', pt: 'Gerar grade' },
+    'Coordenadas explícitas': { en: 'Explicit coordinates', pt: 'Coordenadas explícitas' },
+    'Captura': { en: 'Capture', pt: 'Captura' },
+    'Puntos': { en: 'Points', pt: 'Pontos' },
+    'Punto activo': { en: 'Active point', pt: 'Ponto ativo' },
+    'Asignar (Enter)': { en: 'Assign (Enter)', pt: 'Atribuir (Enter)' },
+    'Deseleccionar': { en: 'Deselect', pt: 'Desmarcar' },
+    'Limpiar valores': { en: 'Clear values', pt: 'Limpar valores' },
+    'Sumar': { en: 'Add', pt: 'Somar' },
+    'Restar mínimo': { en: 'Subtract minimum', pt: 'Subtrair mínimo' },
+    'Rellenar huecos': { en: 'Fill gaps', pt: 'Preencher lacunas' },
+    'Suavizar 3×3': { en: 'Smooth 3×3', pt: 'Suavizar 3×3' },
+    'Suavizar 5×5': { en: 'Smooth 5×5', pt: 'Suavizar 5×5' },
+    'Posprocesamiento': { en: 'Post-processing', pt: 'Pós-processamento' },
+    'Visualización': { en: 'Visualization', pt: 'Visualização' },
+    'Campo 2D': { en: '2D field', pt: 'Campo 2D' },
+    'Mapa de calor': { en: 'Heatmap', pt: 'Mapa de calor' },
+    'Heatmap interpolado': { en: 'Interpolated heatmap', pt: 'Mapa de calor interpolado' },
+    'Isolíneas': { en: 'Isolines', pt: 'Isolinhas' },
+    'Isolíneas (con etiquetas)': { en: 'Isolines (with labels)', pt: 'Isolinhas (com rótulos)' },
+    'Isolíneas + Gradiente': { en: 'Isolines + Gradient', pt: 'Isolinhas + Gradiente' },
+    'Gradiente': { en: 'Gradient', pt: 'Gradiente' },
+    'Streamlines del gradiente': { en: 'Gradient streamlines', pt: 'Linhas de fluxo do gradiente' },
+    'Superficie 3D': { en: '3D surface', pt: 'Superfície 3D' },
+    'Combinado (publicable)': { en: 'Combined (publishable)', pt: 'Combinado (publicável)' },
+    'Todo (heatmap + isolíneas + gradiente)': { en: 'All (heatmap + isolines + gradient)', pt: 'Tudo (mapa de calor + isolinhas + gradiente)' },
+    'Iluminación': { en: 'Lighting', pt: 'Iluminação' },
+    'Análisis 1D': { en: '1D analysis', pt: 'Análise 1D' },
+    'Análisis avanzado': { en: 'Advanced analysis', pt: 'Análise avançada' },
+    'Análisis profesional': { en: 'Professional analysis', pt: 'Análise profissional' },
+    'ANÁLISIS PROFESIONAL': { en: 'PROFESSIONAL ANALYSIS', pt: 'ANÁLISE PROFISSIONAL' },
+    'Cargando análisis…': { en: 'Loading analysis…', pt: 'Carregando análise…' },
+    'Definir corte': { en: 'Define cut', pt: 'Definir corte' },
+    'CSV del corte': { en: 'Cut CSV', pt: 'CSV do corte' },
+    'Horizontal (y constante)': { en: 'Horizontal (constant y)', pt: 'Horizontal (y constante)' },
+    'Vertical (x constante)': { en: 'Vertical (constant x)', pt: 'Vertical (x constante)' },
+    'Modelo teórico': { en: 'Theoretical model', pt: 'Modelo teórico' },
+    'Ajustar modelo': { en: 'Fit model', pt: 'Ajustar modelo' },
+    'Recalcular sin ajustar': { en: 'Recompute without fitting', pt: 'Recalcular sem ajustar' },
+    'Parámetros': { en: 'Parameters', pt: 'Parâmetros' },
+    'Parámetros:': { en: 'Parameters:', pt: 'Parâmetros:' },
+    'Resultados': { en: 'Results', pt: 'Resultados' },
+    'Resultados del ajuste': { en: 'Fit results', pt: 'Resultados do ajuste' },
+    'Cargá un corte y ajustá un modelo para ver resultados.': { en: 'Load a cut and fit a model to see results.', pt: 'Carregue um corte e ajuste um modelo para ver resultados.' },
+    'Lineal: a*x + b': { en: 'Linear: a*x + b', pt: 'Linear: a*x + b' },
+    'Cuadrado inverso: k/(x-x0)²': { en: 'Inverse square: k/(x-x0)²', pt: 'Quadrado inverso: k/(x-x0)²' },
+    'Carga puntual: k/abs(x-x0)': { en: 'Point charge: k/abs(x-x0)', pt: 'Carga pontual: k/abs(x-x0)' },
+    'Dipolo: k/abs(x-a) - k/abs(x-b)': { en: 'Dipole: k/abs(x-a) - k/abs(x-b)', pt: 'Dipolo: k/abs(x-a) - k/abs(x-b)' },
+    'Decaimiento exp.: A*exp(-x/τ)+C': { en: 'Exp. decay: A*exp(-x/τ)+C', pt: 'Decaimento exp.: A*exp(-x/τ)+C' },
+    'Gaussiana: A*exp(-(x-x0)²/2σ²)+C': { en: 'Gaussian: A*exp(-(x-x0)²/2σ²)+C', pt: 'Gaussiana: A*exp(-(x-x0)²/2σ²)+C' },
+    'Cilindro coaxial (cuba)': { en: 'Coaxial cylinder (tank)', pt: 'Cilindro coaxial (cuba)' },
+    'Placas paralelas': { en: 'Parallel plates', pt: 'Placas paralelas' },
+    '— Personalizada —': { en: '— Custom —', pt: '— Personalizada —' },
+    'Sesiones': { en: 'Sessions', pt: 'Sessões' },
+    '— elegir sesión —': { en: '— choose session —', pt: '— escolher sessão —' },
+    '— sin sesiones guardadas —': { en: '— no saved sessions —', pt: '— sem sessões salvas —' },
+    'Cargar': { en: 'Load', pt: 'Carregar' },
+    'Guardar como…': { en: 'Save as…', pt: 'Salvar como…' },
+    'Renombrar': { en: 'Rename', pt: 'Renomear' },
+    'Eliminar': { en: 'Delete', pt: 'Excluir' },
+    'Borrar': { en: 'Clear', pt: 'Apagar' },
+    'Descartar': { en: 'Discard', pt: 'Descartar' },
+    'Restaurar': { en: 'Restore', pt: 'Restaurar' },
+    'Importar CSV': { en: 'Import CSV', pt: 'Importar CSV' },
+    'Exportar lista CSV': { en: 'Export list CSV', pt: 'Exportar lista CSV' },
+    'Exportar matriz CSV': { en: 'Export matrix CSV', pt: 'Exportar matriz CSV' },
+    'Datos (CSV)': { en: 'Data (CSV)', pt: 'Dados (CSV)' },
+    'CÓDIGO MAKECODE PARA TU MICRO:BIT': { en: 'MAKECODE CODE FOR YOUR MICRO:BIT', pt: 'CÓDIGO MAKECODE PARA SEU MICRO:BIT' },
+    'Código para la micro:bit': { en: 'Code for the micro:bit', pt: 'Código para o micro:bit' },
+    'Copiar código': { en: 'Copy code', pt: 'Copiar código' },
+    'Abrir MakeCode ↗': { en: 'Open MakeCode ↗', pt: 'Abrir MakeCode ↗' },
+    'Necesitás conexión a internet la primera vez para cachear la librería.': { en: 'You need an internet connection the first time to cache the library.', pt: 'Você precisa de conexão à internet na primeira vez para armazenar a biblioteca em cache.' },
+    'Plotly no se cargó': { en: 'Plotly did not load', pt: 'O Plotly não carregou' },
+    '● Conectado': { en: '● Connected', pt: '● Conectado' },
+    '○ Sin conexión': { en: '○ Not connected', pt: '○ Sem conexão' },
+    '● Iniciar captura': { en: '● Start capture', pt: '● Iniciar captura' },
+    'media:': { en: 'mean:', pt: 'média:' },
+    'max:': { en: 'max:', pt: 'máx:' },
+    'min:': { en: 'min:', pt: 'mín:' },
+    'convergió': { en: 'converged', pt: 'convergiu' },
+    'no convergió': { en: 'did not converge', pt: 'não convergiu' },
+    '(fijo)': { en: '(fixed)', pt: '(fixo)' },
+    '(error indeterminado)': { en: '(undetermined error)', pt: '(erro indeterminado)' },
+    '(vacío = borrar)': { en: '(empty = clear)', pt: '(vazio = apagar)' },
+
+    // ---------- MAPEO · toasts (no interpolados) ----------
+    'Atención: no hay conexión activa con la micro:bit': { en: 'Warning: no active connection with the micro:bit', pt: 'Atenção: não há conexão ativa com o micro:bit' },
+    'Autosave restaurado': { en: 'Autosave restored', pt: 'Salvamento automático restaurado' },
+    'Botón BLE no disponible en este navegador': { en: 'BLE button not available in this browser', pt: 'Botão BLE não disponível neste navegador' },
+    'Botón USB no disponible en este navegador': { en: 'USB button not available in this browser', pt: 'Botão USB não disponível neste navegador' },
+    'Código copiado al portapapeles': { en: 'Code copied to clipboard', pt: 'Código copiado para a área de transferência' },
+    'Definí al menos un parámetro': { en: 'Define at least one parameter', pt: 'Defina ao menos um parâmetro' },
+    'Desconectado': { en: 'Disconnected', pt: 'Desconectado' },
+    'Elegí una sesión primero': { en: 'Choose a session first', pt: 'Escolha uma sessão primeiro' },
+    'Error al desconectar': { en: 'Error disconnecting', pt: 'Erro ao desconectar' },
+    'Error al eliminar': { en: 'Error deleting', pt: 'Erro ao excluir' },
+    'Error al exportar': { en: 'Error exporting', pt: 'Erro ao exportar' },
+    'Error al guardar': { en: 'Error saving', pt: 'Erro ao salvar' },
+    'Error al leer el archivo': { en: 'Error reading the file', pt: 'Erro ao ler o arquivo' },
+    'Error al leer sesión': { en: 'Error reading session', pt: 'Erro ao ler sessão' },
+    'Error al renombrar': { en: 'Error renaming', pt: 'Erro ao renomear' },
+    'Expresión inválida': { en: 'Invalid expression', pt: 'Expressão inválida' },
+    'Generá un corte primero': { en: 'Generate a cut first', pt: 'Gere um corte primeiro' },
+    'Generá una grilla primero': { en: 'Generate a grid first', pt: 'Gere uma grade primeiro' },
+    'Ingresá un offset numérico': { en: 'Enter a numeric offset', pt: 'Insira um deslocamento numérico' },
+    'Marcá al menos un parámetro como ajustable': { en: 'Mark at least one parameter as adjustable', pt: 'Marque ao menos um parâmetro como ajustável' },
+    'Nada que guardar': { en: 'Nothing to save', pt: 'Nada para salvar' },
+    'Necesitás al menos 3 puntos para visualizar': { en: 'You need at least 3 points to visualize', pt: 'Você precisa de ao menos 3 pontos para visualizar' },
+    'Necesitás al menos 4 puntos medidos para análisis profesional': { en: 'You need at least 4 measured points for professional analysis', pt: 'Você precisa de ao menos 4 pontos medidos para análise profissional' },
+    'No hay huecos para rellenar': { en: 'There are no gaps to fill', pt: 'Não há lacunas para preencher' },
+    'No hay puntos medidos': { en: 'There are no measured points', pt: 'Não há pontos medidos' },
+    'No hay puntos medidos para interpolar': { en: 'There are no measured points to interpolate', pt: 'Não há pontos medidos para interpolar' },
+    'No se pudo copiar — seleccioná manualmente': { en: 'Could not copy — select manually', pt: 'Não foi possível copiar — selecione manualmente' },
+    'No se pudo interpolar': { en: 'Could not interpolate', pt: 'Não foi possível interpolar' },
+    'No se pudo interpolar (grilla muy chica)': { en: 'Could not interpolate (grid too small)', pt: 'Não foi possível interpolar (grade muito pequena)' },
+    'Pocos puntos válidos para ajustar': { en: 'Too few valid points to fit', pt: 'Poucos pontos válidos para ajustar' },
+    'Seleccioná un punto antes de capturar': { en: 'Select a point before capturing', pt: 'Selecione um ponto antes de capturar' },
+    'Sesión de versión incompatible': { en: 'Incompatible version session', pt: 'Sessão de versão incompatível' },
+    'Sin datos válidos para visualizar': { en: 'No valid data to visualize', pt: 'Sem dados válidos para visualizar' },
+    'Sin espacio para autosave. Borrá sesiones viejas.': { en: 'No space for autosave. Delete old sessions.', pt: 'Sem espaço para salvamento automático. Apague sessões antigas.' },
+    'Sin espacio. Borrá sesiones viejas.': { en: 'No space. Delete old sessions.', pt: 'Sem espaço. Apague sessões antigas.' },
+    'Tap ☰ arriba a la izquierda para editar el valor a mano': { en: 'Tap ☰ at the top left to edit the value by hand', pt: 'Toque em ☰ no canto superior esquerdo para editar o valor à mão' },
+    'Valor inválido': { en: 'Invalid value', pt: 'Valor inválido' },
+    'mathjs no se cargó. Recargá la página.': { en: 'mathjs did not load. Reload the page.', pt: 'O mathjs não carregou. Recarregue a página.' },
+    'Ingresá un offset numérico': { en: 'Enter a numeric offset', pt: 'Insira um deslocamento numérico' },
+    'Valor inválido': { en: 'Invalid value', pt: 'Valor inválido' }
+  };
+
+  // ---- Reglas para textos con números/nombres interpolados ----
+  // Plantillas con %n% (número) y %s% (texto libre); iguales en es/en/pt (mismo orden de grupos).
+  function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function tmplToRe(tmpl) {
+    var re = '^', last = 0, rx = /%([ns])%/g, m;
+    while ((m = rx.exec(tmpl))) { re += escRe(tmpl.slice(last, m.index)); re += (m[1] === 'n') ? '(\\d+(?:[.,]\\d+)?)' : '(.+?)'; last = m.index + m[0].length; }
+    re += escRe(tmpl.slice(last)) + '$';
+    return new RegExp(re);
+  }
+  function fillTmpl(tmpl, groups) { var i = 0; return tmpl.replace(/%[ns]%/g, function () { var v = groups[i++]; return v === undefined ? '' : v; }); }
+  var RULE_DEFS = [
+    { es: 'Gráfica %n%', en: 'Graph %n%', pt: 'Gráfico %n%' },
+    { es: 'Gráfica: %s%', en: 'Graph: %s%', pt: 'Gráfico: %s%' },
+    { es: 'Sección: %s%', en: 'Section: %s%', pt: 'Seção: %s%' },
+    { es: '%n% puntos', en: '%n% points', pt: '%n% pontos' },
+    { es: '%n% pts', en: '%n% pts', pt: '%n% pts' },
+    { es: '%n% tramos', en: '%n% segments', pt: '%n% trechos' },
+    { es: '%n% imágenes', en: '%n% images', pt: '%n% imagens' },
+    { es: '%n% imagen', en: '%n% image', pt: '%n% imagem' },
+    { es: '%n% fotos', en: '%n% photos', pt: '%n% fotos' },
+    { es: 'Tramo %n%', en: 'Segment %n%', pt: 'Trecho %n%' },
+    { es: 'filas %n%–%n%', en: 'rows %n%–%n%', pt: 'linhas %n%–%n%' },
+    { es: 'puntos %n%–%n%', en: 'points %n%–%n%', pt: 'pontos %n%–%n%' },
+    { es: 'Tiempo (%s%)', en: 'Time (%s%)', pt: 'Tempo (%s%)' },
+    { es: 'Tabla de datos (continuación)', en: 'Data table (continued)', pt: 'Tabela de dados (continuação)' },
+    { es: 'Unidad de tiempo: %s% · Total de puntos registrados: %n%.', en: 'Time unit: %s% · Total points recorded: %n%.', pt: 'Unidade de tempo: %s% · Total de pontos registrados: %n%.' },
+    { es: 'Mostrando %n% de %n% fotos.', en: 'Showing %n% of %n% photos.', pt: 'Mostrando %n% de %n% fotos.' },
+    { es: 'Experimento: «%s%»', en: 'Experiment: «%s%»', pt: 'Experimento: «%s%»' },
+    { es: 'convergió en %n% iteraciones', en: 'converged in %n% iterations', pt: 'convergiu em %n% iterações' },
+    { es: 'no convergió en %n% iteraciones', en: 'did not converge in %n% iterations', pt: 'não convergiu em %n% iterações' }
+  ];
+  var RULES = RULE_DEFS.map(function (d) { return { res: { es: tmplToRe(d.es), en: tmplToRe(d.en), pt: tmplToRe(d.pt) }, out: { es: d.es, en: d.en, pt: d.pt } }; });
+  function ruleT(text, lang) {
+    var t = norm(text);
+    for (var i = 0; i < RULES.length; i++) {
+      var r = RULES[i], langs = ['es', 'en', 'pt'];
+      for (var k = 0; k < langs.length; k++) {
+        var m = r.res[langs[k]].exec(t);
+        if (m) return fillTmpl(r.out[lang] || r.out.es, m.slice(1));
+      }
+    }
+    return null;
+  }
+
+  // ---- Motor de traducción por DOM ----
+  var canonOf = null;
+  function norm(s) { return (s == null ? '' : String(s)).replace(/\s+/g, ' ').trim(); }
+  function index() {
+    if (canonOf) return;
+    canonOf = Object.create(null);
+    for (var es in D) {
+      var e = D[es];
+      canonOf[norm(es)] = es;
+      if (e.en) canonOf[norm(e.en)] = es;
+      if (e.pt) canonOf[norm(e.pt)] = es;
+    }
+  }
+  function T(text, lang) {
+    index();
+    var canon = canonOf[norm(text)];
+    if (canon !== undefined) { if (lang === 'es') return canon; var e = D[canon]; return (e && e[lang]) || canon; }
+    return ruleT(text, lang);
+  }
+  var SKIP_TAGS = { TEXTAREA: 1, SCRIPT: 1, STYLE: 1, INPUT: 1, SELECT: 1 };
+  function skip(node) {
+    for (var a = node; a; a = a.parentElement) {
+      if (a.isContentEditable) return true;
+      if (SKIP_TAGS[a.tagName]) return true;
+      if (a.classList && (a.classList.contains('inf-rich') || a.classList.contains('rep-rich'))) return true;
+    }
+    return false;
+  }
+  var ATTRS = ['data-tip', 'placeholder', 'title', 'aria-label'];
+  function locAttrs(el, lang) {
+    for (var i = 0; i < ATTRS.length; i++) {
+      var a = ATTRS[i];
+      if (el.hasAttribute && el.hasAttribute(a)) {
+        var cur = el.getAttribute(a), v = T(cur, lang);
+        if (v != null && v !== cur) el.setAttribute(a, v);
+      }
+    }
+  }
+  function locTextNode(tn, lang) {
+    if (!tn.nodeValue || !tn.nodeValue.trim()) return;
+    if (skip(tn.parentElement)) return;
+    var v = T(tn.nodeValue, lang);
+    if (v == null) return;
+    var lead = (tn.nodeValue.match(/^\s*/) || [''])[0];
+    var trail = (tn.nodeValue.match(/\s*$/) || [''])[0];
+    var nv = lead + v + trail;
+    if (nv !== tn.nodeValue) tn.nodeValue = nv;
+  }
+  function locEl(el, lang) {
+    if (!el || el.nodeType !== 1) return;
+    locAttrs(el, lang);
+    var withAttr = el.querySelectorAll ? el.querySelectorAll('[data-tip],[placeholder],[title],[aria-label]') : [];
+    for (var k = 0; k < withAttr.length; k++) locAttrs(withAttr[k], lang);
+    var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    var nodes = [], n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    for (var m = 0; m < nodes.length; m++) locTextNode(nodes[m], lang);
+  }
+
+  var ROOT_IDS = ['informe-panel', 'mapeo-panel', 'inf-img-menu', 'inf-data-menu', 'inf-cite-menu',
+    'inf-eq-modal', 'inf-page-editor', 'inf-draw-modal', 'inf-drive-modal', 'session-menu',
+    'inf-toast', 'mapeo-toast'];
+  function curLang() { try { return (typeof currentLanguage !== 'undefined' && currentLanguage) || 'es'; } catch (e) { return 'es'; } }
+  function localizeAll(lang) {
+    lang = lang || curLang();
+    ROOT_IDS.forEach(function (id) { var r = document.getElementById(id); if (r) locEl(r, lang); });
+  }
+  function observe(root) {
+    if (!root || root._fbitObs) return; root._fbitObs = 1;
+    var mo = new MutationObserver(function (muts) {
+      var lang = curLang();
+      if (lang === 'es') return;
+      for (var i = 0; i < muts.length; i++) {
+        var mu = muts[i];
+        for (var j = 0; j < mu.addedNodes.length; j++) {
+          var nd = mu.addedNodes[j];
+          if (nd.nodeType === 1) locEl(nd, lang);
+          else if (nd.nodeType === 3) locTextNode(nd, lang);
+        }
+      }
+    });
+    mo.observe(root, { childList: true, subtree: true });
+  }
+  function setup() {
+    ROOT_IDS.forEach(function (id) { observe(document.getElementById(id)); });
+    localizeAll(curLang());
+  }
+  // Reinstalar observers si los paneles aparecen más tarde
+  function setupRetry() { setup(); }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupRetry);
+  else setupRetry();
+
+  // Enganchar el cambio de idioma existente
+  try {
+    if (typeof window.changeLanguage === 'function') {
+      var _cl = window.changeLanguage;
+      window.changeLanguage = function () {
+        var r = _cl.apply(this, arguments);
+        try { setup(); localizeAll(curLang()); } catch (e) {}
+        return r;
+      };
+    }
+  } catch (e) {}
+
+  // Traduce un fragmento HTML (para exportar informe en el idioma de la interfaz).
+  // No toca el texto del usuario (.rep-rich / .inf-rich / contenteditable).
+  function localizeHTML(html, lang) {
+    if (!html) return html;
+    lang = lang || curLang();
+    try { var box = document.createElement('div'); box.innerHTML = html; locEl(box, lang); return box.innerHTML; }
+    catch (e) { return html; }
+  }
+
+  window.FbitI18n = { localizeAll: localizeAll, T: T, localizeHTML: localizeHTML, lang: curLang };
+})();
+/* ===== INFORME + MAPEO I18N END ===== */
+
+    </script>
 </body>
 </html>
