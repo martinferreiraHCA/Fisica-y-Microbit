@@ -25375,7 +25375,35 @@ bluetooth.startIOPinService()</pre>
         m.appendChild(up);
         for (var i = 0; i < ng; i++) { if (st.charts && st.charts[i] && n > 0) { (function (idx) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '📈 Gráfica ' + (idx + 1); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(chartToDataURL(idx), (fn('computeGraphTitle') ? computeGraphTitle(idx) : ('Gráfica ' + (idx + 1)))); m.classList.remove('open'); }); m.appendChild(b); })(i); } }
         (I.devicePhotos || []).forEach(function (p, k) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '🖼 Imagen ' + (k + 1) + ((p.caption || '').trim() ? (' · ' + p.caption.slice(0, 26)) : ''); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(p.dataUrl, (p.caption || '').trim()); m.classList.remove('open'); }); m.appendChild(b); });
+        // Gráficas del panel MAPEO (Plotly) que estén renderizadas: se capturan como imagen.
+        mapeoPlots().forEach(function (mp) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = mp.label;
+          b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+          b.addEventListener('click', function () { m.classList.remove('open'); insertMapeoImage(mp.el, mp.caption); });
+          m.appendChild(b);
+        });
         closeMenus(); positionMenu(m, evt.currentTarget); m.classList.add('open');
+      }
+      // Devuelve las gráficas de MAPEO (Plotly) actualmente renderizadas en el DOM.
+      function mapeoPlots() {
+        if (!window.Plotly) return [];
+        var out = [];
+        var defs = [['mapeo-pro-plot', '📐 Mapeo · mapa del campo (actual)', 'Mapa del campo — Mapeo'],
+                    ['mapeo-1d-plot', '📐 Mapeo · corte 1D y ajuste (actual)', 'Corte 1D y ajuste — Mapeo']];
+        defs.forEach(function (d) {
+          var pe = document.getElementById(d[0]);
+          if (pe && pe.classList.contains('js-plotly-plot') && pe.data && pe.data.length) out.push({ el: pe, label: d[1], caption: d[2] });
+        });
+        return out;
+      }
+      function insertMapeoImage(plotEl, caption) {
+        if (!window.Plotly || !plotEl) { toast('Abrí MAPEO y generá la gráfica primero.'); return; }
+        toast('Capturando la gráfica de MAPEO…');
+        try {
+          window.Plotly.toImage(plotEl, { format: 'png', width: (plotEl.clientWidth || 900), height: (plotEl.clientHeight || 600), scale: 2 })
+            .then(function (url) { insertImageIntoDoc(url, caption); })
+            .catch(function () { toast('No se pudo capturar la gráfica de MAPEO.'); });
+        } catch (e) { toast('No se pudo capturar la gráfica de MAPEO.'); }
       }
       function insertCite(r) { var ed = I._focusEd || ensureFocusEd(); if (!ed) { toast('Creá una sección de texto para insertar la cita.'); return; } ed.focus(); restoreRange(); try { document.execCommand('insertHTML', false, citeInText(r) + ' '); } catch (e) {} onEditableInput(ed); }
       function insertImageIntoDoc(dataUrl, caption) {
