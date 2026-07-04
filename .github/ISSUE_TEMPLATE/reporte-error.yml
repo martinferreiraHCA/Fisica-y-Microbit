@@ -1,0 +1,39 @@
+name: 🐞 Reporte de error
+description: Algo no funciona como debería en fisicabit.com
+title: "[Error] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Gracias por reportar! Cuanto más detalle nos des, más rápido podemos arreglarlo.
+        Si venís desde el formulario de la página, los campos ya llegan completados: revisalos y tocá **Create**.
+        💡 Para agregar una captura de pantalla, **pegala con Ctrl+V** o arrastrala dentro de un cuadro de texto.
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: ¿Qué pasó?
+      description: Contá qué salió mal y qué esperabas que pasara.
+      placeholder: "Ej.: Al tocar CONECTAR por Bluetooth, la página se queda en RECONECTANDO y nunca conecta."
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducir
+      description: Lista de pasos para que podamos ver el mismo problema.
+      placeholder: |
+        1. Abrí la página
+        2. Toqué CONECTAR
+        3. ...
+  - type: textarea
+    id: capturas
+    attributes:
+      label: Capturas de pantalla
+      description: Pegá (Ctrl+V) o arrastrá acá la imagen. Ayuda muchísimo a entender el problema.
+  - type: textarea
+    id: info-tecnica
+    attributes:
+      label: Información técnica
+      description: Si venís del formulario de la página, esto ya viene completado. Si no, contanos navegador y sistema operativo.
+      render: text

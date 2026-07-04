@@ -1,0 +1,28 @@
+name: 💡 Sugerencia o consulta
+description: Una idea para mejorar la página, o una pregunta
+title: "[Sugerencia] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Gracias por escribirnos! Las sugerencias de docentes y estudiantes son las que hacen crecer la página.
+        💡 Si querés agregar una imagen o boceto, **pegalo con Ctrl+V** o arrastralo dentro de un cuadro de texto.
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Tu sugerencia o consulta
+      description: Contá tu idea o pregunta. Si es una mejora, contanos también para qué la usarías en clase.
+    validations:
+      required: true
+  - type: textarea
+    id: capturas
+    attributes:
+      label: Imágenes o bocetos (opcional)
+      description: Pegá (Ctrl+V) o arrastrá acá cualquier imagen que ayude a explicar la idea.
+  - type: textarea
+    id: info-tecnica
+    attributes:
+      label: Información técnica
+      description: Si venís del formulario de la página, esto ya viene completado. Podés dejarlo vacío.
+      render: text
