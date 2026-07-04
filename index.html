@@ -5987,6 +5987,172 @@ basic.forever(function () {
         </div>
     </div>
 
+    <!-- ========== SUGERENCIAS Y REPORTE DE ERRORES ========== -->
+    <style>
+        /* Botón flotante de feedback (abajo a la derecha, discreto) */
+        .fbk-fab {
+            position: fixed;
+            right: 14px;
+            bottom: 14px;
+            z-index: 800;
+            background: #111;
+            color: #fff;
+            border: 2px solid #111;
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            opacity: 0.85;
+        }
+        .fbk-fab:hover { opacity: 1; transform: translateY(-1px); }
+        @media (max-width: 768px) {
+            .fbk-fab { padding: 8px 11px; font-size: 11px; bottom: 10px; right: 10px; }
+        }
+
+        .fbk-modal-content { max-width: 640px; text-align: left; }
+        .fbk-field { margin: 10px 0; }
+        .fbk-field label { display: block; font-weight: 700; font-size: 12px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .fbk-field input[type="text"], .fbk-field textarea {
+            width: 100%;
+            box-sizing: border-box;
+            border: 2px solid #111;
+            padding: 8px;
+            font-family: inherit;
+            font-size: 13px;
+            background: #fff;
+        }
+        .fbk-field textarea { resize: vertical; min-height: 64px; }
+        .fbk-types { display: flex; gap: 8px; flex-wrap: wrap; }
+        .fbk-type-btn {
+            flex: 1;
+            min-width: 110px;
+            border: 2px solid #111;
+            background: #fff;
+            padding: 8px 6px;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .fbk-type-btn.active { background: #111; color: #fff; }
+        .fbk-shot-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .fbk-shot-preview { margin-top: 8px; display: none; }
+        .fbk-shot-preview img {
+            max-width: 100%;
+            max-height: 180px;
+            border: 2px solid #111;
+            display: block;
+        }
+        .fbk-hint { font-size: 11px; color: #555; margin: 6px 0; line-height: 1.5; }
+        .fbk-tech {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            background: #f5f5f5;
+            border: 1px solid #ccc;
+            padding: 8px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 120px;
+            overflow-y: auto;
+            margin: 6px 0 0;
+        }
+        .fbk-send-box { border: 2px solid #111; padding: 12px; margin-top: 14px; background: #fafafa; }
+        .fbk-send-box + .fbk-send-box { margin-top: 10px; }
+        .fbk-send-title { font-weight: 700; font-size: 13px; margin: 0 0 6px; }
+        .fbk-steps { margin: 6px 0 10px; padding-left: 18px; font-size: 12px; line-height: 1.7; color: #333; }
+        .fbk-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .fbk-ok { color: #1b7e2c; font-size: 12px; font-weight: 700; display: none; margin-top: 6px; }
+    </style>
+
+    <button class="fbk-fab" id="fbkFab" onclick="fbkOpen()" title="Enviar sugerencias o reportar errores">💬 SUGERENCIAS</button>
+
+    <div class="modal" id="fbkModal">
+        <div class="modal-content fbk-modal-content">
+            <div class="modal-header">💬 SUGERENCIAS Y REPORTE DE ERRORES</div>
+
+            <p class="fbk-hint" style="font-size:12px; color:#333;">¿Encontraste un error o tenés una idea para mejorar la página? Contanos: tu reporte queda registrado y nos ayuda a mejorar.</p>
+
+            <div class="fbk-field">
+                <label>Tipo de reporte</label>
+                <div class="fbk-types">
+                    <button type="button" class="fbk-type-btn active" id="fbkTypeBug" onclick="fbkSetType('bug')">🐞 Error</button>
+                    <button type="button" class="fbk-type-btn" id="fbkTypeIdea" onclick="fbkSetType('idea')">💡 Sugerencia</button>
+                    <button type="button" class="fbk-type-btn" id="fbkTypeOther" onclick="fbkSetType('otro')">❓ Consulta</button>
+                </div>
+            </div>
+
+            <div class="fbk-field">
+                <label for="fbkTitle">Título breve</label>
+                <input type="text" id="fbkTitle" maxlength="120" placeholder="Ej.: No se conecta por Bluetooth en Windows">
+            </div>
+
+            <div class="fbk-field">
+                <label for="fbkDesc" id="fbkDescLabel">¿Qué pasó?</label>
+                <textarea id="fbkDesc" rows="3" placeholder="Contá qué salió mal y qué esperabas que pasara."></textarea>
+            </div>
+
+            <div class="fbk-field" id="fbkStepsField">
+                <label for="fbkSteps">Pasos para reproducir el problema</label>
+                <textarea id="fbkSteps" rows="3" placeholder="1. Abrí la página&#10;2. Toqué CONECTAR&#10;3. ..."></textarea>
+            </div>
+
+            <div class="fbk-field">
+                <label>Captura de pantalla (opcional)</label>
+                <div class="fbk-shot-row">
+                    <button type="button" class="toolbar-btn" id="fbkShotBtn" onclick="fbkCaptureScreen()">📸 Capturar pantalla</button>
+                    <button type="button" class="toolbar-btn" onclick="document.getElementById('fbkShotFile').click()">📎 Adjuntar imagen</button>
+                    <input type="file" id="fbkShotFile" accept="image/*" style="display:none" onchange="fbkAttachFile(this)">
+                </div>
+                <div class="fbk-shot-preview" id="fbkShotPreview">
+                    <img id="fbkShotImg" alt="Captura de pantalla">
+                    <div class="fbk-shot-row" style="margin-top:6px;">
+                        <button type="button" class="toolbar-btn" onclick="fbkCopyShot()">📋 Copiar imagen</button>
+                        <button type="button" class="toolbar-btn" onclick="fbkDownloadShot()">⬇ Descargar PNG</button>
+                        <button type="button" class="toolbar-btn" onclick="fbkClearShot()">✕ Quitar</button>
+                    </div>
+                    <div class="fbk-ok" id="fbkShotOk">✓ Imagen copiada: pegala con Ctrl+V en el reporte de GitHub.</div>
+                </div>
+                <p class="fbk-hint">La imagen no viaja con el enlace: copiala y pegala (Ctrl+V) en el reporte de GitHub, o adjuntá el archivo descargado al correo.</p>
+            </div>
+
+            <div class="fbk-field">
+                <label>Información técnica que se incluye</label>
+                <pre class="fbk-tech" id="fbkTech"></pre>
+                <p class="fbk-hint">Estos datos del navegador ayudan a diagnosticar el problema. No incluyen tus mediciones ni datos personales.</p>
+            </div>
+
+            <div class="fbk-send-box">
+                <p class="fbk-send-title">Opción A — Reportar en GitHub (recomendado)</p>
+                <ol class="fbk-steps">
+                    <li>Necesitás una cuenta gratuita de GitHub (te la pide al abrir el enlace).</li>
+                    <li>El formulario se abre ya completado con lo que escribiste acá.</li>
+                    <li>Si copiaste una captura, pegala con Ctrl+V dentro del cuadro de texto.</li>
+                    <li>Tocá el botón verde «Create» para enviarlo.</li>
+                </ol>
+                <div class="fbk-actions">
+                    <button type="button" class="toolbar-btn primary" onclick="fbkSendGitHub()">🐙 Abrir reporte en GitHub ↗</button>
+                </div>
+                <p class="fbk-hint">El reporte queda registrado públicamente y podés seguir la respuesta y el estado del arreglo.</p>
+            </div>
+
+            <div class="fbk-send-box">
+                <p class="fbk-send-title">Opción B — Enviar por correo</p>
+                <div class="fbk-actions">
+                    <button type="button" class="toolbar-btn" onclick="fbkSendEmail()">✉️ Escribir a contactfisicasimple@gmail.com</button>
+                    <button type="button" class="toolbar-btn" onclick="fbkCopyReport()">📋 Copiar reporte</button>
+                </div>
+                <div class="fbk-ok" id="fbkCopyOk">✓ Reporte copiado al portapapeles.</div>
+                <p class="fbk-hint">Se abre tu programa de correo con el mensaje ya armado. Si tenés una captura, descargala y adjuntala al correo.</p>
+            </div>
+
+            <button class="toolbar-btn primary modal-close" onclick="fbkClose()">CERRAR</button>
+        </div>
+    </div>
+
     <footer id="footerContent" style="background: #f5f5f5; border-top: 2px solid #333; padding: 20px; text-align: center; font-size: 12px; margin-top: 20px;">
         <div id="footerInner" style="max-width: 800px; margin: 0 auto;">
             <p style="margin: 8px 0; font-weight: bold; font-size: 14px;">
@@ -5995,6 +6161,14 @@ basic.forever(function () {
             <p style="margin: 8px 0;">
                 Desarrollado por <strong>Martin Ferreira</strong> y <strong>Pablo Godoy</strong>
             </p>
+            <div id="contacto" style="margin: 12px auto; padding: 10px; border: 2px solid #333; background: #fff; max-width: 520px;">
+                <p style="margin: 4px 0; font-weight: bold;">💬 ¿Sugerencias o errores?</p>
+                <p style="margin: 4px 0;">
+                    <a href="#" onclick="fbkOpen(); return false;" style="color: #0066cc; font-weight: bold; text-decoration: none;">Abrir el formulario de reporte</a>
+                    &nbsp;·&nbsp;
+                    <a href="mailto:contactfisicasimple@gmail.com" style="color: #0066cc; text-decoration: none;">contactfisicasimple@gmail.com</a>
+                </p>
+            </div>
             <p style="margin: 8px 0;">
                 <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="license"
                    style="color: #0066cc; text-decoration: none; font-weight: bold;">
@@ -6187,6 +6361,8 @@ basic.forever(function () {
                 // Footer
                 footerTitle: 'Sistema de Captura y Análisis de Datos - micro:bit',
                 developedBy: 'Desarrollado por',
+                fbkFooterTitle: '💬 ¿Sugerencias o errores?',
+                fbkFooterLink: 'Abrir el formulario de reporte',
                 licenseCC: 'Licencia Creative Commons BY-SA 4.0',
                 licenseText: 'Esta obra está bajo una Licencia Creative Commons Atribución-CompartirIgual 4.0 Internacional.',
                 licenseText2: 'Eres libre de compartir y adaptar este material, siempre que des crédito a los autores originales y distribuyas tus contribuciones bajo la misma licencia.',
@@ -6549,6 +6725,8 @@ basic.forever(function () {
                 // Footer
                 footerTitle: 'Data Capture and Analysis System - micro:bit',
                 developedBy: 'Developed by',
+                fbkFooterTitle: '💬 Suggestions or bugs?',
+                fbkFooterLink: 'Open the report form',
                 licenseCC: 'Creative Commons BY-SA 4.0 License',
                 licenseText: 'This work is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License.',
                 licenseText2: 'You are free to share and adapt this material, as long as you give credit to the original authors and distribute your contributions under the same license.',
@@ -6911,6 +7089,8 @@ basic.forever(function () {
                 // Rodapé
                 footerTitle: 'Sistema de Captura e Análise de Dados - micro:bit',
                 developedBy: 'Desenvolvido por',
+                fbkFooterTitle: '💬 Sugestões ou erros?',
+                fbkFooterLink: 'Abrir o formulário de relato',
                 licenseCC: 'Licença Creative Commons BY-SA 4.0',
                 licenseText: 'Esta obra está sob uma Licença Creative Commons Atribuição-CompartilhaIgual 4.0 Internacional.',
                 licenseText2: 'Você é livre para compartilhar e adaptar este material, desde que dê crédito aos autores originais e distribua suas contribuições sob a mesma licença.',
@@ -7154,6 +7334,14 @@ basic.forever(function () {
                 <p style="margin: 8px 0;">
                     ${t.developedBy} <strong>Martin Ferreira</strong> ${lang === 'en' ? 'and' : lang === 'pt' ? 'e' : 'y'} <strong>Pablo Godoy</strong>
                 </p>
+                <div id="contacto" style="margin: 12px auto; padding: 10px; border: 2px solid #333; background: #fff; max-width: 520px;">
+                    <p style="margin: 4px 0; font-weight: bold;">${t.fbkFooterTitle}</p>
+                    <p style="margin: 4px 0;">
+                        <a href="#" onclick="fbkOpen(); return false;" style="color: #0066cc; font-weight: bold; text-decoration: none;">${t.fbkFooterLink}</a>
+                        &nbsp;·&nbsp;
+                        <a href="mailto:contactfisicasimple@gmail.com" style="color: #0066cc; text-decoration: none;">contactfisicasimple@gmail.com</a>
+                    </p>
+                </div>
                 <p style="margin: 8px 0;">
                     <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="license"
                        style="color: #0066cc; text-decoration: none; font-weight: bold;">
@@ -26979,6 +27167,236 @@ bluetooth.startIOPinService()</pre>
     })();
     </script>
     <!-- ===== INFORME PANEL END ===== -->
+
+    <!-- ===== SUGERENCIAS Y REPORTE DE ERRORES (feedback) ===== -->
+    <script>
+    (function () {
+        'use strict';
+        // Reportes: issue pre-completado en GitHub (queda documentado en el repositorio)
+        // o correo pre-armado a contactfisicasimple@gmail.com. La captura de pantalla se
+        // copia/descarga localmente porque ni el enlace ni el mailto pueden llevar adjuntos.
+        var FBK_REPO = 'https://github.com/martinferreiraHCA/Fisica-y-Microbit';
+        var FBK_EMAIL = 'contactfisicasimple@gmail.com';
+        var fbkType = 'bug';
+        var fbkShotBlob = null;
+        var fbkShotUrl = null;
+
+        function $id(x) { return document.getElementById(x); }
+        function fbkTrack(action) { try { if (typeof window.track === 'function') window.track(action, 'feedback'); } catch (e) {} }
+
+        function fbkLang() {
+            try { return (typeof currentLanguage !== 'undefined' && currentLanguage) || 'es'; } catch (e) { return 'es'; }
+        }
+
+        function fbkTechInfo() {
+            var d = new Date();
+            var lines = [
+                'Fecha: ' + d.toLocaleString(),
+                'URL: ' + location.href,
+                'Idioma interfaz: ' + fbkLang() + ' / sistema: ' + (navigator.language || '?'),
+                'Navegador: ' + navigator.userAgent,
+                'Pantalla: ' + screen.width + 'x' + screen.height + ' (ventana ' + window.innerWidth + 'x' + window.innerHeight + ', dpr ' + (window.devicePixelRatio || 1) + ')',
+                'Táctil: ' + (('ontouchstart' in window) ? 'sí' : 'no') + ' · Online: ' + (navigator.onLine ? 'sí' : 'no'),
+                'Web Serial: ' + (('serial' in navigator) ? 'sí' : 'no') + ' · Web Bluetooth: ' + (('bluetooth' in navigator) ? 'sí' : 'no')
+            ];
+            return lines.join('\n');
+        }
+
+        window.fbkOpen = function () {
+            $id('fbkTech').textContent = fbkTechInfo();
+            $id('fbkModal').classList.add('active');
+            // Capturar pantalla no está disponible en todos los navegadores (p. ej. móviles)
+            if (!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) {
+                $id('fbkShotBtn').style.display = 'none';
+            }
+            fbkTrack('feedback_abrir');
+        };
+
+        window.fbkClose = function () {
+            $id('fbkModal').classList.remove('active');
+        };
+
+        window.fbkSetType = function (t) {
+            fbkType = t;
+            $id('fbkTypeBug').classList.toggle('active', t === 'bug');
+            $id('fbkTypeIdea').classList.toggle('active', t === 'idea');
+            $id('fbkTypeOther').classList.toggle('active', t === 'otro');
+            $id('fbkStepsField').style.display = (t === 'bug') ? '' : 'none';
+            var descLabel = $id('fbkDescLabel'), desc = $id('fbkDesc');
+            if (t === 'bug') {
+                descLabel.textContent = '¿Qué pasó?';
+                desc.placeholder = 'Contá qué salió mal y qué esperabas que pasara.';
+            } else if (t === 'idea') {
+                descLabel.textContent = 'Tu sugerencia';
+                desc.placeholder = 'Contá tu idea: ¿qué te gustaría que la página haga o mejore?';
+            } else {
+                descLabel.textContent = 'Tu consulta';
+                desc.placeholder = 'Escribí tu pregunta o comentario.';
+            }
+            try { if (window.FbitI18n && fbkLang() !== 'es') window.FbitI18n.localizeAll(fbkLang()); } catch (e) {}
+        };
+
+        // --- Captura de pantalla ---
+        function fbkSetShot(blob) {
+            fbkClearShot();
+            fbkShotBlob = blob;
+            fbkShotUrl = URL.createObjectURL(blob);
+            $id('fbkShotImg').src = fbkShotUrl;
+            $id('fbkShotPreview').style.display = 'block';
+        }
+
+        window.fbkClearShot = function () {
+            if (fbkShotUrl) { try { URL.revokeObjectURL(fbkShotUrl); } catch (e) {} }
+            fbkShotBlob = null; fbkShotUrl = null;
+            $id('fbkShotImg').removeAttribute('src');
+            $id('fbkShotPreview').style.display = 'none';
+            $id('fbkShotOk').style.display = 'none';
+            $id('fbkShotFile').value = '';
+        };
+
+        window.fbkCaptureScreen = function () {
+            var modal = $id('fbkModal');
+            // Ocultar el modal para que la captura muestre la página, no el formulario
+            modal.style.visibility = 'hidden';
+            navigator.mediaDevices.getDisplayMedia({ video: { preferCurrentTab: true }, preferCurrentTab: true })
+                .then(function (stream) {
+                    var video = document.createElement('video');
+                    video.srcObject = stream;
+                    video.muted = true;
+                    return video.play().then(function () {
+                        return new Promise(function (res) { setTimeout(res, 400); });
+                    }).then(function () {
+                        var canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        canvas.getContext('2d').drawImage(video, 0, 0);
+                        stream.getTracks().forEach(function (t) { t.stop(); });
+                        return new Promise(function (res, rej) {
+                            canvas.toBlob(function (b) { b ? res(b) : rej(new Error('sin blob')); }, 'image/png');
+                        });
+                    });
+                })
+                .then(function (blob) {
+                    fbkSetShot(blob);
+                    fbkTrack('feedback_captura');
+                })
+                .catch(function () { /* usuario canceló o no soportado */ })
+                .then(function () { modal.style.visibility = ''; });
+        };
+
+        window.fbkAttachFile = function (input) {
+            var f = input.files && input.files[0];
+            if (f) { fbkSetShot(f); fbkTrack('feedback_adjuntar'); }
+        };
+
+        window.fbkCopyShot = function () {
+            if (!fbkShotBlob) return;
+            var ok = $id('fbkShotOk');
+            if (navigator.clipboard && window.ClipboardItem) {
+                var item = {}; item[fbkShotBlob.type || 'image/png'] = fbkShotBlob;
+                navigator.clipboard.write([new ClipboardItem(item)])
+                    .then(function () { ok.style.display = 'block'; })
+                    .catch(function () { window.fbkDownloadShot(); });
+            } else {
+                // Sin API de portapapeles para imágenes: descargar como alternativa
+                window.fbkDownloadShot();
+            }
+        };
+
+        window.fbkDownloadShot = function () {
+            if (!fbkShotBlob) return;
+            var d = new Date();
+            var pad = function (n) { return String(n).padStart(2, '0'); };
+            var name = 'fisicabit-captura-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.png';
+            var a = document.createElement('a');
+            a.href = fbkShotUrl;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        };
+
+        // --- Armado del reporte ---
+        function fbkTitlePrefix() {
+            return fbkType === 'bug' ? '[Error] ' : fbkType === 'idea' ? '[Sugerencia] ' : '[Consulta] ';
+        }
+
+        function fbkGetFields() {
+            return {
+                title: $id('fbkTitle').value.trim(),
+                desc: $id('fbkDesc').value.trim(),
+                steps: $id('fbkSteps').value.trim(),
+                tech: $id('fbkTech').textContent
+            };
+        }
+
+        function fbkReportText() {
+            var f = fbkGetFields();
+            var parts = [];
+            parts.push('Tipo: ' + (fbkType === 'bug' ? 'Error' : fbkType === 'idea' ? 'Sugerencia' : 'Consulta'));
+            if (f.title) parts.push('Título: ' + f.title);
+            if (f.desc) parts.push('\nDescripción:\n' + f.desc);
+            if (fbkType === 'bug' && f.steps) parts.push('\nPasos para reproducir:\n' + f.steps);
+            parts.push('\n--- Información técnica ---\n' + f.tech);
+            return parts.join('\n');
+        }
+
+        window.fbkSendGitHub = function () {
+            var f = fbkGetFields();
+            var p = new URLSearchParams();
+            if (fbkType === 'bug') {
+                p.set('template', 'reporte-error.yml');
+                if (f.steps) p.set('pasos', f.steps.slice(0, 1500));
+            } else {
+                p.set('template', 'sugerencia.yml');
+            }
+            p.set('title', fbkTitlePrefix() + (f.title || ''));
+            if (f.desc) p.set('descripcion', f.desc.slice(0, 3000));
+            p.set('info-tecnica', f.tech.slice(0, 1500));
+            window.open(FBK_REPO + '/issues/new?' + p.toString(), '_blank');
+            fbkTrack('feedback_github');
+        };
+
+        window.fbkSendEmail = function () {
+            var f = fbkGetFields();
+            var subject = '[FisicaBit] ' + fbkTitlePrefix() + (f.title || 'Reporte desde la web');
+            var body = fbkReportText() + '\n\n(Si descargaste una captura de pantalla, adjuntala a este correo.)';
+            // Los enlaces mailto muy largos fallan en algunos clientes: recortar con margen
+            location.href = 'mailto:' + FBK_EMAIL +
+                '?subject=' + encodeURIComponent(subject) +
+                '&body=' + encodeURIComponent(body.slice(0, 1600));
+            fbkTrack('feedback_email');
+        };
+
+        window.fbkCopyReport = function () {
+            var text = fbkReportText();
+            var done = function () { $id('fbkCopyOk').style.display = 'block'; };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(done).catch(function () { fbkCopyFallback(text, done); });
+            } else {
+                fbkCopyFallback(text, done);
+            }
+            fbkTrack('feedback_copiar');
+        };
+
+        function fbkCopyFallback(text, done) {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); done(); } catch (e) {}
+            ta.remove();
+        }
+
+        // Cerrar al clickear el fondo oscuro
+        document.addEventListener('DOMContentLoaded', function () {
+            var m = $id('fbkModal');
+            if (m) m.addEventListener('click', function (ev) { if (ev.target === m) window.fbkClose(); });
+        });
+    })();
+    </script>
+
     <script>
 /* ===== INFORME + MAPEO I18N START ===== */
 /* Traducción de los paneles INFORME y MAPEO (EN/PT) sin tocar su lógica:
@@ -27456,7 +27874,49 @@ bluetooth.startIOPinService()</pre>
     'Valor inválido': { en: 'Invalid value', pt: 'Valor inválido' },
     'mathjs no se cargó. Recargá la página.': { en: 'mathjs did not load. Reload the page.', pt: 'O mathjs não carregou. Recarregue a página.' },
     'Ingresá un offset numérico': { en: 'Enter a numeric offset', pt: 'Insira um deslocamento numérico' },
-    'Valor inválido': { en: 'Invalid value', pt: 'Valor inválido' }
+    'Valor inválido': { en: 'Invalid value', pt: 'Valor inválido' },
+
+    // ---------- SUGERENCIAS Y REPORTE DE ERRORES ----------
+    '💬 SUGERENCIAS': { en: '💬 FEEDBACK', pt: '💬 SUGESTÕES' },
+    'Enviar sugerencias o reportar errores': { en: 'Send suggestions or report bugs', pt: 'Enviar sugestões ou relatar erros' },
+    '💬 SUGERENCIAS Y REPORTE DE ERRORES': { en: '💬 FEEDBACK AND BUG REPORTS', pt: '💬 SUGESTÕES E RELATO DE ERROS' },
+    '¿Encontraste un error o tenés una idea para mejorar la página? Contanos: tu reporte queda registrado y nos ayuda a mejorar.': { en: 'Found a bug or have an idea to improve the page? Tell us: your report is recorded and helps us improve.', pt: 'Encontrou um erro ou tem uma ideia para melhorar a página? Conte para nós: seu relato fica registrado e nos ajuda a melhorar.' },
+    'Tipo de reporte': { en: 'Report type', pt: 'Tipo de relato' },
+    '🐞 Error': { en: '🐞 Bug', pt: '🐞 Erro' },
+    '💡 Sugerencia': { en: '💡 Suggestion', pt: '💡 Sugestão' },
+    '❓ Consulta': { en: '❓ Question', pt: '❓ Pergunta' },
+    'Título breve': { en: 'Short title', pt: 'Título breve' },
+    'Ej.: No se conecta por Bluetooth en Windows': { en: 'E.g.: Bluetooth does not connect on Windows', pt: 'Ex.: Não conecta por Bluetooth no Windows' },
+    '¿Qué pasó?': { en: 'What happened?', pt: 'O que aconteceu?' },
+    'Contá qué salió mal y qué esperabas que pasara.': { en: 'Tell us what went wrong and what you expected to happen.', pt: 'Conte o que deu errado e o que você esperava que acontecesse.' },
+    'Tu sugerencia': { en: 'Your suggestion', pt: 'Sua sugestão' },
+    'Contá tu idea: ¿qué te gustaría que la página haga o mejore?': { en: 'Tell us your idea: what would you like the page to do or improve?', pt: 'Conte sua ideia: o que você gostaria que a página fizesse ou melhorasse?' },
+    'Tu consulta': { en: 'Your question', pt: 'Sua pergunta' },
+    'Escribí tu pregunta o comentario.': { en: 'Write your question or comment.', pt: 'Escreva sua pergunta ou comentário.' },
+    'Pasos para reproducir el problema': { en: 'Steps to reproduce the problem', pt: 'Passos para reproduzir o problema' },
+    'Captura de pantalla (opcional)': { en: 'Screenshot (optional)', pt: 'Captura de tela (opcional)' },
+    '📸 Capturar pantalla': { en: '📸 Capture screen', pt: '📸 Capturar tela' },
+    '📎 Adjuntar imagen': { en: '📎 Attach image', pt: '📎 Anexar imagem' },
+    '📋 Copiar imagen': { en: '📋 Copy image', pt: '📋 Copiar imagem' },
+    '⬇ Descargar PNG': { en: '⬇ Download PNG', pt: '⬇ Baixar PNG' },
+    '✕ Quitar': { en: '✕ Remove', pt: '✕ Remover' },
+    '✓ Imagen copiada: pegala con Ctrl+V en el reporte de GitHub.': { en: '✓ Image copied: paste it with Ctrl+V into the GitHub report.', pt: '✓ Imagem copiada: cole com Ctrl+V no relato do GitHub.' },
+    'La imagen no viaja con el enlace: copiala y pegala (Ctrl+V) en el reporte de GitHub, o adjuntá el archivo descargado al correo.': { en: 'The image does not travel with the link: copy and paste it (Ctrl+V) into the GitHub report, or attach the downloaded file to the email.', pt: 'A imagem não viaja com o link: copie e cole (Ctrl+V) no relato do GitHub, ou anexe o arquivo baixado ao e-mail.' },
+    'Información técnica que se incluye': { en: 'Technical information included', pt: 'Informações técnicas incluídas' },
+    'Estos datos del navegador ayudan a diagnosticar el problema. No incluyen tus mediciones ni datos personales.': { en: 'This browser data helps diagnose the problem. It does not include your measurements or personal data.', pt: 'Esses dados do navegador ajudam a diagnosticar o problema. Não incluem suas medições nem dados pessoais.' },
+    'Opción A — Reportar en GitHub (recomendado)': { en: 'Option A — Report on GitHub (recommended)', pt: 'Opção A — Relatar no GitHub (recomendado)' },
+    'Necesitás una cuenta gratuita de GitHub (te la pide al abrir el enlace).': { en: 'You need a free GitHub account (it asks for it when you open the link).', pt: 'Você precisa de uma conta gratuita do GitHub (será pedida ao abrir o link).' },
+    'El formulario se abre ya completado con lo que escribiste acá.': { en: 'The form opens already filled in with what you wrote here.', pt: 'O formulário abre já preenchido com o que você escreveu aqui.' },
+    'Si copiaste una captura, pegala con Ctrl+V dentro del cuadro de texto.': { en: 'If you copied a screenshot, paste it with Ctrl+V inside the text box.', pt: 'Se você copiou uma captura, cole com Ctrl+V dentro da caixa de texto.' },
+    'Tocá el botón verde «Create» para enviarlo.': { en: 'Press the green “Create” button to send it.', pt: 'Toque no botão verde «Create» para enviar.' },
+    '🐙 Abrir reporte en GitHub ↗': { en: '🐙 Open report on GitHub ↗', pt: '🐙 Abrir relato no GitHub ↗' },
+    'El reporte queda registrado públicamente y podés seguir la respuesta y el estado del arreglo.': { en: 'The report is publicly recorded and you can follow the reply and the status of the fix.', pt: 'O relato fica registrado publicamente e você pode acompanhar a resposta e o andamento da correção.' },
+    'Opción B — Enviar por correo': { en: 'Option B — Send by email', pt: 'Opção B — Enviar por e-mail' },
+    '✉️ Escribir a contactfisicasimple@gmail.com': { en: '✉️ Write to contactfisicasimple@gmail.com', pt: '✉️ Escrever para contactfisicasimple@gmail.com' },
+    '📋 Copiar reporte': { en: '📋 Copy report', pt: '📋 Copiar relato' },
+    '✓ Reporte copiado al portapapeles.': { en: '✓ Report copied to the clipboard.', pt: '✓ Relato copiado para a área de transferência.' },
+    'Se abre tu programa de correo con el mensaje ya armado. Si tenés una captura, descargala y adjuntala al correo.': { en: 'Your email program opens with the message already prepared. If you have a screenshot, download it and attach it to the email.', pt: 'Seu programa de e-mail abre com a mensagem já pronta. Se você tiver uma captura, baixe-a e anexe ao e-mail.' },
+    'Captura de pantalla': { en: 'Screenshot', pt: 'Captura de tela' }
   };
 
   // ---- Reglas para textos con números/nombres interpolados ----
@@ -27565,7 +28025,7 @@ bluetooth.startIOPinService()</pre>
 
   var ROOT_IDS = ['informe-panel', 'mapeo-panel', 'inf-img-menu', 'inf-data-menu', 'inf-cite-menu',
     'inf-eq-modal', 'inf-page-editor', 'inf-draw-modal', 'inf-drive-modal', 'session-menu',
-    'inf-toast', 'mapeo-toast'];
+    'inf-toast', 'mapeo-toast', 'fbkModal', 'fbkFab'];
   function curLang() { try { return (typeof currentLanguage !== 'undefined' && currentLanguage) || 'es'; } catch (e) { return 'es'; } }
   function localizeAll(lang) {
     lang = lang || curLang();
