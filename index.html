@@ -6351,6 +6351,8 @@ basic.forever(function () {
                 maximum: 'MÁXIMO',
                 stdDev: 'DESV. EST',
                 totalPoints: 'PUNTOS TOTALES',
+                statsSelectedTag: 'seleccionados',
+                statsNoSelection: 'No hay puntos seleccionados: se muestran todos los datos.',
                 // Título de gráfica
                 graphTitle: 'Gráfica:',
                 // Frecuencia de muestreo
@@ -6715,6 +6717,8 @@ basic.forever(function () {
                 maximum: 'MAXIMUM',
                 stdDev: 'STD. DEV',
                 totalPoints: 'TOTAL POINTS',
+                statsSelectedTag: 'selected',
+                statsNoSelection: 'No points selected: showing all data.',
                 // Graph title
                 graphTitle: 'Graph:',
                 // Sampling rate
@@ -7079,6 +7083,8 @@ basic.forever(function () {
                 maximum: 'MÁXIMO',
                 stdDev: 'DESV. PAD',
                 totalPoints: 'PONTOS TOTAIS',
+                statsSelectedTag: 'selecionados',
+                statsNoSelection: 'Não há pontos selecionados: mostrando todos os dados.',
                 // Título do gráfico
                 graphTitle: 'Gráfico:',
                 // Taxa de amostragem
@@ -17290,7 +17296,8 @@ bluetooth.startIOPinService()</pre>
             if (!container) return;
 
             const source = document.querySelector('input[name="statsSource"]:checked');
-            const useSelected = source && source.value === 'selected' && state.selectedPoints.size > 0;
+            const wantSelected = !!(source && source.value === 'selected');
+            const useSelected = wantSelected && state.selectedPoints.size > 0;
 
             const data = useSelected
                 ? state.rawData.filter(d => state.selectedPoints.has(d.id))
@@ -17302,19 +17309,56 @@ bluetooth.startIOPinService()</pre>
             }
 
             const t = translations[currentLanguage];
-            let html = '';
-            for (let i = 0; i < state.numVariables; i++) {
-                const values = data.map(d => d.values[i]);
+            const fmt = v => (typeof fmtNum === 'function' ? fmtNum(v) : v.toFixed(4));
+            const statsOf = values => {
                 const mean = values.reduce((a, b) => a + b, 0) / values.length;
                 const min = Math.min(...values);
                 const max = Math.max(...values);
                 const stdDev = Math.sqrt(values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length);
+                return { mean, min, max, stdDev };
+            };
 
-                html += `<strong>${state.variables[i].name}:</strong> `;
-                html += `${t.mean}=${mean.toFixed(4)}, ${t.minimum}=${min.toFixed(4)}, ${t.maximum}=${max.toFixed(4)}, σ=${stdDev.toFixed(4)}<br>`;
+            // Una fila por eje: primero el eje X (tiempo, en la unidad elegida) y
+            // luego cada variable, para leer el promedio de los puntos en ambos ejes.
+            const timeUnit = parseFloat(document.getElementById('timeUnit').value) || 1000;
+            const unitLabel = timeUnit === 1 ? 'ms' : timeUnit === 60000 ? 'min' : 's';
+            const rows = [{
+                name: (t.time || 'Tiempo') + ' (' + unitLabel + ')',
+                color: '#999',
+                s: statsOf(data.map(d => (d.time - state.timeZeroOffset) / timeUnit))
+            }];
+            for (let i = 0; i < state.numVariables; i++) {
+                rows.push({
+                    name: state.variables[i].name,
+                    color: state.variables[i].color || '#000',
+                    s: statsOf(data.map(d => d.values[i]))
+                });
             }
-            html += `<strong>${t.totalPoints}:</strong> ${data.length}`;
-            if (useSelected) html += ' (seleccionados)';
+
+            const th = 'padding:4px 6px; border-bottom:2px solid #111; text-align:right; white-space:nowrap; font-size:0.68rem;';
+            const td = 'padding:4px 6px; border-bottom:1px solid #ddd; text-align:right; white-space:nowrap;';
+            let html = '<div style="overflow-x:auto;"><table style="border-collapse:collapse; width:100%; background:#fff;">';
+            html += `<tr>
+                <th style="${th} text-align:left;"></th>
+                <th style="${th}">${t.mean}</th>
+                <th style="${th}">${t.minimum}</th>
+                <th style="${th}">${t.maximum}</th>
+                <th style="${th}" title="${_escHtml(t.stdDev || 'σ')}">σ</th>
+            </tr>`;
+            rows.forEach(r => {
+                html += `<tr>
+                    <td style="${td} text-align:left; font-weight:700;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${_escHtml(r.color)}; margin-right:5px; vertical-align:baseline;"></span>${_escHtml(r.name)}</td>
+                    <td style="${td} font-weight:700; background:#f7f7f7;">${fmt(r.s.mean)}</td>
+                    <td style="${td}">${fmt(r.s.min)}</td>
+                    <td style="${td}">${fmt(r.s.max)}</td>
+                    <td style="${td}">${fmt(r.s.stdDev)}</td>
+                </tr>`;
+            });
+            html += '</table></div>';
+            html += `<div style="margin-top:6px;"><strong>${t.totalPoints}:</strong> ${data.length}${useSelected ? ' (' + (t.statsSelectedTag || 'seleccionados') + ')' : ''}</div>`;
+            if (wantSelected && !useSelected) {
+                html += `<div style="margin-top:4px; color:#a15c00;">${t.statsNoSelection || 'No hay puntos seleccionados: se muestran todos los datos.'}</div>`;
+            }
             container.innerHTML = html;
         }
 
