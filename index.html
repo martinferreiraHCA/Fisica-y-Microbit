@@ -5729,6 +5729,10 @@ basic.forever(function () {
     <div class="modal" id="helpModal">
         <div class="modal-content help-modal">
             <div class="modal-header" id="helpModalTitle">TUTORIAL Y GUÍA DE USO</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; border:2px solid #111; padding:10px 12px; margin-bottom:14px; background:#fafafa;">
+                <span id="helpFbkText" style="font-size:12px;">¿Encontraste un error o tenés una idea para mejorar la página?</span>
+                <button type="button" class="toolbar-btn" id="helpFbkBtn" onclick="closeHelpModal(); fbkOpen();">SUGERENCIAS Y ERRORES</button>
+            </div>
             <div id="helpModalContent"></div>
             <button class="toolbar-btn primary modal-close" id="helpModalClose" onclick="closeHelpModal()">CERRAR</button>
         </div>
@@ -5989,30 +5993,6 @@ basic.forever(function () {
 
     <!-- ========== SUGERENCIAS Y REPORTE DE ERRORES ========== -->
     <style>
-        /* Botón flotante de feedback (abajo a la derecha, discreto) */
-        .fbk-fab {
-            position: fixed;
-            right: 14px;
-            bottom: 14px;
-            z-index: 800;
-            background: #111;
-            color: #fff;
-            border: 2px solid #111;
-            border-radius: 999px;
-            padding: 8px 14px;
-            font-family: inherit;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            opacity: 0.85;
-        }
-        .fbk-fab:hover { opacity: 1; transform: translateY(-1px); }
-        @media (max-width: 768px) {
-            .fbk-fab { padding: 8px 11px; font-size: 11px; bottom: 10px; right: 10px; }
-        }
-
         .fbk-modal-content { max-width: 640px; text-align: left; }
         .fbk-field { margin: 10px 0; }
         .fbk-field label { display: block; font-weight: 700; font-size: 12px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -6067,8 +6047,6 @@ basic.forever(function () {
         .fbk-adv { margin-top: 12px; border-top: 1px solid #ccc; padding-top: 8px; }
         .fbk-adv summary { cursor: pointer; font-weight: 700; font-size: 12px; color: #555; }
     </style>
-
-    <button class="fbk-fab" id="fbkFab" onclick="fbkOpen()" title="Enviar sugerencias o reportar errores">SUGERENCIAS</button>
 
     <div class="modal" id="fbkModal">
         <div class="modal-content fbk-modal-content">
@@ -7914,6 +7892,14 @@ basic.forever(function () {
                 'TUTORIAL E GUIA DE USO';
 
             document.getElementById('helpModalClose').textContent = t.help === 'HELP' ? 'CLOSE' : t.help === 'AJUDA' ? 'FECHAR' : 'CERRAR';
+
+            // Acceso a sugerencias y reporte de errores desde la ayuda
+            document.getElementById('helpFbkBtn').textContent =
+                lang === 'en' ? 'FEEDBACK AND BUGS' : lang === 'pt' ? 'SUGESTÕES E ERROS' : 'SUGERENCIAS Y ERRORES';
+            document.getElementById('helpFbkText').textContent =
+                lang === 'en' ? 'Found a bug or have an idea to improve the page?' :
+                lang === 'pt' ? 'Encontrou um erro ou tem uma ideia para melhorar a página?' :
+                '¿Encontraste un error o tenés una idea para mejorar la página?';
 
             // Generar contenido según idioma
             const content = lang === 'es' ? getHelpContentES() :
@@ -27858,8 +27844,6 @@ bluetooth.startIOPinService()</pre>
     'Valor inválido': { en: 'Invalid value', pt: 'Valor inválido' },
 
     // ---------- SUGERENCIAS Y REPORTE DE ERRORES ----------
-    'SUGERENCIAS': { en: 'FEEDBACK', pt: 'SUGESTÕES' },
-    'Enviar sugerencias o reportar errores': { en: 'Send suggestions or report bugs', pt: 'Enviar sugestões ou relatar erros' },
     'SUGERENCIAS Y ERRORES': { en: 'FEEDBACK AND BUGS', pt: 'SUGESTÕES E ERROS' },
     '¿Encontraste un error o tenés una idea para mejorar la página? Contanos.': { en: 'Found a bug or have an idea to improve the page? Tell us.', pt: 'Encontrou um erro ou tem uma ideia para melhorar a página? Conte para nós.' },
     'Tipo': { en: 'Type', pt: 'Tipo' },
@@ -27997,7 +27981,7 @@ bluetooth.startIOPinService()</pre>
 
   var ROOT_IDS = ['informe-panel', 'mapeo-panel', 'inf-img-menu', 'inf-data-menu', 'inf-cite-menu',
     'inf-eq-modal', 'inf-page-editor', 'inf-draw-modal', 'inf-drive-modal', 'session-menu',
-    'inf-toast', 'mapeo-toast', 'fbkModal', 'fbkFab'];
+    'inf-toast', 'mapeo-toast', 'fbkModal'];
   function curLang() { try { return (typeof currentLanguage !== 'undefined' && currentLanguage) || 'es'; } catch (e) { return 'es'; } }
   function localizeAll(lang) {
     lang = lang || curLang();
