@@ -1,4 +1,4 @@
-name: 💡 Sugerencia o consulta
+name: Sugerencia o consulta
 description: Una idea para mejorar la página, o una pregunta
 title: "[Sugerencia] "
 labels: ["enhancement"]
@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         ¡Gracias por escribirnos! Las sugerencias de docentes y estudiantes son las que hacen crecer la página.
-        💡 Si querés agregar una imagen o boceto, **pegalo con Ctrl+V** o arrastralo dentro de un cuadro de texto.
+        Si querés agregar una imagen o boceto, **pegalo con Ctrl+V** o arrastralo dentro de un cuadro de texto.
   - type: textarea
     id: descripcion
     attributes:

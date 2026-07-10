@@ -1,4 +1,4 @@
-name: 🐞 Reporte de error
+name: Reporte de error
 description: Algo no funciona como debería en fisicabit.com
 title: "[Error] "
 labels: ["bug"]
@@ -8,7 +8,7 @@ body:
       value: |
         ¡Gracias por reportar! Cuanto más detalle nos des, más rápido podemos arreglarlo.
         Si venís desde el formulario de la página, los campos ya llegan completados: revisalos y tocá **Create**.
-        💡 Para agregar una captura de pantalla, **pegala con Ctrl+V** o arrastrala dentro de un cuadro de texto.
+        Para agregar una captura de pantalla, **pegala con Ctrl+V** o arrastrala dentro de un cuadro de texto.
   - type: textarea
     id: descripcion
     attributes:
