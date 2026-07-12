@@ -27180,6 +27180,267 @@ bluetooth.startIOPinService()</pre>
     </script>
     <!-- ===== INFORME PANEL END ===== -->
 
+    <!-- ===== DIAGNÓSTICO MODO CLASE (oculto: abrir con fisicabit.com/#test-clase) ===== -->
+    <script>
+    (function () {
+        'use strict';
+        // Prueba decisiva para el futuro "modo clase": determina si, con el permiso
+        // drive.file que ya usa la página, la cuenta de un estudiante puede escribir
+        // en una carpeta creada y compartida por el docente (PLAN A), o si hay que
+        // compartir archivo por archivo hacia el correo del docente (PLAN B).
+        // No aparece nunca en el uso normal: solo con #test-clase en la URL.
+        if (window.location.hash.indexOf('test-clase') === -1) return;
+
+        var CID = '612938995085-8e54g3228v4sia4af0jp0fqv5fu37ldh.apps.googleusercontent.com';
+        var SCOPE = 'https://www.googleapis.com/auth/drive.file';
+        var tok = null, tokenClient = null, myEmail = '(sin conectar)';
+
+        function ensureGis() {
+            if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve(true);
+            return new Promise(function (res) {
+                var s = document.createElement('script');
+                s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+                s.onload = function () { res(true); };
+                s.onerror = function () { res(false); };
+                document.head.appendChild(s);
+            });
+        }
+        function connect() {
+            return ensureGis().then(function (ok) {
+                if (!ok) { log('ERROR: no se pudo cargar Google Identity (¿sin internet?)'); return false; }
+                return new Promise(function (res) {
+                    if (!tokenClient) {
+                        tokenClient = google.accounts.oauth2.initTokenClient({
+                            client_id: CID, scope: SCOPE,
+                            callback: function (r) { tok = (r && r.access_token) || null; res(!!tok); },
+                            error_callback: function () { res(false); }
+                        });
+                    }
+                    tokenClient.requestAccessToken({ prompt: '' });
+                });
+            });
+        }
+        function api(path, opts) {
+            opts = opts || {}; opts.headers = opts.headers || {};
+            opts.headers['Authorization'] = 'Bearer ' + tok;
+            return fetch('https://www.googleapis.com/' + path, opts);
+        }
+        function jsonOrErr(r) {
+            return r.json().catch(function () { return {}; }).then(function (j) {
+                if (r.ok) return j;
+                var msg = (j && j.error && j.error.message) || ('HTTP ' + r.status);
+                var e = new Error(msg); e.status = r.status; throw e;
+            });
+        }
+        function createFileMultipart(meta, contentObj) {
+            var boundary = 'fbit' + Math.random().toString(36).slice(2);
+            var body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' +
+                JSON.stringify(meta) + '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' +
+                JSON.stringify(contentObj) + '\r\n--' + boundary + '--';
+            return api('upload/drive/v3/files?uploadType=multipart&fields=id,name', {
+                method: 'POST',
+                headers: { 'Content-Type': 'multipart/related; boundary=' + boundary },
+                body: body
+            }).then(jsonOrErr);
+        }
+
+        // ---- UI ----
+        var box = document.createElement('div');
+        box.style.cssText = 'position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.85); overflow:auto; padding:20px; font-family:Arial,sans-serif;';
+        box.innerHTML =
+            '<div style="max-width:760px; margin:0 auto; background:#fff; border:3px solid #000; padding:20px;">' +
+            '<h2 style="margin:0 0 4px; font-size:1.1rem;">DIAGNÓSTICO DEL MODO CLASE (prueba temporal)</h2>' +
+            '<p style="font-size:12px; color:#444; margin:4px 0 12px;">Hacé esta prueba dos veces: primero como DOCENTE con tu cuenta, después como ESTUDIANTE con otra cuenta (otro navegador o ventana de incógnito). Al final tocá "Copiar resultados" y pasale el texto a Claude.</p>' +
+            '<div style="border:2px solid #000; padding:10px; margin-bottom:10px;">' +
+            '  <b style="font-size:13px;">1 · Conectar</b><br>' +
+            '  <button id="tcConnect" style="margin-top:6px; padding:6px 12px; font-weight:bold; cursor:pointer;">Conectar con Google</button>' +
+            '  <span id="tcWho" style="font-size:12px; margin-left:8px; color:#333;">(sin conectar)</span>' +
+            '</div>' +
+            '<div style="border:2px solid #000; padding:10px; margin-bottom:10px;">' +
+            '  <b style="font-size:13px;">2A · Si sos el DOCENTE</b><br>' +
+            '  <div style="font-size:12px; margin:6px 0;">Correo del estudiante (opcional, para compartirle la carpeta directo): <input id="tcStuMail" type="text" placeholder="estudiante@..." style="width:220px; padding:3px;"></div>' +
+            '  <button id="tcMkFolder" style="padding:6px 12px; cursor:pointer;">Crear carpeta de prueba y compartirla</button>' +
+            '  <button id="tcList" style="padding:6px 12px; cursor:pointer;">Ver contenido de la carpeta</button>' +
+            '  <button id="tcEdit" style="padding:6px 12px; cursor:pointer;">Editar el archivo del estudiante</button>' +
+            '  <button id="tcShared" style="padding:6px 12px; cursor:pointer;">Ver archivos compartidos conmigo (PLAN B)</button>' +
+            '  <button id="tcClean" style="padding:6px 12px; cursor:pointer;">Borrar carpeta de prueba</button>' +
+            '</div>' +
+            '<div style="border:2px solid #000; padding:10px; margin-bottom:10px;">' +
+            '  <b style="font-size:13px;">2B · Si sos el ESTUDIANTE</b><br>' +
+            '  <div style="font-size:12px; margin:6px 0;">Enlace o ID de la carpeta del docente: <input id="tcFolderIn" type="text" placeholder="pegá el enlace acá" style="width:300px; padding:3px;"></div>' +
+            '  <button id="tcPlanA" style="padding:6px 12px; cursor:pointer;">PLAN A: crear archivo en la carpeta del docente</button>' +
+            '  <button id="tcPlanARead" style="padding:6px 12px; cursor:pointer;">¿Puedo ver el contenido de la carpeta?</button>' +
+            '  <div style="font-size:12px; margin:6px 0;">Correo del docente: <input id="tcTeaMail" type="text" placeholder="docente@..." style="width:220px; padding:3px;"></div>' +
+            '  <button id="tcPlanB" style="padding:6px 12px; cursor:pointer;">PLAN B: crear archivo propio y compartirlo al docente</button>' +
+            '</div>' +
+            '<div style="border:2px solid #000; padding:10px;">' +
+            '  <b style="font-size:13px;">Resultados</b> <button id="tcCopy" style="padding:4px 10px; cursor:pointer;">Copiar resultados</button> <button id="tcClose" style="padding:4px 10px; cursor:pointer;">Cerrar diagnóstico</button>' +
+            '  <pre id="tcLog" style="font-family:monospace; font-size:11px; background:#f4f4f4; border:1px solid #ccc; padding:8px; margin:8px 0 0; white-space:pre-wrap; word-break:break-word; max-height:300px; overflow:auto;"></pre>' +
+            '</div></div>';
+        function mount() { document.body.appendChild(box); }
+        if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+
+        function $(id) { return box.querySelector('#' + id); }
+        function log(msg) {
+            var el = $('tcLog');
+            el.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
+            el.scrollTop = el.scrollHeight;
+        }
+        function need() { if (!tok) { log('Primero conectate con Google (paso 1).'); return true; } return false; }
+        function parseFolderId(v) {
+            v = (v || '').trim();
+            var m = v.match(/folders\/([A-Za-z0-9_-]{10,})/) || v.match(/^([A-Za-z0-9_-]{10,})$/);
+            return m ? m[1] : null;
+        }
+
+        $('tcClose').onclick = function () { box.remove(); };
+        $('tcCopy').onclick = function () {
+            var txt = 'DIAGNOSTICO MODO CLASE\nCuenta: ' + myEmail + '\nNavegador: ' + navigator.userAgent + '\n\n' + $('tcLog').textContent;
+            (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(txt) : Promise.reject())
+                .then(function () { log('Resultados copiados al portapapeles.'); })
+                .catch(function () { log('No se pudo copiar automáticamente: seleccioná el texto a mano.'); });
+        };
+
+        $('tcConnect').onclick = function () {
+            log('Conectando con Google...');
+            connect().then(function (ok) {
+                if (!ok) { log('ERROR: no se obtuvo el permiso de Google.'); return; }
+                api('drive/v3/about?fields=user(displayName,emailAddress)').then(jsonOrErr).then(function (j) {
+                    myEmail = (j.user && j.user.emailAddress) || '(desconocido)';
+                    $('tcWho').textContent = 'Conectado: ' + myEmail;
+                    log('OK conectado como ' + myEmail);
+                }).catch(function (e) { log('ERROR leyendo la cuenta: ' + e.message); });
+            });
+        };
+
+        // --- Docente ---
+        $('tcMkFolder').onclick = function () {
+            if (need()) return;
+            log('Creando carpeta de prueba...');
+            api('drive/v3/files?fields=id,name', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: 'fisicabit-test-clase', mimeType: 'application/vnd.google-apps.folder' })
+            }).then(jsonOrErr).then(function (f) {
+                log('OK carpeta creada. ID: ' + f.id);
+                log('Enlace para pasarle al estudiante: https://drive.google.com/drive/folders/' + f.id);
+                // Compartir: cualquiera con el enlace puede editar (lo realista para un aula)
+                return api('drive/v3/files/' + f.id + '/permissions', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: 'writer', type: 'anyone' })
+                }).then(jsonOrErr).then(function () {
+                    log('OK compartida como "cualquiera con el enlace puede editar".');
+                    var mail = $('tcStuMail').value.trim();
+                    if (!mail) return;
+                    return api('drive/v3/files/' + f.id + '/permissions?sendNotificationEmail=false', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ role: 'writer', type: 'user', emailAddress: mail })
+                    }).then(jsonOrErr).then(function () { log('OK compartida también con ' + mail + '.'); });
+                }).then(function () {
+                    try { localStorage.setItem('tcFolderId', f.id); } catch (e) {}
+                    log('>> Ahora abrí fisicabit.com/#test-clase con la cuenta del ESTUDIANTE y usá la sección 2B con ese enlace.');
+                });
+            }).catch(function (e) { log('ERROR creando/compartiendo carpeta: ' + e.message); });
+        };
+        function teacherFolderId() {
+            var v = null;
+            try { v = localStorage.getItem('tcFolderId'); } catch (e) {}
+            return v || parseFolderId($('tcFolderIn').value);
+        }
+        $('tcList').onclick = function () {
+            if (need()) return;
+            var fid = teacherFolderId();
+            if (!fid) { log('No tengo el ID de la carpeta (creála primero en esta cuenta).'); return; }
+            log('Listando contenido de la carpeta ' + fid + '...');
+            api("drive/v3/files?q='" + fid + "' in parents and trashed=false&fields=files(id,name,owners(emailAddress),modifiedTime)")
+                .then(jsonOrErr).then(function (j) {
+                    var fs = j.files || [];
+                    log('OK: veo ' + fs.length + ' archivo(s).');
+                    fs.forEach(function (f) { log('   - ' + f.name + ' | dueño: ' + ((f.owners && f.owners[0] && f.owners[0].emailAddress) || '?') + ' | ' + f.modifiedTime + ' | id:' + f.id); });
+                    if (fs.length) { try { localStorage.setItem('tcStuFileId', fs[0].id); } catch (e) {} }
+                }).catch(function (e) { log('ERROR listando: ' + e.message); });
+        };
+        $('tcEdit').onclick = function () {
+            if (need()) return;
+            var fid = null;
+            try { fid = localStorage.getItem('tcStuFileId'); } catch (e) {}
+            if (!fid) { log('Primero usá "Ver contenido" para ubicar el archivo del estudiante.'); return; }
+            log('Intentando editar (como docente) el archivo ' + fid + '...');
+            api('upload/drive/v3/files/' + fid + '?uploadType=media&fields=id,name', {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prueba: 'PLAN A', correccionDocente: 'editado por ' + myEmail + ' a las ' + new Date().toISOString() })
+            }).then(jsonOrErr).then(function (f) {
+                log('OK: pude EDITAR el archivo del estudiante (' + f.name + '). La corrección docente funciona.');
+            }).catch(function (e) { log('ERROR editando (' + (e.status || '?') + '): ' + e.message); });
+        };
+        $('tcShared').onclick = function () {
+            if (need()) return;
+            log('Buscando archivos de prueba compartidos conmigo (PLAN B)...');
+            api("drive/v3/files?q=sharedWithMe and trashed=false and name contains 'fisicabit-test'&fields=files(id,name,owners(emailAddress),modifiedTime)")
+                .then(jsonOrErr).then(function (j) {
+                    var fs = j.files || [];
+                    log('OK consulta hecha: veo ' + fs.length + ' archivo(s) compartidos conmigo.');
+                    fs.forEach(function (f) { log('   - ' + f.name + ' | dueño: ' + ((f.owners && f.owners[0] && f.owners[0].emailAddress) || '?') + ' | id:' + f.id); });
+                    if (!fs.length) log('   (si el estudiante ya corrió el PLAN B y acá no aparece nada, el PLAN B con drive.file NO alcanza)');
+                }).catch(function (e) { log('ERROR consultando compartidos: ' + e.message); });
+        };
+        $('tcClean').onclick = function () {
+            if (need()) return;
+            var fid = teacherFolderId();
+            if (!fid) { log('No tengo ID de carpeta para borrar.'); return; }
+            api('drive/v3/files/' + fid, { method: 'DELETE' }).then(function (r) {
+                if (r.ok || r.status === 204) { log('OK carpeta de prueba borrada.'); try { localStorage.removeItem('tcFolderId'); localStorage.removeItem('tcStuFileId'); } catch (e) {} }
+                else log('ERROR borrando (HTTP ' + r.status + ')');
+            });
+        };
+
+        // --- Estudiante ---
+        $('tcPlanA').onclick = function () {
+            if (need()) return;
+            var fid = parseFolderId($('tcFolderIn').value);
+            if (!fid) { log('Pegá el enlace o ID de la carpeta del docente en la casilla de 2B.'); return; }
+            log('PLAN A: intentando crear un archivo dentro de la carpeta del docente (' + fid + ')...');
+            createFileMultipart(
+                { name: 'fisicabit-test-planA de ' + myEmail + '.json', parents: [fid] },
+                { prueba: 'PLAN A', estudiante: myEmail, fecha: new Date().toISOString() }
+            ).then(function (f) {
+                log('OK PLAN A FUNCIONA: archivo creado en la carpeta del docente (' + f.name + ', id:' + f.id + ')');
+            }).catch(function (e) {
+                log('PLAN A FALLO (' + (e.status || '?') + '): ' + e.message);
+                log('   (probable límite del permiso drive.file entre cuentas: usar PLAN B)');
+            });
+        };
+        $('tcPlanARead').onclick = function () {
+            if (need()) return;
+            var fid = parseFolderId($('tcFolderIn').value);
+            if (!fid) { log('Pegá el enlace o ID de la carpeta del docente en la casilla de 2B.'); return; }
+            api("drive/v3/files?q='" + fid + "' in parents and trashed=false&fields=files(id,name)")
+                .then(jsonOrErr).then(function (j) {
+                    log('OK lectura: veo ' + (j.files || []).length + ' archivo(s) en la carpeta del docente.');
+                }).catch(function (e) { log('LECTURA FALLO (' + (e.status || '?') + '): ' + e.message); });
+        };
+        $('tcPlanB').onclick = function () {
+            if (need()) return;
+            var mail = $('tcTeaMail').value.trim();
+            if (!mail) { log('Poné el correo del docente en la casilla de 2B.'); return; }
+            log('PLAN B: creando archivo en mi Drive y compartiéndolo con ' + mail + '...');
+            createFileMultipart(
+                { name: 'fisicabit-test-planB de ' + myEmail + '.json' },
+                { prueba: 'PLAN B', estudiante: myEmail, fecha: new Date().toISOString() }
+            ).then(function (f) {
+                log('OK archivo propio creado (' + f.id + '). Compartiendo...');
+                return api('drive/v3/files/' + f.id + '/permissions?sendNotificationEmail=false', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: 'writer', type: 'user', emailAddress: mail })
+                }).then(jsonOrErr).then(function () {
+                    log('OK PLAN B: compartido con ' + mail + '. El docente debe tocar "Ver archivos compartidos conmigo".');
+                });
+            }).catch(function (e) { log('PLAN B FALLO (' + (e.status || '?') + '): ' + e.message); });
+        };
+
+        log('Diagnóstico listo. Empezá por el paso 1.');
+    })();
+    </script>
+
     <!-- ===== SUGERENCIAS Y REPORTE DE ERRORES (feedback) ===== -->
     <script>
     (function () {
