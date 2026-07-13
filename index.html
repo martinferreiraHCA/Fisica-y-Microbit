@@ -5471,13 +5471,14 @@
                     </div>
                 </div>
                 <div id="mtPasteHint" style="font-size: 0.7rem; color: #666; margin-bottom: 4px;">
-                    💡 Tip: Hacé clic en una celda y pegá (Ctrl+V) desde Excel/CSV para cargar múltiples valores.
+                    💡 Tip: pegá (Ctrl+V) desde Excel/CSV, navegá con Enter/flechas, usá notación científica (6e-6) y la fila ×10^ multiplica toda la columna al cargar.
                 </div>
             </div>
             <div style="max-height: 45vh; overflow: auto; border: 1px solid #ccc; border-radius: 4px;">
                 <table class="data-table" style="font-size: 0.78rem;">
                     <thead>
                         <tr id="mtTableHeader"><th>#</th><th>Tiempo (s)</th><th>Var 1</th></tr>
+                        <tr id="mtMultRow"></tr>
                     </thead>
                     <tbody id="mtTableBody">
                     </tbody>
@@ -6487,7 +6488,8 @@ basic.forever(function () {
                 mtAutoTime: 'Auto-rellenar tiempo:',
                 mtApply: 'APLICAR',
                 mtLoadData: 'CARGAR DATOS',
-                mtPasteHint: 'Tip: hacé clic en una celda y pegá (Ctrl+V) desde Excel/CSV para cargar múltiples valores.',
+                mtPasteHint: 'Tip: pegá (Ctrl+V) desde Excel/CSV, navegá con Enter/flechas, usá notación científica (6e-6) y la fila ×10^ multiplica toda la columna al cargar.',
+                mtMultTitle: 'Multiplicador de columna: al cargar, cada valor se multiplica por 10 elevado a este exponente (ej: -6 si los datos están en micro-unidades).',
                 mtAutoFillDisabled: 'La columna de tiempo está desactivada (desmarcá "Micro:bit envía timestamp" para modo sin tiempo).',
                 mtXLabelLabel: 'Etiqueta del eje X:',
                 autoTitleLabel: 'Título automático (Y vs X)',
@@ -6853,7 +6855,8 @@ basic.forever(function () {
                 mtAutoTime: 'Auto-fill time:',
                 mtApply: 'APPLY',
                 mtLoadData: 'LOAD DATA',
-                mtPasteHint: 'Tip: click a cell and paste (Ctrl+V) from Excel/CSV to fill multiple values.',
+                mtPasteHint: 'Tip: paste (Ctrl+V) from Excel/CSV, navigate with Enter/arrow keys, use scientific notation (6e-6), and the ×10^ row multiplies the whole column on load.',
+                mtMultTitle: 'Column multiplier: on load, each value is multiplied by 10 raised to this exponent (e.g. -6 if your data is in micro-units).',
                 mtAutoFillDisabled: 'Time column is disabled (uncheck "Micro:bit sends timestamp" for variables-only mode).',
                 mtXLabelLabel: 'X-axis label:',
                 autoTitleLabel: 'Auto title (Y vs X)',
@@ -7219,7 +7222,8 @@ basic.forever(function () {
                 mtAutoTime: 'Auto-preencher tempo:',
                 mtApply: 'APLICAR',
                 mtLoadData: 'CARREGAR DADOS',
-                mtPasteHint: 'Dica: clique em uma célula e cole (Ctrl+V) do Excel/CSV para preencher vários valores.',
+                mtPasteHint: 'Dica: cole (Ctrl+V) do Excel/CSV, navegue com Enter/setas, use notação científica (6e-6) e a linha ×10^ multiplica toda a coluna ao carregar.',
+                mtMultTitle: 'Multiplicador de coluna: ao carregar, cada valor é multiplicado por 10 elevado a este expoente (ex: -6 se os dados estão em micro-unidades).',
                 mtAutoFillDisabled: 'A coluna de tempo está desativada (desmarque "Micro:bit envia timestamp" para modo somente variáveis).',
                 mtXLabelLabel: 'Rótulo do eixo X:',
                 autoTitleLabel: 'Título automático (Y vs X)',
@@ -15731,15 +15735,30 @@ bluetooth.startIOPinService()</pre>
             }
             document.getElementById('mtTableHeader').innerHTML = headerHtml;
 
+            // Fila de multiplicador por columna (×10^n): preservar exponentes al reconstruir
+            const prevMults = [];
+            for (let v = 0; v < numVars; v++) {
+                const mEl = document.getElementById(`mt_mult_v${v}`);
+                prevMults.push(mEl ? mEl.value : '');
+            }
+            const multTitle = tr('mtMultTitle');
+            let multHtml = '<th></th>';
+            if (hasTime) multHtml += '<th></th>';
+            for (let v = 0; v < numVars; v++) {
+                const prev = prevMults[v] !== undefined && prevMults[v] !== '' ? prevMults[v] : '';
+                multHtml += `<th style="font-weight:normal; white-space:nowrap; padding:2px 4px;" title="${multTitle}"><span style="font-size:0.68rem; color:#666;">×10^</span><input type="number" step="1" id="mt_mult_v${v}" value="${prev}" placeholder="0" title="${multTitle}" style="width:48px; font-size:0.72rem; padding:1px 3px;"></th>`;
+            }
+            document.getElementById('mtMultRow').innerHTML = multHtml;
+
             // Build body with editable cells
             let bodyHtml = '';
             for (let r = 0; r < numRows; r++) {
                 bodyHtml += `<tr><td style="color:#999; font-size:0.7rem;">${r + 1}</td>`;
                 if (hasTime) {
-                    bodyHtml += `<td><input type="number" step="any" class="mt-cell" id="mt_t_${r}" data-mt-row="${r}" data-mt-col="t" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
+                    bodyHtml += `<td><input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="mt-cell" id="mt_t_${r}" data-mt-row="${r}" data-mt-col="t" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
                 }
                 for (let v = 0; v < numVars; v++) {
-                    bodyHtml += `<td><input type="number" step="any" class="mt-cell" id="mt_v${v}_${r}" data-mt-row="${r}" data-mt-col="v${v}" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
+                    bodyHtml += `<td><input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="mt-cell" id="mt_v${v}_${r}" data-mt-row="${r}" data-mt-col="v${v}" style="width:100%; border:none; font-size:0.78rem; padding:2px 4px;"></td>`;
                 }
                 bodyHtml += '</tr>';
             }
@@ -15753,12 +15772,66 @@ bluetooth.startIOPinService()</pre>
             if (tfRow) tfRow.style.display = hasTime ? '' : 'none';
         }
 
-        // Añade listener de paste para pegar tabular (CSV/TSV)
+        // Añade listeners de paste (CSV/TSV) y navegación con teclado a las celdas
         function _mtAttachPasteHandlers() {
             const cells = document.querySelectorAll('#mtTableBody input.mt-cell');
             cells.forEach(cell => {
                 cell.addEventListener('paste', _mtOnPaste);
+                cell.addEventListener('keydown', _mtOnCellKeydown);
             });
+        }
+
+        // Parseo de celda: acepta notación científica (6e-6) y coma decimal (1,5)
+        function _mtParseNum(s) {
+            if (s === null || s === undefined) return NaN;
+            s = String(s).trim();
+            if (!s) return NaN;
+            if (s.indexOf('.') === -1) s = s.replace(',', '.');
+            return parseFloat(s);
+        }
+
+        // Devuelve la celda destino al moverse dRow filas / dCol columnas desde el input dado
+        function _mtCellNav(el, dRow, dCol) {
+            const row = parseInt(el.getAttribute('data-mt-row'));
+            const colKey = el.getAttribute('data-mt-col');
+            const hasTime = state.microbitTimestamp;
+            const numVars = parseInt(document.getElementById('mtNumVars').value);
+            const colOrder = [];
+            if (hasTime) colOrder.push('t');
+            for (let v = 0; v < numVars; v++) colOrder.push('v' + v);
+            let colIdx = colOrder.indexOf(colKey) + dCol;
+            let newRow = row + dRow;
+            if (colIdx >= colOrder.length) { colIdx = 0; newRow++; }
+            else if (colIdx < 0) { colIdx = colOrder.length - 1; newRow--; }
+            const numRows = parseInt(document.getElementById('mtNumRows').value) || 0;
+            if (newRow < 0 || newRow >= numRows) return null;
+            const key = colOrder[colIdx];
+            return document.getElementById(key === 't' ? `mt_t_${newRow}` : `mt_${key}_${newRow}`);
+        }
+
+        // Enter/↓ = celda de abajo; ↑ = arriba; ←/→ en el borde del texto = celda contigua
+        function _mtOnCellKeydown(e) {
+            const el = e.target;
+            let target = null;
+            if (e.key === 'ArrowDown' || (e.key === 'Enter' && !e.shiftKey)) {
+                target = _mtCellNav(el, 1, 0);
+                // Enter en la última fila agrega una fila nueva y sigue ahí
+                if (!target && e.key === 'Enter') {
+                    mtAddRow();
+                    target = _mtCellNav(el, 1, 0);
+                }
+            } else if (e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey)) {
+                target = _mtCellNav(el, -1, 0);
+            } else if (e.key === 'ArrowRight') {
+                if (el.selectionStart === el.value.length && el.selectionEnd === el.value.length) target = _mtCellNav(el, 0, 1);
+            } else if (e.key === 'ArrowLeft') {
+                if (el.selectionStart === 0 && el.selectionEnd === 0) target = _mtCellNav(el, 0, -1);
+            }
+            if (target) {
+                e.preventDefault();
+                target.focus();
+                target.select();
+            }
         }
 
         function _mtOnPaste(ev) {
@@ -15812,8 +15885,8 @@ bluetooth.startIOPinService()</pre>
                     const el = document.getElementById(id);
                     if (el) {
                         const val = rowValues[j];
-                        // Aceptar vacío o numérico
-                        if (val === '' || !isNaN(parseFloat(val))) {
+                        // Aceptar vacío o numérico (incluye notación científica)
+                        if (val === '' || !isNaN(_mtParseNum(val))) {
                             el.value = val;
                         }
                     }
@@ -15889,7 +15962,7 @@ bluetooth.startIOPinService()</pre>
                 let timestamp;
                 if (hasTime) {
                     const tInput = document.getElementById(`mt_t_${r}`);
-                    const tVal = parseFloat(tInput ? tInput.value : '');
+                    const tVal = _mtParseNum(tInput ? tInput.value : '');
                     if (isNaN(tVal)) continue; // Skip empty rows
                     timestamp = (tVal * timeUnitValue) + state.timeZeroOffset;
                 } else {
@@ -15901,8 +15974,12 @@ bluetooth.startIOPinService()</pre>
                 let allValid = true;
                 for (let v = 0; v < numVars; v++) {
                     const vInput = document.getElementById(`mt_v${v}_${r}`);
-                    const val = parseFloat(vInput ? vInput.value : '');
+                    let val = _mtParseNum(vInput ? vInput.value : '');
                     if (isNaN(val)) { allValid = false; break; }
+                    // Multiplicador de columna (×10^n)
+                    const multEl = document.getElementById(`mt_mult_v${v}`);
+                    const exp = multEl ? parseInt(multEl.value, 10) : NaN;
+                    if (!isNaN(exp) && exp !== 0) val = val * Math.pow(10, exp);
                     values.push(val);
                 }
                 if (!allValid) continue;
