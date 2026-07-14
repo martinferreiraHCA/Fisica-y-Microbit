@@ -5463,22 +5463,20 @@
                 <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
                     <label style="font-size:0.75rem; font-weight:bold; min-width:140px;" id="mtXLabelLabel">Etiqueta del eje X:</label>
                     <input type="text" id="mtXLabel" value="Tiempo (s)" style="font-size:0.75rem; flex:1;" placeholder="Ej: Tiempo (s), Distancia (m), Frecuencia (Hz)">
+                    <span id="mtXMultWrap" style="display:flex; gap:4px; align-items:center; white-space:nowrap;">
+                        <span style="font-size:0.72rem; color:#666;">×10^</span>
+                        <input type="number" step="1" id="mt_mult_t" placeholder="0" style="width:48px; font-size:0.72rem; padding:2px 3px;">
+                    </span>
                 </div>
-                <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;" id="mtVarNames">
-                    <div class="input-row" style="margin:0; flex:1; min-width:120px;">
-                        <label style="font-size:0.75rem;">Nombre Var 1</label>
-                        <input type="text" id="mtVar0Name" value="Variable 1" style="font-size:0.75rem;">
-                    </div>
-                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;" id="mtVarNames"></div>
                 <div id="mtPasteHint" style="font-size: 0.7rem; color: #666; margin-bottom: 4px;">
-                    💡 Tip: pegá (Ctrl+V) desde Excel/CSV, navegá con Enter/flechas, usá notación científica (6e-6) y la fila ×10^ multiplica toda la columna al cargar.
+                    💡 Tip: pegá (Ctrl+V) desde Excel/CSV, navegá con Enter/flechas, usá notación científica (6e-6) y el ×10^ junto a cada etiqueta multiplica toda la columna al cargar.
                 </div>
             </div>
             <div style="max-height: 45vh; overflow: auto; border: 1px solid #ccc; border-radius: 4px;">
                 <table class="data-table" style="font-size: 0.78rem;">
                     <thead>
                         <tr id="mtTableHeader"><th>#</th><th>Tiempo (s)</th><th>Var 1</th></tr>
-                        <tr id="mtMultRow"></tr>
                     </thead>
                     <tbody id="mtTableBody">
                     </tbody>
@@ -6488,10 +6486,11 @@ basic.forever(function () {
                 mtAutoTime: 'Auto-rellenar tiempo:',
                 mtApply: 'APLICAR',
                 mtLoadData: 'CARGAR DATOS',
-                mtPasteHint: 'Tip: pegá (Ctrl+V) desde Excel/CSV, navegá con Enter/flechas, usá notación científica (6e-6) y la fila ×10^ multiplica toda la columna al cargar.',
+                mtPasteHint: 'Tip: pegá (Ctrl+V) desde Excel/CSV, navegá con Enter/flechas, usá notación científica (6e-6) y el ×10^ junto a cada etiqueta multiplica toda la columna al cargar.',
                 mtMultTitle: 'Multiplicador de columna: al cargar, cada valor se multiplica por 10 elevado a este exponente (ej: -6 si los datos están en micro-unidades).',
                 mtAutoFillDisabled: 'La columna de tiempo está desactivada (desmarcá "Micro:bit envía timestamp" para modo sin tiempo).',
                 mtXLabelLabel: 'Etiqueta del eje X:',
+                mtYLabelLabel: 'Etiqueta del eje Y:',
                 autoTitleLabel: 'Título automático (Y vs X)',
                 graphTitleFieldLabel: 'Título:',
                 xLabelResetTitle: 'Auto-generar etiqueta',
@@ -6855,10 +6854,11 @@ basic.forever(function () {
                 mtAutoTime: 'Auto-fill time:',
                 mtApply: 'APPLY',
                 mtLoadData: 'LOAD DATA',
-                mtPasteHint: 'Tip: paste (Ctrl+V) from Excel/CSV, navigate with Enter/arrow keys, use scientific notation (6e-6), and the ×10^ row multiplies the whole column on load.',
+                mtPasteHint: 'Tip: paste (Ctrl+V) from Excel/CSV, navigate with Enter/arrow keys, use scientific notation (6e-6), and the ×10^ next to each label multiplies the whole column on load.',
                 mtMultTitle: 'Column multiplier: on load, each value is multiplied by 10 raised to this exponent (e.g. -6 if your data is in micro-units).',
                 mtAutoFillDisabled: 'Time column is disabled (uncheck "Micro:bit sends timestamp" for variables-only mode).',
                 mtXLabelLabel: 'X-axis label:',
+                mtYLabelLabel: 'Y-axis label:',
                 autoTitleLabel: 'Auto title (Y vs X)',
                 graphTitleFieldLabel: 'Title:',
                 xLabelResetTitle: 'Auto-generate label',
@@ -7222,10 +7222,11 @@ basic.forever(function () {
                 mtAutoTime: 'Auto-preencher tempo:',
                 mtApply: 'APLICAR',
                 mtLoadData: 'CARREGAR DADOS',
-                mtPasteHint: 'Dica: cole (Ctrl+V) do Excel/CSV, navegue com Enter/setas, use notação científica (6e-6) e a linha ×10^ multiplica toda a coluna ao carregar.',
+                mtPasteHint: 'Dica: cole (Ctrl+V) do Excel/CSV, navegue com Enter/setas, use notação científica (6e-6) e o ×10^ ao lado de cada rótulo multiplica toda a coluna ao carregar.',
                 mtMultTitle: 'Multiplicador de coluna: ao carregar, cada valor é multiplicado por 10 elevado a este expoente (ex: -6 se os dados estão em micro-unidades).',
                 mtAutoFillDisabled: 'A coluna de tempo está desativada (desmarque "Micro:bit envia timestamp" para modo somente variáveis).',
                 mtXLabelLabel: 'Rótulo do eixo X:',
+                mtYLabelLabel: 'Rótulo do eixo Y:',
                 autoTitleLabel: 'Título automático (Y vs X)',
                 graphTitleFieldLabel: 'Título:',
                 xLabelResetTitle: 'Gerar rótulo automático',
@@ -15666,21 +15667,37 @@ bluetooth.startIOPinService()</pre>
             setTxt('mtLoadBtn', 'mtLoadData');
             const hint = document.getElementById('mtPasteHint');
             if (hint && tr('mtPasteHint') !== 'mtPasteHint') hint.textContent = '💡 ' + tr('mtPasteHint');
+            const multT = document.getElementById('mt_mult_t');
+            if (multT && tr('mtMultTitle') !== 'mtMultTitle') multT.title = tr('mtMultTitle');
         }
 
         function updateMtVarNameInputs() {
             const numVars = parseInt(document.getElementById('mtNumVars').value);
             const container = document.getElementById('mtVarNames');
-            container.innerHTML = '';
+            // Preservar los exponentes ×10^ ya ingresados antes de reconstruir
+            const prevMults = [];
+            for (let i = 0; i < 3; i++) {
+                const m = document.getElementById(`mt_mult_v${i}`);
+                prevMults.push(m ? m.value : '');
+            }
+            const multTitle = tr('mtMultTitle');
+            const yBase = tr('mtYLabelLabel');
+            let html = '';
             for (let i = 0; i < numVars; i++) {
                 const name = i < state.numVariables ? state.variables[i].name : `Variable ${i + 1}`;
-                container.innerHTML += `
-                    <div class="input-row" style="margin:0; flex:1; min-width:120px;">
-                        <label style="font-size:0.75rem;">Var ${i + 1}</label>
-                        <input type="text" id="mtVar${i}Name" value="${name}" style="font-size:0.75rem;">
+                const yLabel = numVars === 1 ? yBase : yBase.replace(/:\s*$/, '') + ` ${i + 1}:`;
+                html += `
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <label style="font-size:0.75rem; font-weight:bold; min-width:140px;">${yLabel}</label>
+                        <input type="text" id="mtVar${i}Name" value="${name}" style="font-size:0.75rem; flex:1;">
+                        <span style="display:flex; gap:4px; align-items:center; white-space:nowrap;" title="${multTitle}">
+                            <span style="font-size:0.72rem; color:#666;">×10^</span>
+                            <input type="number" step="1" id="mt_mult_v${i}" value="${prevMults[i]}" placeholder="0" title="${multTitle}" style="width:48px; font-size:0.72rem; padding:2px 3px;">
+                        </span>
                     </div>
                 `;
             }
+            container.innerHTML = html;
         }
 
         document.getElementById('mtNumVars').addEventListener('change', () => {
@@ -15735,21 +15752,6 @@ bluetooth.startIOPinService()</pre>
             }
             document.getElementById('mtTableHeader').innerHTML = headerHtml;
 
-            // Fila de multiplicador por columna (×10^n): preservar exponentes al reconstruir
-            const prevMults = [];
-            for (let v = 0; v < numVars; v++) {
-                const mEl = document.getElementById(`mt_mult_v${v}`);
-                prevMults.push(mEl ? mEl.value : '');
-            }
-            const multTitle = tr('mtMultTitle');
-            let multHtml = '<th></th>';
-            if (hasTime) multHtml += '<th></th>';
-            for (let v = 0; v < numVars; v++) {
-                const prev = prevMults[v] !== undefined && prevMults[v] !== '' ? prevMults[v] : '';
-                multHtml += `<th style="font-weight:normal; white-space:nowrap; padding:2px 4px;" title="${multTitle}"><span style="font-size:0.68rem; color:#666;">×10^</span><input type="number" step="1" id="mt_mult_v${v}" value="${prev}" placeholder="0" title="${multTitle}" style="width:48px; font-size:0.72rem; padding:1px 3px;"></th>`;
-            }
-            document.getElementById('mtMultRow').innerHTML = multHtml;
-
             // Build body with editable cells
             let bodyHtml = '';
             for (let r = 0; r < numRows; r++) {
@@ -15770,6 +15772,9 @@ bluetooth.startIOPinService()</pre>
             // Mostrar/ocultar fila de auto-rellenado de tiempo según haya columna de tiempo
             const tfRow = document.getElementById('mtTimeFillRow');
             if (tfRow) tfRow.style.display = hasTime ? '' : 'none';
+            // El multiplicador del eje X solo aplica si hay columna de tiempo
+            const xMultWrap = document.getElementById('mtXMultWrap');
+            if (xMultWrap) xMultWrap.style.display = hasTime ? 'flex' : 'none';
         }
 
         // Añade listeners de paste (CSV/TSV) y navegación con teclado a las celdas
@@ -15962,8 +15967,12 @@ bluetooth.startIOPinService()</pre>
                 let timestamp;
                 if (hasTime) {
                     const tInput = document.getElementById(`mt_t_${r}`);
-                    const tVal = _mtParseNum(tInput ? tInput.value : '');
+                    let tVal = _mtParseNum(tInput ? tInput.value : '');
                     if (isNaN(tVal)) continue; // Skip empty rows
+                    // Multiplicador del eje X (×10^n)
+                    const multT = document.getElementById('mt_mult_t');
+                    const expT = multT ? parseInt(multT.value, 10) : NaN;
+                    if (!isNaN(expT) && expT !== 0) tVal = tVal * Math.pow(10, expT);
                     timestamp = (tVal * timeUnitValue) + state.timeZeroOffset;
                 } else {
                     // En modo solo variables, verificar que al menos la primera variable tenga valor
