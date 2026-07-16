@@ -481,6 +481,7 @@
             margin: 4px 0;
             display: inline-block;
             color: #222;
+            font-size: 0.95rem;
         }
         .didactic-row {
             display: grid;
@@ -494,6 +495,7 @@
             font-family: 'Consolas', 'Monaco', monospace;
             color: #0d47a1;
             font-weight: 600;
+            font-size: 0.9rem;
         }
         .didactic-row.point-a .lbl { color: #2e7d32; }
         .didactic-row.point-b .lbl { color: #ef6c00; }
@@ -548,10 +550,28 @@
             font-family: 'Consolas', monospace;
             font-weight: 700;
             color: #0d47a1;
+            font-size: 0.95rem;
         }
         .didactic-error-good { color: #2e7d32; }
         .didactic-error-warn { color: #ef6c00; }
         .didactic-error-bad  { color: #c62828; }
+
+        /* Exponentes legibles: <sup> real en vez de superíndice Unicode,
+           que a tamaños chicos (ceibalitas) resulta casi invisible. */
+        sup.num-exp {
+            font-size: 0.75em;
+            font-weight: 700;
+            line-height: 0;
+        }
+        /* Resultados más legibles en pantallas chicas (ceibalitas, tablets, celulares) */
+        @media (max-width: 1366px) {
+            .didactic-row .val { font-size: 0.95rem; }
+            .didactic-formula { font-size: 1rem; }
+            .didactic-compare .compare-value { font-size: 1.02rem; }
+        }
+        @media (max-width: 420px) {
+            .didactic-compare { grid-template-columns: 1fr; }
+        }
 
         /* ── Tooltip personalizado rápido (data-tip="...") ──
            Aparece a los ~250 ms (más rápido que el title nativo) y desaparece
@@ -2303,6 +2323,16 @@
                 max-height: 100%;
                 border: none;
                 padding: 16px;
+            }
+
+            /* Celdas de la tabla manual: más altas y con 16px para que iOS
+               no haga auto-zoom al enfocar el input */
+            #manualTableModal .mt-cell {
+                font-size: 16px !important;
+                min-height: 34px;
+            }
+            #manualTableModal input[type="number"] {
+                min-height: 34px;
             }
 
             /* Panel sections */
@@ -11252,6 +11282,17 @@ bluetooth.startIOPinService()</pre>
             return Number(n.toPrecision(sig)).toString();
         }
 
+        // Convierte los superíndices Unicode del exponente (×10⁻⁶) en <sup>
+        // reales, mucho más legibles en pantallas chicas. Usar SOLO en
+        // contextos innerHTML (nunca en canvas/tooltips de Chart.js).
+        function _supToHtml(s) {
+            const map = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁻': '-' };
+            return String(s).replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+/g, m => `<sup class="num-exp">${m.split('').map(c => map[c] || c).join('')}</sup>`);
+        }
+        function fmtNumHtml(v) {
+            return _supToHtml(fmtNum(v));
+        }
+
         function _hexToRgba(hex, alpha) {
             try {
                 if (!hex) return `rgba(102,102,102,${alpha})`;
@@ -13925,7 +13966,7 @@ bluetooth.startIOPinService()</pre>
             console.log('R² =', result.r2);
 
             const predict = (x) => m * x + b;
-            const equation = `y = ${m.toFixed(4)}x ${b >= 0 ? '+' : ''} ${b.toFixed(4)}`;
+            const equation = `y = ${fmtNum(m)}x ${b >= 0 ? '+' : ''} ${fmtNum(b)}`;
 
             console.log('Ecuación:', equation);
             console.log('=== FIN AJUSTE LINEAL ===');
@@ -13949,7 +13990,7 @@ bluetooth.startIOPinService()</pre>
             console.log('R² =', result.r2);
 
             const predict = (x) => a * x * x + b * x + c;
-            const equation = `y = ${a.toFixed(4)}x² ${b >= 0 ? '+' : ''} ${b.toFixed(4)}x ${c >= 0 ? '+' : ''} ${c.toFixed(4)}`;
+            const equation = `y = ${fmtNum(a)}x² ${b >= 0 ? '+' : ''} ${fmtNum(b)}x ${c >= 0 ? '+' : ''} ${fmtNum(c)}`;
 
             return { coeffs: [a, b, c], equation, r2: result.r2, predict };
         }
@@ -13975,7 +14016,7 @@ bluetooth.startIOPinService()</pre>
             console.log('R² =', result.r2);
 
             const predict = (x) => a * x * x * x + b * x * x + c * x + d;
-            const equation = `y = ${a.toFixed(4)}x³ ${b >= 0 ? '+' : ''} ${b.toFixed(4)}x² ${c >= 0 ? '+' : ''} ${c.toFixed(4)}x ${d >= 0 ? '+' : ''} ${d.toFixed(4)}`;
+            const equation = `y = ${fmtNum(a)}x³ ${b >= 0 ? '+' : ''} ${fmtNum(b)}x² ${c >= 0 ? '+' : ''} ${fmtNum(c)}x ${d >= 0 ? '+' : ''} ${fmtNum(d)}`;
 
             return { coeffs: [a, b, c, d], equation, r2: result.r2, predict };
         }
@@ -14011,8 +14052,8 @@ bluetooth.startIOPinService()</pre>
             // Mostrar la forma simple si el tiempo ya arranca cerca de 0; si no,
             // mostrar el anclaje explícito para que el alumno vea el origen.
             const equation = Math.abs(x0) < 1e-9
-                ? `y = ${a.toFixed(4)}·e^(${b.toFixed(4)}x)`
-                : `y = ${a.toFixed(4)}·e^(${b.toFixed(4)}·(x − ${x0.toFixed(4)}))`;
+                ? `y = ${fmtNum(a)}·e^(${fmtNum(b)}x)`
+                : `y = ${fmtNum(a)}·e^(${fmtNum(b)}·(x − ${fmtNum(x0)}))`;
 
             return { coeffs: [a, b], xShift: x0, equation, r2: result.r2, predict };
         }
@@ -14037,7 +14078,7 @@ bluetooth.startIOPinService()</pre>
             console.log('R² =', result.r2);
 
             const predict = (x) => a * Math.pow(x, b);
-            const equation = `y = ${a.toFixed(4)}·x^${b.toFixed(4)}`;
+            const equation = `y = ${fmtNum(a)}·x^${fmtNum(b)}`;
 
             return { coeffs: [a, b], equation, r2: result.r2, predict };
         }
@@ -14062,7 +14103,7 @@ bluetooth.startIOPinService()</pre>
             console.log('R² =', result.r2);
 
             const predict = (x) => a * Math.log(x) + b;
-            const equation = `y = ${a.toFixed(4)}·ln(x) ${b >= 0 ? '+' : ''} ${b.toFixed(4)}`;
+            const equation = `y = ${fmtNum(a)}·ln(x) ${b >= 0 ? '+' : ''} ${fmtNum(b)}`;
 
             return { coeffs: [a, b], equation, r2: result.r2, predict };
         }
@@ -14090,7 +14131,7 @@ bluetooth.startIOPinService()</pre>
             const predict = (x) => a / x + b;
             const r2 = calculateR2(xData, yData, predict);
 
-            const equation = `y = ${a.toFixed(4)}/x ${b >= 0 ? '+' : ''} ${b.toFixed(4)}`;
+            const equation = `y = ${fmtNum(a)}/x ${b >= 0 ? '+' : ''} ${fmtNum(b)}`;
 
             return { coeffs: [a, b], equation, r2, predict };
         }
@@ -14226,7 +14267,7 @@ bluetooth.startIOPinService()</pre>
 
             const phiSign = phi >= 0 ? '+' : '';
             const CSign   = C   >= 0 ? '+' : '';
-            const equation = `y = ${A.toFixed(4)}·sin(${omegaFinal.toFixed(4)}x ${phiSign} ${phi.toFixed(4)}) ${CSign} ${C.toFixed(4)}`;
+            const equation = `y = ${fmtNum(A)}·sin(${fmtNum(omegaFinal)}x ${phiSign} ${fmtNum(phi)}) ${CSign} ${fmtNum(C)}`;
 
             console.log('Coeficientes: A =', A, 'ω =', omegaFinal, 'φ =', phi, 'C =', C);
             console.log('R² =', r2);
@@ -14292,8 +14333,8 @@ bluetooth.startIOPinService()</pre>
 
             const { A, B, k, r2, predict } = best;
             const equation = Math.abs(x0) < 1e-9
-                ? `y = ${A.toFixed(4)} − ${B.toFixed(4)}·e^(−${k.toFixed(4)}x)`
-                : `y = ${A.toFixed(4)} − ${B.toFixed(4)}·e^(−${k.toFixed(4)}·(x − ${x0.toFixed(4)}))`;
+                ? `y = ${fmtNum(A)} − ${fmtNum(B)}·e^(−${fmtNum(k)}x)`
+                : `y = ${fmtNum(A)} − ${fmtNum(B)}·e^(−${fmtNum(k)}·(x − ${fmtNum(x0)}))`;
             console.log('Coeficientes:', { A, B, k, x0 }, 'R² =', r2);
             return { coeffs: [A, B, k], xShift: x0, equation, r2, predict };
         }
@@ -14637,7 +14678,7 @@ bluetooth.startIOPinService()</pre>
                 default: model = '';
             }
             const r2Line = r2Finite
-                ? `<b>R² = ${fmtNum(r2)}</b> (${r2Quality}). R² ∈ [0,1] mide qué fracción de la varianza de los datos explica el modelo. R² = 1 es ajuste perfecto.`
+                ? `<b>R² = ${fmtNumHtml(r2)}</b> (${r2Quality}). R² ∈ [0,1] mide qué fracción de la varianza de los datos explica el modelo. R² = 1 es ajuste perfecto.`
                 : `<b>R² = N/A</b> (indefinido). Los datos seleccionados no varían (todos los valores son casi iguales: una meseta o la línea de base), así que R² no se puede calcular. Seleccioná un tramo donde la variable realmente cambie.`;
             return `
                 <b>Modelo:</b> ${model}<br>
@@ -14703,12 +14744,12 @@ bluetooth.startIOPinService()</pre>
                     <div style="margin-bottom:8px;">
                         <div style="font-weight:700; font-size:0.74rem; color:#455a64; margin-bottom:3px;">${_escHtml(paramNames[idx])}</div>
                         <div class="didactic-compare">
-                            <div><div class="compare-label">Teórico</div><div class="compare-value">${fmtNum(teorico)}</div></div>
-                            <div><div class="compare-label">Experimental</div><div class="compare-value">${fmtNum(exp)}</div></div>
+                            <div><div class="compare-label">Teórico</div><div class="compare-value">${fmtNumHtml(teorico)}</div></div>
+                            <div><div class="compare-label">Experimental</div><div class="compare-value">${fmtNumHtml(exp)}</div></div>
                         </div>
                         <div class="didactic-formula" style="display:block; margin-top:4px;">
-                            |Δ| = |${fmtNum(exp)} − ${fmtNum(teorico)}| = <b>${fmtNum(absErr)}</b><br>
-                            error % = (|Δ| / |teórico|) × 100 = <b class="${pctCls}">${isNaN(pctErr) ? 'N/A (teórico = 0)' : fmtNum(pctErr) + ' %'}</b>
+                            |Δ| = |${fmtNumHtml(exp)} − ${fmtNumHtml(teorico)}| = <b>${fmtNumHtml(absErr)}</b><br>
+                            error % = (|Δ| / |teórico|) × 100 = <b class="${pctCls}">${isNaN(pctErr) ? 'N/A (teórico = 0)' : fmtNumHtml(pctErr) + ' %'}</b>
                         </div>
                     </div>
                 `;
@@ -17120,12 +17161,12 @@ bluetooth.startIOPinService()</pre>
                 for (let k = 0; k < sf.coeffs.length; k++) {
                     const nm = (pnames && pnames[k]) || `p${k}`;
                     const v = sf.coeffs[k], e = sf.errors && sf.errors[k];
-                    params += `<div style="font-size:0.7rem; font-family:monospace; color:#37474f;">${_escHtml(nm)} = ${isFinite(v) ? fmtNum(v) : 'N/A'}${isFinite(e) ? ' ± ' + fmtNum(e) : ''}</div>`;
+                    params += `<div style="font-size:0.85rem; font-family:monospace; color:#37474f;">${_escHtml(nm)} = ${isFinite(v) ? fmtNumHtml(v) : 'N/A'}${isFinite(e) ? ' ± ' + fmtNumHtml(e) : ''}</div>`;
                 }
                 html += `<div style="border-left:4px solid ${sf.color}; padding:4px 8px; margin-bottom:8px;">`
                     + `<div style="font-size:0.78rem;"><b style="color:${sf.color};">${segLabel} ${i + 1}</b> <span style="color:#777;">(${segPoints} ${rng})</span>${colorInp} ${sel}</div>`
-                    + `<div style="font-size:0.72rem; font-family:monospace; word-break:break-all; margin:3px 0;">${_escHtml(sf.equation)}</div>`
-                    + `<div style="font-size:0.72rem;">R² = <b class="${r2cls}">${isFinite(sf.r2) ? fmtNum(sf.r2) : 'N/A'}</b></div>`
+                    + `<div style="font-size:0.85rem; font-family:monospace; word-break:break-all; margin:3px 0;">${_supToHtml(_escHtml(sf.equation))}</div>`
+                    + `<div style="font-size:0.8rem;">R² = <b class="${r2cls}">${isFinite(sf.r2) ? fmtNumHtml(sf.r2) : 'N/A'}</b></div>`
                     + params + `</div>`;
             });
             cont.innerHTML = html;
@@ -17316,11 +17357,11 @@ bluetooth.startIOPinService()</pre>
 
                 // Mostrar resultados
                 document.getElementById('fitResults').style.display = 'block';
-                document.getElementById('fitEquation').textContent = fitResult.equation;
+                document.getElementById('fitEquation').innerHTML = _supToHtml(_escHtml(fitResult.equation));
                 const r2 = fitResult.r2;
                 const r2El = document.getElementById('fitR2');
                 // R² indefinido (datos sin varianza) → "N/A" en vez de "Infinity"/"NaN"
-                r2El.textContent = isFinite(r2) ? fmtNum(r2) : 'N/A';
+                r2El.innerHTML = isFinite(r2) ? fmtNumHtml(r2) : 'N/A';
                 // Color según calidad del R²
                 r2El.classList.remove('didactic-error-good','didactic-error-warn','didactic-error-bad');
                 if (!isFinite(r2)) { /* sin color para N/A */ }
@@ -17339,8 +17380,8 @@ bluetooth.startIOPinService()</pre>
                     const val = fitResult.coeffs[i];
                     const err = (fitResult.errors && fitResult.errors[i] != null) ? fitResult.errors[i] : NaN;
                     // isFinite cubre NaN e Infinity (isNaN no detecta Infinity)
-                    const errStr = isFinite(err) ? fmtNum(err) : 'N/A';
-                    const valStr = isFinite(val) ? fmtNum(val) : 'N/A';
+                    const errStr = isFinite(err) ? fmtNumHtml(err) : 'N/A';
+                    const valStr = isFinite(val) ? fmtNumHtml(val) : 'N/A';
                     errHtml += `<div class="didactic-row"><span class="lbl">${_escHtml(name)}</span><span class="val">${valStr} ± ${errStr}</span></div>`;
                 }
                 errorsDiv.innerHTML = errHtml;
