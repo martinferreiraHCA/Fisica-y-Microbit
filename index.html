@@ -4664,6 +4664,8 @@
             <button id="desktopLabBtn" class="toolbar-btn" style="background: #1976d2; color: white; border-color: #1976d2;" onclick="enterExperimentMode()">LAB</button>
             <button id="btn-mapeo" class="toolbar-btn">MAPEO</button>
             <button id="btn-informe" class="toolbar-btn" style="background:#111; color:#fff; border-color:#111;">INFORME</button>
+            <!-- Apartado no publicado: se muestra solo al entrar con #piezas3d en la URL -->
+            <button id="btn-piezas3d" class="toolbar-btn" style="display:none;">PIEZAS 3D</button>
         </span>
 
         <div class="toolbar-separator"></div>
@@ -28209,6 +28211,985 @@ bluetooth.startIOPinService()</pre>
 })();
 /* ===== INFORME + MAPEO I18N END ===== */
 
+    </script>
+    <!-- ============================================================
+         PIEZAS 3D · Editor de piezas OpenSCAD (apartado no publicado)
+         Acceso: agregar #piezas3d a la URL, o abrirPiezas3D() en consola.
+         ============================================================ -->
+    <style id="s3d-style">
+    .s3d-panel { display:none; position:fixed; inset:0; z-index:9200; background:#1a1d23; color:#e0e0e0; font-family:-apple-system, 'Segoe UI', sans-serif; flex-direction:column; }
+    .s3d-panel.open { display:flex; }
+    .s3d-topbar { display:flex; align-items:center; gap:12px; background:#0a0a0a; border-bottom:1px solid #2b303b; padding:8px 14px; flex:0 0 auto; }
+    .s3d-topbar h2 { font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#fff; margin:0; }
+    .s3d-badge { font-size:10px; letter-spacing:1px; color:#1a1d23; background:#ffca28; padding:2px 8px; text-transform:uppercase; font-weight:700; }
+    .s3d-topbar .s3d-spacer { flex:1; }
+    .s3d-close { background:none; border:1px solid #444; color:#e0e0e0; font-size:15px; line-height:1; padding:5px 11px; cursor:pointer; }
+    .s3d-close:hover { background:#fff; color:#000; border-color:#fff; }
+    .s3d-body { display:flex; flex:1 1 auto; min-height:0; }
+    .s3d-sidebar { width:300px; flex:0 0 300px; background:#23272e; border-right:1px solid #2b303b; overflow-y:auto; padding:12px; box-sizing:border-box; }
+    .s3d-section { margin-bottom:18px; }
+    .s3d-section-title { font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#8a919e; border-bottom:1px solid #2b303b; padding-bottom:5px; margin-bottom:9px; }
+    .s3d-sidebar select, .s3d-sidebar input[type="number"], .s3d-sidebar input[type="text"] { width:100%; background:#1a1d23; color:#e0e0e0; border:1px solid #444; border-radius:0; padding:6px 8px; font-size:12px; box-sizing:border-box; outline:none; }
+    .s3d-sidebar select:focus, .s3d-sidebar input:focus { border-color:#fff; }
+    .s3d-btn { display:block; width:100%; background:#000; color:#fff; border:1px solid #444; border-radius:0; padding:8px 10px; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer; margin-bottom:6px; }
+    .s3d-btn:hover:not(:disabled) { background:#fff; color:#000; border-color:#fff; }
+    .s3d-btn:disabled { opacity:.4; cursor:default; }
+    .s3d-btn.primary { background:#fff; color:#000; border-color:#fff; }
+    .s3d-btn.primary:hover:not(:disabled) { background:#000; color:#fff; }
+    .s3d-check { display:flex; align-items:center; gap:7px; font-size:11px; color:#aab; margin:8px 0 0; cursor:pointer; user-select:none; }
+    .s3d-check input { accent-color:#fff; }
+    .s3d-param-group-title { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#cfd4dd; background:#1a1d23; border:1px solid #2b303b; padding:4px 8px; margin:12px 0 8px; }
+    .s3d-param { margin-bottom:10px; }
+    .s3d-param-label { font-size:11px; color:#aab; margin-bottom:3px; display:block; }
+    .s3d-param-name { font-family:'SF Mono', Consolas, monospace; font-size:10px; color:#6f7887; }
+    .s3d-param-row { display:flex; gap:7px; align-items:center; }
+    .s3d-param-row input[type="range"] { flex:1; accent-color:#fff; min-width:0; }
+    .s3d-param-row input[type="number"] { width:72px; flex:0 0 72px; }
+    .s3d-param-row select { flex:1; }
+    .s3d-param-row input[type="checkbox"] { accent-color:#fff; width:15px; height:15px; }
+    .s3d-empty-params { font-size:11px; color:#6f7887; line-height:1.5; }
+    .s3d-main { flex:1 1 auto; display:flex; min-width:0; min-height:0; }
+    .s3d-editor-wrap { width:34%; min-width:260px; display:flex; flex-direction:column; border-right:1px solid #2b303b; background:#15171c; }
+    .s3d-editor-head { display:flex; align-items:center; justify-content:space-between; padding:5px 10px; background:#101216; border-bottom:1px solid #2b303b; font-size:10px; letter-spacing:2px; color:#8a919e; text-transform:uppercase; flex:0 0 auto; }
+    .s3d-editor-wrap textarea { flex:1; width:100%; background:#15171c; color:#d6dbe4; border:none; outline:none; resize:none; padding:10px 12px; box-sizing:border-box; font-family:'SF Mono', 'Cascadia Code', Consolas, Menlo, monospace; font-size:12px; line-height:1.55; tab-size:4; white-space:pre; }
+    .s3d-viewport-wrap { flex:1 1 auto; position:relative; min-width:0; background:#1a1d23; }
+    .s3d-viewport-wrap canvas { display:block; width:100%; height:100%; outline:none; touch-action:none; }
+    .s3d-view-tools { position:absolute; top:10px; right:10px; display:flex; gap:6px; }
+    .s3d-view-tools button { background:rgba(0,0,0,.65); color:#fff; border:1px solid #444; border-radius:0; font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:5px 9px; cursor:pointer; }
+    .s3d-view-tools button:hover { background:#fff; color:#000; border-color:#fff; }
+    .s3d-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center; padding:20px; background:rgba(26,29,35,.92); font-size:13px; color:#aab; }
+    .s3d-overlay.hidden { display:none; }
+    .s3d-overlay .s3d-spinner { width:26px; height:26px; border:3px solid #2b303b; border-top-color:#fff; border-radius:50%; animation:s3dspin 1s linear infinite; }
+    @keyframes s3dspin { to { transform:rotate(360deg); } }
+    .s3d-statusbar { flex:0 0 auto; display:flex; align-items:center; gap:14px; background:#0a0a0a; border-top:1px solid #2b303b; padding:5px 14px; font-size:11px; color:#8a919e; }
+    .s3d-statusbar .s3d-status-msg { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .s3d-statusbar .s3d-status-msg.error { color:#ef5350; }
+    .s3d-statusbar .s3d-status-msg.busy { color:#ffca28; }
+    .s3d-log-toggle { background:none; border:1px solid #444; color:#8a919e; font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:3px 8px; cursor:pointer; }
+    .s3d-log-toggle:hover { color:#fff; border-color:#fff; }
+    .s3d-log { display:none; flex:0 0 auto; max-height:150px; overflow-y:auto; background:#101216; border-top:1px solid #2b303b; margin:0; padding:8px 14px; font-family:Consolas, Menlo, monospace; font-size:11px; line-height:1.5; color:#8a919e; white-space:pre-wrap; }
+    .s3d-log.open { display:block; }
+    .s3d-log .err { color:#ef5350; }
+    .s3d-log .warn { color:#ffca28; }
+    @media (max-width: 820px) {
+        .s3d-body { flex-direction:column; overflow-y:auto; }
+        .s3d-sidebar { width:100%; flex:0 0 auto; max-height:38vh; border-right:none; border-bottom:1px solid #2b303b; }
+        .s3d-main { flex-direction:column; flex:1 0 auto; }
+        .s3d-editor-wrap { width:100%; min-width:0; height:220px; flex:0 0 auto; border-right:none; border-bottom:1px solid #2b303b; }
+        .s3d-viewport-wrap { flex:1 0 auto; min-height:320px; }
+    }
+    </style>
+
+    <div id="s3d-panel" class="s3d-panel" aria-hidden="true">
+        <div class="s3d-topbar">
+            <h2>Diseño de piezas 3D</h2>
+            <span class="s3d-badge">Beta · no publicado</span>
+            <span class="s3d-spacer"></span>
+            <button id="s3d-close" class="s3d-close" title="Cerrar (Esc)">✕</button>
+        </div>
+        <div class="s3d-body">
+            <div class="s3d-sidebar">
+                <div class="s3d-section">
+                    <div class="s3d-section-title">Pieza</div>
+                    <select id="s3d-preset"></select>
+                </div>
+                <div class="s3d-section">
+                    <div class="s3d-section-title">Parámetros</div>
+                    <div id="s3d-params"><div class="s3d-empty-params">Sin parámetros detectados.</div></div>
+                </div>
+                <div class="s3d-section">
+                    <div class="s3d-section-title">Acciones</div>
+                    <button id="s3d-render" class="s3d-btn primary">Renderizar</button>
+                    <button id="s3d-dl-stl" class="s3d-btn" disabled>Descargar STL</button>
+                    <button id="s3d-dl-scad" class="s3d-btn">Descargar código .scad</button>
+                    <label class="s3d-check"><input type="checkbox" id="s3d-auto" checked> Render automático al cambiar parámetros</label>
+                </div>
+                <div class="s3d-section">
+                    <div class="s3d-section-title">Ayuda</div>
+                    <div class="s3d-empty-params">Las variables del inicio del código aparecen como parámetros. Un comentario <b>// [mín:máx]</b> en la misma línea crea un deslizador y <b>/* [Grupo] */</b> agrupa. El STL descargado se imprime directamente en 3D.</div>
+                </div>
+            </div>
+            <div class="s3d-main">
+                <div class="s3d-editor-wrap">
+                    <div class="s3d-editor-head"><span>Código OpenSCAD</span><span id="s3d-editor-info"></span></div>
+                    <textarea id="s3d-code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
+                </div>
+                <div class="s3d-viewport-wrap" id="s3d-viewport">
+                    <div class="s3d-view-tools">
+                        <button id="s3d-fit" title="Encuadrar la pieza">Encuadrar</button>
+                    </div>
+                    <div class="s3d-overlay" id="s3d-overlay">
+                        <div class="s3d-spinner"></div>
+                        <div id="s3d-overlay-msg">Preparando el visor 3D…</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <pre id="s3d-log" class="s3d-log"></pre>
+        <div class="s3d-statusbar">
+            <span class="s3d-status-msg" id="s3d-status">Listo.</span>
+            <span id="s3d-mesh-info"></span>
+            <button class="s3d-log-toggle" id="s3d-log-toggle">Consola</button>
+        </div>
+    </div>
+
+    <script>
+    /* ===== PIEZAS 3D (SCAD) MODULE START ===== */
+    (function () {
+    'use strict';
+
+    var THREE_URL = 'https://unpkg.com/three@0.160.0/build/three.module.js';
+    var OPENSCAD_URL = 'https://unpkg.com/openscad-wasm@0.0.4/openscad.js';
+    var RENDER_TIMEOUT_MS = 300000;
+
+    /* ---------- Biblioteca de piezas ---------- */
+    var PRESETS = [
+    { id: 'polea', nombre: 'Polea', code: [
+    '// ================== POLEA ==================',
+    '// Polea con garganta para cordel, para montar',
+    '// sobre un eje o tornillo.',
+    '',
+    '/* [Dimensiones] */',
+    '// Diámetro exterior (mm)',
+    'diametro_exterior = 50; // [20:150]',
+    '// Altura de la polea (mm)',
+    'altura = 12; // [6:40]',
+    '// Diámetro del agujero del eje (mm)',
+    'diametro_eje = 8; // [2:25]',
+    '// Profundidad de la garganta (mm)',
+    'garganta = 4; // [1:12]',
+    '',
+    '/* [Aligerado] */',
+    '// Cantidad de agujeros de aligeramiento',
+    'agujeros = 6; // [0:12]',
+    '',
+    '/* [Calidad] */',
+    '// Resolución de las curvas (más = más suave y más lento)',
+    'resolucion = 90; // [24:160]',
+    '',
+    '/* [Hidden] */',
+    '$fn = resolucion;',
+    'r_ext = diametro_exterior / 2;',
+    'r_medio = (r_ext - garganta + diametro_eje / 2) / 2;',
+    'd_alig = (r_ext - garganta - diametro_eje / 2) * 0.45;',
+    '',
+    'difference() {',
+    '    cylinder(h = altura, r = r_ext, center = true);',
+    '    // Agujero del eje',
+    '    cylinder(h = altura + 2, d = diametro_eje, center = true);',
+    '    // Garganta para el cordel',
+    '    rotate_extrude()',
+    '        translate([r_ext, 0, 0])',
+    '            circle(r = garganta);',
+    '    // Agujeros de aligeramiento',
+    '    if (agujeros > 0 && d_alig > 2)',
+    '        for (i = [0 : agujeros - 1])',
+    '            rotate([0, 0, i * 360 / agujeros])',
+    '                translate([r_medio, 0, 0])',
+    '                    cylinder(h = altura + 2, d = d_alig, center = true);',
+    '}'
+    ].join('\n') },
+
+    { id: 'soporte-varilla', nombre: 'Soporte de varilla', code: [
+    '// ============ SOPORTE DE VARILLA ============',
+    '// Abrazadera partida con base atornillable para',
+    '// sujetar una varilla vertical de laboratorio.',
+    '',
+    '/* [Varilla] */',
+    '// Diámetro de la varilla (mm)',
+    'diametro_varilla = 12.5; // [4:0.5:30]',
+    '// Altura de la abrazadera (mm)',
+    'altura_abrazadera = 25; // [10:60]',
+    '// Espesor de pared alrededor de la varilla (mm)',
+    'pared = 6; // [3:15]',
+    '// Ancho de la ranura de apriete (mm)',
+    'ranura = 3; // [1:8]',
+    '// Diámetro del tornillo de apriete (mm)',
+    'tornillo_apriete = 4; // [2:8]',
+    '',
+    '/* [Base] */',
+    '// Largo de la base (mm)',
+    'base_largo = 70; // [40:140]',
+    '// Ancho de la base (mm)',
+    'base_ancho = 30; // [20:60]',
+    '// Espesor de la base (mm)',
+    'base_espesor = 6; // [4:15]',
+    '// Diámetro de los tornillos de fijación (mm)',
+    'tornillo_base = 5; // [3:8]',
+    '',
+    '/* [Calidad] */',
+    '// Resolución de las curvas',
+    'resolucion = 64; // [24:160]',
+    '',
+    '/* [Hidden] */',
+    '$fn = resolucion;',
+    'd_ext = diametro_varilla + 2 * pared;',
+    '',
+    '// Base con agujeros de fijación',
+    'difference() {',
+    '    translate([0, 0, base_espesor / 2])',
+    '        cube([base_largo, base_ancho, base_espesor], center = true);',
+    '    for (x = [-1, 1])',
+    '        translate([x * (base_largo / 2 - tornillo_base * 1.6), 0, base_espesor / 2])',
+    '            cylinder(h = base_espesor + 2, d = tornillo_base, center = true);',
+    '}',
+    '',
+    '// Abrazadera partida',
+    'translate([0, 0, base_espesor])',
+    'difference() {',
+    '    cylinder(h = altura_abrazadera, d = d_ext);',
+    '    // Alojamiento de la varilla (apoya sobre la base)',
+    '    translate([0, 0, -1])',
+    '        cylinder(h = altura_abrazadera + 2, d = diametro_varilla);',
+    '    // Ranura de apriete',
+    '    translate([0, d_ext / 2, altura_abrazadera / 2])',
+    '        cube([ranura, d_ext, altura_abrazadera + 2], center = true);',
+    '    // Tornillo de apriete, atraviesa la ranura',
+    '    translate([0, diametro_varilla / 2 + pared / 2, altura_abrazadera / 2])',
+    '        rotate([0, 90, 0])',
+    '            cylinder(h = d_ext + 2, d = tornillo_apriete, center = true);',
+    '}'
+    ].join('\n') },
+
+    { id: 'gancho', nombre: 'Gancho de carga', code: [
+    '// ============== GANCHO DE CARGA ==============',
+    '// Gancho con ojal superior para colgar pesas o',
+    '// engancharlo a un dinamómetro.',
+    '',
+    '/* [Gancho] */',
+    '// Diámetro interior del gancho (mm)',
+    'diametro_gancho = 22; // [10:60]',
+    '// Grosor del material (mm)',
+    'grosor = 5; // [3:14]',
+    '// Largo del vástago recto (mm)',
+    'vastago = 30; // [10:90]',
+    '// Diámetro interior del ojal de colgado (mm)',
+    'ojal = 8; // [4:24]',
+    '// Apertura de la boca del gancho (grados)',
+    'apertura = 75; // [30:150]',
+    '',
+    '/* [Calidad] */',
+    '// Resolución de las curvas',
+    'resolucion = 64; // [24:160]',
+    '',
+    '/* [Hidden] */',
+    '$fn = resolucion;',
+    'rg = diametro_gancho / 2;',
+    'barrido = 360 - apertura;',
+    '',
+    'rotate([90, 0, 0])  // Ponerlo de pie',
+    'union() {',
+    '    // Curva del gancho',
+    '    rotate([0, 0, 90 - barrido])',
+    '        rotate_extrude(angle = barrido)',
+    '            translate([rg, 0, 0])',
+    '                circle(d = grosor);',
+    '    // Punta redondeada',
+    '    rotate([0, 0, 90 - barrido])',
+    '        translate([rg, 0, 0])',
+    '            sphere(d = grosor);',
+    '    // Vástago recto',
+    '    translate([0, rg, 0])',
+    '        rotate([-90, 0, 0])',
+    '            cylinder(h = vastago + 0.1, d = grosor);',
+    '    // Ojal de colgado',
+    '    translate([0, rg + vastago + ojal / 2, 0])',
+    '        rotate_extrude()',
+    '            translate([(ojal + grosor) / 2, 0, 0])',
+    '                circle(d = grosor);',
+    '}'
+    ].join('\n') },
+
+    { id: 'pie-varilla', nombre: 'Pie para varilla', code: [
+    '// ============= PIE PARA VARILLA =============',
+    '// Base pesada con alojamiento vertical y tornillo',
+    '// prisionero para fijar una varilla de soporte.',
+    '',
+    '/* [Pie] */',
+    '// Diámetro de la base (mm)',
+    'diametro_base = 80; // [40:170]',
+    '// Altura de la base (mm)',
+    'altura_base = 10; // [6:25]',
+    '// Diámetro de la varilla (mm)',
+    'diametro_varilla = 12.5; // [4:0.5:30]',
+    '// Altura del cubo portavarilla (mm)',
+    'altura_cubo = 30; // [15:70]',
+    '// Espesor de pared del cubo (mm)',
+    'pared = 8; // [4:18]',
+    '// Diámetro del tornillo prisionero (mm)',
+    'prisionero = 4; // [2:8]',
+    '',
+    '/* [Calidad] */',
+    '// Resolución de las curvas',
+    'resolucion = 96; // [24:160]',
+    '',
+    '/* [Hidden] */',
+    '$fn = resolucion;',
+    'd_cubo = diametro_varilla + 2 * pared;',
+    '',
+    'difference() {',
+    '    union() {',
+    '        // Base con borde achaflanado',
+    '        cylinder(h = altura_base, d1 = diametro_base,',
+    '                 d2 = max(diametro_base - 2 * altura_base, d_cubo));',
+    '        // Cubo portavarilla',
+    '        cylinder(h = altura_base + altura_cubo, d = d_cubo);',
+    '    }',
+    '    // Alojamiento de la varilla (ciego)',
+    '    translate([0, 0, altura_base / 2])',
+    '        cylinder(h = altura_base / 2 + altura_cubo + 1, d = diametro_varilla);',
+    '    // Tornillo prisionero',
+    '    translate([0, 0, altura_base + altura_cubo / 2])',
+    '        rotate([0, 90, 0])',
+    '            cylinder(h = d_cubo, d = prisionero);',
+    '}'
+    ].join('\n') },
+
+    { id: 'blanco', nombre: 'Pieza en blanco', code: [
+    '// ============ PIEZA EN BLANCO ============',
+    '// Escribí aquí tu propio código OpenSCAD o pegá',
+    '// uno existente.',
+    '//',
+    '// Las variables definidas al inicio aparecen',
+    '// automáticamente en el panel PARÁMETROS:',
+    '//   ancho = 20;      // [5:50]      → deslizador',
+    '//   tipo = 2;        // [1,2,3]     → lista',
+    '//   con_tapa = true;               → casilla',
+    '//   /* [Grupo] */                  → título de grupo',
+    '//   /* [Hidden] */                 → oculta lo que sigue',
+    '',
+    '/* [Dimensiones] */',
+    '// Lado del cubo (mm)',
+    'lado = 20; // [5:60]',
+    '// Diámetro del agujero (mm)',
+    'agujero = 8; // [1:30]',
+    '',
+    '/* [Calidad] */',
+    '// Resolución de las curvas',
+    'resolucion = 64; // [16:160]',
+    '',
+    '/* [Hidden] */',
+    '$fn = resolucion;',
+    '',
+    'difference() {',
+    '    cube([lado, lado, lado], center = true);',
+    '    cylinder(h = lado + 2, d = agujero, center = true);',
+    '}'
+    ].join('\n') }
+    ];
+
+    /* ---------- Estado ---------- */
+    var el = function (id) { return document.getElementById(id); };
+    var panel, codeEl, statusEl, logEl, overlayEl, overlayMsgEl;
+    var params = [];            // [{name, value, type, min, max, step, options, label, group, lineIndex}]
+    var lastStl = null;         // último STL (texto) renderizado con éxito
+    var lastGoodCodeId = null;  // id de preset del último STL
+    var codeDirtyTimer = null, renderTimer = null;
+    var rendering = false, renderQueued = false, renderSeq = 0;
+    var worker = null, workerBlobUrl = null;
+    var viewer = null;          // { three, scene, camera, renderer, mesh, ... }
+    var opened = false;
+    var fitOnNextRender = false; // reencuadrar al renderizar una pieza nueva
+
+    /* ---------- Utilidades ---------- */
+    function setStatus(msg, cls) {
+        statusEl.textContent = msg;
+        statusEl.className = 's3d-status-msg' + (cls ? ' ' + cls : '');
+    }
+    function appendLog(lines) {
+        var html = lines.map(function (l) {
+            var esc = String(l).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+            if (/error/i.test(l)) return '<span class="err">' + esc + '</span>';
+            if (/warning/i.test(l)) return '<span class="warn">' + esc + '</span>';
+            return esc;
+        }).join('\n');
+        logEl.innerHTML += (logEl.innerHTML ? '\n' : '') + html;
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+    function clearLog() { logEl.innerHTML = ''; }
+    function fmtNum(n) {
+        return (Math.round(n * 1e6) / 1e6).toString();
+    }
+    function slug(s) {
+        return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'pieza';
+    }
+    function download(filename, text, mime) {
+        var blob = new Blob([text], { type: mime || 'application/octet-stream' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    }
+
+    /* ---------- Customizer: parseo de variables ---------- */
+    var ASSIGN_RE = /^(\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*=\s*)(-?\d+(?:\.\d+)?|true|false|"[^"]*")(\s*;)(\s*\/\/(.*))?\s*$/;
+    var GROUP_RE = /^\s*\/\*\s*\[(.+?)\]\s*\*\/\s*$/;
+
+    function parseParams(code) {
+        var lines = code.split('\n');
+        var out = [];
+        var group = 'Parámetros';
+        var pendingLabel = null;
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            var g = line.match(GROUP_RE);
+            if (g) { group = g[1].trim(); pendingLabel = null; continue; }
+            var lc = line.match(/^\s*\/\/\s?(.*)$/);
+            if (lc) {
+                // Comentario de línea: posible descripción del parámetro siguiente
+                pendingLabel = /^[=\-#*]/.test(lc[1]) ? null : lc[1].trim();
+                continue;
+            }
+            var m = line.match(ASSIGN_RE);
+            if (!m) { if (line.trim() !== '') pendingLabel = null; continue; }
+            var name = m[2], rawVal = m[4], comment = (m[7] || '').trim();
+            var label = pendingLabel; pendingLabel = null;
+            if (group.toLowerCase() === 'hidden') continue;
+            var p = { name: name, lineIndex: i, group: group, label: label || name };
+            if (rawVal === 'true' || rawVal === 'false') {
+                p.type = 'bool'; p.value = rawVal === 'true';
+            } else if (rawVal.charAt(0) === '"') {
+                p.type = 'text'; p.value = rawVal.slice(1, -1);
+            } else {
+                p.type = 'number'; p.value = parseFloat(rawVal);
+            }
+            // Anotación en el comentario: [min:max], [min:paso:max] o [a,b,c]
+            var ann = comment.match(/\[([^\]]*)\]/);
+            if (ann && p.type === 'number') {
+                var body = ann[1];
+                if (body.indexOf(',') >= 0) {
+                    p.options = body.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+                    p.type = 'select';
+                } else {
+                    var parts = body.split(':').map(function (s) { return parseFloat(s.trim()); });
+                    if (parts.length >= 2 && parts.every(function (n) { return isFinite(n); })) {
+                        p.min = parts[0];
+                        p.max = parts[parts.length - 1];
+                        p.step = parts.length === 3 ? parts[1]
+                               : (String(rawVal).indexOf('.') >= 0 ? 0.1 : 1);
+                        p.type = 'slider';
+                    }
+                }
+            }
+            out.push(p);
+        }
+        return out;
+    }
+
+    function setParamValue(p, value) {
+        var lines = codeEl.value.split('\n');
+        var line = lines[p.lineIndex];
+        if (line === undefined) return;
+        var m = line.match(ASSIGN_RE);
+        if (!m || m[2] !== p.name) {
+            // El código cambió por debajo: re-parsear y reintentar una vez
+            refreshParams();
+            return;
+        }
+        var newVal;
+        if (p.type === 'bool') newVal = value ? 'true' : 'false';
+        else if (p.type === 'text') newVal = '"' + String(value).replace(/"/g, '') + '"';
+        else newVal = fmtNum(value);
+        p.value = value;
+        lines[p.lineIndex] = m[1] + m[2] + m[3] + newVal + m[5] + (m[6] || '');
+        codeEl.value = lines.join('\n');
+        scheduleAutoRender();
+    }
+
+    function buildParamsUI() {
+        var box = el('s3d-params');
+        box.innerHTML = '';
+        if (!params.length) {
+            box.innerHTML = '<div class="s3d-empty-params">Sin parámetros detectados. Definí variables al inicio del código, por ejemplo:<br><b>ancho = 20; // [5:50]</b></div>';
+            return;
+        }
+        var curGroup = null;
+        params.forEach(function (p) {
+            if (p.group !== curGroup) {
+                curGroup = p.group;
+                var gt = document.createElement('div');
+                gt.className = 's3d-param-group-title';
+                gt.textContent = curGroup;
+                box.appendChild(gt);
+            }
+            var wrap = document.createElement('div');
+            wrap.className = 's3d-param';
+            var lab = document.createElement('label');
+            lab.className = 's3d-param-label';
+            lab.textContent = p.label + ' ';
+            var nm = document.createElement('span');
+            nm.className = 's3d-param-name';
+            nm.textContent = p.name;
+            lab.appendChild(nm);
+            wrap.appendChild(lab);
+            var row = document.createElement('div');
+            row.className = 's3d-param-row';
+
+            if (p.type === 'slider') {
+                var rng = document.createElement('input');
+                rng.type = 'range'; rng.min = p.min; rng.max = p.max; rng.step = p.step; rng.value = p.value;
+                var num = document.createElement('input');
+                num.type = 'number'; num.min = p.min; num.max = p.max; num.step = p.step; num.value = p.value;
+                rng.addEventListener('input', function () { num.value = rng.value; setParamValue(p, parseFloat(rng.value)); });
+                num.addEventListener('change', function () {
+                    var v = parseFloat(num.value);
+                    if (!isFinite(v)) { num.value = p.value; return; }
+                    rng.value = v; setParamValue(p, v);
+                });
+                row.appendChild(rng); row.appendChild(num);
+            } else if (p.type === 'select') {
+                var sel = document.createElement('select');
+                p.options.forEach(function (o) {
+                    var op = document.createElement('option');
+                    op.value = o; op.textContent = o;
+                    if (parseFloat(o) === p.value) op.selected = true;
+                    sel.appendChild(op);
+                });
+                sel.addEventListener('change', function () { setParamValue(p, parseFloat(sel.value)); });
+                row.appendChild(sel);
+            } else if (p.type === 'bool') {
+                var chk = document.createElement('input');
+                chk.type = 'checkbox'; chk.checked = p.value;
+                chk.addEventListener('change', function () { setParamValue(p, chk.checked); });
+                row.appendChild(chk);
+            } else if (p.type === 'text') {
+                var txt = document.createElement('input');
+                txt.type = 'text'; txt.value = p.value;
+                txt.addEventListener('change', function () { setParamValue(p, txt.value); });
+                row.appendChild(txt);
+            } else {
+                var num2 = document.createElement('input');
+                num2.type = 'number'; num2.value = p.value; num2.step = 'any';
+                num2.addEventListener('change', function () {
+                    var v = parseFloat(num2.value);
+                    if (!isFinite(v)) { num2.value = p.value; return; }
+                    setParamValue(p, v);
+                });
+                row.appendChild(num2);
+            }
+            wrap.appendChild(row);
+            box.appendChild(wrap);
+        });
+    }
+
+    function refreshParams() {
+        params = parseParams(codeEl.value);
+        buildParamsUI();
+        el('s3d-editor-info').textContent = params.length ? params.length + ' parámetro' + (params.length === 1 ? '' : 's') : '';
+    }
+
+    /* ---------- Worker de OpenSCAD ---------- */
+    function workerSource() {
+        return [
+            "self.addEventListener('error', function (e) { e.preventDefault(); });",
+            "self.onmessage = async function (e) {",
+            "  var id = e.data.id, logs = [];",
+            "  try {",
+            "    var mod = await import(e.data.url);",
+            "    var scad = await mod.createOpenSCAD({",
+            "      print: function (t) { logs.push(t); },",
+            "      printErr: function (t) { logs.push(t); }",
+            "    });",
+            "    var stl = await scad.renderToStl(e.data.code);",
+            "    self.postMessage({ id: id, ok: true, stl: stl, logs: logs });",
+            "  } catch (err) {",
+            "    var msg = err && err.message ? String(err.message) : String(err);",
+            "    if (msg === '[object Object]') msg = (err && err.name) || 'el código no generó ninguna pieza';",
+            "    self.postMessage({ id: id, ok: false, error: msg, logs: logs });",
+            "  }",
+            "};"
+        ].join('\n');
+    }
+    function getWorker() {
+        if (worker) return worker;
+        if (!workerBlobUrl) {
+            workerBlobUrl = URL.createObjectURL(new Blob([workerSource()], { type: 'text/javascript' }));
+        }
+        worker = new Worker(workerBlobUrl, { type: 'module' });
+        return worker;
+    }
+    function killWorker() {
+        if (worker) { try { worker.terminate(); } catch (e) {} worker = null; }
+    }
+
+    function scheduleAutoRender() {
+        el('s3d-dl-stl').disabled = !lastStl;
+        if (!el('s3d-auto').checked) { setStatus('Cambios sin renderizar — presioná RENDERIZAR.', ''); return; }
+        clearTimeout(renderTimer);
+        renderTimer = setTimeout(render, 700);
+    }
+
+    function render() {
+        clearTimeout(renderTimer);
+        if (rendering) { renderQueued = true; return; }
+        rendering = true;
+        renderQueued = false;
+        var id = ++renderSeq;
+        var t0 = performance.now();
+        var code = codeEl.value;
+        clearLog();
+        setStatus('Renderizando… (la primera vez descarga el motor OpenSCAD, ~14 MB)', 'busy');
+        el('s3d-render').disabled = true;
+
+        var w = getWorker();
+        var timeout = setTimeout(function () {
+            if (id !== renderSeq) return;
+            killWorker();
+            finish(false, 'El render tardó demasiado y fue cancelado.');
+        }, RENDER_TIMEOUT_MS);
+
+        function finish(ok, msgOrStl, logs) {
+            clearTimeout(timeout);
+            rendering = false;
+            el('s3d-render').disabled = false;
+            if (logs && logs.length) appendLog(logs);
+            if (ok) {
+                lastStl = msgOrStl;
+                lastGoodCodeId = el('s3d-preset').value;
+                el('s3d-dl-stl').disabled = false;
+                var secs = ((performance.now() - t0) / 1000).toFixed(1);
+                showStl(msgOrStl, secs);
+            } else {
+                setStatus('Error: ' + msgOrStl + ' — revisá la consola.', 'error');
+                if (!logEl.classList.contains('open')) logEl.classList.add('open');
+            }
+            if (renderQueued) { renderQueued = false; render(); }
+        }
+
+        w.onmessage = function (e) {
+            if (e.data.id !== id) return;
+            if (e.data.ok) finish(true, e.data.stl, e.data.logs);
+            else {
+                killWorker(); // la instancia queda inservible tras un error
+                var lg = e.data.logs || [];
+                var pick = function (re) {
+                    var f = lg.filter(function (l) { return re.test(l); });
+                    return f[f.length - 1];
+                };
+                var errLine = pick(/error/i) || pick(/warning/i) || pick(/empty/i);
+                finish(false, errLine || e.data.error || 'fallo del motor OpenSCAD', lg);
+            }
+        };
+        w.onerror = function (ev) {
+            if (ev && ev.preventDefault) ev.preventDefault();
+            if (id !== renderSeq || !rendering) return;
+            killWorker();
+            finish(false, (ev && ev.message) || 'no se pudo cargar el motor OpenSCAD (¿sin conexión?)');
+        };
+        w.postMessage({ id: id, code: code, url: OPENSCAD_URL });
+    }
+
+    /* ---------- STL → geometría ---------- */
+    function parseAsciiStl(text, THREE) {
+        var pos = [];
+        var re = /vertex\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)/g;
+        var m;
+        while ((m = re.exec(text)) !== null) {
+            pos.push(parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]));
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+        geo.computeVertexNormals();
+        geo.computeBoundingBox();
+        return geo;
+    }
+
+    /* ---------- Visor 3D ---------- */
+    function initViewer() {
+        if (viewer) return Promise.resolve(viewer);
+        overlayEl.classList.remove('hidden');
+        overlayMsgEl.textContent = 'Cargando el visor 3D…';
+        return import(THREE_URL).then(function (THREE) {
+            var wrap = el('s3d-viewport');
+            var renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            wrap.insertBefore(renderer.domElement, wrap.firstChild);
+
+            var scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1d23);
+
+            var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 5000);
+            camera.up.set(0, 0, 1); // OpenSCAD usa Z hacia arriba
+
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x333340, 1.0));
+            var dir = new THREE.DirectionalLight(0xffffff, 1.4);
+            dir.position.set(80, -60, 120);
+            scene.add(dir);
+            var dir2 = new THREE.DirectionalLight(0xffffff, 0.45);
+            dir2.position.set(-70, 60, -40);
+            scene.add(dir2);
+
+            var grid = new THREE.GridHelper(200, 20, 0x3a4150, 0x262b34);
+            grid.rotation.x = Math.PI / 2; // llevar la grilla al plano XY
+            scene.add(grid);
+            var axes = new THREE.AxesHelper(24);
+            scene.add(axes);
+
+            var material = new THREE.MeshStandardMaterial({
+                color: 0xd9dade, metalness: 0.1, roughness: 0.55, flatShading: true
+            });
+
+            var v = {
+                THREE: THREE, scene: scene, camera: camera, renderer: renderer,
+                material: material, mesh: null, wrap: wrap,
+                target: new THREE.Vector3(0, 0, 0),
+                sph: { r: 160, theta: Math.PI / 4, phi: 1.05 }, // acimut, inclinación
+                needsFrame: true
+            };
+
+            function applyCamera() {
+                var s = v.sph;
+                s.phi = Math.max(0.05, Math.min(Math.PI - 0.05, s.phi));
+                s.r = Math.max(2, Math.min(3000, s.r));
+                camera.position.set(
+                    v.target.x + s.r * Math.sin(s.phi) * Math.cos(s.theta),
+                    v.target.y + s.r * Math.sin(s.phi) * Math.sin(s.theta),
+                    v.target.z + s.r * Math.cos(s.phi)
+                );
+                camera.lookAt(v.target);
+                v.needsFrame = true;
+            }
+            v.applyCamera = applyCamera;
+
+            function resize() {
+                var r = wrap.getBoundingClientRect();
+                if (r.width < 2 || r.height < 2) return;
+                renderer.setSize(r.width, r.height, false);
+                renderer.domElement.style.width = '100%';
+                renderer.domElement.style.height = '100%';
+                camera.aspect = r.width / r.height;
+                camera.updateProjectionMatrix();
+                v.needsFrame = true;
+            }
+            v.resize = resize;
+            window.addEventListener('resize', resize);
+
+            /* Controles de órbita propios (rotar / zoom / desplazar) */
+            var elc = renderer.domElement;
+            var drag = null; // {mode, x, y}
+            var pinch = null;
+            elc.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+            elc.addEventListener('pointerdown', function (e) {
+                if (pinch) return;
+                elc.setPointerCapture(e.pointerId);
+                drag = { mode: (e.button === 2 || e.button === 1 || e.shiftKey) ? 'pan' : 'rot', x: e.clientX, y: e.clientY, id: e.pointerId };
+            });
+            elc.addEventListener('pointermove', function (e) {
+                if (!drag || e.pointerId !== drag.id) return;
+                var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+                drag.x = e.clientX; drag.y = e.clientY;
+                if (drag.mode === 'rot') {
+                    v.sph.theta -= dx * 0.007;
+                    v.sph.phi -= dy * 0.007;
+                } else {
+                    var k = v.sph.r * 0.0016;
+                    var right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0);
+                    var upv = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
+                    v.target.addScaledVector(right, -dx * k);
+                    v.target.addScaledVector(upv, dy * k);
+                }
+                applyCamera();
+            });
+            var endDrag = function (e) { if (drag && e.pointerId === drag.id) drag = null; };
+            elc.addEventListener('pointerup', endDrag);
+            elc.addEventListener('pointercancel', endDrag);
+            elc.addEventListener('wheel', function (e) {
+                e.preventDefault();
+                v.sph.r *= Math.pow(1.1, e.deltaY > 0 ? 1 : -1);
+                applyCamera();
+            }, { passive: false });
+            elc.addEventListener('touchstart', function (e) {
+                if (e.touches.length === 2) {
+                    drag = null;
+                    pinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                                       e.touches[0].clientY - e.touches[1].clientY);
+                }
+            }, { passive: true });
+            elc.addEventListener('touchmove', function (e) {
+                if (pinch !== null && e.touches.length === 2) {
+                    var d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                                       e.touches[0].clientY - e.touches[1].clientY);
+                    if (d > 0) { v.sph.r *= pinch / d; pinch = d; applyCamera(); }
+                }
+            }, { passive: true });
+            elc.addEventListener('touchend', function (e) {
+                if (e.touches.length < 2) pinch = null;
+            });
+
+            function loop() {
+                if (!opened) { v.rafId = null; return; }
+                v.rafId = requestAnimationFrame(loop);
+                if (v.needsFrame) {
+                    v.needsFrame = false;
+                    renderer.render(scene, camera);
+                }
+            }
+            v.startLoop = function () { if (!v.rafId) loop(); };
+
+            viewer = v;
+            resize();
+            applyCamera();
+            v.startLoop();
+            overlayEl.classList.add('hidden');
+            return v;
+        });
+    }
+
+    function fitView() {
+        if (!viewer || !viewer.mesh) return;
+        var bb = viewer.mesh.geometry.boundingBox;
+        var c = bb.getCenter(new viewer.THREE.Vector3());
+        var size = bb.getSize(new viewer.THREE.Vector3());
+        var maxDim = Math.max(size.x, size.y, size.z, 1);
+        viewer.target.copy(c);
+        viewer.sph.r = maxDim * 2.1;
+        viewer.applyCamera();
+    }
+
+    function showStl(stlText, secs) {
+        initViewer().then(function (v) {
+            var geo = parseAsciiStl(stlText, v.THREE);
+            var tris = geo.getAttribute('position').count / 3;
+            var hadMesh = !!v.mesh;
+            if (v.mesh) {
+                v.scene.remove(v.mesh);
+                v.mesh.geometry.dispose();
+            }
+            v.mesh = new v.THREE.Mesh(geo, v.material);
+            v.scene.add(v.mesh);
+            if (!hadMesh || fitOnNextRender) fitView(); else v.needsFrame = true;
+            fitOnNextRender = false;
+            var bb = geo.boundingBox, s = bb.getSize(new v.THREE.Vector3());
+            el('s3d-mesh-info').textContent = tris + ' triángulos · ' +
+                s.x.toFixed(1) + ' × ' + s.y.toFixed(1) + ' × ' + s.z.toFixed(1) + ' mm';
+            setStatus('Render listo en ' + secs + ' s.', '');
+        }).catch(function (err) {
+            overlayEl.classList.remove('hidden');
+            overlayMsgEl.textContent = 'No se pudo cargar el visor 3D: ' + err;
+            setStatus('Error del visor 3D.', 'error');
+        });
+    }
+
+    /* ---------- Presets ---------- */
+    function loadPreset(id, keepCodeCheck) {
+        var p = PRESETS.filter(function (x) { return x.id === id; })[0] || PRESETS[0];
+        if (keepCodeCheck && codeEl.value.trim() && codeEl.value !== (window.__s3dLoadedCode || '')) {
+            if (!confirm('El código actual tiene cambios. ¿Reemplazarlo por la pieza "' + p.nombre + '"?')) {
+                el('s3d-preset').value = window.__s3dLoadedPreset || PRESETS[0].id;
+                return;
+            }
+        }
+        codeEl.value = p.code;
+        window.__s3dLoadedCode = p.code;
+        window.__s3dLoadedPreset = p.id;
+        lastStl = null;
+        fitOnNextRender = true;
+        el('s3d-dl-stl').disabled = true;
+        refreshParams();
+        scheduleAutoRender();
+    }
+
+    /* ---------- Apertura / cierre ---------- */
+    function openPanel() {
+        if (!panel) return;
+        panel.classList.add('open');
+        panel.setAttribute('aria-hidden', 'false');
+        opened = true;
+        if (viewer) { viewer.resize(); viewer.startLoop(); }
+        if (!window.__s3dLoadedPreset) {
+            loadPreset(PRESETS[0].id, false);
+        }
+        if (!viewer) initViewer().catch(function (err) {
+            overlayMsgEl.textContent = 'No se pudo cargar el visor 3D (¿sin conexión?): ' + err;
+        });
+    }
+    function closePanel() {
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden', 'true');
+        opened = false;
+        if (/^#piezas3d$/i.test(location.hash)) {
+            try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+        }
+    }
+
+    function checkHash() {
+        if (/^#piezas3d$/i.test(location.hash)) {
+            var btn = el('btn-piezas3d');
+            if (btn) btn.style.display = '';
+            openPanel();
+        }
+    }
+
+    /* ---------- Inicialización ---------- */
+    function init() {
+        panel = el('s3d-panel');
+        codeEl = el('s3d-code');
+        statusEl = el('s3d-status');
+        logEl = el('s3d-log');
+        overlayEl = el('s3d-overlay');
+        overlayMsgEl = el('s3d-overlay-msg');
+        if (!panel) return;
+
+        var sel = el('s3d-preset');
+        PRESETS.forEach(function (p) {
+            var op = document.createElement('option');
+            op.value = p.id; op.textContent = p.nombre;
+            sel.appendChild(op);
+        });
+        sel.addEventListener('change', function () { loadPreset(sel.value, true); });
+
+        el('s3d-render').addEventListener('click', render);
+        el('s3d-fit').addEventListener('click', fitView);
+        el('s3d-close').addEventListener('click', closePanel);
+        el('s3d-log-toggle').addEventListener('click', function () { logEl.classList.toggle('open'); });
+
+        el('s3d-dl-scad').addEventListener('click', function () {
+            download(slug(sel.options[sel.selectedIndex].text) + '.scad', codeEl.value, 'text/plain');
+        });
+        el('s3d-dl-stl').addEventListener('click', function () {
+            if (!lastStl) return;
+            download(slug(sel.options[sel.selectedIndex].text) + '.stl', lastStl, 'model/stl');
+        });
+
+        codeEl.addEventListener('input', function () {
+            clearTimeout(codeDirtyTimer);
+            codeDirtyTimer = setTimeout(function () {
+                refreshParams();
+                scheduleAutoRender();
+            }, 600);
+        });
+        codeEl.addEventListener('keydown', function (e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                var s = codeEl.selectionStart, t = codeEl.selectionEnd;
+                codeEl.value = codeEl.value.slice(0, s) + '    ' + codeEl.value.slice(t);
+                codeEl.selectionStart = codeEl.selectionEnd = s + 4;
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && opened && document.activeElement !== codeEl) closePanel();
+        });
+
+        var btn = el('btn-piezas3d');
+        if (btn) btn.addEventListener('click', openPanel);
+
+        window.addEventListener('hashchange', checkHash);
+        checkHash();
+    }
+
+    window.abrirPiezas3D = openPanel;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+    })();
+    /* ===== PIEZAS 3D (SCAD) MODULE END ===== */
     </script>
 </body>
 </html>
