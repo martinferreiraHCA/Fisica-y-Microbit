@@ -28251,6 +28251,27 @@ bluetooth.startIOPinService()</pre>
     .s3d-piece-card-name { font-size:11px; color:#d6dbe4; margin-top:5px; line-height:1.3; word-break:break-word; }
     .s3d-piece-card-kind { font-size:9px; letter-spacing:1px; color:#6f7887; text-transform:uppercase; margin-top:2px; }
     .s3d-folder-note { font-size:10px; color:#6f7887; margin-top:8px; line-height:1.5; }
+    .s3d-wizard { display:none; position:absolute; inset:0; z-index:40; background:rgba(10,11,14,.74); align-items:flex-start; justify-content:center; overflow-y:auto; padding:26px 14px; box-sizing:border-box; }
+    .s3d-wizard.open { display:flex; }
+    .s3d-wizard-card { background:#181b21; border:1px solid #444; width:100%; max-width:720px; margin-bottom:26px; }
+    .s3d-wizard-head { display:flex; align-items:center; justify-content:space-between; background:#0a0a0a; border-bottom:1px solid #2b303b; padding:10px 14px; }
+    .s3d-wizard-head h3 { margin:0; font-size:12px; letter-spacing:2px; text-transform:uppercase; color:#fff; }
+    .s3d-wizard-body { padding:14px; }
+    .s3d-wiz-steptitle { font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#ffca28; margin:14px 0 8px; }
+    .s3d-wiz-steptitle:first-child { margin-top:0; }
+    .s3d-wiz-radio { display:flex; gap:8px; align-items:flex-start; font-size:12px; color:#cfd4dd; margin-bottom:6px; cursor:pointer; }
+    .s3d-wiz-radio input { accent-color:#fff; margin-top:2px; }
+    .s3d-wiz-radio.disabled { opacity:.4; cursor:default; }
+    .s3d-wizard-body input[type="text"], .s3d-wizard-body textarea { width:100%; background:#101216; color:#e0e0e0; border:1px solid #444; border-radius:0; padding:7px 9px; font-size:12px; box-sizing:border-box; margin-bottom:8px; font-family:inherit; outline:none; }
+    .s3d-wizard-body input[type="text"]:focus, .s3d-wizard-body textarea:focus { border-color:#fff; }
+    #s3d-wiz-prompt, #s3d-wiz-resp { font-family:Consolas, Menlo, monospace; font-size:11px; }
+    .s3d-wiz-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:2px 0 6px; }
+    .s3d-wiz-row .s3d-btn { width:auto; margin:0; }
+    .s3d-wiz-ia-link { font-size:11px; color:#8ab4ff; text-decoration:none; border:1px solid #2b303b; padding:6px 9px; }
+    .s3d-wiz-ia-link:hover { border-color:#8ab4ff; }
+    .s3d-wiz-msg { font-size:11px; margin-top:6px; line-height:1.5; }
+    .s3d-wiz-msg.err { color:#ef5350; }
+    .s3d-wiz-msg.ok { color:#9ccc65; }
     .s3d-btn { display:block; width:100%; background:#000; color:#fff; border:1px solid #444; border-radius:0; padding:8px 10px; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer; margin-bottom:6px; }
     .s3d-btn:hover:not(:disabled) { background:#fff; color:#000; border-color:#fff; }
     .s3d-btn:disabled { opacity:.4; cursor:default; }
@@ -28323,6 +28344,13 @@ bluetooth.startIOPinService()</pre>
                     </div>
                 </div>
                 <div class="s3d-section">
+                    <div class="s3d-section-title">Genera tu propia pieza</div>
+                    <button id="s3d-wiz-open" class="s3d-btn">✦ Asistente con IA</button>
+                    <button id="s3d-open-file" class="s3d-btn">Abrir archivo .scad / .stl</button>
+                    <button id="s3d-upload-repo" class="s3d-btn" title="Abre la página de GitHub para subir archivos a la carpeta «diseños 3d» (requiere permisos en el repositorio)">Subir a la carpeta del sitio</button>
+                    <input type="file" id="s3d-file-input" accept=".scad,.stl" style="display:none">
+                </div>
+                <div class="s3d-section">
                     <div class="s3d-section-title">Parámetros</div>
                     <div id="s3d-params"><div class="s3d-empty-params">Sin parámetros detectados.</div></div>
                 </div>
@@ -28335,7 +28363,7 @@ bluetooth.startIOPinService()</pre>
                 </div>
                 <div class="s3d-section">
                     <div class="s3d-section-title">Ayuda</div>
-                    <div class="s3d-empty-params">Al pasar por un parámetro o moverlo, la medida se marca en amarillo sobre la pieza. Con <b>CORTE</b> ves el interior por la mitad. <b>VER CÓDIGO</b> despliega el código OpenSCAD: las variables del inicio aparecen como parámetros, un comentario <b>// [mín:máx]</b> crea un deslizador y <b>/* [Grupo] */</b> agrupa.</div>
+                    <div class="s3d-empty-params">Al pasar por un parámetro o moverlo, la medida se marca en amarillo sobre la pieza. Con <b>CORTE</b> ves el interior por la mitad. <b>VER CÓDIGO</b> despliega el código OpenSCAD: las variables del inicio aparecen como parámetros, un comentario <b>// [mín:máx]</b> crea un deslizador y <b>/* [Grupo] */</b> agrupa. Con el <b>ASISTENTE CON IA</b> podés crear una pieza nueva describiéndola: el sistema arma el prompt, lo pegás en tu IA favorita y traés la respuesta.</div>
                 </div>
             </div>
             <div class="s3d-main">
@@ -28351,6 +28379,53 @@ bluetooth.startIOPinService()</pre>
                     <div class="s3d-overlay" id="s3d-overlay">
                         <div class="s3d-spinner"></div>
                         <div id="s3d-overlay-msg">Preparando el visor 3D…</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="s3d-wizard" class="s3d-wizard" aria-hidden="true">
+            <div class="s3d-wizard-card">
+                <div class="s3d-wizard-head">
+                    <h3>Generá tu propia pieza</h3>
+                    <button id="s3d-wiz-close" class="s3d-close" title="Cerrar">✕</button>
+                </div>
+                <div class="s3d-wizard-body">
+                    <div class="s3d-wiz-steptitle">1 · ¿Qué querés hacer?</div>
+                    <label class="s3d-wiz-radio"><input type="radio" name="s3d-wiz-mode" value="nueva" checked> Crear una pieza nueva a partir de una descripción</label>
+                    <label class="s3d-wiz-radio"><input type="radio" name="s3d-wiz-mode" value="iterar"> Modificar la pieza que está ahora en el editor</label>
+                    <label class="s3d-wiz-radio" id="s3d-wiz-fix-label"><input type="radio" name="s3d-wiz-mode" value="corregir"> Corregir el último error de render</label>
+
+                    <div id="s3d-wiz-form-nueva">
+                        <div class="s3d-wiz-steptitle">Describí la pieza</div>
+                        <input type="text" id="s3d-wiz-nombre" placeholder="Nombre (ej.: soporte para sensor de distancia)">
+                        <textarea id="s3d-wiz-desc" rows="3" placeholder="¿Qué es y para qué se usa? (ej.: soporte para sujetar el sensor ultrasónico HC-SR04 a una varilla de 12 mm, mirando hacia adelante)"></textarea>
+                        <input type="text" id="s3d-wiz-dims" placeholder="Dimensiones aproximadas (ej.: base de 60×30 mm, altura total 40 mm) — opcional">
+                        <textarea id="s3d-wiz-det" rows="2" placeholder="Detalles: agujeros, encastres, tolerancias, cantidad… — opcional"></textarea>
+                    </div>
+                    <div id="s3d-wiz-form-iterar" style="display:none">
+                        <div class="s3d-wiz-steptitle">¿Qué querés cambiar?</div>
+                        <textarea id="s3d-wiz-cambio" rows="3" placeholder="Ej.: agregale dos orejas laterales con agujeros de 4 mm para atornillarla a la mesa"></textarea>
+                    </div>
+                    <div id="s3d-wiz-form-corregir" style="display:none">
+                        <div class="s3d-wiz-msg">Se va a generar un prompt con el código actual y el error reportado por OpenSCAD, para que la IA lo corrija.</div>
+                    </div>
+
+                    <button id="s3d-wiz-gen" class="s3d-btn primary">Generar prompt</button>
+
+                    <div id="s3d-wiz-prompt-box" style="display:none">
+                        <div class="s3d-wiz-steptitle">2 · Copiá el prompt y pegalo en tu IA favorita</div>
+                        <textarea id="s3d-wiz-prompt" rows="7" readonly></textarea>
+                        <div class="s3d-wiz-row">
+                            <button id="s3d-wiz-copy" class="s3d-btn">Copiar prompt</button>
+                            <a class="s3d-wiz-ia-link" href="https://claude.ai/new" target="_blank" rel="noopener">Claude</a>
+                            <a class="s3d-wiz-ia-link" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a>
+                            <a class="s3d-wiz-ia-link" href="https://gemini.google.com/" target="_blank" rel="noopener">Gemini</a>
+                        </div>
+                        <div class="s3d-wiz-steptitle">3 · Pegá acá la respuesta de la IA</div>
+                        <textarea id="s3d-wiz-resp" rows="6" placeholder="Pegá la respuesta completa; el sistema extrae solo el código OpenSCAD."></textarea>
+                        <button id="s3d-wiz-load" class="s3d-btn primary">Cargar la pieza en el editor</button>
+                        <div id="s3d-wiz-msg" class="s3d-wiz-msg"></div>
+                        <div class="s3d-folder-note">Si la pieza sale con errores o querés ajustarla, volvé a abrir este asistente: hay modos para corregir o modificar sin empezar de cero. Cuando estés conforme, usá DESCARGAR CÓDIGO .SCAD y subilo a la carpeta «diseños 3d» para que quede en el catálogo con su miniatura.</div>
                     </div>
                 </div>
             </div>
@@ -28674,6 +28749,7 @@ bluetooth.startIOPinService()</pre>
     var pieces = [];            // piezas incluidas + archivos de la carpeta del repo
     var currentPiece = null;
     var stlMode = false;        // pieza actual es un .stl (solo visualización)
+    var lastRenderError = null; // { msg, logs } del último render fallido
     var FOLDER_NAME = 'diseños 3d';
     var FOLDER_API = 'https://api.github.com/repos/martinferreiraHCA/Fisica-y-Microbit/contents/' + encodeURIComponent(FOLDER_NAME);
     var folderLoaded = false, folderNote = '';
@@ -28978,10 +29054,12 @@ bluetooth.startIOPinService()</pre>
             }
             if (ok) {
                 lastStl = msgOrStl;
+                lastRenderError = null;
                 el('s3d-dl-stl').disabled = false;
                 var secs = ((performance.now() - t0) / 1000).toFixed(1);
                 showStl(msgOrStl, secs);
             } else {
+                lastRenderError = { msg: String(msgOrStl), logs: logs || [] };
                 if (viewer && viewer.mesh) {
                     viewer.material.transparent = false;
                     viewer.material.opacity = 1;
@@ -29689,6 +29767,185 @@ bluetooth.startIOPinService()</pre>
         return url;
     }
 
+    /* ---------- Diseños propios: abrir archivo local / subir al repo ---------- */
+    var REPO_UPLOAD_URL = 'https://github.com/martinferreiraHCA/Fisica-y-Microbit/upload/main/' + encodeURIComponent(FOLDER_NAME);
+
+    function confirmReplace(nombre) {
+        if (stlMode || !codeEl.value.trim() || codeEl.value === (window.__s3dLoadedCode || '')) return true;
+        return confirm('El código actual tiene cambios. ¿Reemplazarlo por «' + nombre + '»?');
+    }
+
+    function openLocalFile(file) {
+        var nombre = file.name.replace(/\.(scad|stl)$/i, '').replace(/[-_]+/g, ' ');
+        var isStl = /\.stl$/i.test(file.name);
+        if (!isStl && !/\.scad$/i.test(file.name)) {
+            setStatus('Solo se pueden abrir archivos .scad o .stl.', 'error');
+            return;
+        }
+        if (!confirmReplace(nombre)) return;
+        var piece = { id: 'local:' + file.name, nombre: nombre, kind: isStl ? 'stl' : 'scad' };
+        currentPiece = piece;
+        el('s3d-piece-name').textContent = nombre;
+        renderPieceMenu();
+        if (isStl) {
+            file.arrayBuffer().then(function (buf) { loadStlPiece(piece, buf); })
+                .catch(function (e) { setStatus('No se pudo leer el archivo: ' + e, 'error'); });
+        } else {
+            file.text().then(function (code) { loadScadIntoEditor(code, ''); })
+                .catch(function (e) { setStatus('No se pudo leer el archivo: ' + e, 'error'); });
+        }
+    }
+
+    /* ---------- Asistente «Generá tu propia pieza» (mediado por IA externa) ---------- */
+    function wizMode() {
+        var r = document.querySelector('input[name="s3d-wiz-mode"]:checked');
+        return r ? r.value : 'nueva';
+    }
+
+    function wizRequisitos() {
+        return [
+            'REQUISITOS OBLIGATORIOS DEL CÓDIGO:',
+            '1. Unidades en milímetros. La pieza debe poder imprimirse en 3D apoyada en el plano XY, sin voladizos extremos.',
+            '2. Todas las medidas importantes deben ser variables definidas al inicio del archivo, una por línea, con esta forma exacta:',
+            '   // Descripción breve (mm)',
+            '   nombre_variable = 20; // [5:60]',
+            '   El comentario // [mín:máx] define el rango del deslizador con el que se personaliza la pieza.',
+            '3. Agrupá las variables con encabezados /* [Nombre del grupo] */ y poné /* [Hidden] */ antes de las variables internas calculadas.',
+            '4. Incluí una variable  resolucion = 64; // [24:160]  y usá  $fn = resolucion;',
+            '5. Usá solo funciones estándar de OpenSCAD (cube, cylinder, sphere, difference, union, rotate_extrude, linear_extrude, for, etc.). No uses include, use, librerías externas ni text().',
+            '6. Respondé ÚNICAMENTE con el código OpenSCAD completo dentro de un solo bloque de código, sin explicaciones antes ni después.'
+        ].join('\n');
+    }
+
+    function wizBuildPrompt() {
+        var mode = wizMode();
+        if (mode === 'nueva') {
+            var nombre = el('s3d-wiz-nombre').value.trim();
+            var desc = el('s3d-wiz-desc').value.trim();
+            if (!nombre && !desc) return null;
+            return 'Actuá como experto en OpenSCAD y en diseño de piezas imprimibles en 3D para un laboratorio de física escolar.\n\n' +
+                'Generá el código OpenSCAD completo de esta pieza:\n\n' +
+                'PIEZA: ' + (nombre || '(sin nombre)') + '\n' +
+                'DESCRIPCIÓN Y USO: ' + (desc || '—') + '\n' +
+                'DIMENSIONES APROXIMADAS: ' + (el('s3d-wiz-dims').value.trim() || 'a criterio, razonables para laboratorio escolar') + '\n' +
+                'DETALLES: ' + (el('s3d-wiz-det').value.trim() || '—') + '\n\n' +
+                wizRequisitos();
+        }
+        if (mode === 'iterar') {
+            var cambio = el('s3d-wiz-cambio').value.trim();
+            if (!cambio) return null;
+            return 'Actuá como experto en OpenSCAD. Tengo esta pieza para impresión 3D y quiero modificarla.\n\n' +
+                'CÓDIGO ACTUAL:\n```\n' + codeEl.value + '\n```\n\n' +
+                'CAMBIO PEDIDO: ' + cambio + '\n\n' +
+                'Devolvé el código completo ya modificado, conservando las variables y agregando las nuevas que hagan falta.\n\n' +
+                wizRequisitos();
+        }
+        var err = lastRenderError
+            ? lastRenderError.msg + '\n' + (lastRenderError.logs || []).filter(function (l) { return /error|warning/i.test(l); }).slice(0, 8).join('\n')
+            : '(sin registro del error)';
+        return 'Actuá como experto en OpenSCAD. Este código falla al renderizar.\n\n' +
+            'CÓDIGO:\n```\n' + codeEl.value + '\n```\n\n' +
+            'ERROR REPORTADO POR OPENSCAD:\n' + err + '\n\n' +
+            'Corregilo y devolvé el código completo arreglado.\n\n' +
+            wizRequisitos();
+    }
+
+    // Extrae el código OpenSCAD de una respuesta de IA (con o sin ```bloques```)
+    function extractScad(text) {
+        var fences = [], m;
+        var re = /```[a-zA-Z]*[ \t]*\r?\n([\s\S]*?)```/g;
+        while ((m = re.exec(text)) !== null) fences.push(m[1]);
+        var code = fences.length
+            ? fences.sort(function (a, b) { return b.length - a.length; })[0]
+            : text;
+        return code.trim();
+    }
+    function looksLikeScad(code) {
+        return /(cube|cylinder|sphere|polyhedron|difference|union|module|rotate_extrude|linear_extrude|hull|minkowski)\s*\(/.test(code);
+    }
+
+    function wizSetMsg(text, cls) {
+        var box = el('s3d-wiz-msg');
+        box.textContent = text;
+        box.className = 's3d-wiz-msg' + (cls ? ' ' + cls : '');
+    }
+
+    function wizRefreshForms() {
+        var mode = wizMode();
+        el('s3d-wiz-form-nueva').style.display = mode === 'nueva' ? '' : 'none';
+        el('s3d-wiz-form-iterar').style.display = mode === 'iterar' ? '' : 'none';
+        el('s3d-wiz-form-corregir').style.display = mode === 'corregir' ? '' : 'none';
+    }
+
+    function openWizard() {
+        var fixRadio = document.querySelector('input[name="s3d-wiz-mode"][value="corregir"]');
+        fixRadio.disabled = !lastRenderError;
+        el('s3d-wiz-fix-label').classList.toggle('disabled', !lastRenderError);
+        if (fixRadio.disabled && fixRadio.checked) {
+            document.querySelector('input[name="s3d-wiz-mode"][value="nueva"]').checked = true;
+        }
+        wizRefreshForms();
+        wizSetMsg('', '');
+        el('s3d-wizard').classList.add('open');
+        el('s3d-wizard').setAttribute('aria-hidden', 'false');
+    }
+    function closeWizard() {
+        el('s3d-wizard').classList.remove('open');
+        el('s3d-wizard').setAttribute('aria-hidden', 'true');
+    }
+
+    function wizGenerate() {
+        var prompt = wizBuildPrompt();
+        if (!prompt) {
+            var mode = wizMode();
+            wizSetMsg(mode === 'iterar' ? 'Escribí qué querés cambiar de la pieza.' : 'Completá al menos el nombre o la descripción de la pieza.', 'err');
+            el('s3d-wiz-prompt-box').style.display = 'none';
+            return;
+        }
+        wizSetMsg('', '');
+        el('s3d-wiz-prompt').value = prompt;
+        el('s3d-wiz-prompt-box').style.display = '';
+        el('s3d-wiz-prompt').scrollTop = 0;
+    }
+
+    function wizCopy() {
+        var ta = el('s3d-wiz-prompt');
+        var done = function () {
+            var b = el('s3d-wiz-copy');
+            b.textContent = '¡Copiado!';
+            setTimeout(function () { b.textContent = 'Copiar prompt'; }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(ta.value).then(done).catch(function () {
+                ta.select(); document.execCommand('copy'); done();
+            });
+        } else {
+            ta.select(); document.execCommand('copy'); done();
+        }
+    }
+
+    function wizLoad() {
+        var resp = el('s3d-wiz-resp').value;
+        if (!resp.trim()) { wizSetMsg('Pegá primero la respuesta de la IA.', 'err'); return; }
+        var code = extractScad(resp);
+        if (!looksLikeScad(code)) {
+            wizSetMsg('No encontré código OpenSCAD en la respuesta. Asegurate de pegar la respuesta completa (incluido el bloque de código) o pedile a la IA que responda solo con código.', 'err');
+            return;
+        }
+        var mode = wizMode();
+        var nombre = mode === 'nueva'
+            ? (el('s3d-wiz-nombre').value.trim() || 'pieza generada')
+            : currentName();
+        if (!confirmReplace(nombre)) return;
+        currentPiece = { id: 'ai:' + slug(nombre), nombre: nombre, kind: 'scad' };
+        el('s3d-piece-name').textContent = nombre;
+        renderPieceMenu();
+        loadScadIntoEditor(code, '');
+        el('s3d-wiz-resp').value = '';
+        closeWizard();
+        setStatus('Pieza «' + nombre + '» cargada desde la IA: renderizando…', 'busy');
+    }
+
     /* ---------- Apertura / cierre ---------- */
     function openPanel() {
         if (!panel) return;
@@ -29782,8 +30039,31 @@ bluetooth.startIOPinService()</pre>
         });
 
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && opened && document.activeElement !== codeEl) closePanel();
+            if (e.key !== 'Escape' || !opened) return;
+            if (el('s3d-wizard').classList.contains('open')) { closeWizard(); return; }
+            if (document.activeElement !== codeEl) closePanel();
         });
+
+        // Diseños propios
+        el('s3d-open-file').addEventListener('click', function () { el('s3d-file-input').click(); });
+        el('s3d-file-input').addEventListener('change', function () {
+            if (this.files && this.files[0]) openLocalFile(this.files[0]);
+            this.value = '';
+        });
+        el('s3d-upload-repo').addEventListener('click', function () {
+            window.open(REPO_UPLOAD_URL, '_blank', 'noopener');
+        });
+
+        // Asistente «Generá tu propia pieza»
+        el('s3d-wiz-open').addEventListener('click', openWizard);
+        el('s3d-wiz-close').addEventListener('click', closeWizard);
+        el('s3d-wizard').addEventListener('click', function (e) { if (e.target === this) closeWizard(); });
+        Array.prototype.forEach.call(document.querySelectorAll('input[name="s3d-wiz-mode"]'), function (r) {
+            r.addEventListener('change', wizRefreshForms);
+        });
+        el('s3d-wiz-gen').addEventListener('click', wizGenerate);
+        el('s3d-wiz-copy').addEventListener('click', wizCopy);
+        el('s3d-wiz-load').addEventListener('click', wizLoad);
 
         var btn = el('btn-piezas3d');
         if (btn) btn.addEventListener('click', openPanel);
