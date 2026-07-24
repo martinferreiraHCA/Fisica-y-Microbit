@@ -28347,7 +28347,6 @@ bluetooth.startIOPinService()</pre>
                     <div class="s3d-section-title">Genera tu propia pieza</div>
                     <button id="s3d-wiz-open" class="s3d-btn">✦ Asistente con IA</button>
                     <button id="s3d-open-file" class="s3d-btn">Abrir archivo .scad / .stl</button>
-                    <button id="s3d-upload-repo" class="s3d-btn" title="Abre la página de GitHub para subir archivos a la carpeta «diseños 3d» (requiere permisos en el repositorio)">Subir a la carpeta del sitio</button>
                     <input type="file" id="s3d-file-input" accept=".scad,.stl" style="display:none">
                 </div>
                 <div class="s3d-section">
@@ -28425,7 +28424,7 @@ bluetooth.startIOPinService()</pre>
                         <textarea id="s3d-wiz-resp" rows="6" placeholder="Pegá la respuesta completa; el sistema extrae solo el código OpenSCAD."></textarea>
                         <button id="s3d-wiz-load" class="s3d-btn primary">Cargar la pieza en el editor</button>
                         <div id="s3d-wiz-msg" class="s3d-wiz-msg"></div>
-                        <div class="s3d-folder-note">Si la pieza sale con errores o querés ajustarla, volvé a abrir este asistente: hay modos para corregir o modificar sin empezar de cero. Cuando estés conforme, usá DESCARGAR CÓDIGO .SCAD y subilo a la carpeta «diseños 3d» para que quede en el catálogo con su miniatura.</div>
+                        <div class="s3d-folder-note">Si la pieza sale con errores o querés ajustarla, volvé a abrir este asistente: hay modos para corregir o modificar sin empezar de cero. Cuando estés conforme, usá DESCARGAR CÓDIGO .SCAD para guardar la pieza en tu equipo.</div>
                     </div>
                 </div>
             </div>
@@ -29564,9 +29563,7 @@ bluetooth.startIOPinService()</pre>
         return url;
     }
 
-    /* ---------- Diseños propios: abrir archivo local / subir al repo ---------- */
-    var REPO_UPLOAD_URL = 'https://github.com/martinferreiraHCA/Fisica-y-Microbit/upload/main/' + encodeURIComponent(FOLDER_NAME);
-
+    /* ---------- Diseños propios: abrir archivo local ---------- */
     function confirmReplace(nombre) {
         if (stlMode || !codeEl.value.trim() || codeEl.value === (window.__s3dLoadedCode || '')) return true;
         return confirm('El código actual tiene cambios. ¿Reemplazarlo por «' + nombre + '»?');
@@ -29846,9 +29843,6 @@ bluetooth.startIOPinService()</pre>
         el('s3d-file-input').addEventListener('change', function () {
             if (this.files && this.files[0]) openLocalFile(this.files[0]);
             this.value = '';
-        });
-        el('s3d-upload-repo').addEventListener('click', function () {
-            window.open(REPO_UPLOAD_URL, '_blank', 'noopener');
         });
 
         // Asistente «Generá tu propia pieza»

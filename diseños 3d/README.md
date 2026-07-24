@@ -26,8 +26,7 @@ En el apartado del sitio (`#piezas3d`), bajo **Genera tu propia pieza**:
   También sirve para modificar una pieza o corregir un error de render.
 - **Abrir archivo .scad / .stl**: prueba un archivo de tu computadora en
   el momento, sin subirlo.
-- **Subir a la carpeta del sitio**: abre esta carpeta en GitHub para
-  subir el archivo y que quede en el catálogo (requiere permisos en el
-  repositorio).
 
-Cuando una pieza te guste, usá **Descargar código .scad** y subila acá.
+Cuando una pieza te guste, usá **Descargar código .scad** para guardarla
+en tu equipo. Para incorporarla al catálogo del sitio, el administrador
+sube el archivo a esta carpeta desde GitHub.
