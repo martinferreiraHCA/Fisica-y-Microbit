@@ -28225,6 +28225,9 @@ bluetooth.startIOPinService()</pre>
     .s3d-topbar .s3d-spacer { flex:1; }
     .s3d-close { background:none; border:1px solid #444; color:#e0e0e0; font-size:15px; line-height:1; padding:5px 11px; cursor:pointer; }
     .s3d-close:hover { background:#fff; color:#000; border-color:#fff; }
+    .s3d-top-btn { background:none; border:1px solid #444; color:#e0e0e0; font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:6px 10px; cursor:pointer; }
+    .s3d-top-btn:hover { background:#fff; color:#000; border-color:#fff; }
+    .s3d-top-btn.active { background:#fff; color:#000; border-color:#fff; }
     .s3d-body { display:flex; flex:1 1 auto; min-height:0; }
     .s3d-sidebar { width:300px; flex:0 0 300px; background:#23272e; border-right:1px solid #2b303b; overflow-y:auto; padding:12px; box-sizing:border-box; }
     .s3d-section { margin-bottom:18px; }
@@ -28249,7 +28252,8 @@ bluetooth.startIOPinService()</pre>
     .s3d-param-row input[type="checkbox"] { accent-color:#fff; width:15px; height:15px; }
     .s3d-empty-params { font-size:11px; color:#6f7887; line-height:1.5; }
     .s3d-main { flex:1 1 auto; display:flex; min-width:0; min-height:0; }
-    .s3d-editor-wrap { width:34%; min-width:260px; display:flex; flex-direction:column; border-right:1px solid #2b303b; background:#15171c; }
+    .s3d-editor-wrap { width:34%; min-width:260px; display:none; flex-direction:column; border-right:1px solid #2b303b; background:#15171c; }
+    .s3d-panel.show-code .s3d-editor-wrap { display:flex; }
     .s3d-editor-head { display:flex; align-items:center; justify-content:space-between; padding:5px 10px; background:#101216; border-bottom:1px solid #2b303b; font-size:10px; letter-spacing:2px; color:#8a919e; text-transform:uppercase; flex:0 0 auto; }
     .s3d-editor-wrap textarea { flex:1; width:100%; background:#15171c; color:#d6dbe4; border:none; outline:none; resize:none; padding:10px 12px; box-sizing:border-box; font-family:'SF Mono', 'Cascadia Code', Consolas, Menlo, monospace; font-size:12px; line-height:1.55; tab-size:4; white-space:pre; }
     .s3d-viewport-wrap { flex:1 1 auto; position:relative; min-width:0; background:#1a1d23; }
@@ -28285,6 +28289,7 @@ bluetooth.startIOPinService()</pre>
             <h2>Diseño de piezas 3D</h2>
             <span class="s3d-badge">Beta · no publicado</span>
             <span class="s3d-spacer"></span>
+            <button id="s3d-code-toggle" class="s3d-top-btn" title="Mostrar u ocultar el código OpenSCAD de la pieza">Ver código ▸</button>
             <button id="s3d-close" class="s3d-close" title="Cerrar (Esc)">✕</button>
         </div>
         <div class="s3d-body">
@@ -28306,7 +28311,7 @@ bluetooth.startIOPinService()</pre>
                 </div>
                 <div class="s3d-section">
                     <div class="s3d-section-title">Ayuda</div>
-                    <div class="s3d-empty-params">Las variables del inicio del código aparecen como parámetros. Un comentario <b>// [mín:máx]</b> en la misma línea crea un deslizador y <b>/* [Grupo] */</b> agrupa. El STL descargado se imprime directamente en 3D.</div>
+                    <div class="s3d-empty-params">Al pasar por un parámetro o moverlo, la medida se marca en amarillo sobre la pieza. Con <b>CORTE</b> ves el interior por la mitad. <b>VER CÓDIGO</b> despliega el código OpenSCAD: las variables del inicio aparecen como parámetros, un comentario <b>// [mín:máx]</b> crea un deslizador y <b>/* [Grupo] */</b> agrupa.</div>
                 </div>
             </div>
             <div class="s3d-main">
@@ -28316,6 +28321,7 @@ bluetooth.startIOPinService()</pre>
                 </div>
                 <div class="s3d-viewport-wrap" id="s3d-viewport">
                     <div class="s3d-view-tools">
+                        <button id="s3d-corte" title="Ver la pieza cortada por la mitad para mirar su interior">Corte: no</button>
                         <button id="s3d-fit" title="Encuadrar la pieza">Encuadrar</button>
                     </div>
                     <div class="s3d-overlay" id="s3d-overlay">
@@ -28390,7 +28396,17 @@ bluetooth.startIOPinService()</pre>
     '                translate([r_medio, 0, 0])',
     '                    cylinder(h = altura + 2, d = d_alig, center = true);',
     '}'
-    ].join('\n') },
+    ].join('\n'),
+    dims: function (v) {
+        var r = v.diametro_exterior / 2, h = v.altura;
+        return {
+            diametro_exterior: { t: 'dia', c: [0, 0, h / 2], r: r, axis: 'z' },
+            altura: { t: 'lin', a: [r + 7, 0, -h / 2], b: [r + 7, 0, h / 2] },
+            diametro_eje: { t: 'dia', c: [0, 0, h / 2], r: v.diametro_eje / 2, axis: 'z' },
+            garganta: { t: 'lin', a: [r - v.garganta, 0, 0], b: [r, 0, 0] },
+            agujeros: { t: 'circle', c: [0, 0, h / 2], r: (r - v.garganta + v.diametro_eje / 2) / 2, axis: 'z', label: 'agujeros = ' + v.agujeros }
+        };
+    } },
 
     { id: 'soporte-varilla', nombre: 'Soporte de varilla', code: [
     '// ============ SOPORTE DE VARILLA ============',
@@ -28451,7 +28467,22 @@ bluetooth.startIOPinService()</pre>
     '        rotate([0, 90, 0])',
     '            cylinder(h = d_ext + 2, d = tornillo_apriete, center = true);',
     '}'
-    ].join('\n') },
+    ].join('\n'),
+    dims: function (v) {
+        var dext = v.diametro_varilla + 2 * v.pared;
+        var zt = v.base_espesor + v.altura_abrazadera;
+        return {
+            diametro_varilla: { t: 'dia', c: [0, 0, zt], r: v.diametro_varilla / 2, axis: 'z' },
+            altura_abrazadera: { t: 'lin', a: [dext / 2 + 7, 0, v.base_espesor], b: [dext / 2 + 7, 0, zt] },
+            pared: { t: 'lin', a: [v.diametro_varilla / 2, 0, zt], b: [dext / 2, 0, zt] },
+            ranura: { t: 'lin', a: [-v.ranura / 2, (v.diametro_varilla / 2 + dext / 2) / 2, zt], b: [v.ranura / 2, (v.diametro_varilla / 2 + dext / 2) / 2, zt] },
+            tornillo_apriete: { t: 'dia', c: [dext / 2, v.diametro_varilla / 2 + v.pared / 2, v.base_espesor + v.altura_abrazadera / 2], r: v.tornillo_apriete / 2, axis: 'x' },
+            base_largo: { t: 'lin', a: [-v.base_largo / 2, -v.base_ancho / 2 - 7, 0], b: [v.base_largo / 2, -v.base_ancho / 2 - 7, 0] },
+            base_ancho: { t: 'lin', a: [v.base_largo / 2 + 7, -v.base_ancho / 2, 0], b: [v.base_largo / 2 + 7, v.base_ancho / 2, 0] },
+            base_espesor: { t: 'lin', a: [v.base_largo / 2 + 7, 0, 0], b: [v.base_largo / 2 + 7, 0, v.base_espesor] },
+            tornillo_base: { t: 'dia', c: [v.base_largo / 2 - v.tornillo_base * 1.6, 0, v.base_espesor], r: v.tornillo_base / 2, axis: 'z' }
+        };
+    } },
 
     { id: 'gancho', nombre: 'Gancho de carga', code: [
     '// ============== GANCHO DE CARGA ==============',
@@ -28500,7 +28531,19 @@ bluetooth.startIOPinService()</pre>
     '            translate([(ojal + grosor) / 2, 0, 0])',
     '                circle(d = grosor);',
     '}'
-    ].join('\n') },
+    ].join('\n'),
+    dims: function (v) {
+        // La pieza está rotada 90° sobre X: un punto (x, y) del plano de
+        // dibujo original queda en (x, 0, y) del espacio final.
+        var rg = v.diametro_gancho / 2, g = v.grosor;
+        return {
+            diametro_gancho: { t: 'dia', c: [0, 0, 0], r: rg, axis: 'y' },
+            grosor: { t: 'lin', a: [0, 0, -(rg - g / 2)], b: [0, 0, -(rg + g / 2)] },
+            vastago: { t: 'lin', a: [g / 2 + 6, 0, rg], b: [g / 2 + 6, 0, rg + v.vastago] },
+            ojal: { t: 'dia', c: [0, 0, rg + v.vastago + v.ojal / 2], r: v.ojal / 2, axis: 'y' },
+            apertura: { t: 'arc', c: [0, 0, 0], r: rg + g / 2 + 5, from: 90, to: 90 + v.apertura, label: 'apertura = ' + fmtNum(v.apertura) + '°' }
+        };
+    } },
 
     { id: 'pie-varilla', nombre: 'Pie para varilla', code: [
     '// ============= PIE PARA VARILLA =============',
@@ -28545,7 +28588,19 @@ bluetooth.startIOPinService()</pre>
     '        rotate([0, 90, 0])',
     '            cylinder(h = d_cubo, d = prisionero);',
     '}'
-    ].join('\n') },
+    ].join('\n'),
+    dims: function (v) {
+        var dc = v.diametro_varilla + 2 * v.pared;
+        var zt = v.altura_base + v.altura_cubo;
+        return {
+            diametro_base: { t: 'dia', c: [0, 0, 0], r: v.diametro_base / 2, axis: 'z' },
+            altura_base: { t: 'lin', a: [v.diametro_base / 2 + 7, 0, 0], b: [v.diametro_base / 2 + 7, 0, v.altura_base] },
+            diametro_varilla: { t: 'dia', c: [0, 0, zt], r: v.diametro_varilla / 2, axis: 'z' },
+            altura_cubo: { t: 'lin', a: [dc / 2 + 7, 0, v.altura_base], b: [dc / 2 + 7, 0, zt] },
+            pared: { t: 'lin', a: [v.diametro_varilla / 2, 0, zt], b: [dc / 2, 0, zt] },
+            prisionero: { t: 'dia', c: [dc / 2, 0, v.altura_base + v.altura_cubo / 2], r: v.prisionero / 2, axis: 'x' }
+        };
+    } },
 
     { id: 'blanco', nombre: 'Pieza en blanco', code: [
     '// ============ PIEZA EN BLANCO ============',
@@ -28577,7 +28632,14 @@ bluetooth.startIOPinService()</pre>
     '    cube([lado, lado, lado], center = true);',
     '    cylinder(h = lado + 2, d = agujero, center = true);',
     '}'
-    ].join('\n') }
+    ].join('\n'),
+    dims: function (v) {
+        var l = v.lado;
+        return {
+            lado: { t: 'lin', a: [-l / 2, -l / 2 - 7, -l / 2], b: [l / 2, -l / 2 - 7, -l / 2] },
+            agujero: { t: 'dia', c: [0, 0, l / 2], r: v.agujero / 2, axis: 'z' }
+        };
+    } }
     ];
 
     /* ---------- Estado ---------- */
@@ -28773,6 +28835,10 @@ bluetooth.startIOPinService()</pre>
                 row.appendChild(num2);
             }
             wrap.appendChild(row);
+            // Acotado dinámico: al pasar por el parámetro o cambiarlo se
+            // marca la medida correspondiente sobre la pieza.
+            wrap.addEventListener('pointerenter', function () { showParamDim(p); });
+            wrap.addEventListener('input', function () { showParamDim(p); });
             box.appendChild(wrap);
         });
     }
@@ -28835,6 +28901,12 @@ bluetooth.startIOPinService()</pre>
         clearLog();
         setStatus('Renderizando… (la primera vez carga el motor OpenSCAD, ~14 MB)', 'busy');
         el('s3d-render').disabled = true;
+        // La pieza vigente queda como "sombra" hasta que llegue la nueva
+        if (viewer && viewer.mesh) {
+            viewer.material.transparent = true;
+            viewer.material.opacity = 0.45;
+            viewer.needsFrame = true;
+        }
 
         var w = getWorker();
         var timeout = setTimeout(function () {
@@ -28855,6 +28927,11 @@ bluetooth.startIOPinService()</pre>
                 var secs = ((performance.now() - t0) / 1000).toFixed(1);
                 showStl(msgOrStl, secs);
             } else {
+                if (viewer && viewer.mesh) {
+                    viewer.material.transparent = false;
+                    viewer.material.opacity = 1;
+                    viewer.needsFrame = true;
+                }
                 setStatus('Error: ' + msgOrStl + ' — revisá la consola.', 'error');
                 if (!logEl.classList.contains('open')) logEl.classList.add('open');
             }
@@ -28930,8 +29007,10 @@ bluetooth.startIOPinService()</pre>
             var axes = new THREE.AxesHelper(24);
             scene.add(axes);
 
+            renderer.localClippingEnabled = true; // para el modo CORTE
             var material = new THREE.MeshStandardMaterial({
-                color: 0xd9dade, metalness: 0.1, roughness: 0.55, flatShading: true
+                color: 0xd9dade, metalness: 0.1, roughness: 0.55, flatShading: true,
+                side: THREE.DoubleSide
             });
 
             var v = {
@@ -29051,6 +29130,157 @@ bluetooth.startIOPinService()</pre>
         viewer.applyCamera();
     }
 
+    /* ---------- Acotado dinámico sobre la pieza ---------- */
+    var dimGroup = null, dimHideTimer = null;
+
+    function valuesMap() {
+        var v = {};
+        params.forEach(function (p) { v[p.name] = p.value; });
+        return v;
+    }
+
+    function clearDims() {
+        clearTimeout(dimHideTimer);
+        if (!dimGroup || !viewer) return;
+        viewer.scene.remove(dimGroup);
+        dimGroup.traverse(function (o) {
+            if (o.geometry) o.geometry.dispose();
+            if (o.material) {
+                if (o.material.map) o.material.map.dispose();
+                o.material.dispose();
+            }
+        });
+        dimGroup = null;
+        viewer.needsFrame = true;
+    }
+
+    function makeLabelSprite(THREE, text, height) {
+        var fs = 46, pad = 14;
+        var cv = document.createElement('canvas');
+        var ctx = cv.getContext('2d');
+        var font = '600 ' + fs + 'px Consolas, Menlo, monospace';
+        ctx.font = font;
+        cv.width = Math.ceil(ctx.measureText(text).width) + pad * 2;
+        cv.height = fs + pad * 2;
+        ctx = cv.getContext('2d');
+        ctx.font = font;
+        ctx.fillStyle = 'rgba(8,8,10,0.85)';
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        ctx.strokeStyle = '#ffca28';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(2, 2, cv.width - 4, cv.height - 4);
+        ctx.fillStyle = '#ffca28';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, pad, cv.height / 2 + 2);
+        var sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true
+        }));
+        sprite.scale.set(height * cv.width / cv.height, height, 1);
+        sprite.renderOrder = 1001;
+        return sprite;
+    }
+
+    function circlePoints(THREE, c, r, axis, from, to) {
+        var pts = [], n = 72;
+        var a0 = (from === undefined ? 0 : from) * Math.PI / 180;
+        var a1 = (to === undefined ? 360 : to) * Math.PI / 180;
+        for (var i = 0; i <= n; i++) {
+            var t = a0 + (a1 - a0) * i / n, co = Math.cos(t), si = Math.sin(t);
+            if (axis === 'x') pts.push(new THREE.Vector3(c[0], c[1] + r * co, c[2] + r * si));
+            else if (axis === 'y') pts.push(new THREE.Vector3(c[0] + r * co, c[1], c[2] + r * si));
+            else pts.push(new THREE.Vector3(c[0] + r * co, c[1] + r * si, c[2]));
+        }
+        return pts;
+    }
+
+    function showParamDim(p) {
+        if (!viewer || !viewer.mesh) return;
+        clearDims();
+        var preset = PRESETS.filter(function (x) { return x.id === window.__s3dLoadedPreset; })[0];
+        if (!preset || !preset.dims) return;
+        var spec;
+        try { spec = preset.dims(valuesMap())[p.name]; } catch (e) { return; }
+        if (!spec) return;
+
+        var THREE = viewer.THREE;
+        var g = new THREE.Group();
+        var mat = new THREE.LineBasicMaterial({ color: 0xffca28, depthTest: false, transparent: true });
+        var ls = Math.max(3, (viewer.modelSize || 60) * 0.085); // alto de la etiqueta
+        function addLine(pts) {
+            var line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+            line.renderOrder = 1000;
+            g.add(line);
+        }
+        var labelText = spec.label ||
+            ((spec.t === 'dia' ? '⌀ ' : '') + p.name + ' = ' + fmtNum(p.value) + (spec.t === 'arc' ? '°' : ' mm'));
+        var labelPos;
+
+        if (spec.t === 'lin') {
+            var a = new THREE.Vector3().fromArray(spec.a);
+            var b = new THREE.Vector3().fromArray(spec.b);
+            addLine([a, b]);
+            // Tics perpendiculares en los extremos, como en un plano técnico
+            var dir = b.clone().sub(a).normalize();
+            var upRef = Math.abs(dir.z) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
+            var perp = dir.clone().cross(upRef).normalize();
+            if (perp.lengthSq() < 0.5) perp = new THREE.Vector3(0, 1, 0);
+            var tick = perp.clone().multiplyScalar(ls * 0.28);
+            addLine([a.clone().sub(tick), a.clone().add(tick)]);
+            addLine([b.clone().sub(tick), b.clone().add(tick)]);
+            labelPos = a.clone().add(b).multiplyScalar(0.5)
+                        .add(Math.abs(dir.z) > 0.7 ? new THREE.Vector3(ls * 1.2, 0, 0)
+                                                    : new THREE.Vector3(0, 0, ls * 0.9));
+        } else if (spec.t === 'dia' || spec.t === 'circle') {
+            addLine(circlePoints(THREE, spec.c, spec.r, spec.axis));
+            var c = new THREE.Vector3().fromArray(spec.c);
+            if (spec.t === 'dia') {
+                var d = spec.axis === 'x' ? new THREE.Vector3(0, spec.r, 0) : new THREE.Vector3(spec.r, 0, 0);
+                addLine([c.clone().sub(d), c.clone().add(d)]);
+            }
+            labelPos = c.clone().add(spec.axis === 'z' ? new THREE.Vector3(0, 0, ls * 0.9)
+                                                       : new THREE.Vector3(0, 0, spec.r + ls * 0.9));
+        } else if (spec.t === 'arc') {
+            // Arco en el plano vertical XZ (piezas "de pie" como el gancho)
+            addLine(circlePoints(THREE, spec.c, spec.r, 'y', spec.from, spec.to));
+            var cc = new THREE.Vector3().fromArray(spec.c);
+            [spec.from, spec.to].forEach(function (ang) {
+                var t = ang * Math.PI / 180;
+                addLine([cc, cc.clone().add(new THREE.Vector3(spec.r * Math.cos(t), 0, spec.r * Math.sin(t)))]);
+            });
+            var tm = (spec.from + spec.to) / 2 * Math.PI / 180;
+            labelPos = cc.clone().add(new THREE.Vector3((spec.r + ls) * Math.cos(tm), 0, (spec.r + ls) * Math.sin(tm)));
+        } else {
+            return;
+        }
+
+        var label = makeLabelSprite(THREE, labelText, ls);
+        label.position.copy(labelPos);
+        g.add(label);
+
+        dimGroup = g;
+        viewer.scene.add(g);
+        viewer.needsFrame = true;
+        dimHideTimer = setTimeout(clearDims, 3500);
+    }
+
+    /* ---------- Modo corte (sección por la mitad) ---------- */
+    var corteModes = [null, 'x', 'y'];
+    var corteIdx = 0;
+
+    function applyCorte() {
+        var m = corteModes[corteIdx];
+        el('s3d-corte').textContent = 'Corte: ' + (m ? m.toUpperCase() : 'no');
+        el('s3d-corte').classList.toggle('active', !!m);
+        if (!viewer) return;
+        if (m) {
+            var n = m === 'x' ? new viewer.THREE.Vector3(-1, 0, 0) : new viewer.THREE.Vector3(0, -1, 0);
+            viewer.material.clippingPlanes = [new viewer.THREE.Plane(n, 0)];
+        } else {
+            viewer.material.clippingPlanes = [];
+        }
+        viewer.needsFrame = true;
+    }
+
     function showStl(stlText, secs) {
         initViewer().then(function (v) {
             var geo = parseAsciiStl(stlText, v.THREE);
@@ -29065,6 +29295,9 @@ bluetooth.startIOPinService()</pre>
             if (!hadMesh || fitOnNextRender) fitView(); else v.needsFrame = true;
             fitOnNextRender = false;
             var bb = geo.boundingBox, s = bb.getSize(new v.THREE.Vector3());
+            v.modelSize = Math.max(s.x, s.y, s.z, 1);
+            v.material.transparent = false;
+            v.material.opacity = 1;
             el('s3d-mesh-info').textContent = tris + ' triángulos · ' +
                 s.x.toFixed(1) + ' × ' + s.y.toFixed(1) + ' × ' + s.z.toFixed(1) + ' mm';
             setStatus('Render listo en ' + secs + ' s.', '');
@@ -29145,6 +29378,17 @@ bluetooth.startIOPinService()</pre>
 
         el('s3d-render').addEventListener('click', render);
         el('s3d-fit').addEventListener('click', fitView);
+        el('s3d-corte').addEventListener('click', function () {
+            corteIdx = (corteIdx + 1) % corteModes.length;
+            if (!viewer) { initViewer().then(applyCorte); return; }
+            applyCorte();
+        });
+        el('s3d-code-toggle').addEventListener('click', function () {
+            var on = panel.classList.toggle('show-code');
+            this.textContent = on ? 'Ocultar código ▾' : 'Ver código ▸';
+            this.classList.toggle('active', on);
+            if (viewer) viewer.resize();
+        });
         el('s3d-close').addEventListener('click', closePanel);
         el('s3d-log-toggle').addEventListener('click', function () { logEl.classList.toggle('open'); });
 
