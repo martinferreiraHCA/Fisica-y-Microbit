@@ -2,9 +2,10 @@
 
 Carpeta de piezas del apartado **Diseño de piezas 3D** del sitio.
 
-Todo archivo **`.scad`** (código OpenSCAD) o **`.stl`** (malla ya generada)
-que subas acá aparece automáticamente en el menú de piezas del editor,
-con su miniatura.
+**Todas** las piezas del editor viven en esta carpeta: no hay piezas
+"incluidas" aparte. Todo archivo **`.scad`** (código OpenSCAD) o **`.stl`**
+(malla ya generada) que subas acá aparece automáticamente en el menú de
+piezas del editor, con su miniatura.
 
 - **`.scad`**: la pieza es personalizable. Las variables del inicio del
   archivo se convierten en deslizadores; un comentario `// [mín:máx]` en la
