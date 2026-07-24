@@ -28338,8 +28338,10 @@ bluetooth.startIOPinService()</pre>
     (function () {
     'use strict';
 
-    var THREE_URL = 'https://unpkg.com/three@0.160.0/build/three.module.js';
-    var OPENSCAD_URL = 'https://unpkg.com/openscad-wasm@0.0.4/openscad.js';
+    // Copias locales en /lib (ver lib/README.md). URLs absolutas porque el
+    // worker se crea desde un blob y no puede resolver rutas relativas.
+    var THREE_URL = new URL('lib/three.module.js', location.href).href;
+    var OPENSCAD_URL = new URL('lib/openscad.js', location.href).href;
     var RENDER_TIMEOUT_MS = 300000;
 
     /* ---------- Biblioteca de piezas ---------- */
@@ -28831,7 +28833,7 @@ bluetooth.startIOPinService()</pre>
         var t0 = performance.now();
         var code = codeEl.value;
         clearLog();
-        setStatus('Renderizando… (la primera vez descarga el motor OpenSCAD, ~14 MB)', 'busy');
+        setStatus('Renderizando… (la primera vez carga el motor OpenSCAD, ~14 MB)', 'busy');
         el('s3d-render').disabled = true;
 
         var w = getWorker();
