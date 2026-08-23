@@ -12297,30 +12297,12 @@ bluetooth.startIOPinService()</pre>
                             if (mt < 0) continue; // Timestamp negativo: probable sensor en columna incorrecta
                             valueOffset = 1;
 
-                            if (!state.microbitTimeZeroSet) {
-                                state.timeZeroOffset = mt;
-                                state.microbitTimeZeroSet = true;
-                                state._lastMicrobitTimestamp = mt;
-                            }
-                            if (mt < state.timeZeroOffset) continue;
-
-                            // Monotonía estricta con verificación por wall clock
-                            if (_lastValidTimestamp >= 0 && mt < _lastValidTimestamp) {
-                                const wallGap = batchTime - _lastBatchWallTime;
-                                if (_lastValidTimestamp - mt > 5000 && wallGap > 2000) {
-                                    state.timeZeroOffset = mt;
-                                    state.microbitTimeZeroSet = true;
-                                    state._lastMicrobitTimestamp = mt;
-                                } else {
-                                    continue; // Corrupción: descartar
-                                }
-                            }
-
-                            _lastValidTimestamp = mt;
-                            state._lastMicrobitTimestamp = mt;
-                            pointTime = mt;
+                            // Monotonía estricta + manejo de reinicios del micro:bit
+                            const mapped = mapMicrobitTimestamp(mt, batchTime);
+                            if (mapped === null) continue; // Corrupción o dato viejo: descartar
+                            pointTime = mapped;
                         } else {
-                            pointTime = batchTime;
+                            pointTime = nextBrowserPointTime(batchTime);
                         }
 
                         const values = new Array(numVars);
@@ -12921,6 +12903,10 @@ bluetooth.startIOPinService()</pre>
             _lastValidTimestamp = -1;
             _serialLastDataTime = Date.now();
             _lastBatchWallTime = Date.now();
+            _mbTimeShift = 0;
+            _backwardsRun = 0;
+            _backwardsPrevRaw = -1;
+            _lastBrowserPointTime = 0;
             _corruptionBuffer = {};
             _spikeFilterHistory = {};
             _spikeLastValue = {};
@@ -13447,9 +13433,13 @@ bluetooth.startIOPinService()</pre>
         let _dataPointCounter = 0;
         let _formatMismatchCount = 0;   // Líneas descartadas por formato incorrecto
         let _lastMismatchParts = 0;     // Número de columnas de la última línea descartada
-        let _lastValidTimestamp = -1;   // Último timestamp válido para detectar reinicios o columnas invertidas
+        let _lastValidTimestamp = -1;   // Último timestamp válido (mapeado) para detectar reinicios o columnas invertidas
         let _serialLastDataTime = 0;    // Último timestamp con datos recibidos (para health check)
         let _lastBatchWallTime = 0;     // Wall time del último batch procesado (para verificar resets)
+        let _mbTimeShift = 0;           // Corrimiento aplicado a timestamps del micro:bit tras un reinicio
+        let _backwardsRun = 0;          // Racha de timestamps consecutivos que retroceden
+        let _backwardsPrevRaw = -1;     // Último mt crudo de la racha de retrocesos
+        let _lastBrowserPointTime = 0;  // Último tiempo asignado en modo sin timestamp (reloj del navegador)
         let _corruptionMedian = {};     // Running median por variable para detección de digit-loss
         let _corruptionBuffer = {};     // Buffer circular de últimos N valores por variable
 
@@ -13509,6 +13499,75 @@ bluetooth.startIOPinService()</pre>
                     _corruptionBuffer[vi].shift();
                 }
             }
+        }
+
+        // Mapea un timestamp del micro:bit a la línea temporal continua de la
+        // sesión de captura. Devuelve el tiempo mapeado (ms) o null si la línea
+        // debe descartarse (retroceso aislado = corrupción de dígitos).
+        //
+        // Los puntos NUNCA pueden ir hacia atrás en el tiempo. Cuando el
+        // micro:bit se reinicia, su runningTime() vuelve a ~0; en vez de
+        // re-basar T=0 (lo que desplazaba los puntos ya graficados y hacía
+        // aparecer los nuevos "hacia atrás"), se desplaza el timestamp con
+        // _mbTimeShift para que la línea temporal continúe hacia adelante.
+        function mapMicrobitTimestamp(mt, batchTime) {
+            let mapped = mt + _mbTimeShift;
+
+            if (!state.microbitTimeZeroSet) {
+                state.timeZeroOffset = mapped;
+                state.microbitTimeZeroSet = true;
+            }
+            // Descartar datos viejos del buffer (anteriores a T=0). Solo aplica
+            // antes del primer punto válido: después, los retrocesos los decide
+            // la lógica de monotonía/reinicio de abajo (si se aplicara siempre,
+            // un reinicio real del micro:bit quedaría descartado para siempre).
+            if (_lastValidTimestamp < 0 && mapped < state.timeZeroOffset) return null;
+
+            if (_lastValidTimestamp >= 0 && mapped < _lastValidTimestamp) {
+                // Retroceso: distinguir corrupción (descartar) de reinicio real
+                // del micro:bit (continuar la línea temporal hacia adelante).
+                if (_backwardsRun > 0 && mt > _backwardsPrevRaw && mt - _backwardsPrevRaw < 5000) {
+                    _backwardsRun++;
+                } else {
+                    _backwardsRun = 1;
+                }
+                _backwardsPrevRaw = mt;
+
+                const wallGap = batchTime - _lastBatchWallTime;
+                // Reinicio con desconexión: retroceso grande + gap real en wall clock
+                const resetWithGap = (_lastValidTimestamp - mapped > 5000 && wallGap > 2000);
+                // Reinicio en caliente (botón reset sin cortar el stream): varias
+                // líneas seguidas retroceden pero crecen entre sí de forma coherente
+                const resetMidStream = _backwardsRun >= 3;
+
+                if (!resetWithGap && !resetMidStream) return null;
+
+                // Reinicio confirmado: el próximo punto continúa después del
+                // último válido, separado por el gap real observado (acotado).
+                const gapEstimate = Math.min(Math.max(wallGap, 50), 60000);
+                _mbTimeShift = (_lastValidTimestamp + gapEstimate) - mt;
+                mapped = mt + _mbTimeShift;
+                _backwardsRun = 0;
+                _backwardsPrevRaw = -1;
+            } else {
+                _backwardsRun = 0;
+                _backwardsPrevRaw = -1;
+            }
+
+            _lastValidTimestamp = mapped;
+            state._lastMicrobitTimestamp = mapped;
+            return mapped;
+        }
+
+        // Tiempo de punto en modo sin timestamp (reloj del navegador).
+        // Garantiza tiempo estrictamente creciente: Date.now() puede retroceder
+        // (ajuste NTP del sistema) y varias líneas del mismo batch BLE/serial
+        // llegarían con tiempo idéntico; ambos casos rompen el ploteo.
+        function nextBrowserPointTime(batchTime) {
+            let t = batchTime;
+            if (t <= _lastBrowserPointTime) t = _lastBrowserPointTime + 1;
+            _lastBrowserPointTime = t;
+            return t;
         }
 
         async function startSerialLoop() {
@@ -13585,38 +13644,12 @@ bluetooth.startIOPinService()</pre>
                             if (mt < 0) continue; // Timestamp negativo: probable sensor en columna incorrecta
                             valueOffset = 1;
 
-                            // Ajustar T=0 al primer timestamp del micro:bit
-                            if (!state.microbitTimeZeroSet) {
-                                state.timeZeroOffset = mt;
-                                state.microbitTimeZeroSet = true;
-                                state._lastMicrobitTimestamp = mt;
-                            }
-                            // Descartar datos viejos del buffer serial (anteriores a T=0)
-                            if (mt < state.timeZeroOffset) continue;
-
-                            // Monotonía estricta: descartar timestamps que retroceden
-                            // Un "reset" real del micro:bit requiere:
-                            //   1) Retroceso > 5s en timestamp del micro:bit
-                            //   2) Gap > 2s en wall clock (el micro:bit estuvo reiniciando)
-                            // Sin gap en wall clock → corrupción de dígitos (ej: "10028" → "28")
-                            if (_lastValidTimestamp >= 0 && mt < _lastValidTimestamp) {
-                                const wallGap = batchTime - _lastBatchWallTime;
-                                if (_lastValidTimestamp - mt > 5000 && wallGap > 2000) {
-                                    // Reset real: wall clock confirma desconexión
-                                    state.timeZeroOffset = mt;
-                                    state.microbitTimeZeroSet = true;
-                                    state._lastMicrobitTimestamp = mt;
-                                } else {
-                                    // Corrupción: descartar (digit-loss en timestamp)
-                                    continue;
-                                }
-                            }
-
-                            _lastValidTimestamp = mt;
-                            state._lastMicrobitTimestamp = mt;
-                            pointTime = mt;
+                            // Monotonía estricta + manejo de reinicios del micro:bit
+                            const mapped = mapMicrobitTimestamp(mt, batchTime);
+                            if (mapped === null) continue; // Corrupción o dato viejo: descartar
+                            pointTime = mapped;
                         } else {
-                            pointTime = batchTime;
+                            pointTime = nextBrowserPointTime(batchTime);
                         }
 
                         const values = new Array(numVars);
@@ -18237,7 +18270,16 @@ bluetooth.startIOPinService()</pre>
                 if (!ok) return;
                 state.rawData = [];
                 state.selectedPoints.clear();
-                state.timeZeroOffset = 0;
+                // Reiniciar la línea temporal: si se limpia en plena captura,
+                // el próximo punto vuelve a definir T=0 (en modo reloj del
+                // navegador, T=0 es ahora; con timestamp lo fija el micro:bit).
+                state.timeZeroOffset = (state.isCollecting && !state.microbitTimestamp) ? Date.now() : 0;
+                state.microbitTimeZeroSet = false;
+                _lastValidTimestamp = -1;
+                _mbTimeShift = 0;
+                _backwardsRun = 0;
+                _backwardsPrevRaw = -1;
+                _lastBrowserPointTime = 0;
                 state.sensorPhotos = [];
                 state.videoBlob = null;
                 state.recordedChunks = [];
