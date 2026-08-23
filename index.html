@@ -2218,6 +2218,10 @@
             .toolbar-secondary {
                 display: none;
             }
+            /* En móvil, Guardar/Retomar vive en el menú ☰ (sessionTopBtn2) */
+            #sessionTopBtn {
+                display: none;
+            }
             /* Hamburguesa siempre visible aunque la barra se desplace de costado */
             .toolbar-menu-btn { position: sticky; right: 4px; z-index: 5; box-shadow: -10px 0 10px -6px rgba(0,0,0,.28); }
             .toolbar-separator { display: none; }
@@ -4668,6 +4672,8 @@
                 </div>
             </div>
             <button id="btn-informe" class="toolbar-btn" style="background:#111; color:#fff; border-color:#111;">INFORME</button>
+            <!-- Guardar / retomar el trabajo -->
+            <button id="sessionTopBtn" class="toolbar-btn" onclick="window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()"><span class="sess-dot"></span>Guardar / Retomar ▾</button>
         </span>
 
         <div class="toolbar-separator"></div>
@@ -4692,11 +4698,6 @@
                 <button id="photoFrameBtn" class="toolbar-btn" style="display:none;" onclick="smFrameOpen()">FOTOS</button>
                 <button id="clearBtn" class="toolbar-btn">LIMPIAR</button>
             </span>
-
-            <div class="toolbar-separator"></div>
-
-            <!-- 5) Guardar / retomar el trabajo -->
-            <button id="sessionTopBtn" class="toolbar-btn" onclick="window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()"><span class="sess-dot"></span>Guardar / Retomar ▾</button>
 
             <div class="toolbar-separator"></div>
 
