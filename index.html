@@ -2767,9 +2767,6 @@
             height: calc(100% - 16px) !important;
         }
 
-        /* Legacy PIP styles (kept for backwards compat, hidden by default) */
-        .dlab-video-pip { display: none !important; }
-
         /* Drag selection overlay for charts */
         .drag-select-overlay {
             position: absolute;
@@ -12837,13 +12834,6 @@ bluetooth.startIOPinService()</pre>
 
         // ── Instancia global ──
         let microbitBT = null;
-        let btBuffer = '';       // Compat: referenciado en otros lugares
-        let btLoopRunning = false; // Compat
-
-        // ── Backward compat aliases ──
-        const UART_SERVICE_UUID = BLE_UUIDS.UART_SERVICE;
-        const UART_TX_CHAR_UUID = BLE_UUIDS.UART_TX;
-        const UART_RX_CHAR_UUID = BLE_UUIDS.UART_RX;
 
         document.getElementById('connectBluetoothBtn').addEventListener('click', () => {
             track('conectar_bluetooth', 'microbit');
@@ -12884,15 +12874,6 @@ bluetooth.startIOPinService()</pre>
             }
             microbitBT = new MicrobitBluetooth();
             await microbitBT.connect();
-        }
-
-        // Compat: función legacy que redirige al nuevo sistema
-        async function startBluetoothLoop(txChar) {
-            // El nuevo sistema inicia el loop automáticamente en connect()
-            // Esta función existe solo por compatibilidad con código que la llame
-            if (microbitBT && !microbitBT.btLoopRunning) {
-                await microbitBT.startUARTLoop();
-            }
         }
 
         document.getElementById('collectBtn').addEventListener('click', () => {
@@ -16576,9 +16557,6 @@ bluetooth.startIOPinService()</pre>
                 if (clearBtn) clearBtn.disabled = !hasSel;
             }
         }
-
-        // Keep old manual input function for backwards compat but make it a no-op
-        function updateManualVarInputs() { }
 
         // ========== PROCESAMIENTO - MODO DELTA (PANEL LATERAL) ==========
 
@@ -28418,7 +28396,7 @@ bluetooth.startIOPinService()</pre>
     <div id="s3d-panel" class="s3d-panel" aria-hidden="true">
         <div class="s3d-topbar">
             <h2>Diseño de piezas 3D</h2>
-            <span class="s3d-badge">Beta · no publicado</span>
+            <span class="s3d-badge">OpenSCAD · en tu navegador</span>
             <span class="s3d-spacer"></span>
             <button id="s3d-code-toggle" class="s3d-top-btn" title="Mostrar u ocultar el código OpenSCAD de la pieza">Ver código ▸</button>
             <button id="s3d-close" class="s3d-close" title="Cerrar (Esc)">✕</button>
@@ -30042,6 +30020,7 @@ bluetooth.startIOPinService()</pre>
             <button id="trk-send-video" class="trk-top-btn" title="Abrir en Tracker el último video grabado con la cámara del sitio" disabled>Video grabado → Tracker</button>
             <button id="trk-open-video" class="trk-top-btn" title="Abrir en Tracker un video o proyecto (.trz) de tu equipo" disabled>Abrir video…</button>
             <input type="file" id="trk-file-input" accept="video/*,.mp4,.mov,.ogg,.trz,.trk,.zip,.jpg,.png" style="display:none">
+            <button id="trk-autotrack" class="trk-top-btn" disabled title="Tracker sigue solo, cuadro a cuadro, el objeto que elijas">✦ Seguimiento automático</button>
             <button id="trk-compare" class="trk-top-btn">Comparar con micro:bit ▸</button>
             <button id="trk-help-btn" class="trk-top-btn">Ayuda</button>
             <a class="trk-top-btn" href="tracker/fisicabit.html" target="_blank" title="Abrir el Tracker local en una pestaña aparte">Pestaña ↗</a>
@@ -30072,6 +30051,13 @@ bluetooth.startIOPinService()</pre>
                                 <li>Creá una <strong>masa puntual</strong> y marcá la posición cuadro a cuadro con <kbd>Shift</kbd>+clic.</li>
                             </ol>
                             <p>Si Tracker aparece en inglés, cambiá el idioma en <em>Edit ▸ Language ▸ Español</em>.</p>
+                            <h4>Seguimiento automático (sin marcar cuadro a cuadro)</h4>
+                            <p>Tracker puede seguir solo el objeto que elijas, con el <strong>Autotracker</strong> (botón <strong>✦ Seguimiento automático</strong> arriba, o la varita de la barra de Tracker):</p>
+                            <ol>
+                                <li>Con el video abierto y calibrado, creá una <strong>masa puntual</strong>.</li>
+                                <li>Mantené <kbd>Ctrl</kbd>+<kbd>Shift</kbd> y hacé <strong>clic sobre el objeto</strong> en el primer cuadro: eso define la plantilla que Tracker va a buscar (funciona mejor si el objeto contrasta con el fondo; ideal un marcador de color).</li>
+                                <li>Tocá <strong>Search</strong>: Tracker marca todos los cuadros automáticamente. Si en algún cuadro duda, te lo muestra para que aceptes o corrijas y sigue solo.</li>
+                            </ol>
                             <h4>3 · Compará con la micro:bit</h4>
                             <ol>
                                 <li>En la tabla de datos de Tracker, seleccioná las celdas (<kbd>Ctrl</kbd>+<kbd>A</kbd>) y copialas (<kbd>Ctrl</kbd>+<kbd>C</kbd>).</li>
@@ -30183,6 +30169,7 @@ bluetooth.startIOPinService()</pre>
             ? 'Abrir en Tracker el último video grabado con la cámara del sitio'
             : 'Todavía no hay video grabado: usá el botón CÁMARA del sitio para grabar uno';
         el('trk-open-video').disabled = !trackerReady;
+        el('trk-autotrack').disabled = !trackerReady;
     }
 
     /* ---------- Enviar videos a Tracker (drag & drop sintético) ---------- */
@@ -30471,6 +30458,15 @@ bluetooth.startIOPinService()</pre>
         var btn = el('btn-tracker');
         if (btn) btn.addEventListener('click', openPanel);
         el('trk-close').addEventListener('click', closePanel);
+        el('trk-autotrack').addEventListener('click', function () {
+            var ok = false;
+            try { ok = iframe.contentWindow.fbOpenAutotracker(); } catch (e) {}
+            if (ok) {
+                setStatus('Autotracker abierto. Creá una masa puntual, mantené Ctrl+Shift y hacé clic sobre el objeto en el video; después tocá «Search» y Tracker lo sigue solo en todos los cuadros.', 'ok');
+            } else {
+                setStatus('Tracker todavía está cargando; probá de nuevo en unos segundos.', 'err');
+            }
+        });
 
         window.addEventListener('message', function (e) {
             if (e.data && e.data.type === 'fbTrackerReady') {
