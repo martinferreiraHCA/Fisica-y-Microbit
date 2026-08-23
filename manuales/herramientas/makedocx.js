@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const {
   Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType,
-  BorderStyle, ShadingType, LevelFormat, PageBreak, convertMillimetersToTwip
+  BorderStyle, ShadingType, LevelFormat, PageBreak, convertMillimetersToTwip,
+  Table, TableRow, TableCell, WidthType, VerticalAlign
 } = require('docx');
 
 const SHOTS = path.join(__dirname, '..', 'img');
@@ -89,6 +90,42 @@ const infoBox = (runs) => new Paragraph({
   children: runs,
 });
 
+// tabla minimalista: encabezado negro, filas blancas con linea inferior
+const mkTable = (widths, header, rows) => {
+  const total = widths.reduce((a, x) => a + x, 0);
+  const cell = (text, isHeader, w) => new TableCell({
+    width: { size: w, type: WidthType.DXA },
+    verticalAlign: VerticalAlign.CENTER,
+    shading: { type: ShadingType.CLEAR, fill: isHeader ? BLACK : 'FFFFFF' },
+    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    children: [new Paragraph({
+      spacing: { after: 0 },
+      children: [new TextRun({
+        text, font: FONT, size: isHeader ? 18 : 18,
+        bold: isHeader, color: isHeader ? 'FFFFFF' : BLACK,
+      })],
+    })],
+  });
+  return new Table({
+    width: { size: total, type: WidthType.DXA },
+    columnWidths: widths,
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 8, color: BLACK },
+      bottom: { style: BorderStyle.SINGLE, size: 8, color: BLACK },
+      left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: 'CCCCCC' },
+      insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    },
+    rows: [
+      new TableRow({ tableHeader: true, children: header.map((h, i) => cell(h, true, widths[i])) }),
+      ...rows.map(r => new TableRow({ children: r.map((c, i) => cell(c, false, widths[i])) })),
+    ],
+  });
+};
+
+const spacer = () => new Paragraph({ spacing: { after: 160 }, children: [] });
+
 // ---------- portada ----------
 const cover = [
   new Paragraph({ spacing: { before: 2200 }, children: [] }),
@@ -158,9 +195,17 @@ const content = [
   pic('02_toolbar.png', 620, 47),
   cap('Barra de herramientas: CONECTAR (USB), BLUETOOTH, CÁMARA, INFORME, EXPORTAR CSV, LIMPIAR, AYUDA.'),
 
-  h1('3 · PROGRAMAR LA MICRO:BIT'),
-  body([t('En '), b('makecode.microbit.org'), t(' creá un proyecto nuevo. El programa debe enviar cada lectura como una línea de texto con el formato '), code('tiempo,valor'), t(': el primer número es el timestamp en milisegundos ('), code('input.runningTime()'), t(') y el segundo es la variable medida.')]),
-  h2('3.1 · Conexión por USB (serial)'),
+  h1('3 · PROGRAMAR LA MICRO:BIT EN MAKECODE'),
+  body([t('Toda la programación se hace en '), b('makecode.microbit.org'), t(', desde el navegador y sin instalar nada. El programa debe enviar cada lectura como una línea de texto con el formato '), code('tiempo,valor'), t(': el primer número es el timestamp en milisegundos ('), code('input.runningTime()'), t(') y el segundo es la variable medida.')]),
+
+  h2('3.1 · Crear el proyecto y grabar el programa'),
+  step(1, [t('Entrá a '), b('makecode.microbit.org'), t(' y presioná '), b('Nuevo proyecto'), t('. Podés trabajar en Bloques o en JavaScript (los códigos de esta guía están en JavaScript; MakeCode los convierte a bloques automáticamente al pegarlos).')]),
+  step(2, [t('Escribí o pegá el código (secciones 3.2 o 3.4 según la conexión que uses).')]),
+  step(3, [t('Conectá la micro:bit por USB y presioná '), b('Descargar'), t('. Si el navegador ofrece '), b('emparejar el dispositivo (WebUSB)'), t(', aceptá: el programa se graba solo. Si no, copiá el archivo '), code('.hex'), t(' descargado a la unidad '), b('MICROBIT'), t(' que aparece como un pendrive.')]),
+  step(4, [t('Esperá a que la luz naranja del reverso deje de parpadear: el programa ya está grabado y corriendo.')]),
+
+  h2('3.2 · Código para conexión USB (serial)'),
+  body([t('Para conectar por cable no hace falta configurar nada especial: alcanza con usar los bloques de '), b('Serial'), t(' ('), code('serial.writeLine'), t('):')]),
   ...codeBlock([
     'basic.forever(function () {',
     '    let t = input.runningTime()',
@@ -169,9 +214,29 @@ const content = [
     '    basic.pause(100)',
     '})',
   ]),
-  body([t('Este ejemplo envía la aceleración en X unas 8 veces por segundo. Podés reemplazar '), code('input.acceleration(Dimension.X)'), t(' por cualquier otro sensor, por ejemplo '), code('input.temperature()'), t(' o '), code('pins.analogReadPin(AnalogPin.P0)'), t('.')]),
-  h2('3.2 · Conexión por Bluetooth'),
-  body([t('Agregá la extensión '), b('bluetooth'), t(' (menú Extensiones) y verificá que en la configuración del proyecto esté habilitado '), b('“No Pairing Required”'), t('. El código es el mismo, pero usando el servicio UART:')]),
+  body([t('Este ejemplo envía la aceleración en X unas 8 veces por segundo. Podés reemplazar '), code('input.acceleration(Dimension.X)'), t(' por cualquier otro sensor, por ejemplo '), code('input.temperature()'), t(', '), code('input.lightLevel()'), t(' o '), code('pins.analogReadPin(AnalogPin.P0)'), t('.')]),
+
+  h2('3.3 · Configurar Bluetooth en MakeCode (paso a paso)'),
+  body([t('La conexión inalámbrica usa el servicio UART de Bluetooth Low Energy. Requiere '), b('dos configuraciones en MakeCode'), t(' que suelen ser la causa de que “no conecte” cuando faltan:')]),
+  step(1, [b('Agregar la extensión Bluetooth: '), t('en el editor, abrí el menú de bloques y elegí '), b('Extensiones'), t(' (también está en ⚙ → Extensiones). Buscá '), code('bluetooth'), t(' y hacé clic en la tarjeta para agregarla. MakeCode avisa que quitará la extensión '), b('radio'), t(': aceptá (radio y Bluetooth no pueden convivir).')]),
+  step(2, [b('Activar “No Pairing Required”: '), t('abrí '), b('⚙ → Configuración del proyecto'), t(' (Project Settings) y seleccioná '), b('“No Pairing Required: Anyone can connect via Bluetooth (JustWorks)”'), t('. Guardá. Sin esto, Chrome/Edge muchas veces se quedan en “Conectando…” porque la micro:bit pide un emparejamiento que el navegador no completa.')]),
+  step(3, [t('Si preferís editar la configuración a mano ('), code('pxt.json'), t('), la sección bluetooth debe incluir '), code('"pairing_mode": 0'), t(':')]),
+  ...codeBlock([
+    '"bluetooth": {',
+    '    "open": 1,',
+    '    "pairing_mode": 0,',
+    '    "whitelist": 0,',
+    '    "security_level": null',
+    '}',
+  ]),
+  step(4, [b('Volvé a descargar el programa'), t(' a la micro:bit después de cambiar la configuración: los ajustes viven dentro del archivo .hex, no alcanza con cambiar la opción.')]),
+  infoBox([
+    b('Importante: '),
+    t('al agregar la extensión Bluetooth se desactiva el envío por serial USB. Un mismo programa no puede usar los dos a la vez: para volver a USB, quitá la extensión Bluetooth (Extensiones → papelera sobre bluetooth) y usá '), code('serial.writeLine'), t('.'),
+  ]),
+
+  h2('3.4 · Código para conexión Bluetooth'),
+  body([t('El código es igual al de USB, pero iniciando el servicio UART y escribiendo con '), code('bluetooth.uartWriteLine'), t(':')]),
   ...codeBlock([
     'let t = 0',
     'let valor = 0',
@@ -184,10 +249,29 @@ const content = [
     '    basic.pause(100)',
     '})',
   ]),
-  infoBox([
-    b('Importante: '),
-    t('al agregar la extensión Bluetooth se desactiva el serial USB. Para volver a usar USB hay que quitar la extensión Bluetooth.'),
+  body([t('Otros sensores, misma estructura: '), code('input.temperature()'), t(' con pausa de 500–1000 ms, '), code('input.lightLevel()'), t(' con 100–200 ms, '), code('input.compassHeading()'), t(' con 100 ms.')]),
+
+  h2('3.5 · Consejos de MakeCode'),
+  bullet([b('Feedback visual: '), t('agregá '), code('basic.showIcon(IconNames.Yes)'), t(' en '), code('al iniciar'), t(' para saber que el programa arrancó. Evitá dejar animaciones o '), code('showNumber'), t(' dentro del bucle de medición: la pantalla LED enlentece el envío de datos.')]),
+  bullet([b('Micro:bit a batería: '), t('para Bluetooth conviene desconectar el cable USB y alimentar con el portapilas; el timestamp de '), code('input.runningTime()'), t(' sigue funcionando igual.')]),
+  bullet([b('Velocidad real: '), code('basic.forever'), t(' agrega ~20 ms ocultos por vuelta, por eso '), code('pause(100)'), t(' da ~8 Hz reales. Para fenómenos rápidos usá '), code('loops.everyInterval(10, ...)'), t(' (~100 Hz reales, el máximo recomendado):')]),
+  ...codeBlock([
+    '// Alta velocidad: ~100 Hz reales',
+    'loops.everyInterval(10, function () {',
+    '    let t = input.runningTime()',
+    '    let valor = input.acceleration(Dimension.X)',
+    '    serial.writeLine("" + t + "," + valor)',
+    '})',
   ]),
+  body([t('Frecuencias recomendadas según el experimento:')]),
+  mkTable([3200, 2600, 3272],
+    ['Experimento', 'Frecuencia', 'Pausa (ms)'],
+    [
+      ['Temperatura', '1–2 Hz', '500–1000'],
+      ['Luz ambiental', '5–10 Hz', '100–200'],
+      ['Acelerómetro / movimiento', '20–50 Hz', '20–50 (o everyInterval)'],
+    ]),
+  spacer(),
 
   h1('4 · CONFIGURAR LA PLATAFORMA'),
   body([t('Antes de conectar, abrí la vista '), b('CONFIG'), t(' (o el panel lateral) y en la sección '), b('VARIABLES'), t(' verificá dos cosas:')]),
@@ -202,19 +286,36 @@ const content = [
   ]),
 
   h1('5 · CONECTAR Y CAPTURAR'),
-  h2('5.1 · Conectar'),
-  step(1, [t('Conectá la micro:bit por cable y presioná '), b('CONECTAR'), t(' (USB), o presioná '), b('BLUETOOTH'), t(' para la conexión inalámbrica.')]),
-  step(2, [t('En la ventana del navegador elegí el dispositivo '), b('“BBC micro:bit”'), t(' y aceptá.')]),
+  body([t('La plataforma se conecta de dos maneras: por '), b('cable USB'), t(' (Web Serial) o por '), b('Bluetooth'), t(' (Web Bluetooth). En ambos casos funciona en '), b('Chrome'), t(' o '), b('Edge'), t('; en iOS/iPadOS Apple no permite ninguna de las dos.')]),
+
+  h2('5.1 · Conexión por USB (serial)'),
+  step(1, [t('Conectá la micro:bit a la computadora con un '), b('cable USB de datos'), t(' (algunos cables solo cargan y no transmiten datos).')]),
+  step(2, [t('Presioná '), b('CONECTAR'), t(' en la barra de herramientas.')]),
+  step(3, [t('El navegador abre una ventanita con los puertos disponibles: elegí el de la micro:bit (aparece como '), b('“BBC micro:bit CMSIS-DAP”'), t(' o similar) y presioná '), b('Conectar'), t('. La velocidad (115200 baudios) la configura la plataforma sola.')]),
+  infoBox([
+    b('Consejo: '),
+    t('cerrá MakeCode (o cualquier consola serial) antes de conectar: si otra pestaña tiene el puerto abierto, la plataforma no va a poder usarlo.'),
+  ]),
+
+  h2('5.2 · Conexión por Bluetooth'),
+  step(1, [t('Grabá antes el programa con la extensión Bluetooth y '), b('“No Pairing Required”'), t(' (sección 3.3). Encendé la micro:bit — puede ser a batería, sin cable.')]),
+  step(2, [t('Presioná el botón azul '), b('BLUETOOTH'), t('. La plataforma muestra primero una guía con los requisitos; verificá los tres puntos y presioná '), b('CONECTAR'), t('.')]),
   pic('04_bluetooth_modal.png', 620, 388),
-  cap('Guía de conexión Bluetooth: pasos previos y botón CONECTAR.'),
-  step(3, [t('El estado cambia a '), b('CONECTADO — Presiona CAPTURAR'), t(' y aparece el botón '), b('CAPTURAR'), t('.')]),
+  cap('Guía de conexión Bluetooth: configuración del proyecto, reinicio y botón CONECTAR.'),
+  step(3, [t('En el selector del navegador elegí tu placa: aparece como '), b('“BBC micro:bit [XXXXX]”'), t(' (las letras entre corchetes identifican a cada micro:bit). Esperá a que el botón cambie a '), b('BLUETOOTH CONECTADO'), t('.')]),
+  infoBox([
+    b('Reconexión automática: '),
+    t('si la micro:bit se aleja o pierde señal (alcance típico ~10 m), la plataforma intenta reconectarse sola hasta 4 veces. Si la placa no aparece en el selector, reiniciala con el botón RESET y verificá que no esté conectada a otro dispositivo.'),
+  ]),
+
+  h2('5.3 · Capturar datos'),
+  step(1, [t('Con la conexión establecida, el estado cambia a '), b('CONECTADO — Presiona CAPTURAR'), t(' y aparece el botón '), b('CAPTURAR'), t('.')]),
   pic('05_conectado.png', 620, 47),
   cap('micro:bit conectada: el botón CAPTURAR reemplaza a CONECTAR.'),
-  h2('5.2 · Capturar datos'),
-  step(4, [t('Presioná '), b('CAPTURAR'), t('. El estado pasa a '), b('CAPTURANDO'), t(' y los puntos aparecen en la gráfica en tiempo real. El indicador verde muestra la frecuencia de muestreo y la cantidad de puntos.')]),
+  step(2, [t('Presioná '), b('CAPTURAR'), t('. El estado pasa a '), b('CAPTURANDO'), t(' y los puntos aparecen en la gráfica en tiempo real. El indicador verde muestra la frecuencia de muestreo y la cantidad de puntos.')]),
   pic('06_capturando.png', 620, 388),
   cap('Captura en vivo: los datos llegan de la micro:bit y se grafican al instante.'),
-  step(5, [t('Cuando termine el experimento presioná '), b('DETENER'), t('. Los datos quedan en memoria para analizarlos.')]),
+  step(3, [t('Cuando termine el experimento presioná '), b('DETENER'), t('. Los datos quedan en memoria para analizarlos.')]),
   pic('07_captura_finalizada.png', 620, 388),
   cap('Captura finalizada: 30 segundos de una oscilación amortiguada (1 variable).'),
 
@@ -265,10 +366,21 @@ const content = [
   body([t('Ese archivo se abre directamente en Excel, LibreOffice, GeoGebra o Python, y también puede reimportarse en la plataforma desde '), b('INGRESO DE DATOS'), t(' para seguir analizándolo otro día.')]),
 
   h1('10 · PROBLEMAS FRECUENTES'),
-  bullet([b('No aparece el dispositivo al conectar: '), t('verificá que el programa esté grabado en la micro:bit y, en Bluetooth, que la extensión bluetooth esté agregada con “No Pairing Required”.')]),
-  bullet([b('Se conecta pero no llegan datos: '), t('presioná CAPTURAR después de conectar y verificá que la casilla “Micro:bit envía timestamp” coincida con el formato del programa.')]),
+  h2('Conexión USB (serial)'),
+  bullet([b('No aparece el puerto: '), t('verificá que el cable USB sea de datos (no solo de carga), probá otro puerto USB y reiniciá el navegador. Cerrá MakeCode u otras consolas seriales que puedan tener el puerto tomado.')]),
+  bullet([b('No llegan datos por USB: '), t('el programa debe usar '), code('serial.writeLine()'), t(' (no '), code('writeNumber'), t(' solo). Presioná CAPTURAR después de conectar y verificá que el número de variables configurado coincida con lo que envía el código.')]),
+  h2('Conexión Bluetooth'),
+  bullet([b('No aparece en el selector: '), t('el programa debe tener '), code('bluetooth.startUartService()'), t('. Reiniciá la micro:bit (botón RESET) y verificá que no esté conectada a otro dispositivo o celular.')]),
+  bullet([b('Aparece pero se queda en “Conectando…”: '), t('falta '), b('“No Pairing Required”'), t(' en la configuración del proyecto de MakeCode (en '), code('pxt.json'), t(' debe estar '), code('"pairing_mode": 0'), t('). Corregí, volvé a descargar el .hex y reintentá.')]),
+  bullet([b('Se conecta pero no llegan datos: '), t('el programa debe usar '), code('bluetooth.uartWriteLine()'), t('. Presioná CAPTURAR después de conectar y verificá la casilla “Micro:bit envía timestamp”.')]),
+  bullet([b('Error “UART no encontrado”: '), t('al programa le falta '), code('bluetooth.startUartService()'), t('. Agregalo y volvé a grabar.')]),
+  bullet([b('Error “Not supported” o conexión rara: '), t('caché Bluetooth corrupto del navegador. Entrá a '), code('chrome://bluetooth-internals'), t(' → Devices → olvidá la micro:bit y reconectá. En macOS, quitala también de Preferencias del Sistema → Bluetooth.')]),
+  bullet([b('Se desconecta seguido: '), t('acercá la micro:bit (~10 m máximo) y revisá la batería. La plataforma reconecta sola hasta 4 veces.')]),
+  bullet([b('No funciona en iPhone/iPad: '), t('Apple no permite Web Bluetooth ni Web Serial en iOS. Usá Chrome o Edge en computadora o Android; en iPad podés cargar datos por CSV.')]),
+  h2('Datos'),
   bullet([b('Aviso de formato: '), t('el número de valores por línea no coincide con el número de variables configurado. Ajustá NÚMERO DE VARIABLES o el programa.')]),
   bullet([b('Datos con saltos de tiempo: '), t('usá siempre '), code('input.runningTime()'), t(' en el programa; el reloj del navegador tiene resolución limitada (~16 ms).')]),
+  bullet([b('Datos con picos (spikes): '), t('activá el '), b('Filtro de picos'), t(' en la sección VARIABLES; si persiste, bajá la velocidad de envío.')]),
   body([t('Más ayuda: botón '), b('AYUDA'), t(' dentro de la plataforma, con tutoriales completos de conexión, código para 2 y 3 variables y solución de problemas.')], { spacing: { before: 200, after: 0 } }),
 ];
 
