@@ -4660,13 +4660,18 @@
 
         <!-- 2) Herramientas / modos (siempre visible) -->
         <span class="tb-group">
-            <button id="sensorModeBtn" class="toolbar-btn" style="background: #2e7d32; color: white; border-color: #2e7d32;" onclick="enterSensorMode()">SENSORES</button>
-            <button id="desktopLabBtn" class="toolbar-btn" style="background: #1976d2; color: white; border-color: #1976d2;" onclick="enterExperimentMode()">LAB</button>
-            <button id="btn-mapeo" class="toolbar-btn">MAPEO</button>
-            <button id="btn-tracker" class="toolbar-btn" style="background:#00695c; color:#fff; border-color:#00695c;">TRACKER</button>
+            <div style="position:relative; display:inline-block;">
+                <button id="extrasBtn" class="toolbar-btn" style="background:#5e35b1; color:#fff; border-color:#5e35b1;" onclick="toggleExtrasMenu()">EXTRAS ▾</button>
+                <div id="extrasMenu" class="data-entry-dropdown" style="display:none;" onclick="closeExtrasMenu()">
+                    <!-- Apartado no publicado: se muestra solo al entrar con #piezas3d en la URL -->
+                    <button id="btn-piezas3d" style="display:none; border-left:4px solid #666;">PIEZAS 3D</button>
+                    <button id="btn-tracker" style="border-left:4px solid #00695c;">TRACKER</button>
+                    <button id="btn-mapeo" style="border-left:4px solid #f9a825;">MAPEO</button>
+                    <button id="desktopLabBtn" style="border-left:4px solid #1976d2;" onclick="enterExperimentMode()">LAB</button>
+                    <button id="sensorModeBtn" style="border-left:4px solid #2e7d32;" onclick="enterSensorMode()">SENSORES</button>
+                </div>
+            </div>
             <button id="btn-informe" class="toolbar-btn" style="background:#111; color:#fff; border-color:#111;">INFORME</button>
-            <!-- Apartado no publicado: se muestra solo al entrar con #piezas3d en la URL -->
-            <button id="btn-piezas3d" class="toolbar-btn" style="display:none;">PIEZAS 3D</button>
         </span>
 
         <div class="toolbar-separator"></div>
@@ -6415,6 +6420,7 @@ basic.forever(function () {
                 viewTimeline: 'TIMELINE',
                 viewConfig: 'CONFIG',
                 viewExperiment: 'LAB',
+                extrasBtn: 'EXTRAS',
                 expandGraph: 'Ampliar gráfica',
                 // Desktop LAB
                 dlabDifference: 'DIFERENCIA',
@@ -6783,6 +6789,7 @@ basic.forever(function () {
                 viewTimeline: 'TIMELINE',
                 viewConfig: 'CONFIG',
                 viewExperiment: 'LAB',
+                extrasBtn: 'EXTRAS',
                 expandGraph: 'Expand graph',
                 // Desktop LAB
                 dlabDifference: 'DIFFERENCE',
@@ -7151,6 +7158,7 @@ basic.forever(function () {
                 viewTimeline: 'TIMELINE',
                 viewConfig: 'CONFIG',
                 viewExperiment: 'LAB',
+                extrasBtn: 'EXTRAS',
                 expandGraph: 'Ampliar gráfico',
                 // Desktop LAB
                 dlabDifference: 'DIFERENÇA',
@@ -7430,6 +7438,9 @@ basic.forever(function () {
             // Desktop LAB toolbar button
             const desktopLabBtn = document.getElementById('desktopLabBtn');
             if (desktopLabBtn) desktopLabBtn.textContent = t.viewExperiment || 'LAB';
+            // Botón del menú EXTRAS
+            const extrasBtnEl = document.getElementById('extrasBtn');
+            if (extrasBtnEl) extrasBtnEl.textContent = (t.extrasBtn || 'EXTRAS') + ' ▾';
 
             // Mobile menu panel buttons
             const menuMap = { statsBtn2: 'statistics', exportBtn2: 'exportCSV', importBtn2: 'importCSV', clearBtn2: 'clear', helpBtn2: 'help' };
@@ -15690,12 +15701,44 @@ bluetooth.startIOPinService()</pre>
             document.getElementById('dataEntryMenu').style.display = 'none';
         }
 
-        // Close dropdown when clicking outside
+        // Menú EXTRAS: agrupa Piezas 3D, Tracker, Mapeo, Lab y Sensores
+        function toggleExtrasMenu() {
+            const menu = document.getElementById('extrasMenu');
+            const willOpen = menu.style.display === 'none';
+            if (willOpen) {
+                // En pantallas chicas la toolbar scrollea horizontal
+                // (overflow-x: auto) y recortaría el menú posicionado con
+                // absolute: usar posición fija bajo el botón.
+                if (window.matchMedia('(max-width: 600px)').matches) {
+                    const r = document.getElementById('extrasBtn').getBoundingClientRect();
+                    menu.style.position = 'fixed';
+                    menu.style.top = (r.bottom + 4) + 'px';
+                    menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 190)) + 'px';
+                } else {
+                    menu.style.position = '';
+                    menu.style.top = '';
+                    menu.style.left = '';
+                }
+            }
+            menu.style.display = willOpen ? 'block' : 'none';
+        }
+
+        function closeExtrasMenu() {
+            const menu = document.getElementById('extrasMenu');
+            if (menu) menu.style.display = 'none';
+        }
+
+        // Close dropdowns when clicking outside
         document.addEventListener('click', (e) => {
             const btn = document.getElementById('dataEntryBtn');
             const menu = document.getElementById('dataEntryMenu');
             if (btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
                 menu.style.display = 'none';
+            }
+            const exBtn = document.getElementById('extrasBtn');
+            const exMenu = document.getElementById('extrasMenu');
+            if (exBtn && exMenu && !exBtn.contains(e.target) && !exMenu.contains(e.target)) {
+                exMenu.style.display = 'none';
             }
         });
 
