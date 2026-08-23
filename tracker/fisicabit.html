@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+	<title>Tracker · FísicaBit</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="icon" href="./tracker_online.png">
+	<style>
+		html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #1a1d23; overflow: hidden; }
+		#fb-loading {
+			position: fixed; inset: 0; z-index: 5;
+			display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+			background: #1a1d23; color: #e0e0e0;
+			font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 13px;
+			pointer-events: none;
+		}
+		#fb-loading.hidden { display: none; }
+		#fb-loading .spin {
+			width: 30px; height: 30px; border: 3px solid #2b303b; border-top-color: #fff;
+			border-radius: 50%; animation: fbspin 1s linear infinite;
+		}
+		@keyframes fbspin { to { transform: rotate(360deg); } }
+		#fb-loading small { color: #8a919e; }
+	</style>
+	<script src="compadre.js"></script>
+	<script src="swingjs/swingjs2.js"></script>
+	<script>
+		if (!self.SwingJS) alert('No se encontró swingjs/swingjs2.js junto a esta página.');
+
+		function initApp() {
+			if (!org.opensourcephysics.cabrillo.tracker.Tracker) {
+				alert('No se pudo iniciar Tracker.');
+				return;
+			}
+			var l = document.getElementById('fb-loading');
+			if (l) l.classList.add('hidden');
+			try { parent.postMessage({ type: 'fbTrackerReady' }, '*'); } catch (e) {}
+		}
+
+		function loadExperiment(expURL) {
+			Tracker.app.loadExperimentURL(expURL);
+		}
+
+		// Busca el nodo DOM que SwingJS registró como destino de arrastrar-y-soltar.
+		function fbFindDropNode() {
+			var nodes = document.getElementsByTagName('*');
+			for (var i = 0; i < nodes.length; i++) {
+				if (nodes[i]['data-dropComponent']) return nodes[i];
+			}
+			return null;
+		}
+
+		// Abre un File/Blob de video en Tracker simulando el drag & drop nativo
+		// (mismo camino de código que soltar un archivo sobre la ventana).
+		function fbOpenVideo(file) {
+			var node = fbFindDropNode();
+			if (!node) return false;
+			try {
+				var r = node.getBoundingClientRect();
+				var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+				var dt = new DataTransfer();
+				dt.items.add(file);
+				['dragenter', 'dragover', 'drop'].forEach(function (type) {
+					node.dispatchEvent(new DragEvent(type, {
+						bubbles: true, cancelable: true, dataTransfer: dt, clientX: cx, clientY: cy
+					}));
+				});
+				return true;
+			} catch (e) {
+				return false;
+			}
+		}
+
+		TrackerInfo = {
+			code: null,
+			main: "org.opensourcephysics.cabrillo.tracker.Tracker",
+			core: "_tracker",
+			resourceZip: "misc-assets.zip",
+			assets: { name: "tracker", zipPath: "tracker-assets.zip", classPaths: ["org/opensourcephysics"] },
+			args: ["-adaptive"],
+			readyFunction: initApp,
+			j2sPath: 'swingjs/j2s',
+			console: 'none'
+		}
+	</script>
+</head>
+
+<body>
+	<div id="fb-loading">
+		<div class="spin"></div>
+		<div>Cargando Tracker…</div>
+		<small>La primera vez puede demorar; luego queda en la caché del navegador.</small>
+	</div>
+	<script>
+		SwingJS.getApplet('Tracker', TrackerInfo);
+	</script>
+</body>
+
+</html>
