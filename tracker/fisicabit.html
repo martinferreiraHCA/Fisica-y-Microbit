@@ -74,6 +74,21 @@
 			return null;
 		}
 
+		// Abre el diálogo de seguimiento automático (Autotracker) de Tracker,
+		// como si se tocara el botón de varita de su barra de herramientas.
+		function fbOpenAutotracker() {
+			var div = document.querySelector('[name*="Autotracker"]');
+			if (!div) return false;
+			// El <button> interno de SwingJS guarda el JButton de Java en
+			// data-component: doClick$() dispara la acción como un clic real.
+			var btn = div.querySelector('button');
+			var jc = btn && btn['data-component'];
+			if (jc && jc.doClick$) {
+				try { jc.doClick$(); return true; } catch (e) {}
+			}
+			return false;
+		}
+
 		// Abre un File/Blob de video en Tracker simulando el drag & drop nativo
 		// (mismo camino de código que soltar un archivo sobre la ventana).
 		function fbOpenVideo(file) {
