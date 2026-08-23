@@ -4663,8 +4663,7 @@
             <div style="position:relative; display:inline-block;">
                 <button id="extrasBtn" class="toolbar-btn" style="background:#5e35b1; color:#fff; border-color:#5e35b1;" onclick="toggleExtrasMenu()">EXTRAS ▾</button>
                 <div id="extrasMenu" class="data-entry-dropdown" style="display:none;" onclick="closeExtrasMenu()">
-                    <!-- Apartado no publicado: se muestra solo al entrar con #piezas3d en la URL -->
-                    <button id="btn-piezas3d" style="display:none; border-left:4px solid #666;">PIEZAS 3D</button>
+                    <button id="btn-piezas3d" style="border-left:4px solid #666;">PIEZAS 3D</button>
                     <button id="btn-tracker" style="border-left:4px solid #00695c;">TRACKER</button>
                     <button id="btn-mapeo" style="border-left:4px solid #f9a825;">MAPEO</button>
                     <button id="desktopLabBtn" style="border-left:4px solid #1976d2;" onclick="enterExperimentMode()">LAB</button>
@@ -24830,6 +24829,7 @@ bluetooth.startIOPinService()</pre>
     <div class="gdrive-pop session-menu" id="session-menu">
         <div class="inf-dd-group">Guardar / descargar</div>
         <button class="inf-dd-item" id="sess-zip">📦 Descargar todo (informe + datos)</button>
+        <button class="inf-dd-item" id="sess-csv">📈 Exportar datos a CSV</button>
         <button class="inf-dd-item" id="sess-savefile">💾 Guardar mi trabajo en un archivo</button>
         <div class="inf-dd-sep"></div>
         <div class="inf-dd-group">Retomar trabajo</div>
@@ -27274,6 +27274,12 @@ bluetooth.startIOPinService()</pre>
 
         // Menú «Guardar / Retomar» (botón de arriba, junto a AYUDA)
         if (el('sess-zip')) el('sess-zip').addEventListener('click', function () { track('exportar_zip', 'exportar'); downloadZip(); });
+        if (el('sess-csv')) el('sess-csv').addEventListener('click', function () {
+          var b = document.getElementById('exportBtn');
+          if (b && b.disabled) { toast('No hay datos capturados para exportar todavía.'); return; }
+          closeSessionMenu();
+          if (b) b.click();
+        });
         if (el('sess-savefile')) el('sess-savefile').addEventListener('click', function () { track('guardar_archivo', 'guardar'); saveProjectFile(); });
         if (el('sess-cache')) el('sess-cache').addEventListener('click', restoreFromCache);
         if (el('sess-openfile')) el('sess-openfile').addEventListener('click', function () { var i = el('sess-open-input'); if (i) i.click(); });
@@ -28299,8 +28305,9 @@ bluetooth.startIOPinService()</pre>
 
     </script>
     <!-- ============================================================
-         PIEZAS 3D · Editor de piezas OpenSCAD (apartado no publicado)
-         Acceso: agregar #piezas3d a la URL, o abrirPiezas3D() en consola.
+         PIEZAS 3D · Editor de piezas OpenSCAD
+         Acceso: menú EXTRAS de la toolbar; #piezas3d en la URL abre el
+         panel directamente (deep-link).
          ============================================================ -->
     <style id="s3d-style">
     .s3d-panel { display:none; position:fixed; inset:0; z-index:9200; background:#1a1d23; color:#e0e0e0; font-family:-apple-system, 'Segoe UI', sans-serif; flex-direction:column; }
@@ -29850,9 +29857,8 @@ bluetooth.startIOPinService()</pre>
     }
 
     function checkHash() {
+        // Deep-link: entrar con #piezas3d abre el panel directamente
         if (/^#piezas3d$/i.test(location.hash)) {
-            var btn = el('btn-piezas3d');
-            if (btn) btn.style.display = '';
             openPanel();
         }
     }
@@ -30072,8 +30078,9 @@ bluetooth.startIOPinService()</pre>
                                 <li>Abrí <strong>Comparar con micro:bit</strong> y pegá los datos en el recuadro.</li>
                                 <li>Elegí la variable de la micro:bit, ajustá los desfases de tiempo (Δt) para alinear el inicio, y mirá las dos curvas superpuestas. Podés exportar el CSV combinado.</li>
                             </ol>
-                            <h4>Créditos y licencia</h4>
-                            <p>Tracker es software libre (GPL v3) de <a href="https://opensourcephysics.github.io/tracker-website/" target="_blank" rel="noopener">Open Source Physics</a>: Douglas Brown, Wolfgang Christian y Robert M. Hanson. Copia local: ver <a href="tracker/LICENSE" target="_blank">licencia</a>.</p>
+                            <h4>Licencia de uso · créditos</h4>
+                            <p><strong>Tracker</strong> es obra de Douglas Brown, Wolfgang Christian y Robert M. Hanson, del proyecto <a href="https://opensourcephysics.github.io/tracker-website/" target="_blank" rel="noopener">Open Source Physics</a>. Es <strong>software libre</strong> distribuido bajo la licencia <a href="https://www.gnu.org/licenses/gpl-3.0.es.html" target="_blank" rel="noopener">GNU GPL v3</a>: podés usarlo, copiarlo, modificarlo y redistribuirlo libremente (incluso en clase y con fines educativos), siempre que las copias conserven la misma licencia. Se ofrece sin garantía, como indica la propia licencia.</p>
+                            <p>Este sitio incluye una <strong>copia local sin modificar</strong> de Tracker Online que corre 100% en tu navegador. Texto completo de la licencia: <a href="tracker/LICENSE" target="_blank">tracker/LICENSE</a> · Código fuente: <a href="https://github.com/OpenSourcePhysics/tracker" target="_blank" rel="noopener">github.com/OpenSourcePhysics/tracker</a>.</p>
                         </div>
                     </div>
                 </div>
@@ -30122,8 +30129,8 @@ bluetooth.startIOPinService()</pre>
             </aside>
         </div>
         <div class="trk-statusbar">
-            <span class="trk-status-msg" id="trk-status-msg">Tracker · Open Source Physics (GPL v3) · corre 100% en tu navegador</span>
-            <a href="tracker/LICENSE" target="_blank">Licencia</a>
+            <span class="trk-status-msg" id="trk-status-msg">Tracker © Douglas Brown · Open Source Physics · software libre (GPL v3) · corre 100% en tu navegador</span>
+            <a href="tracker/LICENSE" target="_blank" title="Texto completo de la licencia GNU GPL v3">Licencia de uso (GPL v3)</a>
         </div>
     </div>
 
