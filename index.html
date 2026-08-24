@@ -71,9 +71,9 @@
         .toolbar {
             background: white;
             border-bottom: 2px solid black;
-            padding: 12px 16px;
+            padding: 7px 12px;
             display: flex;
-            gap: 8px;
+            gap: 6px;
             align-items: center;
             flex-wrap: wrap;
         }
@@ -81,9 +81,9 @@
         .toolbar-btn {
             background: white;
             border: 2px solid black;
-            padding: clamp(6px, 1vw, 8px) clamp(8px, 2vw, 16px);
+            padding: clamp(4px, 0.7vw, 6px) clamp(6px, 1.2vw, 10px);
             cursor: pointer;
-            font-size: clamp(0.72rem, 1.8vw, 0.9rem);
+            font-size: clamp(0.66rem, 1.4vw, 0.78rem);
             font-weight: 600;
             transition: all 0.2s;
         }
@@ -168,9 +168,9 @@
         .tb-group { display: inline-flex; align-items: center; gap: 6px; }
         /* Chip del experimento actual (nombre siempre visible, clic para renombrar) */
         .tb-experiment {
-            display: inline-flex; align-items: center; gap: 6px; max-width: 260px;
+            display: inline-flex; align-items: center; gap: 6px; max-width: 220px;
             background: #eef4ff; border: 1.5px solid #a9c6ff; border-radius: 20px;
-            padding: 6px 14px; font-family: inherit; font-size: clamp(0.72rem, 1.6vw, 0.86rem); font-weight: 700;
+            padding: 4px 10px; font-family: inherit; font-size: clamp(0.68rem, 1.4vw, 0.78rem); font-weight: 700;
             color: #14448c; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0;
             transition: background .15s, border-color .15s;
         }
@@ -180,9 +180,9 @@
 
         .status-text {
             margin-left: auto;
-            font-size: clamp(0.7rem, 1.8vw, 0.9rem);
+            font-size: clamp(0.66rem, 1.4vw, 0.78rem);
             font-weight: 500;
-            padding: clamp(4px, 1vw, 8px) clamp(8px, 2vw, 16px);
+            padding: clamp(3px, 0.7vw, 5px) clamp(6px, 1.2vw, 10px);
             border: 2px solid black;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -4706,7 +4706,7 @@
                 <button id="examplesBtn" class="toolbar-btn" onclick="openExamplesModal()">EJEMPLOS</button>
                 <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: inline-flex; align-items: center;">MAKECODE ↗</a>
                 <button id="helpBtn" class="toolbar-btn">AYUDA</button>
-                <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 8px 12px;">
+                <select id="languageSelector" class="toolbar-btn" style="cursor: pointer; padding: 4px 8px;">
                     <option value="es">ES</option>
                     <option value="en">EN</option>
                     <option value="pt">PT</option>
