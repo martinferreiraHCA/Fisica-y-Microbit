@@ -234,7 +234,7 @@ const content = [
     b('Requisitos: '),
     t('una micro:bit (V1 o V2), cable USB o Bluetooth, y el navegador '),
     b('Chrome'), t(' o '), b('Edge'),
-    t(' en computadora o Android. Ni Web Serial ni Web Bluetooth'), fn(2), t(' funcionan en iOS/iPadOS.'),
+    t(' en computadora (Windows, Mac o Linux) o Android. La única excepción son iPhone y iPad: Apple no permite Web Serial ni Web Bluetooth'), fn(2), t(' en iOS/iPadOS — en Mac ambas funcionan sin problema.'),
   ]),
 
   h1('2 · LA PANTALLA PRINCIPAL'),
@@ -462,7 +462,7 @@ const content = [
   bullet([b('Error “UART no encontrado”: '), t('al programa le falta '), code('bluetooth.startUartService()'), t('. Agregalo y volvé a grabar.')]),
   bullet([b('Error “Not supported” o conexión rara: '), t('caché Bluetooth corrupto del navegador. Entrá a '), code('chrome://bluetooth-internals'), t(' → Devices → olvidá la micro:bit y reconectá. En macOS, quitala también de Preferencias del Sistema → Bluetooth.')]),
   bullet([b('Se desconecta seguido: '), t('acercá la micro:bit (~10 m máximo) y revisá la batería. La plataforma reconecta sola hasta 4 veces.')]),
-  bullet([b('No funciona en iPhone/iPad: '), t('Apple no permite Web Bluetooth ni Web Serial en iOS. Usá Chrome o Edge en computadora o Android; en iPad podés cargar datos por CSV.')]),
+  bullet([b('No funciona en iPhone/iPad: '), t('Apple no permite Web Bluetooth ni Web Serial en iOS/iPadOS (solo ahí: en Mac funcionan). Usá Chrome o Edge en computadora — incluida una Mac — o Android; en iPad podés cargar datos por CSV.')]),
   h2('Datos'),
   bullet([b('Aviso de formato: '), t('el número de valores por línea no coincide con el número de variables configurado. Ajustá NÚMERO DE VARIABLES o el programa.')]),
   bullet([b('Datos con saltos o apilados en el tiempo: '), t('usá siempre '), code('input.runningTime()'), t(' en el programa y la casilla de timestamp activada (sección 3 explica por qué).')]),
@@ -494,7 +494,7 @@ const content = [
       ['Scheduler', 'Componente del sistema de MakeCode que reparte el tiempo del procesador entre las tareas del programa. Su sobrecosto es lo que limita la velocidad real de forever.'],
       ['Timestamp', 'Marca de tiempo: número que acompaña a cada dato indicando el instante en que se midió (acá, en ms desde el encendido de la micro:bit).'],
       ['UART', 'Protocolo clásico de puerto serie. “UART sobre BLE” es un servicio estándar que simula ese canal por radio; es lo que usa la plataforma para recibir datos por Bluetooth.'],
-      ['Web Bluetooth / Web Serial', 'Capacidades del navegador (Chrome/Edge) que permiten a una página web hablar con dispositivos Bluetooth o seriales, previa autorización del usuario. Apple no las permite en iOS.'],
+      ['Web Bluetooth / Web Serial', 'Capacidades del navegador (Chrome/Edge) que permiten a una página web hablar con dispositivos Bluetooth o seriales, previa autorización del usuario. Funcionan en Windows, Mac, Linux y Android; Apple solo las bloquea en iPhone/iPad (iOS/iPadOS).'],
       ['WebUSB', 'Capacidad del navegador que permite a MakeCode grabar el programa en la micro:bit directamente, sin copiar el archivo a mano.'],
     ]),
 ];
