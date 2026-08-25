@@ -5,9 +5,10 @@ con la misma estética minimalista de la plataforma (blanco y negro, tipografía
 
 ## Guías disponibles
 
-| # | Archivo | Contenido |
-|---|---------|-----------|
-| 1 | `Manual-1-Captura-1-variable-timestamp.docx` | Captura de datos con timestamp para 1 variable (USB y Bluetooth) y procesamiento básico: tabla de datos, ESTABLECER T=0 (poner el tiempo en cero), depuración de datos y exportación a CSV. |
+| # | Archivo | Tipo | Contenido |
+|---|---------|------|-----------|
+| 0 | `Guia-rapida-Captura-de-datos.docx` | Guía rápida (3 págs.) | Capturar datos en 10 pasos con imágenes, para el usuario que solo quiere seguir instrucciones. |
+| 1 | `Manual-1-Captura-1-variable-timestamp.docx` | Documentación completa | Captura de datos con timestamp para 1 variable, en dos caminos (Serial recomendado / Bluetooth) con latencias explicadas, código comentado, procesamiento básico (T=0, depuración, CSV), notas al pie y glosario. |
 
 ## Estructura
 
@@ -16,7 +17,8 @@ con la misma estética minimalista de la plataforma (blanco y negro, tipografía
   - `shots.js` — script de Playwright que abre el sitio, simula el flujo completo
     (conexión → captura de una oscilación amortiguada a 10 Hz → selección de punto →
     T=0 → depuración → exportar CSV) y guarda todas las capturas.
-  - `makedocx.js` — genera el .docx con la librería `docx` (npm) a partir de las capturas.
+  - `makedocx.js` — genera el manual de documentación con la librería `docx` (npm).
+  - `quickguide.js` — genera la guía rápida de 10 pasos.
 
 ## Cómo regenerar un manual
 
@@ -27,8 +29,9 @@ python3 -m http.server 8765
 # 2. Tomar las capturas (requiere playwright con Chromium)
 node herramientas/shots.js
 
-# 3. Generar el documento (requiere: npm install docx)
-node herramientas/makedocx.js
+# 3. Generar los documentos (requiere: npm install docx)
+node herramientas/makedocx.js   # manual de documentación
+node herramientas/quickguide.js # guía rápida
 ```
 
 Los manuales usan la tipografía **Montserrat** (la misma del informe del sitio).
