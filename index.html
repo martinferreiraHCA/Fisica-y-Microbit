@@ -452,6 +452,31 @@
             margin: 6px 0 3px 0;
         }
         .special-char-group-label:first-of-type { margin-top: 0; }
+        /* ── Pasos guiados del ajuste de curva ── */
+        .fit-step-title {
+            font-weight: 700;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #1565c0;
+            margin: 14px 0 6px;
+            padding: 3px 8px;
+            background: #e3f0fc;
+            border-left: 3px solid #1976d2;
+            border-radius: 3px;
+        }
+        .fit-step-title:first-of-type { margin-top: 10px; }
+        #fitStatusHint {
+            margin-top: 10px;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            padding: 6px 9px;
+            border-radius: 4px;
+            display: none;
+        }
+        #fitStatusHint.fit-hint-ready { display: block; background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+        #fitStatusHint.fit-hint-warn  { display: block; background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+
         /* ── Bloques didácticos de delta / integral / ajuste ── */
         .didactic-block {
             background: #fafbfc;
@@ -5155,9 +5180,11 @@
                         El ajuste se realiza sobre los ejes configurados en la gráfica de referencia (ej: variable vs tiempo, o variable vs variable).
                     </div>
 
+                    <div class="fit-step-title" id="fitStep1Title">PASO 1 · Elegí el modelo</div>
                     <div class="input-row">
                         <label>Tipo de Ajuste</label>
                         <select id="fitType">
+                            <option value="auto" selected>✨ Automático (detectar el mejor modelo)</option>
                             <option value="linear">Lineal (y = mx + b)</option>
                             <option value="quadratic">Cuadrático (y = ax² + bx + c)</option>
                             <option value="cubic">Cúbico (y = ax³ + bx² + cx + d)</option>
@@ -5195,6 +5222,7 @@
                         </div>
                     </div>
 
+                    <div class="fit-step-title" id="fitStep2Title">PASO 2 · Elegí los datos</div>
                     <div class="input-row">
                         <label>Variable a Ajustar</label>
                         <select id="fitVariable">
@@ -5239,6 +5267,7 @@
                         </div>
                     </div>
 
+                    <div class="fit-step-title" id="fitStep3Title">PASO 3 · Realizá el ajuste</div>
                     <div class="input-row" style="display:flex; align-items:center; gap:8px; margin-top:8px;">
                         <label id="fitColorLabel" style="margin:0; flex:1;">Color de la línea de ajuste</label>
                         <input type="color" id="fitColorInput" value="#d32f2f" style="width:36px; height:28px; padding:0; border:1px solid #ccc; cursor:pointer;" title="Cambiar color">
@@ -5253,6 +5282,8 @@
                         <input type="checkbox" id="fitProjectCurve">
                         <label for="fitProjectCurve" id="fitProjectCurveLabel">Proyectar curva teórica (extender el ajuste)</label>
                     </div>
+
+                    <div id="fitStatusHint"></div>
 
                     <button class="toolbar-btn primary btn-full" id="performFitBtn" disabled>
                         REALIZAR AJUSTE
@@ -6267,6 +6298,25 @@ basic.forever(function () {
                 fitSinusoidal: 'Sinusoidal (y = A·sin(ωx + φ) + C)',
                 fitSaturating: 'Crecimiento con saturación (y = A − B·e^(−kx))',
                 fitCustom: 'Personalizada (tu propia ecuación)',
+                fitAuto: '✨ Automático (detectar el mejor modelo)',
+                fitStep1: 'PASO 1 · Elegí el modelo',
+                fitStep2: 'PASO 2 · Elegí los datos',
+                fitStep3: 'PASO 3 · Realizá el ajuste',
+                fitHintReadyAll: '✓ Listo para ajustar: se usarán los {n} puntos.',
+                fitHintReadySelected: '✓ Listo para ajustar: se usarán los {n} puntos seleccionados.',
+                fitHintReadyRange: '✓ Listo para ajustar: se usará el rango elegido ({n} puntos).',
+                fitHintNoData: 'Aún no hay datos. Capturá o importá datos y después realizá el ajuste.',
+                fitHintNoSelection: 'Elegiste «Puntos Seleccionados» pero no hay puntos marcados. Tocá puntos en la gráfica (o usá ⬚ para arrastrar), o volvé a «Todos los Datos».',
+                fitHintRangeInvalid: 'Completá un rango válido (desde/hasta, con al menos 2 puntos).',
+                autoDetectTitle: 'Modo automático: comparación de modelos',
+                autoDetectWinner: 'Mejor modelo detectado:',
+                autoDetectExplain: 'Se probaron varios modelos y se comparó su <b>AICc</b>: un criterio que premia el buen ajuste (R² alto) pero castiga la complejidad innecesaria, para no «sobreajustar». ΔAICc indica cuánto peor es el puntaje de cada modelo frente al mejor (0 = mejor; &gt;10 = claramente peor). Si dos modelos quedan casi empatados (ΔAICc ≤ 2), se elige el más simple.',
+                autoColModel: 'Modelo',
+                autoColR2: 'R²',
+                autoColDelta: 'ΔAICc',
+                autoDiscardedNoOsc: 'descartado: no se ve una oscilación que se repita',
+                alertAutoFitFailed: 'No se pudo ajustar ningún modelo automáticamente a estos datos. Probá eligiendo un modelo específico.',
+                segSinusoidNote: '💡 Se detectó una oscilación sinusoidal que abarca todos los datos: se ajustó una sola función seno en lugar de partir en tramos.',
                 customExprLabel: 'Tu ecuación: y =',
                 customHint: 'Usá <b>x</b> como variable. Las demás letras (a, b, k, tau, phi…) son parámetros a ajustar. Funciones: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …',
                 customInitial: 'Parámetros (la app estima los valores iniciales sola; cambialos solo si el ajuste no sale):',
@@ -6636,6 +6686,25 @@ basic.forever(function () {
                 fitSinusoidal: 'Sinusoidal (y = A·sin(ωx + φ) + C)',
                 fitSaturating: 'Saturating growth (y = A − B·e^(−kx))',
                 fitCustom: 'Custom (your own equation)',
+                fitAuto: '✨ Automatic (detect the best model)',
+                fitStep1: 'STEP 1 · Choose the model',
+                fitStep2: 'STEP 2 · Choose the data',
+                fitStep3: 'STEP 3 · Run the fit',
+                fitHintReadyAll: '✓ Ready to fit: all {n} points will be used.',
+                fitHintReadySelected: '✓ Ready to fit: the {n} selected points will be used.',
+                fitHintReadyRange: '✓ Ready to fit: the chosen range will be used ({n} points).',
+                fitHintNoData: 'No data yet. Capture or import data first, then run the fit.',
+                fitHintNoSelection: 'You chose “Selected Points” but no points are selected. Tap points on the graph (or use ⬚ to drag-select), or switch back to “All Data”.',
+                fitHintRangeInvalid: 'Enter a valid range (from/to, with at least 2 points).',
+                autoDetectTitle: 'Automatic mode: model comparison',
+                autoDetectWinner: 'Best model detected:',
+                autoDetectExplain: 'Several models were tried and compared by <b>AICc</b>: a criterion that rewards a good fit (high R²) but penalizes unnecessary complexity, to avoid overfitting. ΔAICc shows how much worse each model scored compared to the best one (0 = best; &gt;10 = clearly worse). When two models are nearly tied (ΔAICc ≤ 2), the simpler one is chosen.',
+                autoColModel: 'Model',
+                autoColR2: 'R²',
+                autoColDelta: 'ΔAICc',
+                autoDiscardedNoOsc: 'discarded: no repeating oscillation visible',
+                alertAutoFitFailed: 'No model could be fitted automatically to this data. Try choosing a specific model.',
+                segSinusoidNote: '💡 A sinusoidal oscillation spanning all the data was detected: a single sine function was fitted instead of splitting into segments.',
                 customExprLabel: 'Your equation: y =',
                 customHint: 'Use <b>x</b> as the variable. Other letters (a, b, k, tau, phi…) are parameters to fit. Functions: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …',
                 customInitial: 'Parameters (the app estimates the initial values automatically; change them only if the fit fails):',
@@ -7005,6 +7074,25 @@ basic.forever(function () {
                 fitSinusoidal: 'Sinusoidal (y = A·sin(ωx + φ) + C)',
                 fitSaturating: 'Crescimento com saturação (y = A − B·e^(−kx))',
                 fitCustom: 'Personalizada (sua própria equação)',
+                fitAuto: '✨ Automático (detectar o melhor modelo)',
+                fitStep1: 'PASSO 1 · Escolha o modelo',
+                fitStep2: 'PASSO 2 · Escolha os dados',
+                fitStep3: 'PASSO 3 · Faça o ajuste',
+                fitHintReadyAll: '✓ Pronto para ajustar: serão usados os {n} pontos.',
+                fitHintReadySelected: '✓ Pronto para ajustar: serão usados os {n} pontos selecionados.',
+                fitHintReadyRange: '✓ Pronto para ajustar: será usado o intervalo escolhido ({n} pontos).',
+                fitHintNoData: 'Ainda não há dados. Capture ou importe dados primeiro e depois faça o ajuste.',
+                fitHintNoSelection: 'Você escolheu “Pontos Selecionados” mas não há pontos marcados. Toque em pontos no gráfico (ou use ⬚ para arrastar), ou volte para “Todos os Dados”.',
+                fitHintRangeInvalid: 'Preencha um intervalo válido (de/até, com pelo menos 2 pontos).',
+                autoDetectTitle: 'Modo automático: comparação de modelos',
+                autoDetectWinner: 'Melhor modelo detectado:',
+                autoDetectExplain: 'Vários modelos foram testados e comparados pelo <b>AICc</b>: um critério que premia o bom ajuste (R² alto) mas penaliza a complexidade desnecessária, para não “sobreajustar”. ΔAICc indica quanto pior é a pontuação de cada modelo em relação à melhor (0 = melhor; &gt;10 = claramente pior). Quando dois modelos ficam quase empatados (ΔAICc ≤ 2), escolhe-se o mais simples.',
+                autoColModel: 'Modelo',
+                autoColR2: 'R²',
+                autoColDelta: 'ΔAICc',
+                autoDiscardedNoOsc: 'descartado: não se vê uma oscilação que se repita',
+                alertAutoFitFailed: 'Não foi possível ajustar nenhum modelo automaticamente a estes dados. Tente escolher um modelo específico.',
+                segSinusoidNote: '💡 Foi detectada uma oscilação sinusoidal abrangendo todos os dados: foi ajustada uma única função seno em vez de dividir em trechos.',
                 customExprLabel: 'Sua equação: y =',
                 customHint: 'Use <b>x</b> como variável. As outras letras (a, b, k, tau, phi…) são parâmetros a ajustar. Funções: exp, ln, log, sqrt, sin, cos, tan, abs, ^ …',
                 customInitial: 'Parâmetros (o app estima os valores iniciais sozinho; mude-os só se o ajuste falhar):',
@@ -7582,20 +7670,38 @@ basic.forever(function () {
                 }
             });
 
-            // Tipo de ajuste
+            // Tipo de ajuste (mapeo por value, no por índice, para tolerar
+            // opciones nuevas como "auto" sin desalinear las traducciones)
             const fitTypeSelect = document.getElementById('fitType');
             if (fitTypeSelect) {
-                fitTypeSelect.options[0].textContent = t.fitLinear;
-                fitTypeSelect.options[1].textContent = t.fitQuadratic;
-                fitTypeSelect.options[2].textContent = t.fitCubic;
-                fitTypeSelect.options[3].textContent = t.fitExponential;
-                fitTypeSelect.options[4].textContent = t.fitPower;
-                fitTypeSelect.options[5].textContent = t.fitLogarithmic;
-                fitTypeSelect.options[6].textContent = t.fitInverse;
-                fitTypeSelect.options[7].textContent = t.fitSinusoidal;
-                if (fitTypeSelect.options[8]) fitTypeSelect.options[8].textContent = t.fitSaturating;
-                if (fitTypeSelect.options[9]) fitTypeSelect.options[9].textContent = t.fitCustom;
+                const fitOptionLabels = {
+                    auto: t.fitAuto, linear: t.fitLinear, quadratic: t.fitQuadratic,
+                    cubic: t.fitCubic, exponential: t.fitExponential, power: t.fitPower,
+                    logarithmic: t.fitLogarithmic, inverse: t.fitInverse,
+                    sinusoidal: t.fitSinusoidal, saturating: t.fitSaturating, custom: t.fitCustom
+                };
+                Array.from(fitTypeSelect.options).forEach(opt => {
+                    if (fitOptionLabels[opt.value]) opt.textContent = fitOptionLabels[opt.value];
+                });
             }
+
+            // Títulos de los pasos del ajuste de curva
+            const fitStep1El = document.getElementById('fitStep1Title');
+            if (fitStep1El && t.fitStep1) fitStep1El.textContent = t.fitStep1;
+            const fitStep2El = document.getElementById('fitStep2Title');
+            if (fitStep2El && t.fitStep2) fitStep2El.textContent = t.fitStep2;
+            const fitStep3El = document.getElementById('fitStep3Title');
+            if (fitStep3El && t.fitStep3) fitStep3El.textContent = t.fitStep3;
+            // Refrescar el hint de estado del ajuste en el idioma nuevo
+            if (typeof updateCurveFitButtons === 'function') { try { updateCurveFitButtons(); } catch (e) {} }
+            // Re-render de la explicación del ajuste (la tabla comparativa del
+            // modo automático usa claves traducidas al momento de renderizar)
+            try {
+                if (typeof state !== 'undefined' && state.fitResult && typeof _explainFitType === 'function') {
+                    const _fitExplainEl = document.getElementById('fitExplain');
+                    if (_fitExplainEl) _fitExplainEl.innerHTML = _explainFitType(state.fitResult.type, state.fitResult);
+                }
+            } catch (e) {}
 
             // Info boxes
             document.querySelectorAll('.info-box').forEach(box => {
@@ -8073,6 +8179,7 @@ basic.forever(function () {
     <ul>
         <li><strong>Tipos de Ajuste:</strong>
             <ul>
+                <li>✨ Automático: prueba todos los modelos y elige el mejor (criterio AICc: premia el buen ajuste y castiga la complejidad de más). Reconoce oscilaciones sinusoidales de verdad y muestra la comparación de modelos probados.</li>
                 <li>Lineal: y = mx + b</li>
                 <li>Cuadrático: y = ax² + bx + c</li>
                 <li>Cúbico: y = ax³ + bx² + cx + d</li>
@@ -8668,6 +8775,7 @@ bluetooth.startIOPinService()</pre>
     <ul>
         <li><strong>Fit Types:</strong>
             <ul>
+                <li>✨ Automatic: tries every model and picks the best one (AICc criterion: rewards a good fit and penalizes unnecessary complexity). Recognizes true sinusoidal oscillations and shows the comparison of tried models.</li>
                 <li>Linear: y = mx + b</li>
                 <li>Quadratic: y = ax² + bx + c</li>
                 <li>Cubic: y = ax³ + bx² + cx + d</li>
@@ -9263,6 +9371,7 @@ bluetooth.startIOPinService()</pre>
     <ul>
         <li><strong>Tipos de Ajuste:</strong>
             <ul>
+                <li>✨ Automático: testa todos os modelos e escolhe o melhor (critério AICc: premia o bom ajuste e penaliza a complexidade desnecessária). Reconhece oscilações sinusoidais de verdade e mostra a comparação dos modelos testados.</li>
                 <li>Linear: y = mx + b</li>
                 <li>Quadrático: y = ax² + bx + c</li>
                 <li>Cúbico: y = ax³ + bx² + cx + d</li>
@@ -14099,16 +14208,52 @@ bluetooth.startIOPinService()</pre>
             const result = regression.power(data, { precision: 12 });
 
             // result.equation = [a, b] para y = a·x^b
-            const a = result.equation[0];
-            const b = result.equation[1];
+            let a = result.equation[0];
+            let b = result.equation[1];
+
+            // regression-js ajusta en espacio logarítmico (ln y = ln a + b·ln x),
+            // que minimiza el error RELATIVO, no el absoluto. Con ruido aditivo
+            // eso deja un SSE claramente subóptimo (y en el modo automático la
+            // cúbica "le ganaba" a una ley de potencias genuina). Refinamos en
+            // espacio lineal: para b fijo, el a óptimo tiene forma cerrada
+            // (a = Σy·x^b / Σx^2b); buscamos b por sección áurea alrededor del
+            // estimado inicial minimizando el SSE real.
+            const n = xData.length;
+            const sseFor = (bb) => {
+                let num = 0, den = 0;
+                for (let i = 0; i < n; i++) { const xb = Math.pow(xData[i], bb); num += yData[i] * xb; den += xb * xb; }
+                if (!(den > 0) || !isFinite(den)) return { sse: Infinity, a: NaN };
+                const aa = num / den;
+                let sse = 0;
+                for (let i = 0; i < n; i++) { const d = yData[i] - aa * Math.pow(xData[i], bb); sse += d * d; }
+                return { sse, a: aa };
+            };
+            const gr = (Math.sqrt(5) - 1) / 2;
+            let lo = b - 1.5, hi = b + 1.5;
+            let bestB = b, bestFit = sseFor(b);
+            for (let iter = 0; iter < 60; iter++) {
+                const b1 = hi - gr * (hi - lo);
+                const b2 = lo + gr * (hi - lo);
+                const f1 = sseFor(b1), f2 = sseFor(b2);
+                if (f1.sse <= f2.sse) {
+                    hi = b2;
+                    if (f1.sse < bestFit.sse) { bestFit = f1; bestB = b1; }
+                } else {
+                    lo = b1;
+                    if (f2.sse < bestFit.sse) { bestFit = f2; bestB = b2; }
+                }
+                if (hi - lo < 1e-10) break;
+            }
+            if (isFinite(bestFit.a) && isFinite(bestB)) { a = bestFit.a; b = bestB; }
 
             console.log('Coeficientes:', { a, b });
-            console.log('R² =', result.r2);
 
             const predict = (x) => a * Math.pow(x, b);
+            const r2 = calculateR2(xData, yData, predict);
+            console.log('R² =', r2);
             const equation = `y = ${fmtNum(a)}·x^${fmtNum(b)}`;
 
-            return { coeffs: [a, b], equation, r2: result.r2, predict };
+            return { coeffs: [a, b], equation, r2, predict };
         }
 
         function fitLogarithmic(xData, yData) {
@@ -14123,9 +14268,11 @@ bluetooth.startIOPinService()</pre>
             const data = xData.map((x, i) => [x, yData[i]]);
             const result = regression.logarithmic(data, { precision: 12 });
 
-            // result.equation = [a, b] para y = a·ln(x) + b
-            const a = result.equation[0];
-            const b = result.equation[1];
+            // OJO: regression-js devuelve equation = [b, a] para y = b + a·ln(x)
+            // (el intercepto va PRIMERO). Antes se leían al revés y la curva
+            // logarítmica dibujada no correspondía al R² informado.
+            const a = result.equation[1];
+            const b = result.equation[0];
 
             console.log('Coeficientes:', { a, b });
             console.log('R² =', result.r2);
@@ -14560,6 +14707,19 @@ bluetooth.startIOPinService()</pre>
             opts = opts || {};
             const N = yData.length;
             if (N < 16) return [{ from: 0, to: N - 1 }];
+            // Candidato a oscilación global: si TODA la serie se explica bien
+            // con un seno, quizás no haya que partir en tramos (antes una
+            // sinusoide se troceaba en medias ondas ajustadas con cúbicas).
+            // OJO: un seno también ajusta "bien" ondas periódicas NO sinusoidales
+            // (triangular ~98.5% de la varianza, RC con onda cuadrada, rebotes),
+            // así que acá solo lo guardamos como candidato y AL FINAL comparamos
+            // por AICc contra la alternativa por tramos.
+            let globalSin = null;
+            try {
+                const sin = performCurveFit('sinusoidal', xData, yData);
+                const cycles = _sinusoidCycles(sin, xData);
+                if ((sin.r2 >= 0.85 && cycles >= 1.5) || (sin.r2 >= 0.7 && cycles >= 3)) globalSin = sin;
+            } catch (e) { /* no es periódica */ }
             const win = Math.max(2, Math.round(N * 0.03));
             const sm = new Array(N);
             for (let i = 0; i < N; i++) {
@@ -14610,29 +14770,231 @@ bluetooth.startIOPinService()</pre>
                 if (merged.length && (s.to - s.from + 1) < minLen) merged[merged.length - 1].to = s.to;
                 else merged.push({ from: s.from, to: s.to });
             }
+
+            // ¿Seno global único o ajuste por tramos? Comparación honesta por
+            // AICc: el seno paga 5 parámetros (4 coeficientes + la ω de la
+            // búsqueda en grilla); la alternativa por tramos paga los parámetros
+            // de cada tramo más un parámetro por cada corte interno. Un seno
+            // genuino gana (mismo error, muchos menos parámetros); una onda
+            // triangular / RC / rebotes pierde (el seno deja varianza sin
+            // explicar que los tramos sí capturan) y se sigue troceando.
+            if (globalSin && merged.length > 1) {
+                const sseSin = _fitSSE(globalSin.predict, xData, yData);
+                const aiccSin = _aicc(N, sseSin, 5);
+                let sseSeg = 0, kSeg = merged.length - 1;   // cortes internos
+                for (const s of merged) {
+                    const xs = xData.slice(s.from, s.to + 1);
+                    const ys = yData.slice(s.from, s.to + 1);
+                    let bestSse = null, bestK = 1;
+                    for (const t of ['linear', 'quadratic', 'cubic']) {
+                        try {
+                            const f = performCurveFit(t, xs, ys);
+                            const sse = _fitSSE(f.predict, xs, ys);
+                            if (isFinite(sse) && (bestSse === null || sse < bestSse)) { bestSse = sse; bestK = f.coeffs.length; }
+                        } catch (e) { /* probar el siguiente modelo */ }
+                    }
+                    if (bestSse === null) {
+                        // Tramo inajustable: usar el modelo "promedio" como piso
+                        const mean = ys.reduce((a, y) => a + y, 0) / ys.length;
+                        bestSse = ys.reduce((a, y) => a + (y - mean) * (y - mean), 0);
+                        bestK = 1;
+                    }
+                    sseSeg += bestSse;
+                    kSeg += bestK;
+                }
+                const aiccSeg = _aicc(N, sseSeg, kSeg);
+                if (aiccSin <= aiccSeg + 2) return [{ from: 0, to: N - 1 }];
+            }
             return merged;
         }
 
-        // Ajusta un tramo. requestedType='auto' prueba candidatos y elige el mejor.
-        // Orden de preferencia: modelos simples/físicos primero; un modelo más
-        // complejo solo "gana" si mejora el R² de forma clara (margen), para no
-        // elegir un cúbico sobreajustado en vez de la exponencial/saturación.
-        const _SEGMENT_AUTO_CANDIDATES = ['linear', 'quadratic', 'exponential', 'saturating', 'cubic'];
-        const _SEGMENT_R2_MARGIN = 0.003;
+        // ========== AJUSTE AUTOMÁTICO: SELECCIÓN INTELIGENTE DE MODELO ==========
+        // Prueba varios modelos y elige el mejor por AICc (criterio de Akaike
+        // corregido para muestras chicas): premia el buen ajuste (menor error
+        // cuadrático) y castiga los parámetros de más. Así un cúbico que "pasa
+        // por todos lados" no le gana a una recta, y un seno genuino sí le gana
+        // al cúbico. La sinusoidal además debe demostrar oscilación repetida
+        // real (≥ ~1.2 ciclos ajustados, o residuo oscilante) para poder ganar:
+        // con menos de un ciclo, un seno imita a cualquier parábola.
+
+        const _AUTO_FIT_CANDIDATES = ['linear', 'quadratic', 'cubic', 'exponential', 'saturating', 'power', 'logarithmic', 'inverse', 'sinusoidal'];
+        // Desempate cuando dos modelos quedan estadísticamente iguales
+        // (ΔAICc ≤ 2): gana el de menos parámetros; a igual cantidad, el más
+        // común/físico según este orden.
+        const _AUTO_PREF_ORDER = { linear: 0, exponential: 1, power: 2, logarithmic: 3, inverse: 4, saturating: 5, quadratic: 6, sinusoidal: 7, cubic: 8 };
+
+        function _fitSSE(predict, xData, yData) {
+            let sse = 0;
+            for (let i = 0; i < xData.length; i++) {
+                const p = predict(xData[i]);
+                if (!isFinite(p)) return Infinity;
+                const d = yData[i] - p;
+                sse += d * d;
+            }
+            return sse;
+        }
+
+        // AIC corregido (AICc). k = parámetros del modelo; se suma 1 porque la
+        // varianza del ruido también se estima. Menor = mejor.
+        function _aicc(n, sse, k) {
+            const kk = k + 1;
+            if (n <= kk + 1) return Infinity;   // muy pocos datos para juzgar este modelo
+            const meanSq = Math.max(sse / n, 1e-300);  // sse = 0 (ajuste exacto) → evitar log(0)
+            return n * Math.log(meanSq) + 2 * kk + (2 * kk * (kk + 1)) / (n - kk - 1);
+        }
+
+        // ¿Cuántos ciclos completos del seno ajustado caben en el rango de datos?
+        function _sinusoidCycles(fit, xData) {
+            const omega = fit && fit.coeffs && fit.coeffs[1];
+            if (!isFinite(omega)) return 0;
+            const xr = Math.max(...xData) - Math.min(...xData);
+            return Math.abs(omega) * xr / (2 * Math.PI);
+        }
+
+        // Señal de oscilación repetida: se quita la tendencia lineal y se cuentan
+        // los cambios de signo "serios" del residuo (ignorando cruces de puro
+        // ruido). Una parábola deja 1–2 cruces, pero una curva en S (logística,
+        // cúbica) llega a 3: por eso los cruces por sí solos NO habilitan al
+        // seno — se exige además ≈1 ciclo ajustado (ver autoDetectBestFit).
+        function _oscillationCrossings(xData, yData) {
+            const n = xData.length;
+            if (n < 6) return 0;
+            let sx = 0, sy = 0, sxx = 0, sxy = 0;
+            for (let i = 0; i < n; i++) { sx += xData[i]; sy += yData[i]; sxx += xData[i] * xData[i]; sxy += xData[i] * yData[i]; }
+            const den = n * sxx - sx * sx;
+            const m = den !== 0 ? (n * sxy - sx * sy) / den : 0;
+            const b = (sy - m * sx) / n;
+            const resid = yData.map((y, i) => y - (m * xData[i] + b));
+            // Suavizado corto para no contar cruces de ruido
+            const win = Math.max(1, Math.round(n * 0.02));
+            const sm = resid.map((_, i) => {
+                let s = 0, c = 0;
+                for (let j = Math.max(0, i - win); j <= Math.min(n - 1, i + win); j++) { s += resid[j]; c++; }
+                return s / c;
+            });
+            const sd = Math.sqrt(sm.reduce((a, r) => a + r * r, 0) / n) || 1;
+            const thr = 0.25 * sd;   // un cruce cuenta solo si el residuo llega a ±0.25σ de cada lado
+            let crossings = 0, lastSign = 0;
+            for (let i = 0; i < n; i++) {
+                if (Math.abs(sm[i]) < thr) continue;
+                const s = Math.sign(sm[i]);
+                if (lastSign !== 0 && s !== lastSign) crossings++;
+                lastSign = s;
+            }
+            return crossings;
+        }
+
+        // Prueba los modelos candidatos sobre (xData, yData) y devuelve
+        // { best, winnerType, ranking }. `best` es el resultado completo de
+        // performCurveFit del ganador; `ranking` lista todos los modelos
+        // probados con R²/AICc/ΔAICc para mostrarle la comparación al usuario.
+        // opts.candidates permite restringir la lista (p. ej. en tramos).
+        function autoDetectBestFit(xData, yData, opts) {
+            opts = opts || {};
+            const candidates = opts.candidates || _AUTO_FIT_CANDIDATES;
+            const n = xData.length;
+            const xMin = Math.min(...xData);
+            const yMin = Math.min(...yData);
+            const tried = [];
+
+            // Selección sin varianza (meseta / línea de base): ningún modelo
+            // puede definir R² (SStot = 0) y todos quedarían descartados,
+            // lanzando un error donde el default anterior (lineal) funcionaba.
+            // Devolvemos la recta horizontal del ajuste lineal; la UI ya
+            // muestra "R² = N/A" con la explicación didáctica de la meseta.
+            if (yData.length && yData.every(y => y === yData[0])) {
+                const flat = performCurveFit('linear', xData, yData);
+                return {
+                    best: flat, winnerType: 'linear',
+                    ranking: [{ type: 'linear', r2: flat.r2, aicc: NaN, delta: NaN, k: flat.coeffs.length, eligible: true, note: '', winner: true }]
+                };
+            }
+
+            const oscCrossings = _oscillationCrossings(xData, yData);
+
+            for (const type of candidates) {
+                // Dominio: saltear modelos sin sentido para estos datos
+                if ((type === 'logarithmic' || type === 'power') && xMin <= 0) continue;
+                if (type === 'exponential' && yMin <= 0) continue;   // usa ln(y)
+                if (type === 'inverse' && xData.some(x => x === 0)) continue;
+                if (type === 'sinusoidal' && n < 8) continue;
+                let fit;
+                try { fit = performCurveFit(type, xData, yData); } catch (e) { continue; }
+                if (!fit || !fit.predict || !isFinite(fit.r2)) continue;
+                const sse = _fitSSE(fit.predict, xData, yData);
+                if (!isFinite(sse)) continue;
+                // La sinusoidal paga un parámetro extra en el AICc: su frecuencia
+                // sale de una búsqueda en grilla sobre cientos de ω, y esa
+                // libertad le permite "pescar" estructura hasta en ruido puro.
+                const kEff = fit.coeffs.length + (type === 'sinusoidal' ? 1 : 0);
+                // Con muy pocos puntos el AICc es incalculable (Infinity): el
+                // candidato queda igual en la lista y abajo hay un fallback.
+                const aicc = _aicc(n, sse, kEff);
+                const entry = { type, fit, r2: fit.r2, aicc, k: fit.coeffs.length, eligible: true, note: '' };
+                if (type === 'sinusoidal') {
+                    const cycles = _sinusoidCycles(fit, xData);
+                    entry.cycles = cycles;
+                    // Para poder ganar, el seno debe mostrar oscilación repetida
+                    // (≥1.2 ciclos ajustados; o residuo que cruza el eje ≥3 veces
+                    // Y ≈1 ciclo — los cruces solos no bastan: una curva en S
+                    // también deja 3 cruces) Y explicar una parte razonable de la
+                    // varianza: un "seno" con R² bajo es solo ruido pescado.
+                    if (!(cycles >= 1.2 || (oscCrossings >= 3 && cycles >= 0.9)) || !(fit.r2 >= 0.35)) {
+                        entry.eligible = false;
+                        entry.note = 'noOsc';
+                    }
+                }
+                tried.push(entry);
+            }
+
+            if (!tried.length) throw new Error(tr('alertAutoFitFailed'));
+
+            const prefOf = (e) => (_AUTO_PREF_ORDER[e.type] !== undefined ? _AUTO_PREF_ORDER[e.type] : 99);
+            const eligible = tried.filter(e => e.eligible && isFinite(e.aicc));
+            const pool = eligible.length ? eligible : tried.filter(e => isFinite(e.aicc));
+            let winner;
+            if (pool.length) {
+                const minAicc = Math.min(...pool.map(e => e.aicc));
+                // Modelos estadísticamente indistinguibles del mejor (ΔAICc ≤ 2):
+                // elegir el más simple.
+                const top = pool.filter(e => e.aicc - minAicc <= 2);
+                top.sort((a, b) => (a.k - b.k) || (prefOf(a) - prefOf(b)));
+                winner = top[0];
+            } else {
+                // Muy pocos puntos para comparar modelos con AICc (todos dieron
+                // Infinity): elegir el modelo más simple que ajuste bien, así el
+                // modo automático no falla donde el ajuste lineal sí funcionaba.
+                const bySimple = tried.slice().sort((a, b) => (a.k - b.k) || (prefOf(a) - prefOf(b)));
+                winner = bySimple.find(e => isFinite(e.r2) && e.r2 >= 0.9) || bySimple[0];
+            }
+
+            const allMin = Math.min(...tried.map(e => e.aicc));
+            const ranking = tried
+                .slice()
+                .sort((a, b) => a.aicc - b.aicc)
+                .map(e => ({
+                    type: e.type, r2: e.r2, aicc: e.aicc, delta: e.aicc - allMin,
+                    k: e.k, eligible: e.eligible, note: e.note, cycles: e.cycles,
+                    winner: e.type === winner.type
+                }));
+
+            return { best: winner.fit, winnerType: winner.type, ranking };
+        }
+
+        // Ajusta un tramo. requestedType='auto' usa el detector inteligente de
+        // modelo (AICc + chequeo de oscilación), con una lista de candidatos
+        // acotada a los modelos que tienen sentido en un tramo.
+        const _SEGMENT_AUTO_CANDIDATES = ['linear', 'quadratic', 'exponential', 'saturating', 'cubic', 'sinusoidal'];
         function fitOneSegment(xSeg, ySeg, requestedType) {
             if (requestedType && requestedType !== 'auto') {
                 const r = performCurveFit(requestedType, xSeg, ySeg);
                 r.requestedType = requestedType;
                 return r;
             }
-            let best = null;
-            for (const t of _SEGMENT_AUTO_CANDIDATES) {
-                let r; try { r = performCurveFit(t, xSeg, ySeg); } catch (e) { continue; }
-                if (!r || !isFinite(r.r2)) continue;
-                // El primero válido fija el mejor; los siguientes deben superar por margen.
-                if (!best || r.r2 > best.r2 + _SEGMENT_R2_MARGIN) best = r;
-            }
-            if (!best) throw new Error('No se pudo ajustar el tramo con ningún modelo');
+            let det;
+            try { det = autoDetectBestFit(xSeg, ySeg, { candidates: _SEGMENT_AUTO_CANDIDATES }); }
+            catch (e) { throw new Error('No se pudo ajustar el tramo con ningún modelo'); }
+            const best = det.best;
             best.requestedType = 'auto';
             return best;
         }
@@ -14708,11 +15070,44 @@ bluetooth.startIOPinService()</pre>
             const r2Line = r2Finite
                 ? `<b>R² = ${fmtNumHtml(r2)}</b> (${r2Quality}). R² ∈ [0,1] mide qué fracción de la varianza de los datos explica el modelo. R² = 1 es ajuste perfecto.`
                 : `<b>R² = N/A</b> (indefinido). Los datos seleccionados no varían (todos los valores son casi iguales: una meseta o la línea de base), así que R² no se puede calcular. Seleccioná un tramo donde la variable realmente cambie.`;
-            return `
+            return `${_autoRankingBlock(fitResult)}
                 <b>Modelo:</b> ${model}<br>
                 ${r2Line}<br>
                 <b>± error estándar</b> de cada parámetro: estimado a partir de la matriz de covarianza del ajuste por mínimos cuadrados — indica el rango plausible del parámetro asumiendo que los residuos son ruido aleatorio gaussiano.
             `;
+        }
+
+        // Nombre corto del modelo para tablas ("Lineal (y = mx + b)" → "Lineal")
+        function _fitShortLabel(type) {
+            const key = 'fit' + type.charAt(0).toUpperCase() + type.slice(1);
+            const t = translations[currentLanguage] || {};
+            const s = t[key] || type;
+            return s.split(' (')[0].replace(/^✨\s*/, '').trim();
+        }
+
+        // Bloque de comparación de modelos del modo automático: tabla con los
+        // modelos probados, su R² y su ΔAICc, marcando el elegido.
+        function _autoRankingBlock(fitResult) {
+            if (!fitResult || fitResult.requestedType !== 'auto' || !Array.isArray(fitResult.autoRanking) || !fitResult.autoRanking.length) return '';
+            const t = translations[currentLanguage] || {};
+            const rows = fitResult.autoRanking.map(e => {
+                const name = _escHtml(_fitShortLabel(e.type));
+                const r2s = isFinite(e.r2) ? fmtNumHtml(e.r2) : 'N/A';
+                const ds = isFinite(e.delta) ? e.delta.toFixed(1) : '—';
+                const noteTxt = e.note === 'noOsc' ? ` <span style="color:#b26a00;">(${_escHtml(t.autoDiscardedNoOsc || 'descartado: sin oscilación repetida')})</span>` : '';
+                const mark = e.winner ? ' ✓' : '';
+                const style = e.winner ? 'font-weight:700; color:#1b5e20;' : (e.eligible ? '' : 'color:#9e9e9e;');
+                return `<tr style="${style}"><td style="padding:1px 8px 1px 0;">${name}${mark}${noteTxt}</td><td style="padding:1px 8px; text-align:right;">${r2s}</td><td style="padding:1px 0 1px 8px; text-align:right;">${ds}</td></tr>`;
+            }).join('');
+            return `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed #cfd8dc;">
+                <b>🔍 ${_escHtml(t.autoDetectTitle || 'Modo automático: comparación de modelos')}</b><br>
+                ${_escHtml(t.autoDetectWinner || 'Mejor modelo detectado:')} <b>${_escHtml(_fitShortLabel(fitResult.type))}</b>
+                <table style="border-collapse:collapse; margin:5px 0; font-size:0.72rem;">
+                    <tr style="color:#546e7a; border-bottom:1px solid #cfd8dc;"><th style="text-align:left; padding:1px 8px 1px 0;">${_escHtml(t.autoColModel || 'Modelo')}</th><th style="text-align:right; padding:1px 8px;">${_escHtml(t.autoColR2 || 'R²')}</th><th style="text-align:right; padding:1px 0 1px 8px;">${_escHtml(t.autoColDelta || 'ΔAICc')}</th></tr>
+                    ${rows}
+                </table>
+                <span style="color:#546e7a;">${t.autoDetectExplain || ''}</span>
+            </div>`;
         }
 
         // Construye los inputs para que el usuario ingrese valores teóricos
@@ -15636,6 +16031,7 @@ bluetooth.startIOPinService()</pre>
                     pointsToRemove.forEach(p => state.selectedPoints.delete(p.id));
                     state.rawData.splice(fromIdx, toIdx - fromIdx + 1);
                     _rebuildVideoFrameLogIndices();
+                    _revertFitModeIfSelectionEmpty();
 
                     document.getElementById('deleteRangeFrom').value = '';
                     document.getElementById('deleteRangeTo').value = '';
@@ -15654,6 +16050,7 @@ bluetooth.startIOPinService()</pre>
                 state.selectedPoints.clear();
                 _rebuildVideoFrameLogIndices();
                 document.getElementById('pointInfo').style.display = 'none';
+                _revertFitModeIfSelectionEmpty();
 
                 updateDisplay();
                 updateDebugButtons();
@@ -16546,6 +16943,7 @@ bluetooth.startIOPinService()</pre>
         function clearAllSelection() {
             state.selectedPoints.clear();
             document.getElementById('pointInfo').style.display = 'none';
+            _revertFitModeIfSelectionEmpty();
             updateDisplay();
         }
 
@@ -16792,10 +17190,20 @@ bluetooth.startIOPinService()</pre>
             const fitMode = fitModeChecked ? fitModeChecked.value : 'all';
 
             let canPerformFit = hasData;
+            // Texto que explica el estado: o bien qué datos se van a ajustar,
+            // o bien qué falta para poder ajustar (antes el botón quedaba
+            // deshabilitado sin decir por qué y el usuario quedaba trabado).
+            let hintKey = 'fitHintReadyAll';
+            let hintN = state.rawData.length;
 
-            if (fitMode === 'selected') {
+            if (!hasData) {
+                canPerformFit = false;
+                hintKey = 'fitHintNoData';
+            } else if (fitMode === 'selected') {
                 // Necesita puntos seleccionados
                 canPerformFit = hasSelection;
+                hintKey = hasSelection ? 'fitHintReadySelected' : 'fitHintNoSelection';
+                hintN = state.selectedPoints.size;
             } else if (fitMode === 'range') {
                 // Necesita rango válido
                 const from = parseInt(document.getElementById('fitRangeFrom').value);
@@ -16803,10 +17211,34 @@ bluetooth.startIOPinService()</pre>
                 canPerformFit = hasData && from >= 1 && to >= 1 && from <= to &&
                                 from <= state.rawData.length && to <= state.rawData.length &&
                                 (to - from + 1) >= 2; // Al menos 2 puntos en el rango
+                hintKey = canPerformFit ? 'fitHintReadyRange' : 'fitHintRangeInvalid';
+                hintN = canPerformFit ? (to - from + 1) : 0;
             }
 
             document.getElementById('performFitBtn').disabled = !canPerformFit;
             document.getElementById('clearFitBtn').disabled = !state.fitResult;
+
+            const hintEl = document.getElementById('fitStatusHint');
+            if (hintEl) {
+                hintEl.textContent = tr(hintKey, { n: hintN });
+                hintEl.classList.toggle('fit-hint-ready', canPerformFit);
+                hintEl.classList.toggle('fit-hint-warn', !canPerformFit);
+            }
+        }
+
+        // Si la selección quedó vacía (limpiar ✕ / eliminar puntos) y el modo de
+        // datos del ajuste seguía en "Puntos Seleccionados", volver a "Todos los
+        // Datos". Antes el botón REALIZAR AJUSTE quedaba deshabilitado hasta que
+        // el usuario descubriera solo que tenía que cambiar el radio a mano.
+        function _revertFitModeIfSelectionEmpty() {
+            if (state.selectedPoints.size > 0) return;
+            const selRadio = document.getElementById('fitModeSelected');
+            const allRadio = document.getElementById('fitModeAll');
+            if (selRadio && selRadio.checked && allRadio) {
+                allRadio.checked = true;
+                const rangeInputs = document.getElementById('fitRangeInputs');
+                if (rangeInputs) rangeInputs.style.display = 'none';
+            }
         }
 
         function updateFitVariableOptions() {
@@ -16931,6 +17363,9 @@ bluetooth.startIOPinService()</pre>
                 const box = document.getElementById('customFitInputs');
                 if (box) box.style.display = isCustom ? 'block' : 'none';
                 if (isCustom) _renderCustomParamInputs();
+                // Refrescar botón + hint al elegir el modelo (así el usuario ve
+                // enseguida si ya puede realizar el ajuste y con qué datos)
+                updateCurveFitButtons();
             });
         }
         const _customExprEl = document.getElementById('customFitExpr');
@@ -17202,6 +17637,13 @@ bluetooth.startIOPinService()</pre>
             ];
             const segLabel = t.segLabel || 'Tramo', segPoints = t.segPoints || 'puntos';
             let html = '';
+            // Si la detección reconoció una oscilación sinusoidal global (un solo
+            // tramo que abarca todos los datos, ajustado como seno), explicarlo.
+            if (fits.length === 1 && !fits[0].error && fits[0].type === 'sinusoidal' &&
+                fits[0].requestedType === 'auto' && fits[0].from === 0 &&
+                fits[0].to === state.rawData.length - 1) {
+                html += `<div style="font-size:0.72rem; color:#1565c0; background:#e8f2fd; border:1px solid #c5d8f0; border-radius:4px; padding:5px 7px; margin-bottom:7px;">${_escHtml(t.segSinusoidNote || 'Se detectó una oscilación sinusoidal: se ajustó una sola función seno.')}</div>`;
+            }
             fits.forEach((sf, i) => {
                 const rng = `${sf.from + 1}–${sf.to + 1}`;
                 if (sf.error) {
@@ -17389,8 +17831,17 @@ bluetooth.startIOPinService()</pre>
                     fitOpts = { expr, paramNames, initialValues, degrees: !!(degCb && degCb.checked) };
                 }
 
-                // Realizar ajuste
-                const fitResult = performCurveFit(fitType, xData, yData, fitOpts);
+                // Realizar ajuste. En modo automático se prueban todos los
+                // modelos y se elige el mejor (AICc); guardamos el ranking para
+                // mostrarle al usuario qué se comparó y por qué ganó ese modelo.
+                let fitResult, autoRanking = null;
+                if (fitType === 'auto') {
+                    const det = autoDetectBestFit(xData, yData);
+                    fitResult = det.best;
+                    autoRanking = det.ranking;
+                } else {
+                    fitResult = performCurveFit(fitType, xData, yData, fitOpts);
+                }
 
                 // Guardar resultado en estado.
                 // Guardamos también el rango X realmente ajustado para que la curva
@@ -17398,6 +17849,8 @@ bluetooth.startIOPinService()</pre>
                 // se extrapole a todo el dataset, donde una exponencial puede dispararse.
                 state.fitResult = {
                     ...fitResult,
+                    requestedType: fitType,
+                    autoRanking: autoRanking,
                     graphIndex: graphIndex,
                     varIndex: varIndex,
                     xAxis: graphConfig.xAxis,
@@ -17446,9 +17899,10 @@ bluetooth.startIOPinService()</pre>
                 // Construir inputs de "valor teórico" para cada parámetro
                 _buildTheoryComparisonInputs(fitResult.type, paramNames, fitResult.coeffs);
 
-                // Texto de explicación (depende del tipo de ajuste)
+                // Texto de explicación (depende del tipo de ajuste; en modo
+                // automático incluye la comparación de modelos probados)
                 const explainEl = document.getElementById('fitExplain');
-                explainEl.innerHTML = _explainFitType(fitResult.type, fitResult);
+                explainEl.innerHTML = _explainFitType(fitResult.type, state.fitResult);
 
                 // Actualizar gráfico con la curva de ajuste
                 updateAllCharts();
