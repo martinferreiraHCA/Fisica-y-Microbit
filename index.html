@@ -4691,6 +4691,7 @@
                 <div id="extrasMenu" class="data-entry-dropdown" style="display:none;" onclick="closeExtrasMenu()">
                     <button id="btn-piezas3d" style="border-left:4px solid #666;">PIEZAS 3D</button>
                     <button id="btn-tracker" style="border-left:4px solid #00695c;">TRACKER</button>
+                    <button id="btn-videomov" style="border-left:4px solid #7c4dff;">VIDEO + MOVIMIENTO</button>
                     <button id="btn-mapeo" style="border-left:4px solid #f9a825;">MAPEO</button>
                     <button id="desktopLabBtn" style="border-left:4px solid #1976d2;" onclick="enterExperimentMode()">LAB</button>
                     <button id="sensorModeBtn" style="border-left:4px solid #2e7d32;" onclick="enterSensorMode()">SENSORES</button>
@@ -30992,5 +30993,1305 @@ bluetooth.startIOPinService()</pre>
     })();
     /* ===== TRACKER MODULE END ===== */
     </script>
+
+    <!-- ============================================================
+         ANÁLISIS DE VIDEO + MOVIMIENTO
+         Estudio de movimientos a partir de un video, cuadro a cuadro,
+         con calibración de escala, gráficas y tablas automáticas y
+         superposición opcional de los datos de la micro:bit.
+         Inspirado en el principio de Tracker (Open Source Physics)
+         pero con un flujo guiado, táctil y simple al estilo FizziQ.
+         Todo corre 100% en el navegador: los videos no salen del equipo.
+         ============================================================ -->
+    <style id="vm-style">
+    .vm-panel { display:none; position:fixed; inset:0; z-index:9160; background:#f4f5f8; color:#232732; font-family:-apple-system, 'Segoe UI', Roboto, sans-serif; flex-direction:column; overscroll-behavior:contain; }
+    .vm-panel.open { display:flex; }
+    .vm-topbar { display:flex; align-items:center; gap:10px; background:#fff; border-bottom:1px solid #e3e5ec; padding:8px 14px; flex:0 0 auto; box-shadow:0 1px 4px rgba(20,24,40,.06); }
+    .vm-logo { display:flex; align-items:center; gap:8px; min-width:0; }
+    .vm-logo .vm-ico { width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg,#7c4dff,#d81b60); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; flex:0 0 auto; }
+    .vm-logo h2 { font-size:14px; font-weight:800; margin:0; letter-spacing:.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .vm-logo small { display:block; font-size:10px; font-weight:600; color:#8a90a3; letter-spacing:.4px; margin-top:1px; }
+    .vm-top-spacer { flex:1; }
+    .vm-top-btn { background:#fff; border:1px solid #d9dce6; color:#3a3f52; font-size:12px; font-weight:700; padding:8px 13px; border-radius:10px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .vm-top-btn:hover { background:#f1edfc; border-color:#7c4dff; color:#5527c9; }
+    .vm-close { background:#fff; border:1px solid #d9dce6; color:#3a3f52; font-size:15px; line-height:1; padding:8px 12px; border-radius:10px; cursor:pointer; }
+    .vm-close:hover { background:#fde7ef; border-color:#d81b60; color:#d81b60; }
+
+    /* Pasos guiados */
+    .vm-steps { display:flex; gap:6px; background:#fff; padding:7px 12px 9px; border-bottom:1px solid #e3e5ec; flex:0 0 auto; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+    .vm-steps::-webkit-scrollbar { display:none; }
+    .vm-step { display:flex; align-items:center; gap:7px; border:1.5px solid #e0e2ec; background:#fafbfe; color:#6d7285; border-radius:999px; padding:6px 13px 6px 7px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s; }
+    .vm-step .vm-step-n { width:21px; height:21px; border-radius:50%; background:#e0e2ec; color:#6d7285; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex:0 0 auto; }
+    .vm-step.active { border-color:#7c4dff; background:#f1edfc; color:#4a22b8; }
+    .vm-step.active .vm-step-n { background:#7c4dff; color:#fff; }
+    .vm-step.done { border-color:#c8e6c9; background:#f0faf1; color:#2e7d32; }
+    .vm-step.done .vm-step-n { background:#43a047; color:#fff; }
+    .vm-step.done .vm-step-n::before { content:'✓'; }
+    .vm-step.done .vm-step-n span { display:none; }
+
+    /* Aviso guía */
+    .vm-guide { flex:0 0 auto; display:flex; align-items:center; gap:9px; margin:8px 12px 0; padding:9px 13px; border-radius:12px; background:#f1edfc; border:1px solid #ddd2fb; color:#43289b; font-size:12.5px; line-height:1.45; }
+    .vm-guide .vm-guide-ico { font-size:15px; flex:0 0 auto; }
+    .vm-guide.ok { background:#f0faf1; border-color:#c8e6c9; color:#1b5e20; }
+    .vm-guide b { font-weight:800; }
+
+    /* Cuerpo */
+    .vm-body { display:flex; flex:1 1 auto; min-height:0; padding:8px 12px 10px; gap:10px; }
+    .vm-left { flex:1 1 62%; min-width:0; display:flex; flex-direction:column; gap:8px; }
+    .vm-stagecard { flex:1 1 auto; min-height:0; background:#0e1118; border-radius:16px; position:relative; overflow:hidden; box-shadow:0 2px 10px rgba(20,24,40,.10); }
+    .vm-stage { position:absolute; inset:0; touch-action:none; }
+    .vm-stage video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#0e1118; pointer-events:none; }
+    .vm-stage canvas.vm-overlay { position:absolute; inset:0; width:100%; height:100%; cursor:crosshair; touch-action:none; }
+    .vm-loupe { display:none; position:absolute; width:132px; height:132px; border-radius:50%; border:3px solid #fff; box-shadow:0 4px 16px rgba(0,0,0,.45); overflow:hidden; pointer-events:none; z-index:12; background:#000; }
+    .vm-loupe canvas { width:100%; height:100%; display:block; }
+
+    /* Pantalla vacía (sin video) */
+    .vm-empty { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#aeb4c8; text-align:center; padding:22px; z-index:5; }
+    .vm-empty .vm-empty-ico { font-size:46px; opacity:.9; }
+    .vm-empty h3 { margin:0; font-size:17px; color:#e8eaf2; font-weight:800; }
+    .vm-empty p { margin:0; font-size:12.5px; max-width:420px; line-height:1.55; }
+    .vm-empty-btns { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+    .vm-bigbtn { display:flex; align-items:center; gap:8px; background:#7c4dff; border:none; color:#fff; font-size:13px; font-weight:800; padding:12px 18px; border-radius:12px; cursor:pointer; font-family:inherit; box-shadow:0 3px 10px rgba(124,77,255,.4); }
+    .vm-bigbtn:hover { background:#6a3df2; }
+    .vm-bigbtn.alt { background:#fff; color:#3a3f52; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+    .vm-bigbtn.alt:hover { background:#f1edfc; color:#5527c9; }
+    .vm-bigbtn:disabled { opacity:.45; cursor:default; box-shadow:none; }
+    .vm-stage.dragover::after { content:'Soltá el video acá'; position:absolute; inset:10px; border:3px dashed #7c4dff; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#cbb8ff; font-size:17px; font-weight:800; background:rgba(124,77,255,.12); z-index:20; }
+
+    /* Barra de herramientas del video */
+    .vm-toolrow { flex:0 0 auto; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .vm-tool { display:flex; align-items:center; gap:6px; background:#fff; border:1.5px solid #d9dce6; color:#3a3f52; font-size:12px; font-weight:700; padding:8px 12px; border-radius:11px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .vm-tool:hover:not(:disabled) { border-color:#7c4dff; color:#5527c9; }
+    .vm-tool.active { background:#7c4dff; border-color:#7c4dff; color:#fff; }
+    .vm-tool:disabled { opacity:.4; cursor:default; }
+    .vm-tool .em { font-size:14px; }
+    .vm-toolrow .sep { width:1px; height:24px; background:#e0e2ec; margin:0 2px; }
+
+    /* Controles de reproducción */
+    .vm-controls { flex:0 0 auto; display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #e3e5ec; border-radius:14px; padding:8px 12px; box-shadow:0 1px 5px rgba(20,24,40,.06); }
+    .vm-ctrl { width:42px; height:42px; border-radius:11px; border:1.5px solid #d9dce6; background:#fff; color:#232732; font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex:0 0 auto; font-family:inherit; }
+    .vm-ctrl:hover:not(:disabled) { border-color:#7c4dff; color:#5527c9; background:#f7f4ff; }
+    .vm-ctrl:disabled { opacity:.35; cursor:default; }
+    .vm-ctrl.play { background:#7c4dff; border-color:#7c4dff; color:#fff; font-size:15px; }
+    .vm-ctrl.play:hover:not(:disabled) { background:#6a3df2; color:#fff; }
+    .vm-timeline { flex:1 1 auto; display:flex; flex-direction:column; gap:3px; min-width:80px; }
+    .vm-timeline input[type=range] { width:100%; accent-color:#7c4dff; height:26px; margin:0; cursor:pointer; }
+    .vm-timelabel { font-size:10.5px; color:#8a90a3; font-weight:700; display:flex; justify-content:space-between; font-variant-numeric:tabular-nums; }
+    .vm-fps { display:flex; align-items:center; gap:5px; font-size:11px; color:#6d7285; font-weight:700; flex:0 0 auto; }
+    .vm-fps select { border:1.5px solid #d9dce6; border-radius:9px; padding:6px 5px; font-size:12px; font-family:inherit; color:#232732; background:#fff; outline:none; max-width:82px; }
+    .vm-fps select:focus { border-color:#7c4dff; }
+
+    /* Panel derecho (Datos) */
+    .vm-right { flex:1 1 38%; max-width:470px; min-width:300px; display:flex; flex-direction:column; background:#fff; border:1px solid #e3e5ec; border-radius:16px; box-shadow:0 2px 10px rgba(20,24,40,.08); overflow:hidden; }
+    .vm-tabs { display:flex; border-bottom:1px solid #e3e5ec; background:#fafbfe; flex:0 0 auto; }
+    .vm-tab { flex:1; border:none; background:none; padding:11px 6px; font-size:12px; font-weight:800; color:#8a90a3; cursor:pointer; font-family:inherit; border-bottom:2.5px solid transparent; }
+    .vm-tab.active { color:#5527c9; border-bottom-color:#7c4dff; background:#fff; }
+    .vm-tabbody { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; display:none; flex-direction:column; }
+    .vm-tabbody.active { display:flex; }
+
+    /* Gráficas */
+    .vm-chart-chips { display:flex; gap:6px; padding:10px 12px 4px; flex-wrap:wrap; flex:0 0 auto; }
+    .vm-chip { border:1.5px solid #d9dce6; background:#fff; color:#5b6070; border-radius:999px; padding:5px 12px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:inherit; }
+    .vm-chip.active { background:#7c4dff; border-color:#7c4dff; color:#fff; }
+    .vm-chart-wrap { position:relative; flex:1 1 auto; min-height:230px; padding:6px 10px 10px; }
+    .vm-chart-note { font-size:11px; color:#8a90a3; padding:0 14px 10px; line-height:1.5; }
+
+    /* Tabla */
+    .vm-table-wrap { flex:1 1 auto; overflow:auto; padding:0 0 6px; }
+    table.vm-table { width:100%; border-collapse:collapse; font-size:11.5px; font-variant-numeric:tabular-nums; }
+    table.vm-table th { position:sticky; top:0; background:#fafbfe; color:#6d7285; font-size:10.5px; letter-spacing:.4px; text-transform:uppercase; padding:8px 8px; border-bottom:1.5px solid #e3e5ec; text-align:right; white-space:nowrap; z-index:2; }
+    table.vm-table td { padding:6px 8px; border-bottom:1px solid #f0f1f6; text-align:right; color:#3a3f52; white-space:nowrap; }
+    table.vm-table tr { cursor:pointer; }
+    table.vm-table tr:hover td { background:#f7f4ff; }
+    table.vm-table tr.cur td { background:#f1edfc; font-weight:700; }
+    table.vm-table .vm-del { border:none; background:none; color:#c6cad6; font-size:13px; cursor:pointer; padding:2px 6px; }
+    table.vm-table .vm-del:hover { color:#d81b60; }
+    .vm-table-actions { display:flex; gap:8px; padding:10px 12px; border-top:1px solid #e3e5ec; flex:0 0 auto; flex-wrap:wrap; }
+    .vm-stats { padding:8px 14px 0; font-size:11.5px; color:#5b6070; line-height:1.6; flex:0 0 auto; }
+    .vm-stats b { color:#232732; }
+
+    /* micro:bit tab */
+    .vm-mb { padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
+    .vm-mb p { margin:0; font-size:12px; color:#5b6070; line-height:1.55; }
+    .vm-field { display:flex; flex-direction:column; gap:4px; }
+    .vm-field label { font-size:10.5px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:#8a90a3; }
+    .vm-field select, .vm-field input { border:1.5px solid #d9dce6; border-radius:10px; padding:8px 10px; font-size:13px; font-family:inherit; color:#232732; background:#fff; outline:none; }
+    .vm-field select:focus, .vm-field input:focus { border-color:#7c4dff; }
+    .vm-mb-row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
+    .vm-mb-row .vm-field { flex:1; min-width:110px; }
+    .vm-mb-status { font-size:11.5px; color:#8a90a3; }
+    .vm-mb-status.ok { color:#2e7d32; }
+    .vm-switch { display:flex; align-items:center; gap:9px; cursor:pointer; user-select:none; font-size:12.5px; font-weight:700; color:#3a3f52; }
+    .vm-switch input { width:38px; height:22px; appearance:none; -webkit-appearance:none; background:#d9dce6; border-radius:999px; position:relative; cursor:pointer; outline:none; transition:background .15s; flex:0 0 auto; margin:0; }
+    .vm-switch input::after { content:''; position:absolute; top:2.5px; left:3px; width:17px; height:17px; border-radius:50%; background:#fff; transition:left .15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+    .vm-switch input:checked { background:#43a047; }
+    .vm-switch input:checked::after { left:18px; }
+
+    /* Diálogo de escala */
+    .vm-dialog { display:none; position:absolute; z-index:30; left:50%; top:50%; transform:translate(-50%,-50%); background:#fff; border-radius:16px; box-shadow:0 8px 30px rgba(10,12,25,.35); padding:16px 18px; width:min(320px, calc(100% - 30px)); box-sizing:border-box; }
+    .vm-dialog.open { display:block; }
+    .vm-dialog h4 { margin:0 0 4px; font-size:14px; font-weight:800; color:#232732; }
+    .vm-dialog p { margin:0 0 10px; font-size:12px; color:#6d7285; line-height:1.5; }
+    .vm-dialog .row { display:flex; gap:8px; align-items:center; }
+    .vm-dialog input { flex:1; min-width:0; border:1.5px solid #d9dce6; border-radius:10px; padding:10px 12px; font-size:15px; font-family:inherit; outline:none; }
+    .vm-dialog input:focus { border-color:#7c4dff; }
+    .vm-dialog .unit { font-size:13px; font-weight:800; color:#6d7285; }
+    .vm-dialog .btns { display:flex; gap:8px; margin-top:12px; justify-content:flex-end; }
+
+    /* Ayuda */
+    .vm-helpbox { display:none; position:absolute; inset:0; z-index:40; background:rgba(18,20,30,.55); align-items:flex-start; justify-content:center; overflow-y:auto; padding:26px 14px; box-sizing:border-box; -webkit-overflow-scrolling:touch; }
+    .vm-helpbox.open { display:flex; }
+    .vm-help-card { background:#fff; border-radius:18px; width:100%; max-width:640px; margin-bottom:26px; overflow:hidden; box-shadow:0 10px 40px rgba(10,12,25,.4); }
+    .vm-help-head { display:flex; align-items:center; justify-content:space-between; background:linear-gradient(135deg,#7c4dff,#d81b60); padding:14px 18px; color:#fff; }
+    .vm-help-head h3 { margin:0; font-size:15px; font-weight:800; }
+    .vm-help-head button { background:rgba(255,255,255,.2); border:none; color:#fff; font-size:15px; padding:6px 11px; border-radius:9px; cursor:pointer; }
+    .vm-help-body { padding:16px 20px 20px; font-size:13px; color:#3a3f52; line-height:1.65; }
+    .vm-help-body h4 { font-size:12px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:#7c4dff; margin:16px 0 6px; }
+    .vm-help-body h4:first-child { margin-top:0; }
+    .vm-help-body ul, .vm-help-body ol { margin:4px 0 8px; padding-left:20px; }
+    .vm-help-body li { margin-bottom:5px; }
+    .vm-help-body kbd { background:#f0f1f6; border:1px solid #d9dce6; border-radius:5px; padding:1px 6px; font-size:11.5px; font-family:Consolas, Menlo, monospace; }
+
+    /* Responsive: tablet y celular */
+    @media (max-width: 980px) {
+        .vm-body { flex-direction:column; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+        .vm-left { flex:0 0 auto; }
+        .vm-stagecard { height:52vh; min-height:250px; flex:0 0 auto; }
+        .vm-right { max-width:none; min-width:0; flex:0 0 auto; height:auto; }
+        .vm-tabbody { max-height:60vh; }
+        .vm-chart-wrap { min-height:250px; height:250px; flex:0 0 auto; }
+        .vm-logo small { display:none; }
+    }
+    @media (max-width: 640px) {
+        .vm-topbar { padding:7px 10px; gap:7px; }
+        .vm-logo h2 { font-size:12.5px; }
+        .vm-top-btn { padding:8px 10px; font-size:11px; }
+        .vm-body { padding:6px 8px 8px; }
+        .vm-stagecard { height:46vh; min-height:220px; }
+        .vm-controls { padding:6px 8px; gap:6px; flex-wrap:wrap; }
+        .vm-ctrl { width:46px; height:46px; }
+        .vm-fps { order:5; }
+        .vm-timeline { min-width:100%; order:4; }
+        .vm-tool { padding:9px 11px; }
+        .vm-guide { margin:6px 8px 0; font-size:12px; }
+    }
+    </style>
+
+    <div id="vm-panel" class="vm-panel" aria-hidden="true">
+        <div class="vm-topbar">
+            <div class="vm-logo">
+                <div class="vm-ico">🎬</div>
+                <div>
+                    <h2>Análisis de video + movimiento</h2>
+                    <small>Marcá el objeto cuadro a cuadro y obtené las gráficas del movimiento</small>
+                </div>
+            </div>
+            <span class="vm-top-spacer"></span>
+            <button id="vm-help-btn" class="vm-top-btn">Ayuda</button>
+            <button id="vm-close" class="vm-close" title="Volver al sitio (tu trabajo queda abierto)">✕</button>
+        </div>
+
+        <div class="vm-steps" id="vm-steps">
+            <button class="vm-step" data-step="1" id="vm-step1"><span class="vm-step-n"><span>1</span></span>Video</button>
+            <button class="vm-step" data-step="2" id="vm-step2"><span class="vm-step-n"><span>2</span></span>Escala</button>
+            <button class="vm-step" data-step="3" id="vm-step3"><span class="vm-step-n"><span>3</span></span>Marcar puntos</button>
+            <button class="vm-step" data-step="4" id="vm-step4"><span class="vm-step-n"><span>4</span></span>Analizar</button>
+        </div>
+
+        <div class="vm-guide" id="vm-guide"><span class="vm-guide-ico" id="vm-guide-ico">👋</span><span id="vm-guide-txt">Cargá un video para empezar.</span></div>
+
+        <div class="vm-body">
+            <div class="vm-left">
+                <div class="vm-toolrow" id="vm-toolrow">
+                    <button class="vm-tool" id="vm-load-btn" title="Elegir un video guardado en este equipo"><span class="em">📂</span>Abrir video</button>
+                    <button class="vm-tool" id="vm-record-btn" title="Grabar un video nuevo con la cámara"><span class="em">📸</span>Grabar</button>
+                    <button class="vm-tool" id="vm-use-site-video" title="Usar el último video grabado con el botón CÁMARA del sitio" disabled><span class="em">🎥</span>Video del sitio</button>
+                    <span class="sep"></span>
+                    <button class="vm-tool" id="vm-tool-scale" disabled title="Tocá dos puntos de un objeto de longitud conocida"><span class="em">📏</span>Escala</button>
+                    <button class="vm-tool" id="vm-tool-origin" disabled title="Tocá el punto que será el origen (0, 0)"><span class="em">🎯</span>Origen</button>
+                    <button class="vm-tool active" id="vm-tool-mark" disabled title="Tocá el objeto en cada cuadro para registrar su posición"><span class="em">📍</span>Marcar</button>
+                    <span class="sep"></span>
+                    <button class="vm-tool" id="vm-undo" disabled title="Borrar el último punto marcado"><span class="em">↩</span>Deshacer</button>
+                    <button class="vm-tool" id="vm-clear-pts" disabled title="Borrar todos los puntos marcados"><span class="em">🗑</span>Borrar todo</button>
+                </div>
+
+                <div class="vm-stagecard">
+                    <div class="vm-stage" id="vm-stage">
+                        <video id="vm-video" playsinline muted preload="auto"></video>
+                        <canvas class="vm-overlay" id="vm-overlay"></canvas>
+                        <div class="vm-loupe" id="vm-loupe"><canvas id="vm-loupe-canvas" width="264" height="264"></canvas></div>
+                        <div class="vm-empty" id="vm-empty">
+                            <div class="vm-empty-ico">🎬</div>
+                            <h3>Empezá con un video de tu experimento</h3>
+                            <p>Filmá el movimiento con la cámara fija y algo de longitud conocida en la escena (una regla, una mesa…). Después vas a marcar el objeto cuadro a cuadro y las gráficas se arman solas.</p>
+                            <div class="vm-empty-btns">
+                                <button class="vm-bigbtn" id="vm-empty-load">📂 Elegir video</button>
+                                <button class="vm-bigbtn alt" id="vm-empty-record">📸 Grabar ahora</button>
+                                <button class="vm-bigbtn alt" id="vm-empty-site" style="display:none;">🎥 Usar video del sitio</button>
+                            </div>
+                            <p style="font-size:11px; opacity:.75;">También podés arrastrar y soltar un video acá. Todo queda en tu equipo.</p>
+                        </div>
+                        <div class="vm-dialog" id="vm-scale-dialog">
+                            <h4>📏 Calibrar la escala</h4>
+                            <p>¿Cuánto mide en la realidad la distancia que marcaste?</p>
+                            <div class="row">
+                                <input type="number" id="vm-scale-len" inputmode="decimal" step="any" min="0" placeholder="Ej: 0.5">
+                                <span class="unit">metros</span>
+                            </div>
+                            <div class="btns">
+                                <button class="vm-top-btn" id="vm-scale-cancel">Cancelar</button>
+                                <button class="vm-bigbtn" id="vm-scale-ok" style="padding:9px 16px;">Aceptar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vm-controls">
+                    <button class="vm-ctrl" id="vm-back10" disabled title="Retroceder 10 cuadros">⏮</button>
+                    <button class="vm-ctrl" id="vm-back1" disabled title="Cuadro anterior (←)">⟨</button>
+                    <button class="vm-ctrl play" id="vm-play" disabled title="Reproducir / pausar (espacio)">▶</button>
+                    <button class="vm-ctrl" id="vm-fwd1" disabled title="Cuadro siguiente (→)">⟩</button>
+                    <button class="vm-ctrl" id="vm-fwd10" disabled title="Avanzar 10 cuadros">⏭</button>
+                    <div class="vm-timeline">
+                        <input type="range" id="vm-slider" min="0" max="0" step="0.001" value="0" disabled>
+                        <div class="vm-timelabel"><span id="vm-time-cur">0.000 s</span><span id="vm-frame-cur">cuadro 0</span><span id="vm-time-dur">0.000 s</span></div>
+                    </div>
+                    <div class="vm-fps">
+                        <span title="Cuadros por segundo del video. Si filmaste en cámara lenta, elegí los FPS reales de la filmación.">FPS</span>
+                        <select id="vm-fps">
+                            <option value="24">24</option>
+                            <option value="25">25</option>
+                            <option value="30" selected>30</option>
+                            <option value="50">50</option>
+                            <option value="60">60</option>
+                            <option value="120">120</option>
+                            <option value="240">240</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="vm-right">
+                <div class="vm-tabs">
+                    <button class="vm-tab active" data-tab="graficas" id="vm-tab-graficas">📈 Gráficas</button>
+                    <button class="vm-tab" data-tab="tabla" id="vm-tab-tabla">🔢 Tabla</button>
+                    <button class="vm-tab" data-tab="microbit" id="vm-tab-microbit">📡 micro:bit</button>
+                </div>
+
+                <div class="vm-tabbody active" id="vm-body-graficas">
+                    <div class="vm-chart-chips" id="vm-chart-chips">
+                        <button class="vm-chip active" data-chart="x">x (t)</button>
+                        <button class="vm-chip" data-chart="y">y (t)</button>
+                        <button class="vm-chip" data-chart="vx">vₓ (t)</button>
+                        <button class="vm-chip" data-chart="vy">v_y (t)</button>
+                        <button class="vm-chip" data-chart="v">rapidez (t)</button>
+                        <button class="vm-chip" data-chart="tray">trayectoria</button>
+                    </div>
+                    <div class="vm-chart-wrap"><canvas id="vm-chart"></canvas></div>
+                    <div class="vm-chart-note" id="vm-chart-note">Marcá al menos 2 puntos para ver la gráfica. Tocá un punto de la gráfica para ir a ese instante del video.</div>
+                </div>
+
+                <div class="vm-tabbody" id="vm-body-tabla">
+                    <div class="vm-stats" id="vm-stats"></div>
+                    <div class="vm-table-wrap">
+                        <table class="vm-table">
+                            <thead><tr><th>t (s)</th><th>x (m)</th><th>y (m)</th><th>vₓ (m/s)</th><th>v_y (m/s)</th><th>v (m/s)</th><th></th></tr></thead>
+                            <tbody id="vm-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="vm-table-actions">
+                        <button class="vm-tool" id="vm-export-csv" disabled><span class="em">⬇</span>Exportar CSV</button>
+                        <button class="vm-tool" id="vm-copy-table" disabled><span class="em">📋</span>Copiar tabla</button>
+                    </div>
+                </div>
+
+                <div class="vm-tabbody" id="vm-body-microbit">
+                    <div class="vm-mb">
+                        <p>Superponé lo que midió la <b>micro:bit</b> (capturado en la pantalla principal) sobre las gráficas de tiempo del video, para comparar ambas mediciones.</p>
+                        <label class="vm-switch"><input type="checkbox" id="vm-mb-on"><span>Mostrar datos de la micro:bit en las gráficas</span></label>
+                        <div class="vm-mb-row">
+                            <div class="vm-field">
+                                <label for="vm-mb-var">Variable</label>
+                                <select id="vm-mb-var"></select>
+                            </div>
+                            <div class="vm-field">
+                                <label for="vm-mb-dt" title="Corrimiento de tiempo para superponer ambas curvas">Δt (s)</label>
+                                <input type="number" id="vm-mb-dt" inputmode="decimal" step="0.05" value="0">
+                            </div>
+                        </div>
+                        <div class="vm-mb-row">
+                            <button class="vm-tool" id="vm-mb-refresh"><span class="em">🔄</span>Actualizar datos</button>
+                            <button class="vm-tool" id="vm-mb-sync" title="Si el video se grabó con el botón CÁMARA del sitio durante la captura, alinea los tiempos automáticamente" disabled><span class="em">⚡</span>Sincronizar auto</button>
+                        </div>
+                        <div class="vm-mb-status" id="vm-mb-status">Sin datos capturados todavía.</div>
+                        <p style="font-size:11px; color:#8a90a3;">La curva de la micro:bit usa su propio eje (a la derecha de la gráfica), así se pueden comparar magnitudes distintas, por ejemplo posición del video con aceleración del sensor.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="vm-helpbox" id="vm-helpbox">
+            <div class="vm-help-card">
+                <div class="vm-help-head">
+                    <h3>🎬 Cómo analizar un movimiento con video</h3>
+                    <button id="vm-help-close">✕</button>
+                </div>
+                <div class="vm-help-body">
+                    <h4>La idea</h4>
+                    <p>Filmás un movimiento, marcás dónde está el objeto en cada cuadro del video y el sistema calcula posición y velocidad en función del tiempo, con gráficas y tabla listas para usar. Es el mismo principio que Tracker, pero pensado para hacerse en minutos desde el celular, la tablet o la computadora.</p>
+                    <h4>1 · Conseguí un buen video</h4>
+                    <ul>
+                        <li>Cámara <b>quieta</b> (apoyada o con trípode) y el movimiento visto de costado, perpendicular a la cámara.</li>
+                        <li>Que aparezca algo de <b>longitud conocida</b> en el mismo plano del movimiento: una regla, una mesa, una puerta…</li>
+                        <li>Podés <b>abrir un video</b> del equipo, <b>grabar</b> uno en el momento, o usar el último grabado con el botón <b>CÁMARA</b> del sitio (ese queda sincronizado con la captura de la micro:bit).</li>
+                        <li>Si filmaste en cámara lenta, poné en <b>FPS</b> los cuadros por segundo reales de la filmación (por ej. 120 o 240).</li>
+                    </ul>
+                    <h4>2 · Calibrá la escala</h4>
+                    <ul>
+                        <li>Tocá <b>📏 Escala</b> y marcá los dos extremos del objeto de longitud conocida; después escribí cuánto mide en metros.</li>
+                        <li>Con <b>🎯 Origen</b> elegí el punto que será el (0, 0). El eje x apunta a la derecha y el eje y hacia arriba.</li>
+                    </ul>
+                    <h4>3 · Marcá el objeto cuadro a cuadro</h4>
+                    <ul>
+                        <li>Con la herramienta <b>📍 Marcar</b> activa, tocá el objeto: el punto queda registrado y el video <b>avanza solo</b> al cuadro siguiente.</li>
+                        <li>En pantallas táctiles, mantené el dedo apoyado y aparece una <b>lupa</b> para apuntar fino; al soltar se marca el punto.</li>
+                        <li>¿Le erraste? <b>↩ Deshacer</b> borra el último punto. Si marcás dos veces el mismo cuadro, el punto se reemplaza.</li>
+                        <li>Con el teclado: <kbd>←</kbd> y <kbd>→</kbd> mueven un cuadro, <kbd>espacio</kbd> reproduce o pausa.</li>
+                    </ul>
+                    <h4>4 · Analizá</h4>
+                    <ul>
+                        <li>En <b>📈 Gráficas</b> elegí qué ver: x(t), y(t), velocidades, rapidez o la trayectoria. Tocá un punto de la gráfica para saltar a ese instante del video.</li>
+                        <li>En <b>🔢 Tabla</b> están todos los valores; podés exportarlos a CSV o copiarlos para pegar en una planilla.</li>
+                        <li>En <b>📡 micro:bit</b> superponés los datos del sensor sobre las gráficas de tiempo y ajustás el Δt hasta que coincidan. Si el video es del botón CÁMARA del sitio, <b>⚡ Sincronizar auto</b> alinea los tiempos por vos.</li>
+                    </ul>
+                    <h4>Consejos</h4>
+                    <ul>
+                        <li>La velocidad se calcula con diferencias entre cuadros vecinos: si la curva sale "ruidosa", marcá con más cuidado o usá más FPS.</li>
+                        <li>Todo el análisis ocurre en tu navegador: el video no se sube a ningún lado.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <input type="file" id="vm-file-input" accept="video/*,.mp4,.mov,.webm,.ogg" style="display:none">
+        <input type="file" id="vm-capture-input" accept="video/*" capture="environment" style="display:none">
+    </div>
+
+    <script>
+    /* ===== ANÁLISIS DE VIDEO + MOVIMIENTO MODULE START ===== */
+    (function () {
+    'use strict';
+
+    var panel, video, overlay, octx, stage;
+    var opened = false;
+    var videoURL = null;          // object URL del video cargado
+    var hasVideo = false;
+    var fps = 30;
+    var duration = 0;
+    var tool = 'mark';            // 'mark' | 'scale' | 'origin'
+    var points = [];              // [{t, u, v}] en píxeles intrínsecos del video, ordenados por t
+    var scalePts = [];            // 0, 1 o 2 puntos {u,v} de la calibración
+    var scaleLen = null;          // longitud real en metros del segmento de escala
+    var origin = null;            // {u,v} origen de coordenadas
+    var chartType = 'x';
+    var chart = null;
+    var mbOn = false;
+    var loupeActive = false;
+    var loupePos = null;          // {cx, cy} en px del canvas (CSS)
+    var isSeeking = false;
+    var pendingSeek = null;
+    var playing = false;
+    var rafId = null;
+    var siteVideoLoaded = false;  // el video actual proviene del botón CÁMARA del sitio
+
+    function el(id) { return document.getElementById(id); }
+    function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+
+    /* ================= Guía y pasos ================= */
+    function metersPerPixel() {
+        if (scalePts.length < 2 || !scaleLen) return null;
+        var d = Math.hypot(scalePts[1].u - scalePts[0].u, scalePts[1].v - scalePts[0].v);
+        return d > 0 ? scaleLen / d : null;
+    }
+
+    function setGuide(icon, html, ok) {
+        el('vm-guide-ico').textContent = icon;
+        el('vm-guide-txt').innerHTML = html;
+        el('vm-guide').className = 'vm-guide' + (ok ? ' ok' : '');
+    }
+
+    function refreshSteps() {
+        var s1 = hasVideo;
+        var s2 = !!metersPerPixel();
+        var s3 = points.length >= 2;
+        var stepEls = [el('vm-step1'), el('vm-step2'), el('vm-step3'), el('vm-step4')];
+        var doneFlags = [s1, s2, s3, false];
+        var active = !s1 ? 0 : !s2 ? 1 : !s3 ? 2 : 3;
+        stepEls.forEach(function (e, i) {
+            e.className = 'vm-step' + (doneFlags[i] ? ' done' : '') + (i === active ? ' active' : '');
+        });
+        if (!s1) {
+            setGuide('👋', 'Cargá un video para empezar: <b>📂 Abrir video</b>, <b>📸 Grabar</b>, o arrastralo sobre la pantalla.');
+        } else if (!s2) {
+            setGuide('📏', 'Calibrá la escala: tocá <b>📏 Escala</b> y marcá los dos extremos de algo de longitud conocida (una regla, una mesa…).');
+        } else if (!s3) {
+            setGuide('📍', 'Con <b>📍 Marcar</b> activo, tocá el objeto en el video: se registra el punto y avanza solo al cuadro siguiente. En táctil, mantené apretado y aparece la lupa.');
+        } else {
+            setGuide('📈', '¡Muy bien! Ya hay <b>' + points.length + ' puntos</b>. Seguí marcando o mirá <b>Gráficas</b> y <b>Tabla</b>. Podés superponer la <b>micro:bit</b> desde su pestaña.', true);
+        }
+        var enable = hasVideo;
+        ['vm-tool-scale', 'vm-tool-origin', 'vm-tool-mark'].forEach(function (id) { el(id).disabled = !enable; });
+        el('vm-undo').disabled = !points.length;
+        el('vm-clear-pts').disabled = !points.length && scalePts.length === 0 && !origin;
+        el('vm-export-csv').disabled = points.length < 1;
+        el('vm-copy-table').disabled = points.length < 1;
+        ['vm-back10', 'vm-back1', 'vm-play', 'vm-fwd1', 'vm-fwd10'].forEach(function (id) { el(id).disabled = !enable; });
+        el('vm-slider').disabled = !enable;
+    }
+
+    function goToStep(n) {
+        if (n === 1) { el('vm-load-btn').focus(); if (!hasVideo) pickFile(); }
+        else if (n === 2) { if (hasVideo) setTool('scale'); }
+        else if (n === 3) { if (hasVideo) setTool('mark'); }
+        else if (n === 4) { switchTab('graficas'); }
+    }
+
+    /* ================= Carga de video ================= */
+    function pickFile() { el('vm-file-input').click(); }
+
+    function loadVideoBlob(blob, fromSite) {
+        if (videoURL) { URL.revokeObjectURL(videoURL); videoURL = null; }
+        videoURL = URL.createObjectURL(blob);
+        siteVideoLoaded = !!fromSite;
+        hasVideo = false;
+        duration = 0;
+        video.src = videoURL;
+        video.load();
+        el('vm-empty').style.display = 'none';
+        setGuide('⏳', 'Cargando el video…');
+    }
+
+    function fixDurationThen(cb) {
+        // Los .webm de MediaRecorder suelen informar duration = Infinity.
+        if (isFinite(video.duration) && video.duration > 0) { cb(video.duration); return; }
+        var onSeeked = function () {
+            video.removeEventListener('seeked', onSeeked);
+            var d = isFinite(video.duration) ? video.duration : video.currentTime;
+            video.currentTime = 0;
+            cb(d);
+        };
+        video.addEventListener('seeked', onSeeked);
+        try { video.currentTime = 1e7; } catch (e) { video.removeEventListener('seeked', onSeeked); cb(0); }
+    }
+
+    function onMetadata() {
+        fixDurationThen(function (d) {
+            duration = d || 0;
+            hasVideo = true;
+            var slider = el('vm-slider');
+            slider.max = duration.toFixed(3);
+            slider.value = 0;
+            el('vm-time-dur').textContent = fmtT(duration) + ' s';
+            resizeOverlay();
+            updateTimeUI();
+            refreshSteps();
+            if (points.length === 0 && scalePts.length === 0) setTool('scale');
+            drawOverlay();
+        });
+    }
+
+    /* ================= Tiempo, cuadros y navegación ================= */
+    function frameDt() { return 1 / (fps || 30); }
+    function fmtT(t) { return (Math.round(t * 1000) / 1000).toFixed(3); }
+    function curFrame() { return Math.round(video.currentTime / frameDt()); }
+
+    function seekTo(t) {
+        t = clamp(t, 0, Math.max(0, duration - 0.0005));
+        if (isSeeking) { pendingSeek = t; return; }
+        isSeeking = true;
+        try { video.currentTime = t; } catch (e) { isSeeking = false; }
+    }
+
+    function onSeeked() {
+        isSeeking = false;
+        if (pendingSeek != null) { var t = pendingSeek; pendingSeek = null; seekTo(t); return; }
+        updateTimeUI();
+        drawOverlay();
+    }
+
+    function stepFrames(n) {
+        pauseVideo();
+        seekTo((curFrame() + n) * frameDt());
+    }
+
+    function updateTimeUI() {
+        el('vm-time-cur').textContent = fmtT(video.currentTime) + ' s';
+        el('vm-frame-cur').textContent = 'cuadro ' + curFrame();
+        if (!playing) el('vm-slider').value = video.currentTime;
+        highlightTableRow();
+    }
+
+    function playPause() {
+        if (!hasVideo) return;
+        if (playing) { pauseVideo(); }
+        else {
+            video.play().then(function () {
+                playing = true;
+                el('vm-play').textContent = '❚❚';
+                var loop = function () {
+                    if (!playing) return;
+                    el('vm-slider').value = video.currentTime;
+                    updateTimeUI();
+                    drawOverlay();
+                    rafId = requestAnimationFrame(loop);
+                };
+                rafId = requestAnimationFrame(loop);
+            }).catch(function () {});
+        }
+    }
+    function pauseVideo() {
+        playing = false;
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        el('vm-play').textContent = '▶';
+        if (!video.paused) video.pause();
+    }
+
+    /* ================= Geometría video ↔ pantalla ================= */
+    function contentRect() {
+        // Rect del contenido del video (object-fit: contain) dentro del stage, en px CSS.
+        var W = stage.clientWidth, H = stage.clientHeight;
+        var vw = video.videoWidth || 16, vh = video.videoHeight || 9;
+        var s = Math.min(W / vw, H / vh);
+        var w = vw * s, h = vh * s;
+        return { x: (W - w) / 2, y: (H - h) / 2, w: w, h: h, scale: s };
+    }
+    function videoToCss(u, v) {
+        var r = contentRect();
+        return { x: r.x + u * r.scale, y: r.y + v * r.scale };
+    }
+    function cssToVideo(x, y) {
+        var r = contentRect();
+        if (r.scale <= 0) return null;
+        var u = (x - r.x) / r.scale, v = (y - r.y) / r.scale;
+        if (u < 0 || v < 0 || u > (video.videoWidth || 0) || v > (video.videoHeight || 0)) return null;
+        return { u: u, v: v };
+    }
+
+    function resizeOverlay() {
+        var dpr = window.devicePixelRatio || 1;
+        overlay.width = Math.round(stage.clientWidth * dpr);
+        overlay.height = Math.round(stage.clientHeight * dpr);
+        octx = overlay.getContext('2d');
+        octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        drawOverlay();
+    }
+
+    /* ================= Coordenadas físicas ================= */
+    function toPhysical(p) {
+        var mpp = metersPerPixel();
+        var o = origin || (points.length ? points[0] : (scalePts.length ? scalePts[0] : { u: 0, v: video.videoHeight || 0 }));
+        var k = mpp || 1;
+        return { x: (p.u - o.u) * k, y: (o.v - p.v) * k };
+    }
+
+    // Serie física completa con velocidades por diferencias centradas.
+    function physSeries() {
+        var out = [];
+        for (var i = 0; i < points.length; i++) {
+            var ph = toPhysical(points[i]);
+            out.push({ t: points[i].t, x: ph.x, y: ph.y, vx: NaN, vy: NaN, v: NaN });
+        }
+        for (var j = 0; j < out.length; j++) {
+            var a = out[j - 1] || out[j], b = out[j + 1] || out[j];
+            var dt = b.t - a.t;
+            if (dt > 0) {
+                out[j].vx = (b.x - a.x) / dt;
+                out[j].vy = (b.y - a.y) / dt;
+                out[j].v = Math.hypot(out[j].vx, out[j].vy);
+            }
+        }
+        return out;
+    }
+
+    /* ================= Dibujo del overlay ================= */
+    function drawOverlay() {
+        if (!octx) return;
+        octx.clearRect(0, 0, stage.clientWidth, stage.clientHeight);
+        if (!hasVideo) return;
+        var t = video.currentTime, half = frameDt() / 2;
+
+        // Segmento de escala
+        if (scalePts.length) {
+            var a = videoToCss(scalePts[0].u, scalePts[0].v);
+            octx.strokeStyle = '#00e5ff'; octx.fillStyle = '#00e5ff'; octx.lineWidth = 2;
+            drawX(a.x, a.y, '#00e5ff');
+            if (scalePts.length === 2) {
+                var b = videoToCss(scalePts[1].u, scalePts[1].v);
+                octx.beginPath(); octx.moveTo(a.x, a.y); octx.lineTo(b.x, b.y); octx.stroke();
+                drawX(b.x, b.y, '#00e5ff');
+                if (scaleLen) {
+                    var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+                    drawLabel(scaleLen + ' m', mx, my - 12, '#00e5ff');
+                }
+            }
+        }
+
+        // Origen y ejes
+        if (origin) {
+            var o = videoToCss(origin.u, origin.v);
+            octx.strokeStyle = 'rgba(255,235,59,.85)'; octx.lineWidth = 1.4;
+            octx.beginPath(); octx.moveTo(o.x - 28, o.y); octx.lineTo(o.x + 34, o.y); octx.stroke();
+            octx.beginPath(); octx.moveTo(o.x, o.y + 28); octx.lineTo(o.x, o.y - 34); octx.stroke();
+            octx.fillStyle = 'rgba(255,235,59,.95)'; octx.font = '700 11px sans-serif';
+            octx.fillText('x', o.x + 37, o.y + 4);
+            octx.fillText('y', o.x - 3, o.y - 38);
+        }
+
+        // Estela de puntos marcados
+        for (var i = 0; i < points.length; i++) {
+            var p = points[i];
+            var c = videoToCss(p.u, p.v);
+            var isCur = Math.abs(p.t - t) <= half;
+            if (isCur) {
+                octx.strokeStyle = '#ff1744'; octx.lineWidth = 2;
+                octx.beginPath(); octx.arc(c.x, c.y, 9, 0, Math.PI * 2); octx.stroke();
+                drawX(c.x, c.y, '#ff1744');
+            } else {
+                octx.fillStyle = p.t < t ? 'rgba(255,23,68,.85)' : 'rgba(255,23,68,.35)';
+                octx.beginPath(); octx.arc(c.x, c.y, 3.4, 0, Math.PI * 2); octx.fill();
+            }
+        }
+    }
+    function drawX(x, y, color) {
+        octx.strokeStyle = color; octx.lineWidth = 2;
+        octx.beginPath();
+        octx.moveTo(x - 6, y - 6); octx.lineTo(x + 6, y + 6);
+        octx.moveTo(x - 6, y + 6); octx.lineTo(x + 6, y - 6);
+        octx.stroke();
+    }
+    function drawLabel(txt, x, y, color) {
+        octx.font = '700 12px sans-serif';
+        var w = octx.measureText(txt).width;
+        octx.fillStyle = 'rgba(10,12,20,.75)';
+        octx.fillRect(x - w / 2 - 5, y - 13, w + 10, 18);
+        octx.fillStyle = color;
+        octx.fillText(txt, x - w / 2, y);
+    }
+
+    /* ================= Lupa (precisión táctil) ================= */
+    var LOUPE_ZOOM = 2.6;
+    function showLoupe(cssX, cssY) {
+        var lp = el('vm-loupe'), lc = el('vm-loupe-canvas');
+        var vc = cssToVideo(cssX, cssY);
+        if (!vc) { lp.style.display = 'none'; return; }
+        lp.style.display = 'block';
+        var sz = 132;
+        var lx = cssX - sz / 2, ly = cssY - sz - 26;
+        if (ly < 4) ly = cssY + 26;
+        lx = clamp(lx, 4, stage.clientWidth - sz - 4);
+        lp.style.left = lx + 'px';
+        lp.style.top = ly + 'px';
+        var g = lc.getContext('2d');
+        var srcW = lc.width / (LOUPE_ZOOM * contentRect().scale || 1);
+        g.fillStyle = '#000'; g.fillRect(0, 0, lc.width, lc.height);
+        try {
+            g.drawImage(video, vc.u - srcW / 2, vc.v - srcW / 2, srcW, srcW, 0, 0, lc.width, lc.height);
+        } catch (e) {}
+        g.strokeStyle = '#ff1744'; g.lineWidth = 2.5;
+        var m = lc.width / 2;
+        g.beginPath();
+        g.moveTo(m - 16, m); g.lineTo(m + 16, m);
+        g.moveTo(m, m - 16); g.lineTo(m, m + 16);
+        g.stroke();
+    }
+    function hideLoupe() { el('vm-loupe').style.display = 'none'; }
+
+    /* ================= Interacción sobre el video ================= */
+    function setTool(t) {
+        tool = t;
+        ['mark', 'scale', 'origin'].forEach(function (k) {
+            el('vm-tool-' + k).classList.toggle('active', k === t);
+        });
+        if (t === 'scale') {
+            scalePts = [];
+            setGuide('📏', 'Tocá el <b>primer extremo</b> del objeto de longitud conocida.');
+        } else if (t === 'origin') {
+            setGuide('🎯', 'Tocá el punto del video que será el <b>origen (0, 0)</b>.');
+        } else {
+            refreshSteps();
+        }
+        drawOverlay();
+    }
+
+    function commitPoint(vc) {
+        if (tool === 'scale') {
+            scalePts.push({ u: vc.u, v: vc.v });
+            drawOverlay();
+            if (scalePts.length === 1) {
+                setGuide('📏', 'Ahora tocá el <b>otro extremo</b>.');
+            } else {
+                var dlg = el('vm-scale-dialog');
+                dlg.classList.add('open');
+                var inp = el('vm-scale-len');
+                if (scaleLen) inp.value = scaleLen;
+                setTimeout(function () { inp.focus(); inp.select(); }, 60);
+            }
+            return;
+        }
+        if (tool === 'origin') {
+            origin = { u: vc.u, v: vc.v };
+            setTool('mark');
+            setGuide('🎯', 'Origen definido. Ya podés <b>marcar el objeto</b> cuadro a cuadro.', true);
+            recomputeAll();
+            return;
+        }
+        // Marcar: un punto por cuadro (reemplaza si ya existe)
+        var t = video.currentTime, half = frameDt() / 2;
+        var idx = points.findIndex(function (p) { return Math.abs(p.t - t) <= half; });
+        if (idx >= 0) points[idx] = { t: t, u: vc.u, v: vc.v };
+        else {
+            points.push({ t: t, u: vc.u, v: vc.v });
+            points.sort(function (a, b) { return a.t - b.t; });
+        }
+        drawOverlay();
+        recomputeAll();
+        // Auto-avance al cuadro siguiente para marcar de corrido
+        setTimeout(function () { stepFrames(1); }, 80);
+    }
+
+    function onPointerDown(e) {
+        if (!hasVideo || playing) return;
+        e.preventDefault();
+        overlay.setPointerCapture && overlay.setPointerCapture(e.pointerId);
+        loupeActive = true;
+        var r = overlay.getBoundingClientRect();
+        loupePos = { cx: e.clientX - r.left, cy: e.clientY - r.top };
+        if (e.pointerType !== 'mouse') showLoupe(loupePos.cx, loupePos.cy);
+    }
+    function onPointerMove(e) {
+        if (!loupeActive) return;
+        e.preventDefault();
+        var r = overlay.getBoundingClientRect();
+        loupePos = { cx: clamp(e.clientX - r.left, 0, r.width), cy: clamp(e.clientY - r.top, 0, r.height) };
+        if (e.pointerType !== 'mouse') showLoupe(loupePos.cx, loupePos.cy);
+    }
+    function onPointerUp(e) {
+        if (!loupeActive) return;
+        e.preventDefault();
+        loupeActive = false;
+        hideLoupe();
+        if (!loupePos) return;
+        var vc = cssToVideo(loupePos.cx, loupePos.cy);
+        loupePos = null;
+        if (vc) commitPoint(vc);
+    }
+
+    /* ================= Recalcular todo (tabla + gráfica) ================= */
+    function recomputeAll() {
+        renderTable();
+        updateChart();
+        refreshSteps();
+    }
+
+    function fmtN(x) {
+        if (typeof x !== 'number' || !isFinite(x)) return '–';
+        var ax = Math.abs(x);
+        if (ax !== 0 && (ax >= 10000 || ax < 0.001)) return x.toExponential(3);
+        return (Math.round(x * 10000) / 10000).toString();
+    }
+
+    function renderTable() {
+        var tb = el('vm-tbody');
+        var ser = physSeries();
+        var html = '';
+        for (var i = 0; i < ser.length; i++) {
+            var d = ser[i];
+            html += '<tr data-i="' + i + '"><td>' + fmtT(d.t) + '</td><td>' + fmtN(d.x) + '</td><td>' + fmtN(d.y) +
+                '</td><td>' + fmtN(d.vx) + '</td><td>' + fmtN(d.vy) + '</td><td>' + fmtN(d.v) +
+                '</td><td><button class="vm-del" data-del="' + i + '" title="Borrar este punto">✕</button></td></tr>';
+        }
+        tb.innerHTML = html;
+        // Estadísticas simples
+        var st = el('vm-stats');
+        if (ser.length >= 2) {
+            var dist = 0;
+            for (var j = 1; j < ser.length; j++) dist += Math.hypot(ser[j].x - ser[j - 1].x, ser[j].y - ser[j - 1].y);
+            var T = ser[ser.length - 1].t - ser[0].t;
+            st.innerHTML = '<b>' + ser.length + '</b> puntos · duración <b>' + fmtT(T) + ' s</b> · recorrido <b>' +
+                fmtN(dist) + ' m</b> · rapidez media <b>' + fmtN(T > 0 ? dist / T : NaN) + ' m/s</b>' +
+                (metersPerPixel() ? '' : ' · <span style="color:#d81b60;">⚠ sin escala: valores en píxeles</span>');
+        } else {
+            st.textContent = '';
+        }
+        highlightTableRow();
+    }
+
+    function highlightTableRow() {
+        var tb = el('vm-tbody');
+        if (!tb) return;
+        var t = video.currentTime, half = frameDt() / 2;
+        var rows = tb.rows;
+        for (var i = 0; i < rows.length; i++) {
+            var p = points[i];
+            rows[i].classList.toggle('cur', !!p && Math.abs(p.t - t) <= half);
+        }
+    }
+
+    /* ================= micro:bit ================= */
+    function refreshMb() {
+        var sel = el('vm-mb-var');
+        var st = el('vm-mb-status');
+        var prev = sel.value;
+        sel.innerHTML = '';
+        if (typeof state === 'undefined') { st.textContent = 'Sin datos.'; st.className = 'vm-mb-status'; return; }
+        for (var i = 0; i < state.numVariables; i++) {
+            var o = document.createElement('option');
+            o.value = i;
+            o.textContent = (state.variables[i] && state.variables[i].name) || ('Variable ' + (i + 1));
+            sel.appendChild(o);
+        }
+        if (prev !== '' && parseInt(prev, 10) < state.numVariables) sel.value = prev;
+        var n = state.rawData ? state.rawData.length : 0;
+        if (n) {
+            st.textContent = n + ' puntos capturados en la sesión.';
+            st.className = 'vm-mb-status ok';
+        } else {
+            st.textContent = 'No hay datos capturados. Conectá la micro:bit y capturá desde la pantalla principal, o importá un CSV.';
+            st.className = 'vm-mb-status';
+        }
+        el('vm-mb-sync').disabled = !(siteVideoLoaded && state.recordingStartTime && n);
+        updateChart();
+    }
+
+    function mbSeries() {
+        if (typeof state === 'undefined' || !state.rawData || !state.rawData.length) return [];
+        var vi = parseInt(el('vm-mb-var').value, 10) || 0;
+        var dt = parseFloat(el('vm-mb-dt').value) || 0;
+        var t0 = state.timeZeroOffset || 0;
+        var out = [];
+        for (var i = 0; i < state.rawData.length; i++) {
+            var d = state.rawData[i];
+            var y = d.values ? d.values[vi] : NaN;
+            if (typeof y !== 'number' || isNaN(y)) continue;
+            out.push({ x: (d.time - t0) / 1000 + dt, y: y });
+        }
+        return out;
+    }
+
+    function mbAutoSync() {
+        if (typeof state === 'undefined' || !state.recordingStartTime) return;
+        var t0 = state.timeZeroOffset || 0;
+        // t_video = (d.time - recordingStartTime)/1000 = eje mb + (t0 - recordingStartTime)/1000
+        var dt = (t0 - state.recordingStartTime) / 1000;
+        el('vm-mb-dt').value = (Math.round(dt * 1000) / 1000).toString();
+        el('vm-mb-on').checked = true;
+        mbOn = true;
+        updateChart();
+        setGuide('⚡', 'micro:bit sincronizada con el video del sitio (Δt = ' + fmtT(dt) + ' s). Ajustá Δt a mano si hace falta.', true);
+    }
+
+    /* ================= Gráficas ================= */
+    var CHART_DEFS = {
+        x:    { label: 'x (m)',        get: function (d) { return { x: d.t, y: d.x }; },  xl: 'Tiempo (s)', yl: 'x (m)' },
+        y:    { label: 'y (m)',        get: function (d) { return { x: d.t, y: d.y }; },  xl: 'Tiempo (s)', yl: 'y (m)' },
+        vx:   { label: 'vₓ (m/s)',     get: function (d) { return { x: d.t, y: d.vx }; }, xl: 'Tiempo (s)', yl: 'vₓ (m/s)' },
+        vy:   { label: 'v_y (m/s)',    get: function (d) { return { x: d.t, y: d.vy }; }, xl: 'Tiempo (s)', yl: 'v_y (m/s)' },
+        v:    { label: 'rapidez (m/s)',get: function (d) { return { x: d.t, y: d.v }; },  xl: 'Tiempo (s)', yl: 'v (m/s)' },
+        tray: { label: 'trayectoria',  get: function (d) { return { x: d.x, y: d.y }; },  xl: 'x (m)', yl: 'y (m)' }
+    };
+
+    function updateChart() {
+        if (!opened || typeof Chart === 'undefined') return;
+        var def = CHART_DEFS[chartType];
+        var ser = physSeries();
+        var data = ser.map(def.get).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+        var noScale = !metersPerPixel();
+        var isTime = chartType !== 'tray';
+
+        var datasets = [{
+            label: 'Video · ' + def.label + (noScale ? ' [píxeles]' : ''),
+            data: data,
+            showLine: true,
+            borderColor: '#7c4dff',
+            backgroundColor: '#7c4dff',
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            borderWidth: 2,
+            tension: 0,
+            yAxisID: 'y'
+        }];
+
+        var mbSel = el('vm-mb-var');
+        var showMb = mbOn && isTime;
+        if (showMb) {
+            var s = mbSeries();
+            if (s.length) {
+                datasets.push({
+                    label: 'micro:bit · ' + (mbSel.options.length ? mbSel.options[mbSel.selectedIndex].textContent : ''),
+                    data: s,
+                    showLine: true,
+                    borderColor: '#1e88e5',
+                    backgroundColor: '#1e88e5',
+                    pointRadius: 0,
+                    borderWidth: 1.6,
+                    tension: 0,
+                    yAxisID: 'yMB'
+                });
+            }
+        }
+
+        if (!chart) {
+            chart = new Chart(el('vm-chart').getContext('2d'), {
+                type: 'scatter',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: { title: { display: true, text: '', color: '#6d7285', font: { weight: '700' } }, ticks: { color: '#8a90a3' }, grid: { color: '#eceef4' } },
+                        y: { title: { display: true, text: '', color: '#6d7285', font: { weight: '700' } }, ticks: { color: '#8a90a3' }, grid: { color: '#eceef4' } },
+                        yMB: { position: 'right', display: false, title: { display: true, text: 'micro:bit', color: '#1e88e5', font: { weight: '700' } }, ticks: { color: '#1e88e5' }, grid: { drawOnChartArea: false } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#3a3f52', boxWidth: 14, font: { weight: '700', size: 11 } } },
+                        tooltip: { mode: 'nearest', intersect: false }
+                    },
+                    onClick: onChartClick
+                }
+            });
+        }
+        chart.data.datasets = datasets;
+        chart.options.scales.x.title.text = def.xl;
+        chart.options.scales.y.title.text = def.yl + (noScale ? ' [px]' : '');
+        chart.options.scales.yMB.display = showMb && datasets.length > 1;
+        chart.update('none');
+
+        el('vm-chart-note').textContent = data.length < 2
+            ? 'Marcá al menos 2 puntos para ver la gráfica. Tocá un punto de la gráfica para ir a ese instante del video.'
+            : (isTime ? 'Tocá un punto de la gráfica para ir a ese instante del video.' : 'Trayectoria del objeto en el plano x-y.');
+    }
+
+    function onChartClick(evt) {
+        if (!chart || !points.length) return;
+        var pts = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: false }, true);
+        if (!pts.length || pts[0].datasetIndex !== 0) return;
+        var i = pts[0].index;
+        // El dataset filtra NaN: mapear por orden entre puntos finitos
+        var def = CHART_DEFS[chartType];
+        var ser = physSeries();
+        var k = -1;
+        for (var j = 0; j < ser.length; j++) {
+            var p = def.get(ser[j]);
+            if (isFinite(p.x) && isFinite(p.y)) { k++; if (k === i) { seekTo(ser[j].t); switchToStageOnPhone(); return; } }
+        }
+    }
+
+    function switchToStageOnPhone() {
+        // En pantallas chicas, subir hasta el video para ver el punto seleccionado.
+        if (window.innerWidth <= 980) {
+            var sc = panel.querySelector('.vm-body');
+            if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    /* ================= Exportar ================= */
+    function buildCsv(sep) {
+        var ser = physSeries();
+        var noScale = !metersPerPixel();
+        var u = noScale ? 'px' : 'm';
+        var lines = [['t (s)', 'x (' + u + ')', 'y (' + u + ')', 'vx (' + u + '/s)', 'vy (' + u + '/s)', 'v (' + u + '/s)'].join(sep)];
+        for (var i = 0; i < ser.length; i++) {
+            var d = ser[i];
+            lines.push([fmtT(d.t), num6(d.x), num6(d.y), num6(d.vx), num6(d.vy), num6(d.v)].join(sep));
+        }
+        if (mbOn) {
+            var s = mbSeries();
+            if (s.length) {
+                var mbSel = el('vm-mb-var');
+                var name = mbSel.options.length ? mbSel.options[mbSel.selectedIndex].textContent : 'microbit';
+                lines.push('');
+                lines.push(['t_microbit (s)', name.replace(new RegExp(sep, 'g'), ' ')].join(sep));
+                for (var j = 0; j < s.length; j++) lines.push([num6(s[j].x), num6(s[j].y)].join(sep));
+            }
+        }
+        return lines.join('\n');
+    }
+    function num6(x) { return (typeof x === 'number' && isFinite(x)) ? x.toFixed(6) : ''; }
+
+    function exportCsv() {
+        var blob = new Blob(['﻿' + buildCsv(',')], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'analisis_video_movimiento.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function copyTable() {
+        var txt = buildCsv('\t');
+        var done = function () {
+            var b = el('vm-copy-table');
+            var old = b.innerHTML;
+            b.innerHTML = '<span class="em">✓</span>¡Copiada!';
+            setTimeout(function () { b.innerHTML = old; }, 1400);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(done).catch(function () {});
+        } else {
+            var ta = document.createElement('textarea');
+            ta.value = txt; document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); done(); } catch (e) {}
+            document.body.removeChild(ta);
+        }
+    }
+
+    /* ================= Tabs ================= */
+    function switchTab(name) {
+        ['graficas', 'tabla', 'microbit'].forEach(function (k) {
+            el('vm-tab-' + k).classList.toggle('active', k === name);
+            el('vm-body-' + k).classList.toggle('active', k === name);
+        });
+        if (name === 'microbit') refreshMb();
+        if (name === 'graficas' && chart) setTimeout(function () { chart.resize(); }, 60);
+    }
+
+    /* ================= Apertura / cierre ================= */
+    function openPanel() {
+        if (!panel) return;
+        panel.classList.add('open');
+        panel.setAttribute('aria-hidden', 'false');
+        opened = true;
+        var siteBlob = (typeof state !== 'undefined') && state.videoBlob;
+        el('vm-use-site-video').disabled = !siteBlob;
+        el('vm-empty-site').style.display = siteBlob ? '' : 'none';
+        resizeOverlay();
+        refreshSteps();
+        updateChart();
+    }
+    function closePanel() {
+        pauseVideo();
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden', 'true');
+        opened = false;
+        // Todo queda en memoria: al reabrir, el análisis continúa donde estaba.
+    }
+
+    /* ================= Inicialización ================= */
+    function init() {
+        panel = el('vm-panel');
+        if (!panel) return;
+        video = el('vm-video');
+        overlay = el('vm-overlay');
+        stage = el('vm-stage');
+        octx = overlay.getContext('2d');
+
+        var btn = el('btn-videomov');
+        if (btn) btn.addEventListener('click', openPanel);
+        el('vm-close').addEventListener('click', closePanel);
+
+        // Pasos clickeables
+        Array.prototype.forEach.call(el('vm-steps').children, function (b) {
+            b.addEventListener('click', function () { goToStep(parseInt(b.dataset.step, 10)); });
+        });
+
+        // Carga de video
+        el('vm-load-btn').addEventListener('click', pickFile);
+        el('vm-empty-load').addEventListener('click', pickFile);
+        el('vm-record-btn').addEventListener('click', function () { el('vm-capture-input').click(); });
+        el('vm-empty-record').addEventListener('click', function () { el('vm-capture-input').click(); });
+        function onFileChosen(e) {
+            var f = e.target.files && e.target.files[0];
+            if (f) loadVideoBlob(f, false);
+            e.target.value = '';
+        }
+        el('vm-file-input').addEventListener('change', onFileChosen);
+        el('vm-capture-input').addEventListener('change', onFileChosen);
+        function useSiteVideo() {
+            var blob = (typeof state !== 'undefined') && state.videoBlob;
+            if (!blob) { setGuide('🎥', 'Todavía no hay video grabado con el botón <b>CÁMARA</b> del sitio.'); return; }
+            loadVideoBlob(blob, true);
+        }
+        el('vm-use-site-video').addEventListener('click', useSiteVideo);
+        el('vm-empty-site').addEventListener('click', useSiteVideo);
+
+        // Drag & drop
+        ['dragenter', 'dragover'].forEach(function (ev) {
+            stage.addEventListener(ev, function (e) { e.preventDefault(); stage.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(function (ev) {
+            stage.addEventListener(ev, function (e) { e.preventDefault(); stage.classList.remove('dragover'); });
+        });
+        stage.addEventListener('drop', function (e) {
+            var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (f && /video|mp4|webm|mov|ogg/i.test(f.type + f.name)) loadVideoBlob(f, false);
+        });
+
+        // Video events
+        video.addEventListener('loadedmetadata', onMetadata);
+        video.addEventListener('seeked', onSeeked);
+        video.addEventListener('ended', pauseVideo);
+        video.addEventListener('pause', function () { if (playing) pauseVideo(); updateTimeUI(); drawOverlay(); });
+        video.addEventListener('error', function () {
+            if (!opened) return;
+            el('vm-empty').style.display = '';
+            setGuide('⚠️', 'No se pudo reproducir ese video. Probá con otro formato (MP4 suele funcionar en todos lados).');
+        });
+
+        // Controles
+        el('vm-play').addEventListener('click', playPause);
+        el('vm-back1').addEventListener('click', function () { stepFrames(-1); });
+        el('vm-fwd1').addEventListener('click', function () { stepFrames(1); });
+        el('vm-back10').addEventListener('click', function () { stepFrames(-10); });
+        el('vm-fwd10').addEventListener('click', function () { stepFrames(10); });
+        el('vm-slider').addEventListener('input', function () {
+            pauseVideo();
+            seekTo(parseFloat(this.value) || 0);
+        });
+        el('vm-fps').addEventListener('change', function () {
+            fps = parseFloat(this.value) || 30;
+            updateTimeUI();
+            renderTable();
+        });
+
+        // Herramientas
+        el('vm-tool-mark').addEventListener('click', function () { setTool('mark'); });
+        el('vm-tool-scale').addEventListener('click', function () { setTool('scale'); });
+        el('vm-tool-origin').addEventListener('click', function () { setTool('origin'); });
+        el('vm-undo').addEventListener('click', function () {
+            if (!points.length) return;
+            // Borrar el último punto en el tiempo más cercano al cuadro actual, o el último de todos.
+            points.pop();
+            drawOverlay();
+            recomputeAll();
+        });
+        el('vm-clear-pts').addEventListener('click', function () {
+            if (!confirm('¿Borrar todos los puntos marcados y la calibración?')) return;
+            points = []; scalePts = []; scaleLen = null; origin = null;
+            drawOverlay();
+            recomputeAll();
+        });
+
+        // Diálogo de escala
+        el('vm-scale-ok').addEventListener('click', function () {
+            var v = parseFloat(el('vm-scale-len').value);
+            if (!(v > 0)) { el('vm-scale-len').focus(); return; }
+            scaleLen = v;
+            el('vm-scale-dialog').classList.remove('open');
+            setTool('mark');
+            setGuide('✅', 'Escala calibrada: ese segmento mide <b>' + v + ' m</b>. Ahora marcá el objeto cuadro a cuadro (opcional: definí el <b>🎯 Origen</b>).', true);
+            recomputeAll();
+        });
+        el('vm-scale-len').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') el('vm-scale-ok').click();
+        });
+        el('vm-scale-cancel').addEventListener('click', function () {
+            el('vm-scale-dialog').classList.remove('open');
+            scalePts = [];
+            drawOverlay();
+            refreshSteps();
+        });
+
+        // Interacción de marcado
+        overlay.addEventListener('pointerdown', onPointerDown);
+        overlay.addEventListener('pointermove', onPointerMove);
+        overlay.addEventListener('pointerup', onPointerUp);
+        overlay.addEventListener('pointercancel', function () { loupeActive = false; hideLoupe(); loupePos = null; });
+
+        // Tabs
+        ['graficas', 'tabla', 'microbit'].forEach(function (k) {
+            el('vm-tab-' + k).addEventListener('click', function () { switchTab(k); });
+        });
+
+        // Chips de gráfica
+        Array.prototype.forEach.call(el('vm-chart-chips').children, function (c) {
+            c.addEventListener('click', function () {
+                chartType = c.dataset.chart;
+                Array.prototype.forEach.call(el('vm-chart-chips').children, function (x) { x.classList.toggle('active', x === c); });
+                updateChart();
+            });
+        });
+
+        // Tabla
+        el('vm-tbody').addEventListener('click', function (e) {
+            var del = e.target.closest('.vm-del');
+            if (del) {
+                var di = parseInt(del.dataset.del, 10);
+                if (di >= 0 && di < points.length) {
+                    points.splice(di, 1);
+                    drawOverlay();
+                    recomputeAll();
+                }
+                e.stopPropagation();
+                return;
+            }
+            var tr = e.target.closest('tr[data-i]');
+            if (tr) {
+                var i = parseInt(tr.dataset.i, 10);
+                if (points[i]) { seekTo(points[i].t); switchToStageOnPhone(); }
+            }
+        });
+        el('vm-export-csv').addEventListener('click', exportCsv);
+        el('vm-copy-table').addEventListener('click', copyTable);
+
+        // micro:bit
+        el('vm-mb-on').addEventListener('change', function () { mbOn = this.checked; updateChart(); });
+        el('vm-mb-var').addEventListener('change', updateChart);
+        el('vm-mb-dt').addEventListener('input', updateChart);
+        el('vm-mb-refresh').addEventListener('click', refreshMb);
+        el('vm-mb-sync').addEventListener('click', mbAutoSync);
+
+        // Ayuda
+        el('vm-help-btn').addEventListener('click', function () { el('vm-helpbox').classList.add('open'); });
+        el('vm-help-close').addEventListener('click', function () { el('vm-helpbox').classList.remove('open'); });
+        el('vm-helpbox').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
+
+        // Redimensionado
+        if (window.ResizeObserver) {
+            new ResizeObserver(function () { if (opened) resizeOverlay(); }).observe(stage);
+        } else {
+            window.addEventListener('resize', function () { if (opened) resizeOverlay(); });
+        }
+
+        // Teclado
+        document.addEventListener('keydown', function (e) {
+            if (!opened) return;
+            var ae = document.activeElement;
+            var typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT');
+            if (e.key === 'Escape') {
+                if (el('vm-helpbox').classList.contains('open')) { el('vm-helpbox').classList.remove('open'); return; }
+                if (el('vm-scale-dialog').classList.contains('open')) { el('vm-scale-cancel').click(); return; }
+                if (!typing) closePanel();
+                return;
+            }
+            if (typing || !hasVideo) return;
+            if (e.key === 'ArrowLeft') { e.preventDefault(); stepFrames(e.shiftKey ? -10 : -1); }
+            else if (e.key === 'ArrowRight') { e.preventDefault(); stepFrames(e.shiftKey ? 10 : 1); }
+            else if (e.key === ' ') { e.preventDefault(); playPause(); }
+            else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); el('vm-undo').click(); }
+        });
+
+        // Apertura por hash (#videomov)
+        function checkHash() {
+            if (/^#(videomov|video-movimiento)$/i.test(location.hash)) openPanel();
+        }
+        window.addEventListener('hashchange', checkHash);
+        checkHash();
+
+        fps = parseFloat(el('vm-fps').value) || 30;
+    }
+
+    window.abrirVideoMovimiento = openPanel;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+    })();
+    /* ===== ANÁLISIS DE VIDEO + MOVIMIENTO MODULE END ===== */
+    </script>
+
 </body>
 </html>
