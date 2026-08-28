@@ -4691,7 +4691,7 @@
                 <div id="extrasMenu" class="data-entry-dropdown" style="display:none;" onclick="closeExtrasMenu()">
                     <button id="btn-piezas3d" style="border-left:4px solid #666;">PIEZAS 3D</button>
                     <button id="btn-tracker" style="border-left:4px solid #00695c;">TRACKER</button>
-                    <button id="btn-videomov" style="border-left:4px solid #7c4dff;">VIDEO + MOVIMIENTO</button>
+                    <button id="btn-videomov" style="border-left:4px solid #000;">VIDEO + MOVIMIENTO</button>
                     <button id="btn-mapeo" style="border-left:4px solid #f9a825;">MAPEO</button>
                     <button id="desktopLabBtn" style="border-left:4px solid #1976d2;" onclick="enterExperimentMode()">LAB</button>
                     <button id="sensorModeBtn" style="border-left:4px solid #2e7d32;" onclick="enterSensorMode()">SENSORES</button>
@@ -30999,158 +30999,149 @@ bluetooth.startIOPinService()</pre>
          Estudio de movimientos a partir de un video, cuadro a cuadro,
          con calibración de escala, gráficas y tablas automáticas y
          superposición opcional de los datos de la micro:bit.
-         Inspirado en el principio de Tracker (Open Source Physics)
-         pero con un flujo guiado, táctil y simple al estilo FizziQ.
-         Todo corre 100% en el navegador: los videos no salen del equipo.
+         Mismo principio que Tracker (marcar el objeto en cada cuadro)
+         pero con un flujo guiado y táctil, integrado a la estética
+         del sitio. Todo corre 100% en el navegador.
          ============================================================ -->
     <style id="vm-style">
-    .vm-panel { display:none; position:fixed; inset:0; z-index:9160; background:#f4f5f8; color:#232732; font-family:-apple-system, 'Segoe UI', Roboto, sans-serif; flex-direction:column; overscroll-behavior:contain; }
+    .vm-panel { display:none; position:fixed; inset:0; z-index:9160; background:#fff; color:#000; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; flex-direction:column; overscroll-behavior:contain; }
     .vm-panel.open { display:flex; }
-    .vm-topbar { display:flex; align-items:center; gap:10px; background:#fff; border-bottom:1px solid #e3e5ec; padding:8px 14px; flex:0 0 auto; box-shadow:0 1px 4px rgba(20,24,40,.06); }
-    .vm-logo { display:flex; align-items:center; gap:8px; min-width:0; }
-    .vm-logo .vm-ico { width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg,#7c4dff,#d81b60); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; flex:0 0 auto; }
-    .vm-logo h2 { font-size:14px; font-weight:800; margin:0; letter-spacing:.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .vm-logo small { display:block; font-size:10px; font-weight:600; color:#8a90a3; letter-spacing:.4px; margin-top:1px; }
+    .vm-topbar { display:flex; align-items:center; gap:10px; background:#fff; border-bottom:2px solid #000; padding:8px 12px; flex:0 0 auto; }
+    .vm-title { min-width:0; }
+    .vm-title h2 { font-size:0.85rem; font-weight:700; margin:0; letter-spacing:2px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .vm-title small { display:block; font-size:0.66rem; font-weight:600; color:#666; margin-top:1px; }
     .vm-top-spacer { flex:1; }
-    .vm-top-btn { background:#fff; border:1px solid #d9dce6; color:#3a3f52; font-size:12px; font-weight:700; padding:8px 13px; border-radius:10px; cursor:pointer; font-family:inherit; white-space:nowrap; }
-    .vm-top-btn:hover { background:#f1edfc; border-color:#7c4dff; color:#5527c9; }
-    .vm-close { background:#fff; border:1px solid #d9dce6; color:#3a3f52; font-size:15px; line-height:1; padding:8px 12px; border-radius:10px; cursor:pointer; }
-    .vm-close:hover { background:#fde7ef; border-color:#d81b60; color:#d81b60; }
+    .vm-btn { background:#fff; border:2px solid #000; color:#000; font-size:clamp(0.62rem, 1.3vw, 0.74rem); font-weight:600; padding:6px 10px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s; text-transform:uppercase; }
+    .vm-btn:hover:not(:disabled) { background:#000; color:#fff; }
+    .vm-btn:disabled { opacity:.3; cursor:not-allowed; }
+    .vm-btn.active, .vm-btn.primary { background:#000; color:#fff; }
+    .vm-btn.primary:hover:not(:disabled) { background:#333; }
 
     /* Pasos guiados */
-    .vm-steps { display:flex; gap:6px; background:#fff; padding:7px 12px 9px; border-bottom:1px solid #e3e5ec; flex:0 0 auto; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+    .vm-steps { display:flex; gap:6px; background:#fff; padding:7px 12px; border-bottom:1px solid #ccc; flex:0 0 auto; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
     .vm-steps::-webkit-scrollbar { display:none; }
-    .vm-step { display:flex; align-items:center; gap:7px; border:1.5px solid #e0e2ec; background:#fafbfe; color:#6d7285; border-radius:999px; padding:6px 13px 6px 7px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s; }
-    .vm-step .vm-step-n { width:21px; height:21px; border-radius:50%; background:#e0e2ec; color:#6d7285; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex:0 0 auto; }
-    .vm-step.active { border-color:#7c4dff; background:#f1edfc; color:#4a22b8; }
-    .vm-step.active .vm-step-n { background:#7c4dff; color:#fff; }
-    .vm-step.done { border-color:#c8e6c9; background:#f0faf1; color:#2e7d32; }
-    .vm-step.done .vm-step-n { background:#43a047; color:#fff; }
+    .vm-step { display:flex; align-items:center; gap:7px; border:2px solid #ccc; background:#fff; color:#777; padding:5px 11px 5px 6px; font-size:0.68rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s; }
+    .vm-step .vm-step-n { width:19px; height:19px; background:#ccc; color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.66rem; font-weight:700; flex:0 0 auto; }
+    .vm-step.active { border-color:#000; color:#000; }
+    .vm-step.active .vm-step-n { background:#000; }
+    .vm-step.done { border-color:#2e7d32; color:#2e7d32; }
+    .vm-step.done .vm-step-n { background:#2e7d32; }
     .vm-step.done .vm-step-n::before { content:'✓'; }
     .vm-step.done .vm-step-n span { display:none; }
 
     /* Aviso guía */
-    .vm-guide { flex:0 0 auto; display:flex; align-items:center; gap:9px; margin:8px 12px 0; padding:9px 13px; border-radius:12px; background:#f1edfc; border:1px solid #ddd2fb; color:#43289b; font-size:12.5px; line-height:1.45; }
-    .vm-guide .vm-guide-ico { font-size:15px; flex:0 0 auto; }
-    .vm-guide.ok { background:#f0faf1; border-color:#c8e6c9; color:#1b5e20; }
-    .vm-guide b { font-weight:800; }
+    .vm-guide { flex:0 0 auto; margin:8px 12px 0; padding:8px 12px; background:#f5f5f5; border:1px solid #ccc; border-left:5px solid #000; color:#222; font-size:0.76rem; line-height:1.5; }
+    .vm-guide.ok { border-left-color:#2e7d32; background:#f2f8f2; }
+    .vm-guide b { font-weight:700; }
 
     /* Cuerpo */
     .vm-body { display:flex; flex:1 1 auto; min-height:0; padding:8px 12px 10px; gap:10px; }
     .vm-left { flex:1 1 62%; min-width:0; display:flex; flex-direction:column; gap:8px; }
-    .vm-stagecard { flex:1 1 auto; min-height:0; background:#0e1118; border-radius:16px; position:relative; overflow:hidden; box-shadow:0 2px 10px rgba(20,24,40,.10); }
+    .vm-stagecard { flex:1 1 auto; min-height:0; background:#111; border:2px solid #000; position:relative; overflow:hidden; }
     .vm-stage { position:absolute; inset:0; touch-action:none; }
-    .vm-stage video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#0e1118; pointer-events:none; }
+    .vm-stage video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#111; pointer-events:none; }
     .vm-stage canvas.vm-overlay { position:absolute; inset:0; width:100%; height:100%; cursor:crosshair; touch-action:none; }
     .vm-loupe { display:none; position:absolute; width:132px; height:132px; border-radius:50%; border:3px solid #fff; box-shadow:0 4px 16px rgba(0,0,0,.45); overflow:hidden; pointer-events:none; z-index:12; background:#000; }
     .vm-loupe canvas { width:100%; height:100%; display:block; }
 
     /* Pantalla vacía (sin video) */
-    .vm-empty { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#aeb4c8; text-align:center; padding:22px; z-index:5; }
-    .vm-empty .vm-empty-ico { font-size:46px; opacity:.9; }
-    .vm-empty h3 { margin:0; font-size:17px; color:#e8eaf2; font-weight:800; }
-    .vm-empty p { margin:0; font-size:12.5px; max-width:420px; line-height:1.55; }
+    .vm-empty { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#aaa; text-align:center; padding:22px; z-index:5; }
+    .vm-empty h3 { margin:0; font-size:1rem; color:#fff; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+    .vm-empty p { margin:0; font-size:0.76rem; max-width:430px; line-height:1.55; }
     .vm-empty-btns { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
-    .vm-bigbtn { display:flex; align-items:center; gap:8px; background:#7c4dff; border:none; color:#fff; font-size:13px; font-weight:800; padding:12px 18px; border-radius:12px; cursor:pointer; font-family:inherit; box-shadow:0 3px 10px rgba(124,77,255,.4); }
-    .vm-bigbtn:hover { background:#6a3df2; }
-    .vm-bigbtn.alt { background:#fff; color:#3a3f52; box-shadow:0 2px 8px rgba(0,0,0,.25); }
-    .vm-bigbtn.alt:hover { background:#f1edfc; color:#5527c9; }
-    .vm-bigbtn:disabled { opacity:.45; cursor:default; box-shadow:none; }
-    .vm-stage.dragover::after { content:'Soltá el video acá'; position:absolute; inset:10px; border:3px dashed #7c4dff; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#cbb8ff; font-size:17px; font-weight:800; background:rgba(124,77,255,.12); z-index:20; }
+    .vm-bigbtn { background:#fff; border:2px solid #fff; color:#000; font-size:0.74rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:11px 16px; cursor:pointer; font-family:inherit; transition:all .15s; }
+    .vm-bigbtn:hover { background:#111; color:#fff; }
+    .vm-bigbtn.alt { background:none; color:#fff; }
+    .vm-bigbtn.alt:hover { background:#fff; color:#000; }
+    .vm-bigbtn:disabled { opacity:.4; cursor:default; }
+    .vm-stage.dragover::after { content:'Soltá el video acá'; position:absolute; inset:10px; border:3px dashed #fff; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1rem; font-weight:700; letter-spacing:1px; background:rgba(255,255,255,.08); z-index:20; }
 
     /* Barra de herramientas del video */
     .vm-toolrow { flex:0 0 auto; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-    .vm-tool { display:flex; align-items:center; gap:6px; background:#fff; border:1.5px solid #d9dce6; color:#3a3f52; font-size:12px; font-weight:700; padding:8px 12px; border-radius:11px; cursor:pointer; font-family:inherit; white-space:nowrap; }
-    .vm-tool:hover:not(:disabled) { border-color:#7c4dff; color:#5527c9; }
-    .vm-tool.active { background:#7c4dff; border-color:#7c4dff; color:#fff; }
-    .vm-tool:disabled { opacity:.4; cursor:default; }
-    .vm-tool .em { font-size:14px; }
-    .vm-toolrow .sep { width:1px; height:24px; background:#e0e2ec; margin:0 2px; }
+    .vm-toolrow .sep { width:1px; height:22px; background:#ccc; margin:0 3px; }
 
     /* Controles de reproducción */
-    .vm-controls { flex:0 0 auto; display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #e3e5ec; border-radius:14px; padding:8px 12px; box-shadow:0 1px 5px rgba(20,24,40,.06); }
-    .vm-ctrl { width:42px; height:42px; border-radius:11px; border:1.5px solid #d9dce6; background:#fff; color:#232732; font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex:0 0 auto; font-family:inherit; }
-    .vm-ctrl:hover:not(:disabled) { border-color:#7c4dff; color:#5527c9; background:#f7f4ff; }
-    .vm-ctrl:disabled { opacity:.35; cursor:default; }
-    .vm-ctrl.play { background:#7c4dff; border-color:#7c4dff; color:#fff; font-size:15px; }
-    .vm-ctrl.play:hover:not(:disabled) { background:#6a3df2; color:#fff; }
+    .vm-controls { flex:0 0 auto; display:flex; align-items:center; gap:8px; border:2px solid #000; padding:7px 10px; background:#fff; }
+    .vm-ctrl { width:40px; height:40px; border:2px solid #000; background:#fff; color:#000; font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; flex:0 0 auto; font-family:inherit; transition:all .15s; padding:0; }
+    .vm-ctrl:hover:not(:disabled) { background:#000; color:#fff; }
+    .vm-ctrl:disabled { opacity:.3; cursor:not-allowed; }
+    .vm-ctrl.play { background:#000; color:#fff; font-size:0.85rem; }
+    .vm-ctrl.play:hover:not(:disabled) { background:#333; }
     .vm-timeline { flex:1 1 auto; display:flex; flex-direction:column; gap:3px; min-width:80px; }
-    .vm-timeline input[type=range] { width:100%; accent-color:#7c4dff; height:26px; margin:0; cursor:pointer; }
-    .vm-timelabel { font-size:10.5px; color:#8a90a3; font-weight:700; display:flex; justify-content:space-between; font-variant-numeric:tabular-nums; }
-    .vm-fps { display:flex; align-items:center; gap:5px; font-size:11px; color:#6d7285; font-weight:700; flex:0 0 auto; }
-    .vm-fps select { border:1.5px solid #d9dce6; border-radius:9px; padding:6px 5px; font-size:12px; font-family:inherit; color:#232732; background:#fff; outline:none; max-width:82px; }
-    .vm-fps select:focus { border-color:#7c4dff; }
+    .vm-timeline input[type=range] { width:100%; accent-color:#000; height:26px; margin:0; cursor:pointer; }
+    .vm-timelabel { font-size:0.64rem; color:#666; font-weight:600; display:flex; justify-content:space-between; font-variant-numeric:tabular-nums; }
+    .vm-fps { display:flex; align-items:center; gap:5px; font-size:0.66rem; color:#333; font-weight:700; letter-spacing:1px; flex:0 0 auto; }
+    .vm-fps select { border:2px solid #000; padding:5px 4px; font-size:0.74rem; font-family:inherit; color:#000; background:#fff; outline:none; max-width:80px; cursor:pointer; }
 
     /* Panel derecho (Datos) */
-    .vm-right { flex:1 1 38%; max-width:470px; min-width:300px; display:flex; flex-direction:column; background:#fff; border:1px solid #e3e5ec; border-radius:16px; box-shadow:0 2px 10px rgba(20,24,40,.08); overflow:hidden; }
-    .vm-tabs { display:flex; border-bottom:1px solid #e3e5ec; background:#fafbfe; flex:0 0 auto; }
-    .vm-tab { flex:1; border:none; background:none; padding:11px 6px; font-size:12px; font-weight:800; color:#8a90a3; cursor:pointer; font-family:inherit; border-bottom:2.5px solid transparent; }
-    .vm-tab.active { color:#5527c9; border-bottom-color:#7c4dff; background:#fff; }
+    .vm-right { flex:1 1 38%; max-width:470px; min-width:300px; display:flex; flex-direction:column; background:#fff; border:2px solid #000; overflow:hidden; }
+    .vm-tabs { display:flex; border-bottom:2px solid #000; background:#fff; flex:0 0 auto; }
+    .vm-tab { flex:1; border:none; border-right:1px solid #ccc; background:#f5f5f5; padding:10px 6px; font-size:0.68rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#777; cursor:pointer; font-family:inherit; transition:all .15s; }
+    .vm-tab:last-child { border-right:none; }
+    .vm-tab:hover { color:#000; }
+    .vm-tab.active { color:#fff; background:#000; }
     .vm-tabbody { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; display:none; flex-direction:column; }
     .vm-tabbody.active { display:flex; }
 
     /* Gráficas */
-    .vm-chart-chips { display:flex; gap:6px; padding:10px 12px 4px; flex-wrap:wrap; flex:0 0 auto; }
-    .vm-chip { border:1.5px solid #d9dce6; background:#fff; color:#5b6070; border-radius:999px; padding:5px 12px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:inherit; }
-    .vm-chip.active { background:#7c4dff; border-color:#7c4dff; color:#fff; }
+    .vm-chart-chips { display:flex; gap:5px; padding:10px 12px 4px; flex-wrap:wrap; flex:0 0 auto; }
+    .vm-chip { border:1.5px solid #000; background:#fff; color:#000; padding:4px 10px; font-size:0.66rem; font-weight:700; letter-spacing:.5px; cursor:pointer; font-family:inherit; transition:all .15s; }
+    .vm-chip:hover { background:#eee; }
+    .vm-chip.active { background:#000; color:#fff; }
     .vm-chart-wrap { position:relative; flex:1 1 auto; min-height:230px; padding:6px 10px 10px; }
-    .vm-chart-note { font-size:11px; color:#8a90a3; padding:0 14px 10px; line-height:1.5; }
+    .vm-chart-note { font-size:0.66rem; color:#666; padding:0 14px 10px; line-height:1.5; }
 
     /* Tabla */
     .vm-table-wrap { flex:1 1 auto; overflow:auto; padding:0 0 6px; }
-    table.vm-table { width:100%; border-collapse:collapse; font-size:11.5px; font-variant-numeric:tabular-nums; }
-    table.vm-table th { position:sticky; top:0; background:#fafbfe; color:#6d7285; font-size:10.5px; letter-spacing:.4px; text-transform:uppercase; padding:8px 8px; border-bottom:1.5px solid #e3e5ec; text-align:right; white-space:nowrap; z-index:2; }
-    table.vm-table td { padding:6px 8px; border-bottom:1px solid #f0f1f6; text-align:right; color:#3a3f52; white-space:nowrap; }
+    table.vm-table { width:100%; border-collapse:collapse; font-size:0.7rem; font-variant-numeric:tabular-nums; }
+    table.vm-table th { position:sticky; top:0; background:#000; color:#fff; font-size:0.62rem; letter-spacing:.5px; text-transform:uppercase; padding:7px 8px; text-align:right; white-space:nowrap; z-index:2; font-weight:700; }
+    table.vm-table td { padding:6px 8px; border-bottom:1px solid #e0e0e0; text-align:right; color:#000; white-space:nowrap; }
     table.vm-table tr { cursor:pointer; }
-    table.vm-table tr:hover td { background:#f7f4ff; }
-    table.vm-table tr.cur td { background:#f1edfc; font-weight:700; }
-    table.vm-table .vm-del { border:none; background:none; color:#c6cad6; font-size:13px; cursor:pointer; padding:2px 6px; }
-    table.vm-table .vm-del:hover { color:#d81b60; }
-    .vm-table-actions { display:flex; gap:8px; padding:10px 12px; border-top:1px solid #e3e5ec; flex:0 0 auto; flex-wrap:wrap; }
-    .vm-stats { padding:8px 14px 0; font-size:11.5px; color:#5b6070; line-height:1.6; flex:0 0 auto; }
-    .vm-stats b { color:#232732; }
+    table.vm-table tr:hover td { background:#f5f5f5; }
+    table.vm-table tr.cur td { background:#eee; font-weight:700; }
+    table.vm-table .vm-del { border:none; background:none; color:#bbb; font-size:0.78rem; cursor:pointer; padding:2px 6px; font-family:inherit; }
+    table.vm-table .vm-del:hover { color:#c62828; }
+    .vm-table-actions { display:flex; gap:8px; padding:10px 12px; border-top:1px solid #ccc; flex:0 0 auto; flex-wrap:wrap; }
+    .vm-stats { padding:8px 14px 0; font-size:0.7rem; color:#444; line-height:1.6; flex:0 0 auto; }
+    .vm-stats b { color:#000; }
 
     /* micro:bit tab */
     .vm-mb { padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
-    .vm-mb p { margin:0; font-size:12px; color:#5b6070; line-height:1.55; }
+    .vm-mb p { margin:0; font-size:0.74rem; color:#444; line-height:1.55; }
     .vm-field { display:flex; flex-direction:column; gap:4px; }
-    .vm-field label { font-size:10.5px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:#8a90a3; }
-    .vm-field select, .vm-field input { border:1.5px solid #d9dce6; border-radius:10px; padding:8px 10px; font-size:13px; font-family:inherit; color:#232732; background:#fff; outline:none; }
-    .vm-field select:focus, .vm-field input:focus { border-color:#7c4dff; }
+    .vm-field label { font-size:0.62rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666; }
+    .vm-field select, .vm-field input { border:2px solid #000; padding:7px 9px; font-size:0.8rem; font-family:inherit; color:#000; background:#fff; outline:none; }
     .vm-mb-row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
     .vm-mb-row .vm-field { flex:1; min-width:110px; }
-    .vm-mb-status { font-size:11.5px; color:#8a90a3; }
+    .vm-mb-status { font-size:0.7rem; color:#666; }
     .vm-mb-status.ok { color:#2e7d32; }
-    .vm-switch { display:flex; align-items:center; gap:9px; cursor:pointer; user-select:none; font-size:12.5px; font-weight:700; color:#3a3f52; }
-    .vm-switch input { width:38px; height:22px; appearance:none; -webkit-appearance:none; background:#d9dce6; border-radius:999px; position:relative; cursor:pointer; outline:none; transition:background .15s; flex:0 0 auto; margin:0; }
-    .vm-switch input::after { content:''; position:absolute; top:2.5px; left:3px; width:17px; height:17px; border-radius:50%; background:#fff; transition:left .15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
-    .vm-switch input:checked { background:#43a047; }
-    .vm-switch input:checked::after { left:18px; }
+    .vm-check { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-size:0.76rem; font-weight:600; color:#000; }
+    .vm-check input { width:17px; height:17px; accent-color:#000; margin:0; cursor:pointer; flex:0 0 auto; }
 
     /* Diálogo de escala */
-    .vm-dialog { display:none; position:absolute; z-index:30; left:50%; top:50%; transform:translate(-50%,-50%); background:#fff; border-radius:16px; box-shadow:0 8px 30px rgba(10,12,25,.35); padding:16px 18px; width:min(320px, calc(100% - 30px)); box-sizing:border-box; }
+    .vm-dialog { display:none; position:absolute; z-index:30; left:50%; top:50%; transform:translate(-50%,-50%); background:#fff; border:2px solid #000; box-shadow:0 8px 30px rgba(0,0,0,.4); padding:16px 18px; width:min(320px, calc(100% - 30px)); box-sizing:border-box; }
     .vm-dialog.open { display:block; }
-    .vm-dialog h4 { margin:0 0 4px; font-size:14px; font-weight:800; color:#232732; }
-    .vm-dialog p { margin:0 0 10px; font-size:12px; color:#6d7285; line-height:1.5; }
+    .vm-dialog h4 { margin:0 0 4px; font-size:0.8rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#000; }
+    .vm-dialog p { margin:0 0 10px; font-size:0.74rem; color:#555; line-height:1.5; }
     .vm-dialog .row { display:flex; gap:8px; align-items:center; }
-    .vm-dialog input { flex:1; min-width:0; border:1.5px solid #d9dce6; border-radius:10px; padding:10px 12px; font-size:15px; font-family:inherit; outline:none; }
-    .vm-dialog input:focus { border-color:#7c4dff; }
-    .vm-dialog .unit { font-size:13px; font-weight:800; color:#6d7285; }
+    .vm-dialog input { flex:1; min-width:0; border:2px solid #000; padding:9px 11px; font-size:1rem; font-family:inherit; outline:none; }
+    .vm-dialog .unit { font-size:0.78rem; font-weight:700; color:#333; }
     .vm-dialog .btns { display:flex; gap:8px; margin-top:12px; justify-content:flex-end; }
 
     /* Ayuda */
-    .vm-helpbox { display:none; position:absolute; inset:0; z-index:40; background:rgba(18,20,30,.55); align-items:flex-start; justify-content:center; overflow-y:auto; padding:26px 14px; box-sizing:border-box; -webkit-overflow-scrolling:touch; }
+    .vm-helpbox { display:none; position:absolute; inset:0; z-index:40; background:rgba(0,0,0,.55); align-items:flex-start; justify-content:center; overflow-y:auto; padding:26px 14px; box-sizing:border-box; -webkit-overflow-scrolling:touch; }
     .vm-helpbox.open { display:flex; }
-    .vm-help-card { background:#fff; border-radius:18px; width:100%; max-width:640px; margin-bottom:26px; overflow:hidden; box-shadow:0 10px 40px rgba(10,12,25,.4); }
-    .vm-help-head { display:flex; align-items:center; justify-content:space-between; background:linear-gradient(135deg,#7c4dff,#d81b60); padding:14px 18px; color:#fff; }
-    .vm-help-head h3 { margin:0; font-size:15px; font-weight:800; }
-    .vm-help-head button { background:rgba(255,255,255,.2); border:none; color:#fff; font-size:15px; padding:6px 11px; border-radius:9px; cursor:pointer; }
-    .vm-help-body { padding:16px 20px 20px; font-size:13px; color:#3a3f52; line-height:1.65; }
-    .vm-help-body h4 { font-size:12px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:#7c4dff; margin:16px 0 6px; }
+    .vm-help-card { background:#fff; border:2px solid #000; width:100%; max-width:640px; margin-bottom:26px; overflow:hidden; }
+    .vm-help-head { display:flex; align-items:center; justify-content:space-between; background:#000; padding:12px 16px; color:#fff; }
+    .vm-help-head h3 { margin:0; font-size:0.82rem; font-weight:700; letter-spacing:2px; text-transform:uppercase; }
+    .vm-help-head button { background:none; border:2px solid #fff; color:#fff; font-size:0.85rem; padding:4px 10px; cursor:pointer; font-family:inherit; }
+    .vm-help-head button:hover { background:#fff; color:#000; }
+    .vm-help-body { padding:16px 20px 20px; font-size:0.78rem; color:#222; line-height:1.65; }
+    .vm-help-body h4 { font-size:0.68rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:#000; border-bottom:1px solid #ccc; padding-bottom:4px; margin:16px 0 6px; }
     .vm-help-body h4:first-child { margin-top:0; }
     .vm-help-body ul, .vm-help-body ol { margin:4px 0 8px; padding-left:20px; }
     .vm-help-body li { margin-bottom:5px; }
-    .vm-help-body kbd { background:#f0f1f6; border:1px solid #d9dce6; border-radius:5px; padding:1px 6px; font-size:11.5px; font-family:Consolas, Menlo, monospace; }
+    .vm-help-body kbd { background:#f0f0f0; border:1px solid #999; padding:1px 6px; font-size:0.7rem; font-family:Consolas, Menlo, monospace; }
 
     /* Responsive: tablet y celular */
     @media (max-width: 980px) {
@@ -31160,35 +31151,31 @@ bluetooth.startIOPinService()</pre>
         .vm-right { max-width:none; min-width:0; flex:0 0 auto; height:auto; }
         .vm-tabbody { max-height:60vh; }
         .vm-chart-wrap { min-height:250px; height:250px; flex:0 0 auto; }
-        .vm-logo small { display:none; }
+        .vm-title small { display:none; }
     }
     @media (max-width: 640px) {
         .vm-topbar { padding:7px 10px; gap:7px; }
-        .vm-logo h2 { font-size:12.5px; }
-        .vm-top-btn { padding:8px 10px; font-size:11px; }
+        .vm-title h2 { font-size:0.72rem; letter-spacing:1px; }
         .vm-body { padding:6px 8px 8px; }
+        .vm-guide { margin:6px 8px 0; }
         .vm-stagecard { height:46vh; min-height:220px; }
         .vm-controls { padding:6px 8px; gap:6px; flex-wrap:wrap; }
-        .vm-ctrl { width:46px; height:46px; }
+        .vm-ctrl { width:44px; height:44px; }
         .vm-fps { order:5; }
         .vm-timeline { min-width:100%; order:4; }
-        .vm-tool { padding:9px 11px; }
-        .vm-guide { margin:6px 8px 0; font-size:12px; }
+        .vm-btn { padding:8px 9px; }
     }
     </style>
 
     <div id="vm-panel" class="vm-panel" aria-hidden="true">
         <div class="vm-topbar">
-            <div class="vm-logo">
-                <div class="vm-ico">🎬</div>
-                <div>
-                    <h2>Análisis de video + movimiento</h2>
-                    <small>Marcá el objeto cuadro a cuadro y obtené las gráficas del movimiento</small>
-                </div>
+            <div class="vm-title">
+                <h2>Análisis de video + movimiento</h2>
+                <small>Marcá el objeto cuadro a cuadro y obtené las gráficas del movimiento</small>
             </div>
             <span class="vm-top-spacer"></span>
-            <button id="vm-help-btn" class="vm-top-btn">Ayuda</button>
-            <button id="vm-close" class="vm-close" title="Volver al sitio (tu trabajo queda abierto)">✕</button>
+            <button id="vm-help-btn" class="vm-btn">Ayuda</button>
+            <button id="vm-close" class="vm-btn" title="Volver al sitio (tu trabajo queda abierto)">✕</button>
         </div>
 
         <div class="vm-steps" id="vm-steps">
@@ -31198,21 +31185,21 @@ bluetooth.startIOPinService()</pre>
             <button class="vm-step" data-step="4" id="vm-step4"><span class="vm-step-n"><span>4</span></span>Analizar</button>
         </div>
 
-        <div class="vm-guide" id="vm-guide"><span class="vm-guide-ico" id="vm-guide-ico">👋</span><span id="vm-guide-txt">Cargá un video para empezar.</span></div>
+        <div class="vm-guide" id="vm-guide"><span id="vm-guide-txt">Cargá un video para empezar.</span></div>
 
         <div class="vm-body">
             <div class="vm-left">
                 <div class="vm-toolrow" id="vm-toolrow">
-                    <button class="vm-tool" id="vm-load-btn" title="Elegir un video guardado en este equipo"><span class="em">📂</span>Abrir video</button>
-                    <button class="vm-tool" id="vm-record-btn" title="Grabar un video nuevo con la cámara"><span class="em">📸</span>Grabar</button>
-                    <button class="vm-tool" id="vm-use-site-video" title="Usar el último video grabado con el botón CÁMARA del sitio" disabled><span class="em">🎥</span>Video del sitio</button>
+                    <button class="vm-btn" id="vm-load-btn" title="Elegir un video guardado en este equipo">Abrir video</button>
+                    <button class="vm-btn" id="vm-record-btn" title="Grabar un video nuevo con la cámara">Grabar</button>
+                    <button class="vm-btn" id="vm-use-site-video" title="Usar el último video grabado con el botón CÁMARA del sitio" disabled>Video del sitio</button>
                     <span class="sep"></span>
-                    <button class="vm-tool" id="vm-tool-scale" disabled title="Tocá dos puntos de un objeto de longitud conocida"><span class="em">📏</span>Escala</button>
-                    <button class="vm-tool" id="vm-tool-origin" disabled title="Tocá el punto que será el origen (0, 0)"><span class="em">🎯</span>Origen</button>
-                    <button class="vm-tool active" id="vm-tool-mark" disabled title="Tocá el objeto en cada cuadro para registrar su posición"><span class="em">📍</span>Marcar</button>
+                    <button class="vm-btn" id="vm-tool-scale" disabled title="Tocá dos puntos de un objeto de longitud conocida">Escala</button>
+                    <button class="vm-btn" id="vm-tool-origin" disabled title="Tocá el punto que será el origen (0, 0)">Origen</button>
+                    <button class="vm-btn active" id="vm-tool-mark" disabled title="Tocá el objeto en cada cuadro para registrar su posición">Marcar</button>
                     <span class="sep"></span>
-                    <button class="vm-tool" id="vm-undo" disabled title="Borrar el último punto marcado"><span class="em">↩</span>Deshacer</button>
-                    <button class="vm-tool" id="vm-clear-pts" disabled title="Borrar todos los puntos marcados"><span class="em">🗑</span>Borrar todo</button>
+                    <button class="vm-btn" id="vm-undo" disabled title="Borrar el último punto marcado">Deshacer</button>
+                    <button class="vm-btn" id="vm-clear-pts" disabled title="Borrar todos los puntos marcados">Borrar todo</button>
                 </div>
 
                 <div class="vm-stagecard">
@@ -31221,37 +31208,36 @@ bluetooth.startIOPinService()</pre>
                         <canvas class="vm-overlay" id="vm-overlay"></canvas>
                         <div class="vm-loupe" id="vm-loupe"><canvas id="vm-loupe-canvas" width="264" height="264"></canvas></div>
                         <div class="vm-empty" id="vm-empty">
-                            <div class="vm-empty-ico">🎬</div>
                             <h3>Empezá con un video de tu experimento</h3>
                             <p>Filmá el movimiento con la cámara fija y algo de longitud conocida en la escena (una regla, una mesa…). Después vas a marcar el objeto cuadro a cuadro y las gráficas se arman solas.</p>
                             <div class="vm-empty-btns">
-                                <button class="vm-bigbtn" id="vm-empty-load">📂 Elegir video</button>
-                                <button class="vm-bigbtn alt" id="vm-empty-record">📸 Grabar ahora</button>
-                                <button class="vm-bigbtn alt" id="vm-empty-site" style="display:none;">🎥 Usar video del sitio</button>
+                                <button class="vm-bigbtn" id="vm-empty-load">Elegir video</button>
+                                <button class="vm-bigbtn alt" id="vm-empty-record">Grabar ahora</button>
+                                <button class="vm-bigbtn alt" id="vm-empty-site" style="display:none;">Usar video del sitio</button>
                             </div>
-                            <p style="font-size:11px; opacity:.75;">También podés arrastrar y soltar un video acá. Todo queda en tu equipo.</p>
+                            <p style="font-size:0.66rem; opacity:.75;">También podés arrastrar y soltar un video acá. Todo queda en tu equipo.</p>
                         </div>
                         <div class="vm-dialog" id="vm-scale-dialog">
-                            <h4>📏 Calibrar la escala</h4>
+                            <h4>Calibrar la escala</h4>
                             <p>¿Cuánto mide en la realidad la distancia que marcaste?</p>
                             <div class="row">
                                 <input type="number" id="vm-scale-len" inputmode="decimal" step="any" min="0" placeholder="Ej: 0.5">
                                 <span class="unit">metros</span>
                             </div>
                             <div class="btns">
-                                <button class="vm-top-btn" id="vm-scale-cancel">Cancelar</button>
-                                <button class="vm-bigbtn" id="vm-scale-ok" style="padding:9px 16px;">Aceptar</button>
+                                <button class="vm-btn" id="vm-scale-cancel">Cancelar</button>
+                                <button class="vm-btn primary" id="vm-scale-ok">Aceptar</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="vm-controls">
-                    <button class="vm-ctrl" id="vm-back10" disabled title="Retroceder 10 cuadros">⏮</button>
+                    <button class="vm-ctrl" id="vm-back10" disabled title="Retroceder 10 cuadros">«</button>
                     <button class="vm-ctrl" id="vm-back1" disabled title="Cuadro anterior (←)">⟨</button>
-                    <button class="vm-ctrl play" id="vm-play" disabled title="Reproducir / pausar (espacio)">▶</button>
+                    <button class="vm-ctrl play" id="vm-play" disabled title="Reproducir / pausar (espacio)">▶︎</button>
                     <button class="vm-ctrl" id="vm-fwd1" disabled title="Cuadro siguiente (→)">⟩</button>
-                    <button class="vm-ctrl" id="vm-fwd10" disabled title="Avanzar 10 cuadros">⏭</button>
+                    <button class="vm-ctrl" id="vm-fwd10" disabled title="Avanzar 10 cuadros">»</button>
                     <div class="vm-timeline">
                         <input type="range" id="vm-slider" min="0" max="0" step="0.001" value="0" disabled>
                         <div class="vm-timelabel"><span id="vm-time-cur">0.000 s</span><span id="vm-frame-cur">cuadro 0</span><span id="vm-time-dur">0.000 s</span></div>
@@ -31273,9 +31259,9 @@ bluetooth.startIOPinService()</pre>
 
             <div class="vm-right">
                 <div class="vm-tabs">
-                    <button class="vm-tab active" data-tab="graficas" id="vm-tab-graficas">📈 Gráficas</button>
-                    <button class="vm-tab" data-tab="tabla" id="vm-tab-tabla">🔢 Tabla</button>
-                    <button class="vm-tab" data-tab="microbit" id="vm-tab-microbit">📡 micro:bit</button>
+                    <button class="vm-tab active" data-tab="graficas" id="vm-tab-graficas">Gráficas</button>
+                    <button class="vm-tab" data-tab="tabla" id="vm-tab-tabla">Tabla</button>
+                    <button class="vm-tab" data-tab="microbit" id="vm-tab-microbit">micro:bit</button>
                 </div>
 
                 <div class="vm-tabbody active" id="vm-body-graficas">
@@ -31300,15 +31286,15 @@ bluetooth.startIOPinService()</pre>
                         </table>
                     </div>
                     <div class="vm-table-actions">
-                        <button class="vm-tool" id="vm-export-csv" disabled><span class="em">⬇</span>Exportar CSV</button>
-                        <button class="vm-tool" id="vm-copy-table" disabled><span class="em">📋</span>Copiar tabla</button>
+                        <button class="vm-btn" id="vm-export-csv" disabled>Exportar CSV</button>
+                        <button class="vm-btn" id="vm-copy-table" disabled>Copiar tabla</button>
                     </div>
                 </div>
 
                 <div class="vm-tabbody" id="vm-body-microbit">
                     <div class="vm-mb">
                         <p>Superponé lo que midió la <b>micro:bit</b> (capturado en la pantalla principal) sobre las gráficas de tiempo del video, para comparar ambas mediciones.</p>
-                        <label class="vm-switch"><input type="checkbox" id="vm-mb-on"><span>Mostrar datos de la micro:bit en las gráficas</span></label>
+                        <label class="vm-check"><input type="checkbox" id="vm-mb-on"><span>Mostrar datos de la micro:bit en las gráficas</span></label>
                         <div class="vm-mb-row">
                             <div class="vm-field">
                                 <label for="vm-mb-var">Variable</label>
@@ -31320,11 +31306,11 @@ bluetooth.startIOPinService()</pre>
                             </div>
                         </div>
                         <div class="vm-mb-row">
-                            <button class="vm-tool" id="vm-mb-refresh"><span class="em">🔄</span>Actualizar datos</button>
-                            <button class="vm-tool" id="vm-mb-sync" title="Si el video se grabó con el botón CÁMARA del sitio durante la captura, alinea los tiempos automáticamente" disabled><span class="em">⚡</span>Sincronizar auto</button>
+                            <button class="vm-btn" id="vm-mb-refresh">Actualizar datos</button>
+                            <button class="vm-btn" id="vm-mb-sync" title="Si el video se grabó con el botón CÁMARA del sitio durante la captura, alinea los tiempos automáticamente" disabled>Sincronizar auto</button>
                         </div>
                         <div class="vm-mb-status" id="vm-mb-status">Sin datos capturados todavía.</div>
-                        <p style="font-size:11px; color:#8a90a3;">La curva de la micro:bit usa su propio eje (a la derecha de la gráfica), así se pueden comparar magnitudes distintas, por ejemplo posición del video con aceleración del sensor.</p>
+                        <p style="font-size:0.66rem; color:#666;">La curva de la micro:bit usa su propio eje (a la derecha de la gráfica), así se pueden comparar magnitudes distintas, por ejemplo posición del video con aceleración del sensor.</p>
                     </div>
                 </div>
             </div>
@@ -31333,7 +31319,7 @@ bluetooth.startIOPinService()</pre>
         <div class="vm-helpbox" id="vm-helpbox">
             <div class="vm-help-card">
                 <div class="vm-help-head">
-                    <h3>🎬 Cómo analizar un movimiento con video</h3>
+                    <h3>Cómo analizar un movimiento con video</h3>
                     <button id="vm-help-close">✕</button>
                 </div>
                 <div class="vm-help-body">
@@ -31348,21 +31334,21 @@ bluetooth.startIOPinService()</pre>
                     </ul>
                     <h4>2 · Calibrá la escala</h4>
                     <ul>
-                        <li>Tocá <b>📏 Escala</b> y marcá los dos extremos del objeto de longitud conocida; después escribí cuánto mide en metros.</li>
-                        <li>Con <b>🎯 Origen</b> elegí el punto que será el (0, 0). El eje x apunta a la derecha y el eje y hacia arriba.</li>
+                        <li>Tocá <b>Escala</b> y marcá los dos extremos del objeto de longitud conocida; después escribí cuánto mide en metros.</li>
+                        <li>Con <b>Origen</b> elegí el punto que será el (0, 0). El eje x apunta a la derecha y el eje y hacia arriba.</li>
                     </ul>
                     <h4>3 · Marcá el objeto cuadro a cuadro</h4>
                     <ul>
-                        <li>Con la herramienta <b>📍 Marcar</b> activa, tocá el objeto: el punto queda registrado y el video <b>avanza solo</b> al cuadro siguiente.</li>
+                        <li>Con la herramienta <b>Marcar</b> activa, tocá el objeto: el punto queda registrado y el video <b>avanza solo</b> al cuadro siguiente.</li>
                         <li>En pantallas táctiles, mantené el dedo apoyado y aparece una <b>lupa</b> para apuntar fino; al soltar se marca el punto.</li>
-                        <li>¿Le erraste? <b>↩ Deshacer</b> borra el último punto. Si marcás dos veces el mismo cuadro, el punto se reemplaza.</li>
+                        <li>¿Le erraste? <b>Deshacer</b> borra el último punto. Si marcás dos veces el mismo cuadro, el punto se reemplaza.</li>
                         <li>Con el teclado: <kbd>←</kbd> y <kbd>→</kbd> mueven un cuadro, <kbd>espacio</kbd> reproduce o pausa.</li>
                     </ul>
                     <h4>4 · Analizá</h4>
                     <ul>
-                        <li>En <b>📈 Gráficas</b> elegí qué ver: x(t), y(t), velocidades, rapidez o la trayectoria. Tocá un punto de la gráfica para saltar a ese instante del video.</li>
-                        <li>En <b>🔢 Tabla</b> están todos los valores; podés exportarlos a CSV o copiarlos para pegar en una planilla.</li>
-                        <li>En <b>📡 micro:bit</b> superponés los datos del sensor sobre las gráficas de tiempo y ajustás el Δt hasta que coincidan. Si el video es del botón CÁMARA del sitio, <b>⚡ Sincronizar auto</b> alinea los tiempos por vos.</li>
+                        <li>En <b>Gráficas</b> elegí qué ver: x(t), y(t), velocidades, rapidez o la trayectoria. Tocá un punto de la gráfica para saltar a ese instante del video.</li>
+                        <li>En <b>Tabla</b> están todos los valores; podés exportarlos a CSV o copiarlos para pegar en una planilla.</li>
+                        <li>En <b>micro:bit</b> superponés los datos del sensor sobre las gráficas de tiempo y ajustás el Δt hasta que coincidan. Si el video es del botón CÁMARA del sitio, <b>Sincronizar auto</b> alinea los tiempos por vos.</li>
                     </ul>
                     <h4>Consejos</h4>
                     <ul>
@@ -31414,8 +31400,7 @@ bluetooth.startIOPinService()</pre>
         return d > 0 ? scaleLen / d : null;
     }
 
-    function setGuide(icon, html, ok) {
-        el('vm-guide-ico').textContent = icon;
+    function setGuide(html, ok) {
         el('vm-guide-txt').innerHTML = html;
         el('vm-guide').className = 'vm-guide' + (ok ? ' ok' : '');
     }
@@ -31431,13 +31416,13 @@ bluetooth.startIOPinService()</pre>
             e.className = 'vm-step' + (doneFlags[i] ? ' done' : '') + (i === active ? ' active' : '');
         });
         if (!s1) {
-            setGuide('👋', 'Cargá un video para empezar: <b>📂 Abrir video</b>, <b>📸 Grabar</b>, o arrastralo sobre la pantalla.');
+            setGuide('Cargá un video para empezar: <b>ABRIR VIDEO</b>, <b>GRABAR</b>, o arrastralo sobre la pantalla.');
         } else if (!s2) {
-            setGuide('📏', 'Calibrá la escala: tocá <b>📏 Escala</b> y marcá los dos extremos de algo de longitud conocida (una regla, una mesa…).');
+            setGuide('Calibrá la escala: tocá <b>ESCALA</b> y marcá los dos extremos de algo de longitud conocida (una regla, una mesa…).');
         } else if (!s3) {
-            setGuide('📍', 'Con <b>📍 Marcar</b> activo, tocá el objeto en el video: se registra el punto y avanza solo al cuadro siguiente. En táctil, mantené apretado y aparece la lupa.');
+            setGuide('Con <b>MARCAR</b> activo, tocá el objeto en el video: se registra el punto y avanza solo al cuadro siguiente. En táctil, mantené apretado y aparece la lupa.');
         } else {
-            setGuide('📈', '¡Muy bien! Ya hay <b>' + points.length + ' puntos</b>. Seguí marcando o mirá <b>Gráficas</b> y <b>Tabla</b>. Podés superponer la <b>micro:bit</b> desde su pestaña.', true);
+            setGuide('Ya hay <b>' + points.length + ' puntos</b>. Seguí marcando o mirá <b>Gráficas</b> y <b>Tabla</b>. Podés superponer la <b>micro:bit</b> desde su pestaña.', true);
         }
         var enable = hasVideo;
         ['vm-tool-scale', 'vm-tool-origin', 'vm-tool-mark'].forEach(function (id) { el(id).disabled = !enable; });
@@ -31468,7 +31453,7 @@ bluetooth.startIOPinService()</pre>
         video.src = videoURL;
         video.load();
         el('vm-empty').style.display = 'none';
-        setGuide('⏳', 'Cargando el video…');
+        setGuide('Cargando el video…');
     }
 
     function fixDurationThen(cb) {
@@ -31552,7 +31537,7 @@ bluetooth.startIOPinService()</pre>
     function pauseVideo() {
         playing = false;
         if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-        el('vm-play').textContent = '▶';
+        el('vm-play').textContent = '\u25b6\ufe0e';
         if (!video.paused) video.pause();
     }
 
@@ -31653,11 +31638,11 @@ bluetooth.startIOPinService()</pre>
             var c = videoToCss(p.u, p.v);
             var isCur = Math.abs(p.t - t) <= half;
             if (isCur) {
-                octx.strokeStyle = '#ff1744'; octx.lineWidth = 2;
+                octx.strokeStyle = '#d32f2f'; octx.lineWidth = 2;
                 octx.beginPath(); octx.arc(c.x, c.y, 9, 0, Math.PI * 2); octx.stroke();
-                drawX(c.x, c.y, '#ff1744');
+                drawX(c.x, c.y, '#d32f2f');
             } else {
-                octx.fillStyle = p.t < t ? 'rgba(255,23,68,.85)' : 'rgba(255,23,68,.35)';
+                octx.fillStyle = p.t < t ? 'rgba(211,47,47,.85)' : 'rgba(211,47,47,.35)';
                 octx.beginPath(); octx.arc(c.x, c.y, 3.4, 0, Math.PI * 2); octx.fill();
             }
         }
@@ -31672,7 +31657,7 @@ bluetooth.startIOPinService()</pre>
     function drawLabel(txt, x, y, color) {
         octx.font = '700 12px sans-serif';
         var w = octx.measureText(txt).width;
-        octx.fillStyle = 'rgba(10,12,20,.75)';
+        octx.fillStyle = 'rgba(0,0,0,.75)';
         octx.fillRect(x - w / 2 - 5, y - 13, w + 10, 18);
         octx.fillStyle = color;
         octx.fillText(txt, x - w / 2, y);
@@ -31697,7 +31682,7 @@ bluetooth.startIOPinService()</pre>
         try {
             g.drawImage(video, vc.u - srcW / 2, vc.v - srcW / 2, srcW, srcW, 0, 0, lc.width, lc.height);
         } catch (e) {}
-        g.strokeStyle = '#ff1744'; g.lineWidth = 2.5;
+        g.strokeStyle = '#d32f2f'; g.lineWidth = 2.5;
         var m = lc.width / 2;
         g.beginPath();
         g.moveTo(m - 16, m); g.lineTo(m + 16, m);
@@ -31714,9 +31699,9 @@ bluetooth.startIOPinService()</pre>
         });
         if (t === 'scale') {
             scalePts = [];
-            setGuide('📏', 'Tocá el <b>primer extremo</b> del objeto de longitud conocida.');
+            setGuide('Tocá el <b>primer extremo</b> del objeto de longitud conocida.');
         } else if (t === 'origin') {
-            setGuide('🎯', 'Tocá el punto del video que será el <b>origen (0, 0)</b>.');
+            setGuide('Tocá el punto del video que será el <b>origen (0, 0)</b>.');
         } else {
             refreshSteps();
         }
@@ -31728,7 +31713,7 @@ bluetooth.startIOPinService()</pre>
             scalePts.push({ u: vc.u, v: vc.v });
             drawOverlay();
             if (scalePts.length === 1) {
-                setGuide('📏', 'Ahora tocá el <b>otro extremo</b>.');
+                setGuide('Ahora tocá el <b>otro extremo</b>.');
             } else {
                 var dlg = el('vm-scale-dialog');
                 dlg.classList.add('open');
@@ -31741,7 +31726,7 @@ bluetooth.startIOPinService()</pre>
         if (tool === 'origin') {
             origin = { u: vc.u, v: vc.v };
             setTool('mark');
-            setGuide('🎯', 'Origen definido. Ya podés <b>marcar el objeto</b> cuadro a cuadro.', true);
+            setGuide('Origen definido. Ya podés <b>marcar el objeto</b> cuadro a cuadro.', true);
             recomputeAll();
             return;
         }
@@ -31819,7 +31804,7 @@ bluetooth.startIOPinService()</pre>
             var T = ser[ser.length - 1].t - ser[0].t;
             st.innerHTML = '<b>' + ser.length + '</b> puntos · duración <b>' + fmtT(T) + ' s</b> · recorrido <b>' +
                 fmtN(dist) + ' m</b> · rapidez media <b>' + fmtN(T > 0 ? dist / T : NaN) + ' m/s</b>' +
-                (metersPerPixel() ? '' : ' · <span style="color:#d81b60;">⚠ sin escala: valores en píxeles</span>');
+                (metersPerPixel() ? '' : ' · <span style="color:#c62828;">sin escala: valores en píxeles</span>');
         } else {
             st.textContent = '';
         }
@@ -31887,7 +31872,7 @@ bluetooth.startIOPinService()</pre>
         el('vm-mb-on').checked = true;
         mbOn = true;
         updateChart();
-        setGuide('⚡', 'micro:bit sincronizada con el video del sitio (Δt = ' + fmtT(dt) + ' s). Ajustá Δt a mano si hace falta.', true);
+        setGuide('micro:bit sincronizada con el video del sitio (Δt = ' + fmtT(dt) + ' s). Ajustá Δt a mano si hace falta.', true);
     }
 
     /* ================= Gráficas ================= */
@@ -31912,11 +31897,12 @@ bluetooth.startIOPinService()</pre>
             label: 'Video · ' + def.label + (noScale ? ' [píxeles]' : ''),
             data: data,
             showLine: true,
-            borderColor: '#7c4dff',
-            backgroundColor: '#7c4dff',
+            borderColor: '#d32f2f',
+            backgroundColor: '#d32f2f',
+            pointStyle: 'rectRot',
             pointRadius: 4,
             pointHoverRadius: 6,
-            borderWidth: 2,
+            borderWidth: 1.6,
             tension: 0,
             yAxisID: 'y'
         }];
@@ -31930,8 +31916,8 @@ bluetooth.startIOPinService()</pre>
                     label: 'micro:bit · ' + (mbSel.options.length ? mbSel.options[mbSel.selectedIndex].textContent : ''),
                     data: s,
                     showLine: true,
-                    borderColor: '#1e88e5',
-                    backgroundColor: '#1e88e5',
+                    borderColor: '#1565c0',
+                    backgroundColor: '#1565c0',
                     pointRadius: 0,
                     borderWidth: 1.6,
                     tension: 0,
@@ -31949,12 +31935,12 @@ bluetooth.startIOPinService()</pre>
                     maintainAspectRatio: false,
                     animation: false,
                     scales: {
-                        x: { title: { display: true, text: '', color: '#6d7285', font: { weight: '700' } }, ticks: { color: '#8a90a3' }, grid: { color: '#eceef4' } },
-                        y: { title: { display: true, text: '', color: '#6d7285', font: { weight: '700' } }, ticks: { color: '#8a90a3' }, grid: { color: '#eceef4' } },
-                        yMB: { position: 'right', display: false, title: { display: true, text: 'micro:bit', color: '#1e88e5', font: { weight: '700' } }, ticks: { color: '#1e88e5' }, grid: { drawOnChartArea: false } }
+                        x: { title: { display: true, text: '', color: '#333', font: { weight: '700' } }, ticks: { color: '#555' }, grid: { color: '#e8e8e8' } },
+                        y: { title: { display: true, text: '', color: '#333', font: { weight: '700' } }, ticks: { color: '#555' }, grid: { color: '#e8e8e8' } },
+                        yMB: { position: 'right', display: false, title: { display: true, text: 'micro:bit', color: '#1565c0', font: { weight: '700' } }, ticks: { color: '#1565c0' }, grid: { drawOnChartArea: false } }
                     },
                     plugins: {
-                        legend: { labels: { color: '#3a3f52', boxWidth: 14, font: { weight: '700', size: 11 } } },
+                        legend: { labels: { color: '#000', boxWidth: 14, font: { weight: '600', size: 11 } } },
                         tooltip: { mode: 'nearest', intersect: false }
                     },
                     onClick: onChartClick
@@ -32033,9 +32019,9 @@ bluetooth.startIOPinService()</pre>
         var txt = buildCsv('\t');
         var done = function () {
             var b = el('vm-copy-table');
-            var old = b.innerHTML;
-            b.innerHTML = '<span class="em">✓</span>¡Copiada!';
-            setTimeout(function () { b.innerHTML = old; }, 1400);
+            var old = b.textContent;
+            b.textContent = '¡Copiada!';
+            setTimeout(function () { b.textContent = old; }, 1400);
         };
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(txt).then(done).catch(function () {});
@@ -32110,7 +32096,7 @@ bluetooth.startIOPinService()</pre>
         el('vm-capture-input').addEventListener('change', onFileChosen);
         function useSiteVideo() {
             var blob = (typeof state !== 'undefined') && state.videoBlob;
-            if (!blob) { setGuide('🎥', 'Todavía no hay video grabado con el botón <b>CÁMARA</b> del sitio.'); return; }
+            if (!blob) { setGuide('Todavía no hay video grabado con el botón <b>CÁMARA</b> del sitio.'); return; }
             loadVideoBlob(blob, true);
         }
         el('vm-use-site-video').addEventListener('click', useSiteVideo);
@@ -32136,7 +32122,7 @@ bluetooth.startIOPinService()</pre>
         video.addEventListener('error', function () {
             if (!opened) return;
             el('vm-empty').style.display = '';
-            setGuide('⚠️', 'No se pudo reproducir ese video. Probá con otro formato (MP4 suele funcionar en todos lados).');
+            setGuide('No se pudo reproducir ese video. Probá con otro formato (MP4 suele funcionar en todos lados).');
         });
 
         // Controles
@@ -32161,7 +32147,6 @@ bluetooth.startIOPinService()</pre>
         el('vm-tool-origin').addEventListener('click', function () { setTool('origin'); });
         el('vm-undo').addEventListener('click', function () {
             if (!points.length) return;
-            // Borrar el último punto en el tiempo más cercano al cuadro actual, o el último de todos.
             points.pop();
             drawOverlay();
             recomputeAll();
@@ -32180,7 +32165,7 @@ bluetooth.startIOPinService()</pre>
             scaleLen = v;
             el('vm-scale-dialog').classList.remove('open');
             setTool('mark');
-            setGuide('✅', 'Escala calibrada: ese segmento mide <b>' + v + ' m</b>. Ahora marcá el objeto cuadro a cuadro (opcional: definí el <b>🎯 Origen</b>).', true);
+            setGuide('Escala calibrada: ese segmento mide <b>' + v + ' m</b>. Ahora marcá el objeto cuadro a cuadro (opcional: definí el <b>ORIGEN</b>).', true);
             recomputeAll();
         });
         el('vm-scale-len').addEventListener('keydown', function (e) {
@@ -32292,6 +32277,7 @@ bluetooth.startIOPinService()</pre>
     })();
     /* ===== ANÁLISIS DE VIDEO + MOVIMIENTO MODULE END ===== */
     </script>
+
 
 </body>
 </html>
