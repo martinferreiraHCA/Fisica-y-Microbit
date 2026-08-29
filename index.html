@@ -31197,6 +31197,7 @@ bluetooth.startIOPinService()</pre>
                     <button class="vm-btn" id="vm-tool-scale" disabled title="Tocá dos puntos de un objeto de longitud conocida">Escala</button>
                     <button class="vm-btn" id="vm-tool-origin" disabled title="Tocá el punto que será el origen (0, 0)">Origen</button>
                     <button class="vm-btn active" id="vm-tool-mark" disabled title="Tocá el objeto en cada cuadro para registrar su posición">Marcar</button>
+                    <button class="vm-btn" id="vm-tool-auto" disabled title="Seguir automáticamente un color: tocá el objeto y el sistema lo busca cuadro a cuadro">Auto</button>
                     <span class="sep"></span>
                     <button class="vm-btn" id="vm-undo" disabled title="Borrar el último punto marcado">Deshacer</button>
                     <button class="vm-btn" id="vm-clear-pts" disabled title="Borrar todos los puntos marcados">Borrar todo</button>
@@ -31227,6 +31228,21 @@ bluetooth.startIOPinService()</pre>
                             <div class="btns">
                                 <button class="vm-btn" id="vm-scale-cancel">Cancelar</button>
                                 <button class="vm-btn primary" id="vm-scale-ok">Aceptar</button>
+                            </div>
+                        </div>
+                        <div class="vm-dialog" id="vm-auto-dialog">
+                            <h4>Seguimiento automático</h4>
+                            <p>Se va a buscar este color cuadro a cuadro, desde el instante actual hasta el final del video (o hasta que lo pierda).</p>
+                            <div class="row" style="align-items:center;">
+                                <span id="vm-auto-swatch" style="width:36px; height:36px; border:2px solid #000; flex:0 0 auto;"></span>
+                                <label style="flex:1; min-width:0; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Sensibilidad
+                                    <input type="range" id="vm-auto-tol" min="30" max="150" value="80" style="width:100%; accent-color:#000; margin-top:4px;">
+                                </label>
+                            </div>
+                            <p style="margin-top:8px;">Funciona mejor con un objeto de color vivo, distinto del fondo. Si lo pierde, marcá ese cuadro a mano y volvé a tocar <b>AUTO</b> para continuar.</p>
+                            <div class="btns">
+                                <button class="vm-btn" id="vm-auto-cancel">Cancelar</button>
+                                <button class="vm-btn primary" id="vm-auto-go">Iniciar</button>
                             </div>
                         </div>
                     </div>
@@ -31340,7 +31356,8 @@ bluetooth.startIOPinService()</pre>
                     <h4>3 · Marcá el objeto cuadro a cuadro</h4>
                     <ul>
                         <li>Con la herramienta <b>Marcar</b> activa, tocá el objeto: el punto queda registrado y el video <b>avanza solo</b> al cuadro siguiente.</li>
-                        <li>En pantallas táctiles, mantené el dedo apoyado y aparece una <b>lupa</b> para apuntar fino; al soltar se marca el punto.</li>
+                        <li>Al apoyar el dedo (o mantener apretado el mouse) aparece una <b>lupa</b> para apuntar fino; al soltar se marca el punto. La lupa también funciona al calibrar la <b>Escala</b> y el <b>Origen</b>.</li>
+                        <li>Con <b>Auto</b> el sistema sigue el objeto solo: tocá el objeto, confirmá el color y lo busca cuadro a cuadro hasta el final (o hasta perderlo). Funciona mejor con objetos de color vivo; si lo pierde, marcá ese cuadro a mano y tocá AUTO de nuevo para continuar.</li>
                         <li>¿Le erraste? <b>Deshacer</b> borra el último punto. Si marcás dos veces el mismo cuadro, el punto se reemplaza.</li>
                         <li>Con el teclado: <kbd>←</kbd> y <kbd>→</kbd> mueven un cuadro, <kbd>espacio</kbd> reproduce o pausa.</li>
                     </ul>
@@ -31389,6 +31406,10 @@ bluetooth.startIOPinService()</pre>
     var playing = false;
     var rafId = null;
     var siteVideoLoaded = false;  // el video actual proviene del botón CÁMARA del sitio
+    var autoTracking = false;     // seguimiento automático en curso
+    var autoStop = false;         // pedido de frenar el seguimiento
+    var autoStart = null;         // {u, v, color:[r,g,b]} punto y color elegidos para el auto-track
+    var workCanvas = null;        // canvas de trabajo para leer píxeles del video
 
     function el(id) { return document.getElementById(id); }
     function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
@@ -31425,7 +31446,7 @@ bluetooth.startIOPinService()</pre>
             setGuide('Ya hay <b>' + points.length + ' puntos</b>. Seguí marcando o mirá <b>Gráficas</b> y <b>Tabla</b>. Podés superponer la <b>micro:bit</b> desde su pestaña.', true);
         }
         var enable = hasVideo;
-        ['vm-tool-scale', 'vm-tool-origin', 'vm-tool-mark'].forEach(function (id) { el(id).disabled = !enable; });
+        ['vm-tool-scale', 'vm-tool-origin', 'vm-tool-mark', 'vm-tool-auto'].forEach(function (id) { el(id).disabled = !enable; });
         el('vm-undo').disabled = !points.length;
         el('vm-clear-pts').disabled = !points.length && scalePts.length === 0 && !origin;
         el('vm-export-csv').disabled = points.length < 1;
@@ -31505,6 +31526,7 @@ bluetooth.startIOPinService()</pre>
     }
 
     function stepFrames(n) {
+        if (autoTracking) return;
         pauseVideo();
         seekTo((curFrame() + n) * frameDt());
     }
@@ -31693,11 +31715,14 @@ bluetooth.startIOPinService()</pre>
 
     /* ================= Interacción sobre el video ================= */
     function setTool(t) {
+        if (autoTracking) return;
         tool = t;
-        ['mark', 'scale', 'origin'].forEach(function (k) {
+        ['mark', 'scale', 'origin', 'auto'].forEach(function (k) {
             el('vm-tool-' + k).classList.toggle('active', k === t);
         });
-        if (t === 'scale') {
+        if (t === 'auto') {
+            setGuide('Tocá el <b>objeto que querés seguir</b> (mejor si es de un color vivo y distinto del fondo). Podés mantener apretado para apuntar con la lupa.');
+        } else if (t === 'scale') {
             scalePts = [];
             setGuide('Tocá el <b>primer extremo</b> del objeto de longitud conocida.');
         } else if (t === 'origin') {
@@ -31709,6 +31734,14 @@ bluetooth.startIOPinService()</pre>
     }
 
     function commitPoint(vc) {
+        if (tool === 'auto') {
+            var col = sampleColor(vc.u, vc.v);
+            if (!col) { setGuide('No se pudo leer el color en ese punto. Probá de nuevo.'); return; }
+            autoStart = { u: vc.u, v: vc.v, color: col };
+            el('vm-auto-swatch').style.background = 'rgb(' + col[0] + ',' + col[1] + ',' + col[2] + ')';
+            el('vm-auto-dialog').classList.add('open');
+            return;
+        }
         if (tool === 'scale') {
             scalePts.push({ u: vc.u, v: vc.v });
             drawOverlay();
@@ -31745,20 +31778,20 @@ bluetooth.startIOPinService()</pre>
     }
 
     function onPointerDown(e) {
-        if (!hasVideo || playing) return;
+        if (!hasVideo || playing || autoTracking) return;
         e.preventDefault();
         overlay.setPointerCapture && overlay.setPointerCapture(e.pointerId);
         loupeActive = true;
         var r = overlay.getBoundingClientRect();
         loupePos = { cx: e.clientX - r.left, cy: e.clientY - r.top };
-        if (e.pointerType !== 'mouse') showLoupe(loupePos.cx, loupePos.cy);
+        showLoupe(loupePos.cx, loupePos.cy);
     }
     function onPointerMove(e) {
         if (!loupeActive) return;
         e.preventDefault();
         var r = overlay.getBoundingClientRect();
         loupePos = { cx: clamp(e.clientX - r.left, 0, r.width), cy: clamp(e.clientY - r.top, 0, r.height) };
-        if (e.pointerType !== 'mouse') showLoupe(loupePos.cx, loupePos.cy);
+        showLoupe(loupePos.cx, loupePos.cy);
     }
     function onPointerUp(e) {
         if (!loupeActive) return;
@@ -31769,6 +31802,138 @@ bluetooth.startIOPinService()</pre>
         var vc = cssToVideo(loupePos.cx, loupePos.cy);
         loupePos = null;
         if (vc) commitPoint(vc);
+    }
+
+    /* ================= Seguimiento automático por color ================= */
+    function workCtx() {
+        if (!workCanvas) workCanvas = document.createElement('canvas');
+        return workCanvas.getContext('2d', { willReadFrequently: true });
+    }
+
+    // Color promedio de un parche de 5x5 alrededor de (u, v) del cuadro actual.
+    function sampleColor(u, v) {
+        var g = workCtx();
+        var R = 2, S = 2 * R + 1;
+        workCanvas.width = S; workCanvas.height = S;
+        try {
+            g.drawImage(video, u - R, v - R, S, S, 0, 0, S, S);
+            var d = g.getImageData(0, 0, S, S).data;
+        } catch (e) { return null; }
+        var r = 0, gg = 0, b = 0, n = S * S;
+        for (var i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; }
+        return [Math.round(r / n), Math.round(gg / n), Math.round(b / n)];
+    }
+
+    function seekAsync(t) {
+        return new Promise(function (resolve) {
+            var done = false;
+            var h = function () { if (done) return; done = true; video.removeEventListener('seeked', h); resolve(); };
+            video.addEventListener('seeked', h);
+            setTimeout(h, 1500); // por si 'seeked' no llega (fin del video)
+            try { video.currentTime = t; } catch (e) { h(); }
+        });
+    }
+
+    // Busca el color en una ventana alrededor de (cu, cv). Devuelve el
+    // centroide (ponderado por cercanía de color) o null si no aparece.
+    function findColor(cu, cv, color, tol, radius) {
+        var vw = video.videoWidth, vh = video.videoHeight;
+        var x0 = Math.max(0, Math.round(cu - radius)), y0 = Math.max(0, Math.round(cv - radius));
+        var x1 = Math.min(vw, Math.round(cu + radius)), y1 = Math.min(vh, Math.round(cv + radius));
+        var w = x1 - x0, h = y1 - y0;
+        if (w < 3 || h < 3) return null;
+        var g = workCtx();
+        workCanvas.width = w; workCanvas.height = h;
+        try {
+            g.drawImage(video, x0, y0, w, h, 0, 0, w, h);
+            var d = g.getImageData(0, 0, w, h).data;
+        } catch (e) { return null; }
+        var tol2 = tol * tol, su = 0, sv = 0, sw = 0, count = 0;
+        for (var y = 0; y < h; y++) {
+            for (var x = 0; x < w; x++) {
+                var i = (y * w + x) * 4;
+                var dr = d[i] - color[0], dg = d[i + 1] - color[1], db = d[i + 2] - color[2];
+                var dist2 = dr * dr + dg * dg + db * db;
+                if (dist2 <= tol2) {
+                    var wgt = 1 - dist2 / tol2 + 0.05;
+                    su += (x0 + x) * wgt; sv += (y0 + y) * wgt; sw += wgt; count++;
+                }
+            }
+        }
+        if (count < 6 || sw <= 0) return null;
+        return { u: su / sw, v: sv / sw, count: count };
+    }
+
+    function setPointAt(t, u, v) {
+        var half = frameDt() / 2;
+        var idx = points.findIndex(function (p) { return Math.abs(p.t - t) <= half; });
+        if (idx >= 0) points[idx] = { t: t, u: u, v: v };
+        else points.push({ t: t, u: u, v: v });
+        points.sort(function (a, b) { return a.t - b.t; });
+    }
+
+    function setAutoUiRunning(running) {
+        var b = el('vm-tool-auto');
+        b.textContent = running ? 'Detener' : 'Auto';
+        b.classList.toggle('active', running);
+        b.disabled = false;
+        ['vm-tool-scale', 'vm-tool-origin', 'vm-tool-mark', 'vm-undo', 'vm-clear-pts',
+         'vm-back10', 'vm-back1', 'vm-play', 'vm-fwd1', 'vm-fwd10'].forEach(function (id) { el(id).disabled = running; });
+        el('vm-slider').disabled = running;
+    }
+
+    async function runAutoTrack() {
+        if (!autoStart || autoTracking) return;
+        autoTracking = true;
+        autoStop = false;
+        setAutoUiRunning(true);
+        pauseVideo();
+
+        var tol = parseFloat(el('vm-auto-tol').value) || 80;
+        var color = autoStart.color;
+        var last = { u: autoStart.u, v: autoStart.v };
+        var radius = clamp(Math.round((video.videoWidth || 640) * 0.08), 30, 220);
+        var f = curFrame();
+        var added = 0, lostAt = -1;
+        var totalF = Math.floor(duration / frameDt());
+
+        setPointAt(video.currentTime, last.u, last.v);
+        drawOverlay();
+
+        while (!autoStop) {
+            f++;
+            var t = f * frameDt();
+            if (t > duration - 0.0005) break;
+            await seekAsync(t);
+            if (autoStop) break;
+            var hit = findColor(last.u, last.v, color, tol, radius);
+            if (!hit) hit = findColor(last.u, last.v, color, tol, radius * 2);   // ventana ampliada
+            if (!hit) hit = findColor(last.u, last.v, color, tol * 1.35, radius * 2); // más tolerante
+            if (!hit) { lostAt = f; break; }
+            last = { u: hit.u, v: hit.v };
+            setPointAt(video.currentTime, last.u, last.v);
+            added++;
+            if (added % 3 === 0 || f >= totalF - 1) {
+                setGuide('Siguiendo el objeto… cuadro <b>' + f + '</b> de ' + totalF + ' (' + (added + 1) + ' puntos). Tocá <b>DETENER</b> para frenar.');
+                drawOverlay();
+                renderTable();
+            }
+        }
+
+        autoTracking = false;
+        autoStart = null;
+        setAutoUiRunning(false);
+        recomputeAll();
+        el('vm-tool-mark').classList.add('active');
+        el('vm-tool-auto').classList.remove('active');
+        tool = 'mark';
+        if (autoStop) {
+            setGuide('Seguimiento detenido: quedaron <b>' + (added + 1) + ' puntos</b>. Podés seguir a mano con <b>MARCAR</b> o retomar con <b>AUTO</b>.', true);
+        } else if (lostAt >= 0) {
+            setGuide('Se siguió el objeto hasta el cuadro <b>' + lostAt + '</b> (' + (added + 1) + ' puntos), donde se perdió el color. Marcá ese punto a mano y tocá <b>AUTO</b> para continuar, o subí la sensibilidad.');
+        } else {
+            setGuide('Seguimiento completo: <b>' + (added + 1) + ' puntos</b> registrados. Mirá <b>Gráficas</b> y <b>Tabla</b>.', true);
+        }
     }
 
     /* ================= Recalcular todo (tabla + gráfica) ================= */
@@ -32057,6 +32222,7 @@ bluetooth.startIOPinService()</pre>
         updateChart();
     }
     function closePanel() {
+        autoStop = true;
         pauseVideo();
         panel.classList.remove('open');
         panel.setAttribute('aria-hidden', 'true');
@@ -32143,6 +32309,19 @@ bluetooth.startIOPinService()</pre>
 
         // Herramientas
         el('vm-tool-mark').addEventListener('click', function () { setTool('mark'); });
+        el('vm-tool-auto').addEventListener('click', function () {
+            if (autoTracking) { autoStop = true; return; }
+            setTool('auto');
+        });
+        el('vm-auto-go').addEventListener('click', function () {
+            el('vm-auto-dialog').classList.remove('open');
+            runAutoTrack();
+        });
+        el('vm-auto-cancel').addEventListener('click', function () {
+            el('vm-auto-dialog').classList.remove('open');
+            autoStart = null;
+            setTool('mark');
+        });
         el('vm-tool-scale').addEventListener('click', function () { setTool('scale'); });
         el('vm-tool-origin').addEventListener('click', function () { setTool('origin'); });
         el('vm-undo').addEventListener('click', function () {
@@ -32247,6 +32426,8 @@ bluetooth.startIOPinService()</pre>
             if (e.key === 'Escape') {
                 if (el('vm-helpbox').classList.contains('open')) { el('vm-helpbox').classList.remove('open'); return; }
                 if (el('vm-scale-dialog').classList.contains('open')) { el('vm-scale-cancel').click(); return; }
+                if (el('vm-auto-dialog').classList.contains('open')) { el('vm-auto-cancel').click(); return; }
+                if (autoTracking) { autoStop = true; return; }
                 if (!typing) closePanel();
                 return;
             }
