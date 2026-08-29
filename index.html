@@ -31401,22 +31401,6 @@ bluetooth.startIOPinService()</pre>
             </div>
         </div>
 
-        <div class="vm-helpbox" id="vm-chrono-box">
-            <div class="vm-help-card" style="max-width:860px;">
-                <div class="vm-help-head">
-                    <h3>Cronofotografía</h3>
-                    <button id="vm-chrono-close">✕</button>
-                </div>
-                <div style="padding:14px 16px;">
-                    <img id="vm-chrono-img" alt="Cronofotografía del movimiento" style="display:block; width:100%; border:2px solid #000;">
-                    <p style="font-size:0.72rem; color:#555; margin:10px 0;">El objeto aparece en todas las posiciones marcadas sobre el primer cuadro del video, como en las cronofotografías clásicas. Sirve para imprimir, medir con regla o pegar en el informe.</p>
-                    <div style="display:flex; gap:8px; justify-content:flex-end;">
-                        <button class="vm-btn" id="vm-chrono-dl">Descargar PNG</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="vm-helpbox" id="vm-helpbox">
             <div class="vm-help-card">
                 <div class="vm-help-head">
@@ -31458,7 +31442,7 @@ bluetooth.startIOPinService()</pre>
                         <li>Con <b>Curva ideal</b> se ajusta una recta o una parábola por mínimos cuadrados a la gráfica y se dibuja punteada sobre tus datos, con la <b>ecuación y el R²</b>. En <b>Auto</b> elige sola el modelo. En x(t) o y(t) con parábola, también te muestra la aceleración del modelo (en caída libre debería dar ≈ −9.8 m/s²).</li>
                         <li>El botón <b>Vectores</b> dibuja sobre el video la flecha de velocidad en cada punto (más larga = más rápido), para ver cómo cambia la velocidad a lo largo del movimiento.</li>
                         <li>La gráfica <b>energías (t)</b> muestra juntas la cinética (Ec = ½mv²), la potencial (Ep = mgy, respecto del origen) y la mecánica (Em = Ec + Ep) con la masa que escribas: sin rozamiento, la Em debería mantenerse casi constante mientras Ec y Ep se intercambian.</li>
-                        <li>El botón <b>Crono</b> arma una <b>cronofotografía</b>: una imagen con el objeto congelado en las posiciones marcadas. Podés elegir el <b>tramo</b> (desde / hasta, en segundos) y sumarle los <b>vectores de velocidad</b> dibujados sobre la imagen; se descarga en PNG para imprimir o pegar en el informe.</li>
+                        <li>El botón <b>Crono</b> arma una <b>cronofotografía</b>: una imagen con el objeto congelado en sus posiciones. En la ventana ajustás el <b>tramo</b> (desde / hasta), <b>un punto cada N</b> (fantasmas más separados), el <b>tamaño del recorte</b> y los <b>vectores de velocidad</b>, con una <b>vista previa</b> para iterar hasta que quede bien; después la descargás en PNG. Cada fantasma se recorta comparando contra el fondo del video, así los fantasmas no se borran entre sí aunque se superpongan.</li>
                         <li>Debajo de cada gráfica tenés <b>Exportar imagen</b> (PNG de la gráfica) y <b>CSV de esta gráfica</b> (solo los datos de la magnitud que estás viendo, incluida la curva de la micro:bit si está superpuesta), para trabajarlos en una planilla.</li>
                         <li>En <b>Tabla</b> están todos los valores; podés exportarlos a CSV o copiarlos para pegar en una planilla.</li>
                         <li>En <b>micro:bit</b> superponés los datos del sensor sobre las gráficas de tiempo y ajustás el Δt hasta que coincidan. Si el video es del botón CÁMARA del sitio, <b>Sincronizar auto</b> alinea los tiempos por vos.</li>
@@ -31472,22 +31456,35 @@ bluetooth.startIOPinService()</pre>
             </div>
         </div>
 
-        <div class="vm-dialog" id="vm-chrono-dialog">
+        <div class="vm-dialog" id="vm-chrono-dialog" style="width:min(560px, calc(100vw - 24px));">
             <h4>Cronofotografía</h4>
-            <p>Imagen con el objeto "congelado" en las posiciones marcadas, sobre el primer cuadro del tramo. Elegí qué tramo usar:</p>
-            <div class="row" style="gap:10px;">
-                <label style="flex:1; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Desde (s)
+            <p>Imagen con el objeto "congelado" en sus posiciones, sobre el primer cuadro del tramo. Ajustá los controles y tocá <b>Vista previa</b> hasta que quede como quieras.</p>
+            <div class="row" style="gap:10px; flex-wrap:wrap;">
+                <label style="flex:1; min-width:90px; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Desde (s)
                     <input type="number" id="vm-ch-t0" inputmode="decimal" step="any" style="width:100%; box-sizing:border-box; margin-top:3px;">
                 </label>
-                <label style="flex:1; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Hasta (s)
+                <label style="flex:1; min-width:90px; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Hasta (s)
                     <input type="number" id="vm-ch-t1" inputmode="decimal" step="any" style="width:100%; box-sizing:border-box; margin-top:3px;">
                 </label>
+                <label style="flex:1; min-width:110px; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;" title="Usar un punto de cada N: menos fantasmas, más separados">Un punto cada
+                    <select id="vm-ch-step" style="width:100%; box-sizing:border-box; margin-top:3px; border:2px solid #000; padding:7px 6px; font-size:0.8rem; font-family:inherit; background:#fff;">
+                        <option value="1" selected>1 (todos)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="5">5</option>
+                    </select>
+                </label>
             </div>
-            <label class="vm-check" style="margin-top:10px;"><input type="checkbox" id="vm-ch-vec"><span>Dibujar los vectores de velocidad sobre la imagen</span></label>
-            <p style="font-size:0.7rem; color:#555; margin-top:6px;">Los vectores salen de cada posición, tangentes al movimiento; más largos = más rápido.</p>
+            <label style="display:block; margin-top:10px; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;" title="Cuánto recorte del video se pega alrededor de cada posición">Tamaño del recorte
+                <input type="range" id="vm-ch-size" min="0.4" max="2" step="0.1" value="1" style="width:100%; accent-color:#000; margin-top:4px;">
+            </label>
+            <label class="vm-check" style="margin-top:8px;"><input type="checkbox" id="vm-ch-vec"><span>Dibujar los vectores de velocidad</span></label>
+            <img id="vm-ch-prev" alt="Vista previa de la cronofotografía" style="display:none; width:100%; border:2px solid #000; margin-top:10px;">
+            <p id="vm-ch-status" style="font-size:0.7rem; color:#555; margin-top:6px;">Todavía no hay vista previa.</p>
             <div class="btns">
-                <button class="vm-btn" id="vm-ch-cancel">Cancelar</button>
-                <button class="vm-btn primary" id="vm-ch-go">Generar</button>
+                <button class="vm-btn" id="vm-ch-cancel">Cerrar</button>
+                <button class="vm-btn" id="vm-ch-go">Vista previa</button>
+                <button class="vm-btn primary" id="vm-ch-dl" disabled>Descargar PNG</button>
             </div>
         </div>
 
@@ -31602,6 +31599,7 @@ bluetooth.startIOPinService()</pre>
     function loadVideoBlob(blob, fromSite) {
         if (videoURL) { URL.revokeObjectURL(videoURL); videoURL = null; }
         videoURL = URL.createObjectURL(blob);
+        bgCache = null;
         siteVideoLoaded = !!fromSite;
         hasVideo = false;
         duration = 0;
@@ -31752,6 +31750,7 @@ bluetooth.startIOPinService()</pre>
     var gridDensity = 'media';    // fina | media | gruesa
     var chronoBusy = false;       // armado de la cronofotografía en curso
     var chronoUrl = null;         // dataURL de la última cronofotografía
+    var bgCache = null;           // modelo de fondo cacheado por video {W, H, data}
     var fitMode = 'none';         // 'none' | 'auto' | 'lin' | 'quad': curva ideal sobre la gráfica
     var showVectors = false;      // flechas de velocidad sobre el video
 
@@ -32431,7 +32430,8 @@ bluetooth.startIOPinService()</pre>
         var g = workCtx();
         var tStart = video.currentTime;
 
-        var bg = await vmBuildBackground(W, H);
+        var bg = (bgCache && bgCache.W === W && bgCache.H === H) ? bgCache.data : await vmBuildBackground(W, H);
+        if (bg) bgCache = { W: W, H: H, data: bg };
         if (!bg || autoStop) {
             autoTracking = false; autoStart = null;
             setAutoUiRunning(false); recomputeAll();
@@ -32550,40 +32550,90 @@ bluetooth.startIOPinService()</pre>
     // Compone el primer cuadro completo y, encima, un parche circular del
     // cuadro correspondiente en cada posición marcada: el objeto queda
     // "congelado" en todas sus posiciones, como en una cronofotografía.
-    async function makeChrono(t0, t1, withVectors) {
+    // Pega en el compuesto un "fantasma" del cuadro actual alrededor de pt:
+    // solo los píxeles que difieren del modelo de fondo (el objeto), con
+    // borde suave. Así un fantasma nuevo no borra a los anteriores cuando
+    // los recortes se superponen (el bug de "una pelotita estática").
+    function chronoGhost(gFull, pt, R, bg, Wb, Hb, sc) {
+        var vw = video.videoWidth, vh = video.videoHeight;
+        var x0 = Math.max(0, Math.round(pt.u - R)), y0 = Math.max(0, Math.round(pt.v - R));
+        var x1 = Math.min(vw, Math.round(pt.u + R)), y1 = Math.min(vh, Math.round(pt.v + R));
+        var pw = x1 - x0, ph = y1 - y0;
+        if (pw < 2 || ph < 2) return;
+        var cur = bg ? vmGrab(workCtx(), Wb, Hb) : null;
+        var pc = document.createElement('canvas');
+        pc.width = pw; pc.height = ph;
+        var pg = pc.getContext('2d');
+        pg.drawImage(video, x0, y0, pw, ph, 0, 0, pw, ph);
+        var im = pg.getImageData(0, 0, pw, ph);
+        var d = im.data;
+        var soft = Math.max(2, R * 0.25);
+        var fgSum = 0;
+        for (var y = 0; y < ph; y++) {
+            for (var x = 0; x < pw; x++) {
+                var fx = x0 + x, fy = y0 + y;
+                var edge = clamp((R - Math.hypot(fx - pt.u, fy - pt.v)) / soft, 0, 1);
+                var a = edge;
+                if (cur) {
+                    var sx = Math.min(Wb - 1, Math.round(fx * sc)), sy = Math.min(Hb - 1, Math.round(fy * sc));
+                    var si = (sy * Wb + sx) * 4;
+                    var fg = ((Math.abs(cur[si] - bg[si]) + Math.abs(cur[si + 1] - bg[si + 1]) + Math.abs(cur[si + 2] - bg[si + 2])) / 3 - 12) / 26;
+                    a = clamp(fg, 0, 1) * edge;
+                }
+                d[(y * pw + x) * 4 + 3] = Math.round(a * 255);
+                fgSum += a;
+            }
+        }
+        if (cur && fgSum < 25) {
+            // el objeto no se distingue del fondo acá (quieto o de color muy
+            // parecido): pegar el círculo entero con borde suave
+            for (var y2 = 0; y2 < ph; y2++) {
+                for (var x2 = 0; x2 < pw; x2++) {
+                    var e2 = clamp((R - Math.hypot(x0 + x2 - pt.u, y0 + y2 - pt.v)) / soft, 0, 1);
+                    d[(y2 * pw + x2) * 4 + 3] = Math.round(e2 * 255);
+                }
+            }
+        }
+        pg.putImageData(im, 0, 0);
+        gFull.drawImage(pc, x0, y0);
+    }
+
+    async function makeChrono(t0, t1, everyN, sizeF, withVectors) {
         if (chronoBusy || !hasVideo) return;
+        var st = el('vm-ch-status');
         var half = frameDt() / 2;
-        var sel = [];   // índices de puntos dentro del tramo
+        var sel = [];
         for (var s0 = 0; s0 < points.length; s0++) {
             if (points[s0].t >= t0 - half && points[s0].t <= t1 + half) sel.push(s0);
         }
-        if (sel.length < 2) { setGuide('El tramo elegido tiene menos de 2 puntos marcados: ampliá el rango.'); return; }
+        if (everyN > 1) sel = sel.filter(function (_, idx) { return idx % everyN === 0; });
+        if (sel.length < 2) { st.textContent = 'El tramo elegido tiene menos de 2 puntos marcados: ampliá el rango o bajá "un punto cada".'; return; }
         chronoBusy = true;
         el('vm-chrono').disabled = true;
+        el('vm-ch-go').disabled = true;
         var tPrev = video.currentTime;
         var wasPlaying = playing;
         pauseVideo();
-        setGuide('Armando la cronofotografía… un momento.');
+        st.textContent = 'Armando la vista previa…';
         try {
             var vw = video.videoWidth, vh = video.videoHeight;
+            var sc = Math.min(1, 640 / (vw || 640));
+            var Wb = Math.max(4, Math.round(vw * sc)), Hb = Math.max(4, Math.round(vh * sc));
+            autoStop = false;
+            var bg = (bgCache && bgCache.W === Wb && bgCache.H === Hb) ? bgCache.data : await vmBuildBackground(Wb, Hb);
+            if (bg) bgCache = { W: Wb, H: Hb, data: bg };
             var c = document.createElement('canvas');
             c.width = vw; c.height = vh;
             var g = c.getContext('2d');
             await seekAsync(points[sel[0]].t);
             g.drawImage(video, 0, 0, vw, vh);
-            var R = clamp(Math.round(vw * 0.06), 22, 150);
+            var R = Math.round(clamp(Math.round(vw * 0.06), 22, 150) * (sizeF || 1));
             for (var i = 1; i < sel.length; i++) {
                 await seekAsync(points[sel[i]].t);
-                g.save();
-                g.beginPath();
-                g.arc(points[sel[i]].u, points[sel[i]].v, R, 0, Math.PI * 2);
-                g.clip();
-                g.drawImage(video, 0, 0, vw, vh);
-                g.restore();
+                chronoGhost(g, points[sel[i]], R, bg, Wb, Hb, sc);
+                if (i % 4 === 0) st.textContent = 'Armando la vista previa… ' + Math.round(i * 100 / (sel.length - 1)) + '%';
             }
             if (withVectors) {
-                // Vectores de velocidad en cada posición del tramo, tangentes
-                // al movimiento; el más rápido mide ~14% del ancho del video.
                 var ser = physSeries();
                 var mpp = metersPerPixel() || 1;
                 var maxV = 0;
@@ -32599,8 +32649,8 @@ bluetooth.startIOPinService()</pre>
                         if (Math.hypot(dx, dy) < 6) return;
                         var ex = px + dx, ey = py + dy;
                         var ang = Math.atan2(dy, dx);
-                        [[ '#fff', lw * 2.2 ], [ '#2e7d32', lw ]].forEach(function (st) {
-                            g.strokeStyle = st[0]; g.fillStyle = st[0]; g.lineWidth = st[1];
+                        [['#fff', lw * 2.2], ['#2e7d32', lw]].forEach(function (stk) {
+                            g.strokeStyle = stk[0]; g.fillStyle = stk[0]; g.lineWidth = stk[1];
                             g.beginPath(); g.moveTo(px, py); g.lineTo(ex, ey); g.stroke();
                             var hb = lw * 4.5;
                             g.beginPath();
@@ -32613,14 +32663,18 @@ bluetooth.startIOPinService()</pre>
                 }
             }
             chronoUrl = c.toDataURL('image/png');
-            el('vm-chrono-img').src = chronoUrl;
-            el('vm-chrono-box').classList.add('open');
-            setGuide('Cronofotografía lista: el objeto aparece en ' + sel.length + ' posiciones del tramo elegido' + (withVectors ? ', con sus vectores de velocidad' : '') + '. Podés descargarla en PNG.', true);
+            var prev = el('vm-ch-prev');
+            prev.src = chronoUrl;
+            prev.style.display = 'block';
+            el('vm-ch-dl').disabled = false;
+            st.textContent = 'Vista previa: ' + sel.length + ' posiciones' + (withVectors ? ' con vectores' : '') +
+                '. ¿Se pisan los fantasmas? Subí "un punto cada". ¿Se corta el objeto? Agrandá el recorte. Cuando te guste, descargala.';
         } catch (e) {
-            setGuide('No se pudo armar la cronofotografía con este video.');
+            st.textContent = 'No se pudo armar la cronofotografía con este video.';
         }
         await seekAsync(tPrev);
         chronoBusy = false;
+        el('vm-ch-go').disabled = false;
         refreshSteps();
         drawOverlay();
         if (wasPlaying) playPause();
@@ -33274,16 +33328,13 @@ bluetooth.startIOPinService()</pre>
         el('vm-ch-go').addEventListener('click', function () {
             var t0 = parseFloat(el('vm-ch-t0').value), t1 = parseFloat(el('vm-ch-t1').value);
             if (!isFinite(t0) || !isFinite(t1) || t1 <= t0) { el('vm-ch-t1').focus(); return; }
-            el('vm-chrono-dialog').classList.remove('open');
-            makeChrono(t0, t1, el('vm-ch-vec').checked);
+            makeChrono(t0, t1, parseInt(el('vm-ch-step').value, 10) || 1, parseFloat(el('vm-ch-size').value) || 1, el('vm-ch-vec').checked);
         });
+        el('vm-ch-dl').addEventListener('click', downloadChrono);
 
         // Exportar la gráfica actual
         el('vm-chart-png').addEventListener('click', exportChartPng);
         el('vm-chart-csv').addEventListener('click', exportChartCsv);
-        el('vm-chrono-close').addEventListener('click', function () { el('vm-chrono-box').classList.remove('open'); });
-        el('vm-chrono-box').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
-        el('vm-chrono-dl').addEventListener('click', downloadChrono);
 
         // Vectores de velocidad
         el('vm-show-vectors').addEventListener('click', function () {
@@ -33367,7 +33418,6 @@ bluetooth.startIOPinService()</pre>
             var typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT');
             if (e.key === 'Escape') {
                 if (el('vm-helpbox').classList.contains('open')) { el('vm-helpbox').classList.remove('open'); return; }
-                if (el('vm-chrono-box').classList.contains('open')) { el('vm-chrono-box').classList.remove('open'); return; }
                 if (el('vm-scale-dialog').classList.contains('open')) { el('vm-scale-cancel').click(); return; }
                 if (el('vm-auto-dialog').classList.contains('open')) { el('vm-auto-cancel').click(); return; }
                 if (el('vm-chrono-dialog').classList.contains('open')) { el('vm-ch-cancel').click(); return; }
