@@ -31234,7 +31234,7 @@ bluetooth.startIOPinService()</pre>
                         </div>
                         <div class="vm-dialog" id="vm-auto-dialog">
                             <h4>Seguimiento automático</h4>
-                            <p>Se va a buscar este color cuadro a cuadro, desde el instante actual hasta el final del video (o hasta que lo pierda). Se registra un punto según el selector <b>Cada N cuadros</b> de la barra de abajo.</p>
+                            <p>Se busca el objeto cuadro a cuadro combinando su <b>color</b>, un <b>modelo de fondo</b> del video (lo que se mueve se distingue de lo que está quieto) y la <b>predicción de su movimiento</b>. Si sale de escena, el sistema espera a que reaparezca y lo re-engancha solo. Se registra un punto según el selector <b>Cada N cuadros</b>.</p>
                             <div class="row" style="align-items:center;">
                                 <span id="vm-auto-swatch" style="width:36px; height:36px; border:2px solid #000; flex:0 0 auto;"></span>
                                 <label style="flex:1; min-width:0; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Sensibilidad
@@ -31413,7 +31413,7 @@ bluetooth.startIOPinService()</pre>
                         <li>Con la herramienta <b>Marcar</b> activa, tocá el objeto: el punto queda registrado y el video <b>avanza solo</b> al siguiente cuadro a marcar.</li>
                         <li>¿Querés <b>menos puntos</b>? En la barra de abajo elegí <b>Cada 2, 3, 5 o 10 cuadros</b>: el marcado, los botones ⟨ ⟩ y el seguimiento automático saltan de a ese paso. Ideal para videos largos o para tablas más manejables.</li>
                         <li>Al apoyar el dedo (o mantener apretado el mouse) aparece una <b>lupa</b> para apuntar fino; al soltar se marca el punto. La lupa también funciona al calibrar la <b>Escala</b> y el <b>Origen</b>.</li>
-                        <li>Con <b>Auto</b> el sistema sigue el objeto solo: tocá el objeto, confirmá el color y lo busca cuadro a cuadro hasta el final (o hasta perderlo). Funciona mejor con objetos de color vivo; si lo pierde, marcá ese cuadro a mano y tocá AUTO de nuevo para continuar.</li>
+                        <li>Con <b>Auto</b> el sistema sigue el objeto solo: tocá el objeto, confirmá y lo busca cuadro a cuadro combinando su color, un modelo de fondo del video (compara qué cambia entre cuadros, con la cámara fija) y la predicción del movimiento. Si el objeto sale de escena, espera a que reaparezca y lo re-engancha. Filmá con la <b>cámara quieta</b>: el detector está calibrado para eso.</li>
                         <li>¿Le erraste? <b>Deshacer</b> borra el último punto. Si marcás dos veces el mismo cuadro, el punto se reemplaza.</li>
                         <li>Con el teclado: <kbd>←</kbd> y <kbd>→</kbd> mueven un cuadro, <kbd>espacio</kbd> reproduce o pausa.</li>
                     </ul>
@@ -32031,34 +32031,111 @@ bluetooth.startIOPinService()</pre>
         });
     }
 
-    // Busca el color en una ventana alrededor de (cu, cv). Devuelve el
-    // centroide (ponderado por cercanía de color) o null si no aparece.
-    function findColor(cu, cv, color, tol, radius) {
-        var vw = video.videoWidth, vh = video.videoHeight;
-        var x0 = Math.max(0, Math.round(cu - radius)), y0 = Math.max(0, Math.round(cv - radius));
-        var x1 = Math.min(vw, Math.round(cu + radius)), y1 = Math.min(vh, Math.round(cv + radius));
-        var w = x1 - x0, h = y1 - y0;
-        if (w < 3 || h < 3) return null;
+    /* Detector multi-señal calibrado con los videos de muestra de Tracker
+       (BallDrop, BallTossOut, BallTossUp, BlockOnCart, CupsClips):
+       1. Modelo de FONDO por mediana de 15 cuadros (cámara fija): el objeto
+          es lo que difiere del fondo (comparativa de cuadros a lo grande).
+       2. COLOR del objeto como compuerta (tolerancia = sensibilidad).
+       3. PREDICCIÓN de movimiento (velocidad constante) que centra la
+          ventana de búsqueda y la agranda con la rapidez.
+       4. Centroide ponderado fondo·color·cercanía; con el objeto quieto,
+          cae a solo-color para no perderlo sin movimiento.
+       5. RE-ADQUISICIÓN estilo Tracker: si el objeto sale del cuadro o se
+          pierde, espera a que reaparezca cerca de la última posición
+          (exigiendo movimiento + color fuerte + blob compacto). */
+
+    function vmGrab(g, W, H) {
+        if (workCanvas.width !== W || workCanvas.height !== H) { workCanvas.width = W; workCanvas.height = H; }
+        g.drawImage(video, 0, 0, W, H);
+        return g.getImageData(0, 0, W, H).data;
+    }
+
+    async function vmBuildBackground(W, H) {
         var g = workCtx();
-        workCanvas.width = w; workCanvas.height = h;
-        try {
-            g.drawImage(video, x0, y0, w, h, 0, 0, w, h);
-            var d = g.getImageData(0, 0, w, h).data;
-        } catch (e) { return null; }
-        var tol2 = tol * tol, su = 0, sv = 0, sw = 0, count = 0;
-        for (var y = 0; y < h; y++) {
-            for (var x = 0; x < w; x++) {
-                var i = (y * w + x) * 4;
-                var dr = d[i] - color[0], dg = d[i + 1] - color[1], db = d[i + 2] - color[2];
-                var dist2 = dr * dr + dg * dg + db * db;
-                if (dist2 <= tol2) {
-                    var wgt = 1 - dist2 / tol2 + 0.05;
-                    su += (x0 + x) * wgt; sv += (y0 + y) * wgt; sw += wgt; count++;
-                }
+        var N = 15, all = [];
+        for (var i = 0; i < N; i++) {
+            if (autoStop) return null;
+            await seekAsync(duration * (i + 0.5) / N);
+            all.push(vmGrab(g, W, H).slice(0));
+            if (i % 4 === 3) setGuide('Analizando el video (modelo de fondo)… ' + Math.round((i + 1) * 100 / N) + '%');
+        }
+        var bg = new Uint8ClampedArray(W * H * 4);
+        var vals = new Array(N);
+        for (var p = 0; p < W * H * 4; p += 4) {
+            for (var ch = 0; ch < 3; ch++) {
+                for (var k = 0; k < N; k++) vals[k] = all[k][p + ch];
+                vals.sort(function (a, b) { return a - b; });
+                bg[p + ch] = vals[N >> 1];
             }
         }
-        if (count < 6 || sw <= 0) return null;
-        return { u: su / sw, v: sv / sw, count: count };
+        return bg;
+    }
+
+    function vmFindObject(data, bg, W, H, pos, vel, c0, tol) {
+        var speed = Math.hypot(vel.u, vel.v);
+        var pu = pos.u + vel.u, pv = pos.v + vel.v;
+        var m = 8;
+        if ((pu < m || pu > W - m || pv < m || pv > H - m) && speed > 6) return null;
+        pu = clamp(pu, 2, W - 3); pv = clamp(pv, 2, H - 3);
+        var r0 = Math.round(clamp(2.5 * speed + 20, 20, 80));
+        var tol2 = tol * tol;
+        var tries = [[r0, 3.0], [r0 * 2, 2.0]];
+        for (var ti = 0; ti < 2; ti++) {
+            var rr = tries[ti][0], minw = tries[ti][1];
+            var x1 = Math.max(0, Math.round(pu - rr)), x2 = Math.min(W, Math.round(pu + rr + 1));
+            var y1 = Math.max(0, Math.round(pv - rr)), y2 = Math.min(H, Math.round(pv + rr + 1));
+            if (x2 - x1 < 4 || y2 - y1 < 4) continue;
+            var su = 0, sv = 0, sw = 0, suC = 0, svC = 0, swC = 0;
+            var sig2 = 2 * Math.pow(0.6 * rr, 2);
+            for (var y = y1; y < y2; y++) {
+                for (var x = x1; x < x2; x++) {
+                    var i = (y * W + x) * 4;
+                    var fg = ((Math.abs(data[i] - bg[i]) + Math.abs(data[i + 1] - bg[i + 1]) + Math.abs(data[i + 2] - bg[i + 2])) / 3 - 14) / 40;
+                    fg = clamp(fg, 0, 1);
+                    var cr = data[i] - c0[0], cg = data[i + 1] - c0[1], cb = data[i + 2] - c0[2];
+                    var cs = Math.exp(-(cr * cr + cg * cg + cb * cb) / tol2);
+                    var du = x - pu, dv = y - pv;
+                    var gau = Math.exp(-(du * du + dv * dv) / sig2);
+                    var wgt = fg * cs * gau;
+                    su += wgt * x; sv += wgt * y; sw += wgt;
+                    if (cs > 0.25) { var wc = cs * gau; suC += wc * x; svC += wc * y; swC += wc; }
+                }
+            }
+            if (sw < minw && speed <= 3 && swC >= minw) { su = suC; sv = svC; sw = swC; }
+            if (sw >= minw) {
+                var nu = su / sw, nv = sv / sw;
+                if (Math.hypot(nu - pu, nv - pv) <= rr) return { u: nu, v: nv };
+            }
+        }
+        return null;
+    }
+
+    function vmReacquire(data, bg, W, H, pos, c0, tol) {
+        var rr = 55;
+        var pu = clamp(pos.u, 0, W - 1), pv = clamp(pos.v, 0, H - 1);
+        var x1 = Math.max(0, Math.round(pu - rr)), x2 = Math.min(W, Math.round(pu + rr + 1));
+        var y1 = Math.max(0, Math.round(pv - rr)), y2 = Math.min(H, Math.round(pv + rr + 1));
+        if (x2 - x1 < 4 || y2 - y1 < 4) return null;
+        var tol2 = tol * tol;
+        var su = 0, sv = 0, sw = 0, sxx = 0, syy = 0, peak = 0;
+        for (var y = y1; y < y2; y++) {
+            for (var x = x1; x < x2; x++) {
+                var i = (y * W + x) * 4;
+                var fg = ((Math.abs(data[i] - bg[i]) + Math.abs(data[i + 1] - bg[i + 1]) + Math.abs(data[i + 2] - bg[i + 2])) / 3 - 14) / 40;
+                fg = clamp(fg, 0, 1);
+                var cr = data[i] - c0[0], cg = data[i + 1] - c0[1], cb = data[i + 2] - c0[2];
+                var cs = Math.exp(-(cr * cr + cg * cg + cb * cb) / tol2);
+                if (fg > 0.2 && cs > peak) peak = cs;
+                var wgt = fg * cs;
+                if (wgt < 0.15) continue;
+                su += wgt * x; sv += wgt * y; sw += wgt;
+                sxx += wgt * x * x; syy += wgt * y * y;
+            }
+        }
+        if (sw < 6 || peak <= 0.45) return null;
+        var nu = su / sw, nv = sv / sw;
+        var spread = Math.sqrt(Math.max(0, sxx / sw - nu * nu) + Math.max(0, syy / sw - nv * nv));
+        return (spread < 30) ? { u: nu, v: nv } : null;
     }
 
     function setPointAt(t, u, v) {
@@ -32087,15 +32164,31 @@ bluetooth.startIOPinService()</pre>
         pauseVideo();
 
         var tol = parseFloat(el('vm-auto-tol').value) || 80;
-        var color = autoStart.color;
-        var last = { u: autoStart.u, v: autoStart.v };
-        var radius = clamp(Math.round((video.videoWidth || 640) * 0.08), 30, 220);
-        var f = curFrame();
-        var f0 = f;
-        var added = 0, lostAt = -1;
-        var totalF = Math.floor(duration / frameDt());
+        var sc = Math.min(1, 640 / (video.videoWidth || 640));
+        var W = Math.max(4, Math.round(video.videoWidth * sc));
+        var H = Math.max(4, Math.round(video.videoHeight * sc));
+        var g = workCtx();
+        var tStart = video.currentTime;
 
-        setPointAt(video.currentTime, last.u, last.v);
+        var bg = await vmBuildBackground(W, H);
+        if (!bg || autoStop) {
+            autoTracking = false; autoStart = null;
+            setAutoUiRunning(false); recomputeAll();
+            el('vm-tool-mark').classList.add('active'); el('vm-tool-auto').classList.remove('active'); tool = 'mark';
+            setGuide('Seguimiento cancelado.');
+            return;
+        }
+        await seekAsync(tStart);
+
+        var pos = { u: autoStart.u * sc, v: autoStart.v * sc };
+        var vel = { u: 0, v: 0 };
+        var c0 = [autoStart.color[0], autoStart.color[1], autoStart.color[2]];
+        var c0init = c0.slice(0);
+        var tol2 = tol * tol;
+        var f0 = curFrame(), f = f0;
+        var added = 1, waiting = false, lostAt = -1, cand = null, reacqBuf = null;
+        var totalF = Math.floor(duration / frameDt());
+        setPointAt(video.currentTime, pos.u / sc, pos.v / sc);
         drawOverlay();
 
         while (!autoStop) {
@@ -32104,19 +32197,71 @@ bluetooth.startIOPinService()</pre>
             if (t > duration - 0.0005) break;
             await seekAsync(t);
             if (autoStop) break;
-            var hit = findColor(last.u, last.v, color, tol, radius);
-            if (!hit) hit = findColor(last.u, last.v, color, tol, radius * 2);   // ventana ampliada
-            if (!hit) hit = findColor(last.u, last.v, color, tol * 1.35, radius * 2); // más tolerante
-            if (!hit) { lostAt = f; break; }
-            last = { u: hit.u, v: hit.v };
-            // Se busca el color en todos los cuadros (para no perderlo), pero
-            // se registra un punto solo cada N cuadros, como en FizziQ.
-            if ((f - f0) % markStep === 0) {
-                setPointAt(video.currentTime, last.u, last.v);
+            var data = vmGrab(g, W, H);
+            var res = null;
+            if (!waiting) {
+                res = vmFindObject(data, bg, W, H, pos, vel, c0, tol);
+                if (!res) {
+                    waiting = true;
+                    reacqBuf = null;    // el tramo re-adquirido no se confirmó: descartarlo
+                    if (lostAt < 0) lostAt = f;
+                    setGuide('El objeto se perdió en el cuadro <b>' + f + '</b>: esperando a que reaparezca cerca de esa zona… Tocá <b>DETENER</b> para frenar.');
+                }
+            }
+            if (waiting) {
+                // Una re-adquisición solo se acepta si se confirma también en
+                // el cuadro siguiente (evita blips de ruido de un solo cuadro).
+                if (cand) {
+                    var chk = vmFindObject(data, bg, W, H, cand, { u: 0, v: 0 }, c0, tol);
+                    if (chk) { waiting = false; pos = cand; vel = { u: 0, v: 0 }; res = chk; reacqBuf = []; }
+                    cand = null;
+                }
+                if (waiting && !res) cand = vmReacquire(data, bg, W, H, pos, c0, tol);
+            }
+            if (!res) continue;
+            vel = { u: 0.6 * vel.u + 0.4 * (res.u - pos.u), v: 0.6 * vel.v + 0.4 * (res.v - pos.v) };
+            pos = res;
+            // Adaptación de color lenta, solo con coincidencia fuerte (el
+            // desenfoque de movimiento no debe contaminar la referencia).
+            var ci = (Math.round(clamp(pos.v, 0, H - 1)) * W + Math.round(clamp(pos.u, 0, W - 1))) * 4;
+            var dr0 = data[ci] - c0[0], dg0 = data[ci + 1] - c0[1], db0 = data[ci + 2] - c0[2];
+            if (Math.exp(-(dr0 * dr0 + dg0 * dg0 + db0 * db0) / tol2) > 0.55) {
+                c0[0] = 0.93 * c0[0] + 0.07 * data[ci];
+                c0[1] = 0.93 * c0[1] + 0.07 * data[ci + 1];
+                c0[2] = 0.93 * c0[2] + 0.07 * data[ci + 2];
+                // Anclaje: la referencia puede seguir cambios de iluminación pero
+                // nunca convertirse en "otro color" (evita terminar aceptando
+                // piel o fondo tras muchos cuadros de desenfoque).
+                var dAnc = Math.hypot(c0[0] - c0init[0], c0[1] - c0init[1], c0[2] - c0init[2]);
+                var maxAnc = tol * 0.55;
+                if (dAnc > maxAnc) {
+                    var kAnc = maxAnc / dAnc;
+                    c0[0] = c0init[0] + (c0[0] - c0init[0]) * kAnc;
+                    c0[1] = c0init[1] + (c0[1] - c0init[1]) * kAnc;
+                    c0[2] = c0init[2] + (c0[2] - c0init[2]) * kAnc;
+                }
+            }
+            // No registrar puntos pegados al borde: el centroide queda
+            // recortado y sesga las gráficas justo cuando el objeto sale.
+            var nearEdge = pos.u < 6 || pos.u > W - 6 || pos.v < 6 || pos.v > H - 6;
+            var rec = !nearEdge && (f - f0) % markStep === 0;
+            if (reacqBuf) {
+                // Un tramo re-adquirido recién se confirma si el objeto se
+                // sigue encontrando 3 cuadros seguidos: un reflejo fugaz que
+                // engañó a la re-adquisición no llega y se descarta solo.
+                reacqBuf.push(rec ? { t: video.currentTime, u: pos.u / sc, v: pos.v / sc } : null);
+                if (reacqBuf.length >= 3) {
+                    for (var rb = 0; rb < reacqBuf.length; rb++) {
+                        if (reacqBuf[rb]) { setPointAt(reacqBuf[rb].t, reacqBuf[rb].u, reacqBuf[rb].v); added++; }
+                    }
+                    reacqBuf = null;
+                }
+            } else if (rec) {
+                setPointAt(video.currentTime, pos.u / sc, pos.v / sc);
                 added++;
             }
             if (added % 3 === 0 || f >= totalF - 1) {
-                setGuide('Siguiendo el objeto… cuadro <b>' + f + '</b> de ' + totalF + ' (' + (added + 1) + ' puntos). Tocá <b>DETENER</b> para frenar.');
+                setGuide('Siguiendo el objeto… cuadro <b>' + f + '</b> de ' + totalF + ' (' + added + ' puntos). Tocá <b>DETENER</b> para frenar.');
                 drawOverlay();
                 renderTable();
             }
@@ -32130,11 +32275,11 @@ bluetooth.startIOPinService()</pre>
         el('vm-tool-auto').classList.remove('active');
         tool = 'mark';
         if (autoStop) {
-            setGuide('Seguimiento detenido: quedaron <b>' + (added + 1) + ' puntos</b>. Podés seguir a mano con <b>MARCAR</b> o retomar con <b>AUTO</b>.', true);
-        } else if (lostAt >= 0) {
-            setGuide('Se siguió el objeto hasta el cuadro <b>' + lostAt + '</b> (' + (added + 1) + ' puntos), donde se perdió el color. Marcá ese punto a mano y tocá <b>AUTO</b> para continuar, o subí la sensibilidad.');
+            setGuide('Seguimiento detenido: quedaron <b>' + added + ' puntos</b>. Podés seguir a mano con <b>MARCAR</b> o retomar con <b>AUTO</b>.', true);
+        } else if (waiting) {
+            setGuide('Se siguió el objeto hasta el cuadro <b>' + (lostAt - 1) + '</b> (' + added + ' puntos); después salió de escena y no volvió a aparecer. Podés completar a mano con <b>MARCAR</b>.', true);
         } else {
-            setGuide('Seguimiento completo: <b>' + (added + 1) + ' puntos</b> registrados. Mirá <b>Gráficas</b> y <b>Tabla</b>.', true);
+            setGuide('Seguimiento completo: <b>' + added + ' puntos</b> registrados' + (lostAt >= 0 ? ' (con una pausa donde el objeto salió de escena)' : '') + '. Mirá <b>Gráficas</b> y <b>Tabla</b>.', true);
         }
     }
 
