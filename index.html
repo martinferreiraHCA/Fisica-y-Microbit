@@ -31030,7 +31030,9 @@ bluetooth.startIOPinService()</pre>
     .vm-step.done .vm-step-n span { display:none; }
 
     /* Aviso guía */
-    .vm-guide { flex:0 0 auto; margin:8px 12px 0; padding:8px 12px; background:#f5f5f5; border:1px solid #ccc; border-left:5px solid #000; color:#222; font-size:0.76rem; line-height:1.5; }
+    .vm-guide { flex:0 0 auto; display:flex; align-items:center; gap:10px; margin:8px 12px 0; padding:8px 12px; background:#f5f5f5; border:1px solid #ccc; border-left:5px solid #000; color:#222; font-size:0.76rem; line-height:1.5; }
+    .vm-guide #vm-guide-txt { flex:1 1 auto; min-width:0; }
+    .vm-step.locked { opacity:.45; }
     .vm-guide.ok { border-left-color:#2e7d32; background:#f2f8f2; }
     .vm-guide b { font-weight:700; }
 
@@ -31191,7 +31193,7 @@ bluetooth.startIOPinService()</pre>
             <button class="vm-step" data-step="4" id="vm-step4"><span class="vm-step-n"><span>4</span></span>Analizar</button>
         </div>
 
-        <div class="vm-guide" id="vm-guide"><span id="vm-guide-txt">Cargá un video para empezar.</span></div>
+        <div class="vm-guide" id="vm-guide"><span id="vm-guide-txt">Cargá un video para empezar.</span><button class="vm-btn" id="vm-guide-skip" style="display:none; flex:0 0 auto;" title="Seguir sin calibrar: las posiciones quedan en píxeles en vez de metros (podés calibrar después con ESCALA)">Medir en píxeles ▸</button></div>
 
         <div class="vm-body">
             <div class="vm-left">
@@ -31207,7 +31209,6 @@ bluetooth.startIOPinService()</pre>
                     <button class="vm-btn" id="vm-show-vectors" disabled title="Dibujar sobre el video la flecha de velocidad en cada punto marcado">Vectores</button>
                     <button class="vm-btn" id="vm-chrono" disabled title="Cronofotografía: armar una imagen con el objeto en todas las posiciones marcadas, para imprimir o pegar en el informe">Crono</button>
                     <span class="sep"></span>
-                    <button class="vm-btn" id="vm-pad-btn" disabled title="Modo pad (como FizziQ): movés la mira arrastrando desde CUALQUIER parte de la pantalla, sin tapar el objeto con el dedo, y confirmás con el botón MARCAR. Un toque corto salta la mira a ese lugar.">Pad</button>
                     <button class="vm-btn" id="vm-grid-btn" disabled title="Grilla sobre el video para ver la escala: si ya calibraste, te dice cuántos metros mide cada cuadro">Grilla</button>
                     <select id="vm-grid-size" title="Densidad de la grilla" style="display:none; border:2px solid #000; padding:6px 4px; font-size:0.7rem; font-family:inherit; background:#fff; cursor:pointer;">
                         <option value="fina">Fina</option>
@@ -31215,6 +31216,7 @@ bluetooth.startIOPinService()</pre>
                         <option value="gruesa">Gruesa</option>
                     </select>
                     <span class="sep"></span>
+                    <button class="vm-btn" id="vm-tool-erase" disabled title="Depurar puntos: llevá la mira sobre un punto rojo y tocá BORRAR PUNTO para eliminarlo (también podés borrarlos desde la Tabla)">Borrar punto</button>
                     <button class="vm-btn" id="vm-undo" disabled title="Borrar el último punto marcado">Deshacer</button>
                     <button class="vm-btn" id="vm-clear-pts" disabled title="Borrar todos los puntos marcados">Borrar todo</button>
                 </div>
@@ -31441,7 +31443,9 @@ bluetooth.startIOPinService()</pre>
                         <li>Con la herramienta <b>Marcar</b> activa, tocá el objeto: el punto queda registrado y el video <b>avanza solo</b> al siguiente cuadro a marcar.</li>
                         <li>¿Querés <b>menos puntos</b>? En la barra de abajo elegí <b>Cada 2, 3, 5 o 10 cuadros</b>: el marcado, los botones ⟨ ⟩ y el seguimiento automático saltan de a ese paso. Ideal para videos largos o para tablas más manejables.</li>
                         <li>Al apoyar el dedo (o mantener apretado el mouse) aparece una <b>lupa</b> para apuntar fino; al soltar se marca el punto. La lupa también funciona al calibrar la <b>Escala</b> y el <b>Origen</b>.</li>
-                        <li><b>Modo PAD</b> (activado solo en pantallas táctiles; se prende y apaga con el botón <b>PAD</b>): en vez de tocar el objeto —y taparlo con el dedo— movés una <b>mira</b> arrastrando desde <b>cualquier parte de la pantalla</b>, como un mousepad. Un toque corto salta la mira a ese lugar. Cuando la mira está sobre el objeto, tocá el botón <b>MARCAR PUNTO</b> (abajo a la derecha del video). Sirve igual para la Escala, el Origen y para elegir el objeto del AUTO.</li>
+                        <li>El marcado funciona siempre con la <b>mira</b> (estilo FizziQ): en vez de tocar el objeto —y taparlo con el dedo— la movés arrastrando desde <b>cualquier parte de la pantalla</b>, como un mousepad. Un toque corto la salta a ese lugar y la lupa muestra ampliado lo que hay debajo. Cuando la mira está sobre el objeto, tocá el botón grande de abajo a la derecha (<b>MARCAR PUNTO</b> / <b>PONER EXTREMO</b> / <b>PONER ORIGEN</b> / <b>ELEGIR OBJETO</b>, según la herramienta).</li>
+                        <li>El flujo es <b>guiado y por pasos</b>: MARCAR y AUTO quedan bloqueados hasta que calibres la <b>ESCALA</b> (así los resultados salen en metros). Si no necesitás unidades reales, el botón <b>"Medir en píxeles"</b> de la barra guía te deja saltear ese paso. La barra gris de arriba siempre te dice en qué paso estás y qué hacer.</li>
+                        <li><b>Depurar puntos:</b> con la herramienta <b>BORRAR PUNTO</b> llevás la mira sobre un punto rojo mal marcado y lo eliminás; también podés borrar cualquier fila desde la <b>Tabla</b> (✕), borrar el último con <b>DESHACER</b> (o Ctrl+Z), o volver a marcar el mismo cuadro para reemplazarlo.</li>
                         <li>El botón <b>GRILLA</b> superpone una cuadrícula al video (densidad Fina / Media / Gruesa). Si ya calibraste la escala, cada cuadro mide un número redondo de metros y arriba a la izquierda te dice cuánto (por ej. "cada cuadro = 0.5 m"): una referencia visual clara de las distancias. Si definiste el origen, las líneas más marcadas pasan por el (0, 0).</li>
                         <li>Con <b>Auto</b> el sistema sigue el objeto solo. Cómo usarlo bien: <b>1)</b> filmá con la <b>cámara quieta</b> (apoyada o con trípode: el sistema aprende el fondo del video y busca lo que se mueve; si la cámara tiembla, se confunde); <b>2)</b> usá un objeto de <b>color vivo y distinto del fondo</b>; <b>3)</b> tocá el <b>centro del objeto</b> (con PAD y lupa es fácil apuntar) y revisá que el color de la muestra sea el del objeto; <b>4)</b> si lo pierde seguido, <b>subí la sensibilidad</b>; si se salta a otro objeto parecido, <b>bajala</b>. Si el objeto sale de escena, espera a que reaparezca y lo re-engancha; podés frenar con <b>DETENER</b> y corregir cualquier cuadro a mano con MARCAR.</li>
                         <li>¿Le erraste? <b>Deshacer</b> borra el último punto. Si marcás dos veces el mismo cuadro, el punto se reemplaza.</li>
@@ -31547,26 +31551,25 @@ bluetooth.startIOPinService()</pre>
         stepEls.forEach(function (e, i) {
             e.className = 'vm-step' + (doneFlags[i] ? ' done' : '') + (i === active ? ' active' : '');
         });
+        var s2ok = s2 || skipScale;   // escala lista, o eligió medir en píxeles
+        el('vm-guide-skip').style.display = (s1 && !s2ok) ? '' : 'none';
+        el('vm-step3').classList.toggle('locked', s1 && !s2ok);
         if (!s1) {
-            setGuide('Cargá un video para empezar: <b>ABRIR VIDEO</b>, <b>GRABAR</b>, o arrastralo sobre la pantalla.');
-        } else if (!s2) {
-            setGuide('<b>Paso 2 · Escala:</b> tocá <b>ESCALA</b> y marcá los dos extremos de algo de longitud conocida que se vea en el video (una regla, una mesa, una puerta…). ' +
-                (padMode ? 'Con el <b>PAD</b>: arrastrá desde cualquier lado para llevar la mira al extremo y tocá <b>PONER EXTREMO</b>.' : 'Mantené apretado y aparece la lupa para apuntar fino.') +
-                ' Después escribí cuánto mide en metros. La <b>GRILLA</b> te ayuda a ver la escala.');
+            setGuide('<b>Paso 1 de 4 · Video:</b> cargá un video para empezar — <b>ABRIR VIDEO</b>, <b>GRABAR</b> con la cámara, o arrastralo sobre la pantalla. Consejo: filmá con la cámara quieta y con algo de longitud conocida en la escena. Los pasos siguientes se van a ir habilitando solos.');
+        } else if (!s2ok) {
+            setGuide('<b>Paso 2 de 4 · Escala:</b> con la herramienta <b>ESCALA</b> activa, arrastrá desde cualquier parte de la pantalla para llevar la <b>mira</b> a un extremo de algo de longitud conocida (una regla, una mesa…) y tocá <b>PONER EXTREMO</b>; repetí en el otro extremo y escribí cuánto mide. <b>MARCAR y AUTO se habilitan al terminar este paso</b> (o tocá "Medir en píxeles" para saltearlo).');
         } else if (!s3) {
-            setGuide('<b>Paso 3 · Marcar:</b> ' +
-                (padMode
-                    ? 'con el <b>PAD</b> activo no tapás el objeto con el dedo: arrastrá desde <b>cualquier parte de la pantalla</b> para mover la mira (un toque corto la salta ahí) y tocá <b>MARCAR PUNTO</b>. El video avanza solo al siguiente cuadro.'
-                    : 'tocá el objeto en el video: se registra el punto y avanza solo al cuadro siguiente. Mantené apretado y aparece la <b>lupa</b> para apuntar fino.') +
-                ' ¿Preferís que lo haga solo? Tocá <b>AUTO</b> y elegí el objeto.');
+            setGuide('<b>Paso 3 de 4 · Marcar puntos:</b> arrastrá desde <b>cualquier parte de la pantalla</b> para mover la mira hasta el objeto (un toque corto la salta ahí, y no tapás nada con el dedo) y tocá <b>MARCAR PUNTO</b>: el video avanza solo al siguiente cuadro. ¿Preferís que lo siga solo? Tocá <b>AUTO</b>, llevá la mira al objeto y tocá <b>ELEGIR OBJETO</b>.');
         } else {
-            setGuide('Ya hay <b>' + points.length + ' puntos</b>. Seguí marcando o mirá <b>Gráficas</b> y <b>Tabla</b>. Podés superponer la <b>micro:bit</b> desde su pestaña.', true);
+            setGuide('<b>Paso 4 de 4 · Analizar:</b> ya hay <b>' + points.length + ' puntos</b>. Mirá <b>Gráficas</b> y <b>Tabla</b> (a la derecha o abajo), probá la <b>Curva ideal</b> y el <b>Suavizado</b>. ¿Algún punto salió mal? Depuralo con <b>BORRAR PUNTO</b> o desde la Tabla. También podés superponer la <b>micro:bit</b> desde su pestaña.', true);
         }
         var enable = hasVideo;
-        ['vm-tool-scale', 'vm-tool-origin', 'vm-tool-mark', 'vm-tool-auto'].forEach(function (id) { el(id).disabled = !enable; });
+        var enableMark = hasVideo && s2ok;
+        el('vm-tool-scale').disabled = !enable;
+        ['vm-tool-origin', 'vm-tool-mark', 'vm-tool-auto'].forEach(function (id) { el(id).disabled = !enableMark; });
+        el('vm-tool-erase').disabled = !enableMark || !points.length;
         el('vm-show-vectors').disabled = !enable || points.length < 2;
         el('vm-chrono').disabled = !enable || points.length < 2 || chronoBusy;
-        el('vm-pad-btn').disabled = !enable;
         el('vm-grid-btn').disabled = !enable;
         updatePadUi();
         el('vm-undo').disabled = !points.length;
@@ -31582,7 +31585,14 @@ bluetooth.startIOPinService()</pre>
     function goToStep(n) {
         if (n === 1) { el('vm-load-btn').focus(); if (!hasVideo) pickFile(); }
         else if (n === 2) { if (hasVideo) setTool('scale'); }
-        else if (n === 3) { if (hasVideo) setTool('mark'); }
+        else if (n === 3) {
+            if (!hasVideo) return;
+            if (!metersPerPixel() && !skipScale) {
+                setGuide('<b>Este paso está bloqueado:</b> primero calibrá la <b>ESCALA</b> (paso 2) para que las medidas salgan en metros — o tocá <b>"Medir en píxeles"</b> si no te hace falta.');
+                return;
+            }
+            setTool('mark');
+        }
         else if (n === 4) { switchTab('graficas'); }
     }
 
@@ -31734,9 +31744,10 @@ bluetooth.startIOPinService()</pre>
     var smoothWin = 1;
     var markStep = 1;             // registrar un punto cada N cuadros (como en FizziQ)
     var massKg = 1;               // masa del objeto para las energías (como en FizziQ)
-    var padMode = (navigator.maxTouchPoints || 0) > 0;  // pad estilo FizziQ: por defecto en táctil
+    var padMode = true;           // el pad estilo FizziQ es SIEMPRE el modo de marcado
     var reticle = null;           // {u, v} mira del modo pad, en píxeles del video
     var padDrag = null;           // arrastre en curso del pad {x, y, moved, t0}
+    var skipScale = false;        // el usuario eligió medir en píxeles (sin calibrar)
     var gridOn = false;           // grilla sobre el video
     var gridDensity = 'media';    // fina | media | gruesa
     var chronoBusy = false;       // armado de la cronofotografía en curso
@@ -32064,11 +32075,10 @@ bluetooth.startIOPinService()</pre>
     function hideLoupe() { el('vm-loupe').style.display = 'none'; }
 
     /* ================= Interacción sobre el video ================= */
-    var PLACE_LABEL = { mark: 'Marcar punto', scale: 'Poner extremo', origin: 'Poner origen', auto: 'Elegir objeto' };
+    var PLACE_LABEL = { mark: 'Marcar punto', scale: 'Poner extremo', origin: 'Poner origen', auto: 'Elegir objeto', erase: 'Borrar punto' };
 
     function updatePadUi() {
         var on = padMode && hasVideo;
-        el('vm-pad-btn').classList.toggle('active', padMode);
         el('vm-place').style.display = on ? 'block' : 'none';
         el('vm-place').textContent = PLACE_LABEL[tool] || 'Marcar punto';
         el('vm-pad-hint').style.display = on && points.length < 2 ? 'block' : 'none';
@@ -32077,11 +32087,13 @@ bluetooth.startIOPinService()</pre>
     function setTool(t) {
         if (autoTracking) return;
         tool = t;
-        ['mark', 'scale', 'origin', 'auto'].forEach(function (k) {
+        ['mark', 'scale', 'origin', 'auto', 'erase'].forEach(function (k) {
             el('vm-tool-' + k).classList.toggle('active', k === t);
         });
         updatePadUi();
-        if (t === 'auto') {
+        if (t === 'erase') {
+            setGuide('<b>Depurar puntos:</b> llevá la mira sobre el punto rojo que quieras eliminar y tocá <b>BORRAR PUNTO</b>. También podés borrar cualquier fila desde la <b>Tabla</b> (✕) o el último con <b>DESHACER</b>. Cuando termines, volvé a <b>MARCAR</b>.');
+        } else if (t === 'auto') {
             setGuide('Tocá el <b>objeto que querés seguir</b> (mejor si es de un color vivo y distinto del fondo). Podés mantener apretado para apuntar con la lupa.');
         } else if (t === 'scale') {
             scalePts = [];
@@ -32099,6 +32111,26 @@ bluetooth.startIOPinService()</pre>
     }
 
     function commitPoint(vc) {
+        if (tool === 'erase') {
+            // borrar el punto marcado más cercano a la mira (en pantalla)
+            var target = videoToCss(vc.u, vc.v);
+            var best = -1, bd = 1e9;
+            for (var ei = 0; ei < points.length; ei++) {
+                var ec = videoToCss(points[ei].u, points[ei].v);
+                var ed = Math.hypot(ec.x - target.x, ec.y - target.y);
+                if (ed < bd) { bd = ed; best = ei; }
+            }
+            if (best >= 0 && bd <= 22) {
+                var tp = points[best].t;
+                points.splice(best, 1);
+                drawOverlay();
+                recomputeAll();
+                setGuide('Punto de t = <b>' + fmtT(tp) + ' s</b> eliminado. Quedan <b>' + points.length + '</b>. Seguí borrando o volvé a <b>MARCAR</b>.', true);
+            } else {
+                setGuide('No hay ningún punto cerca de la mira: acercala más al punto rojo que quieras borrar.');
+            }
+            return;
+        }
         if (tool === 'auto') {
             var col = sampleColor(vc.u, vc.v);
             if (!col) { setGuide('No se pudo leer el color en ese punto. Probá de nuevo.'); return; }
@@ -33143,6 +33175,7 @@ bluetooth.startIOPinService()</pre>
 
         // Herramientas
         el('vm-tool-mark').addEventListener('click', function () { setTool('mark'); });
+        el('vm-tool-erase').addEventListener('click', function () { setTool('erase'); });
         el('vm-tool-auto').addEventListener('click', function () {
             if (autoTracking) { autoStop = true; return; }
             setTool('auto');
@@ -33166,7 +33199,7 @@ bluetooth.startIOPinService()</pre>
         });
         el('vm-clear-pts').addEventListener('click', function () {
             if (!confirm('¿Borrar todos los puntos marcados y la calibración?')) return;
-            points = []; scalePts = []; scaleLen = null; origin = null;
+            points = []; scalePts = []; scaleLen = null; origin = null; skipScale = false;
             drawOverlay();
             recomputeAll();
         });
@@ -33203,14 +33236,15 @@ bluetooth.startIOPinService()</pre>
             el('vm-tab-' + k).addEventListener('click', function () { switchTab(k); });
         });
 
-        // Modo pad, botón de confirmación y grilla
-        el('vm-pad-btn').addEventListener('click', function () {
-            padMode = !padMode;
-            if (padMode && !reticle && video.videoWidth) reticle = { u: video.videoWidth / 2, v: video.videoHeight / 2 };
-            updatePadUi();
+        // Saltear la calibración (medir en píxeles)
+        el('vm-guide-skip').addEventListener('click', function () {
+            skipScale = true;
+            setTool('mark');
             refreshSteps();
-            drawOverlay();
+            setGuide('Vas a medir en <b>píxeles</b> (las gráficas y la tabla lo indican). Podés calibrar cuando quieras con <b>ESCALA</b> y todo se recalcula en metros. Ahora sí: <b>Paso 3 · Marcar puntos</b> — llevá la mira al objeto y tocá <b>MARCAR PUNTO</b>, o usá <b>AUTO</b>.', true);
         });
+
+        // Botón de confirmación del pad y grilla
         el('vm-place').addEventListener('click', function () {
             if (!hasVideo || playing || autoTracking || !reticle) return;
             commitPoint({ u: reticle.u, v: reticle.v });
