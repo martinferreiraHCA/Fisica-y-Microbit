@@ -31119,7 +31119,13 @@ bluetooth.startIOPinService()</pre>
     .vm-check input { width:17px; height:17px; accent-color:#000; margin:0; cursor:pointer; flex:0 0 auto; }
 
     /* Diálogo de escala */
-    .vm-dialog { display:none; position:absolute; z-index:30; left:50%; top:50%; transform:translate(-50%,-50%); background:#fff; border:2px solid #000; box-shadow:0 8px 30px rgba(0,0,0,.4); padding:16px 18px; width:min(320px, calc(100% - 30px)); box-sizing:border-box; }
+    .vm-dialog { display:none; position:fixed; z-index:9200; left:50%; top:50%; transform:translate(-50%,-50%); background:#fff; border:2px solid #000; box-shadow:0 8px 30px rgba(0,0,0,.4); padding:16px 18px; width:min(380px, calc(100vw - 24px)); max-height:calc(100vh - 40px); overflow-y:auto; -webkit-overflow-scrolling:touch; box-sizing:border-box; }
+    .vm-dialog ul { margin:6px 0 10px; padding-left:18px; font-size:0.74rem; color:#333; line-height:1.55; }
+    .vm-dialog ul li { margin-bottom:5px; }
+    .vm-place-btn { display:none; position:absolute; right:12px; bottom:12px; z-index:14; background:#000; color:#fff; border:2px solid #fff; font-size:0.78rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:14px 20px; cursor:pointer; font-family:inherit; box-shadow:0 4px 14px rgba(0,0,0,.5); touch-action:manipulation; }
+    .vm-place-btn:active { background:#333; }
+    .vm-grid-badge { display:none; position:absolute; left:10px; top:10px; z-index:13; background:rgba(0,0,0,.72); color:#fff; font-size:0.68rem; font-weight:700; letter-spacing:.5px; padding:5px 10px; pointer-events:none; }
+    .vm-pad-hint { display:none; position:absolute; left:50%; bottom:14px; transform:translateX(-50%); z-index:13; background:rgba(0,0,0,.72); color:#fff; font-size:0.66rem; font-weight:600; padding:5px 10px; pointer-events:none; max-width:calc(100% - 150px); text-align:center; }
     .vm-dialog.open { display:block; }
     .vm-dialog h4 { margin:0 0 4px; font-size:0.8rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#000; }
     .vm-dialog p { margin:0 0 10px; font-size:0.74rem; color:#555; line-height:1.5; }
@@ -31201,6 +31207,14 @@ bluetooth.startIOPinService()</pre>
                     <button class="vm-btn" id="vm-show-vectors" disabled title="Dibujar sobre el video la flecha de velocidad en cada punto marcado">Vectores</button>
                     <button class="vm-btn" id="vm-chrono" disabled title="Cronofotografía: armar una imagen con el objeto en todas las posiciones marcadas, para imprimir o pegar en el informe">Crono</button>
                     <span class="sep"></span>
+                    <button class="vm-btn" id="vm-pad-btn" disabled title="Modo pad (como FizziQ): movés la mira arrastrando desde CUALQUIER parte de la pantalla, sin tapar el objeto con el dedo, y confirmás con el botón MARCAR. Un toque corto salta la mira a ese lugar.">Pad</button>
+                    <button class="vm-btn" id="vm-grid-btn" disabled title="Grilla sobre el video para ver la escala: si ya calibraste, te dice cuántos metros mide cada cuadro">Grilla</button>
+                    <select id="vm-grid-size" title="Densidad de la grilla" style="display:none; border:2px solid #000; padding:6px 4px; font-size:0.7rem; font-family:inherit; background:#fff; cursor:pointer;">
+                        <option value="fina">Fina</option>
+                        <option value="media" selected>Media</option>
+                        <option value="gruesa">Gruesa</option>
+                    </select>
+                    <span class="sep"></span>
                     <button class="vm-btn" id="vm-undo" disabled title="Borrar el último punto marcado">Deshacer</button>
                     <button class="vm-btn" id="vm-clear-pts" disabled title="Borrar todos los puntos marcados">Borrar todo</button>
                 </div>
@@ -31210,6 +31224,9 @@ bluetooth.startIOPinService()</pre>
                         <video id="vm-video" playsinline muted preload="auto"></video>
                         <canvas class="vm-overlay" id="vm-overlay"></canvas>
                         <div class="vm-loupe" id="vm-loupe"><canvas id="vm-loupe-canvas" width="264" height="264"></canvas></div>
+                        <button class="vm-place-btn" id="vm-place">Marcar punto</button>
+                        <div class="vm-grid-badge" id="vm-grid-badge"></div>
+                        <div class="vm-pad-hint" id="vm-pad-hint">Arrastrá desde cualquier lado para mover la mira · un toque la salta ahí</div>
                         <div class="vm-empty" id="vm-empty">
                             <h3>Empezá con un video de tu experimento</h3>
                             <p>Filmá el movimiento con la cámara fija y algo de longitud conocida en la escena (una regla, una mesa…). Después vas a marcar el objeto cuadro a cuadro y las gráficas se arman solas.</p>
@@ -31234,17 +31251,24 @@ bluetooth.startIOPinService()</pre>
                         </div>
                         <div class="vm-dialog" id="vm-auto-dialog">
                             <h4>Seguimiento automático</h4>
-                            <p>Se busca el objeto cuadro a cuadro combinando su <b>color</b>, un <b>modelo de fondo</b> del video (lo que se mueve se distingue de lo que está quieto) y la <b>predicción de su movimiento</b>. Si sale de escena, el sistema espera a que reaparezca y lo re-engancha solo. Se registra un punto según el selector <b>Cada N cuadros</b>.</p>
+                            <p style="margin-bottom:4px;"><b>Para que funcione bien, revisá esto antes de iniciar:</b></p>
+                            <ul>
+                                <li><b>Cámara quieta</b> (apoyada o con trípode). El sistema aprende cómo es el fondo del video y busca lo que se mueve: si la cámara tiembla, todo "se mueve" y se confunde.</li>
+                                <li>El objeto debe ser de un <b>color vivo y distinto del fondo</b> (una pelota de color sobre pared clara, por ejemplo).</li>
+                                <li>Tocá el <b>centro del objeto</b>, no el borde. Este es el color que se va a seguir:</li>
+                            </ul>
                             <div class="row" style="align-items:center;">
-                                <span id="vm-auto-swatch" style="width:36px; height:36px; border:2px solid #000; flex:0 0 auto;"></span>
-                                <label style="flex:1; min-width:0; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Sensibilidad
-                                    <input type="range" id="vm-auto-tol" min="30" max="150" value="80" style="width:100%; accent-color:#000; margin-top:4px;">
-                                </label>
+                                <span id="vm-auto-swatch" style="width:40px; height:40px; border:2px solid #000; flex:0 0 auto;"></span>
+                                <span style="flex:1; font-size:0.7rem; color:#555; line-height:1.4;">Si este color <b>no</b> se parece al del objeto, tocá <b>Cancelar</b> y volvé a elegirlo con más cuidado (el modo <b>PAD</b> y la lupa ayudan a apuntar fino).</span>
                             </div>
-                            <p style="margin-top:8px;">Funciona mejor con un objeto de color vivo, distinto del fondo. Si lo pierde, marcá ese cuadro a mano y volvé a tocar <b>AUTO</b> para continuar.</p>
+                            <label style="display:block; margin-top:10px; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Sensibilidad
+                                <input type="range" id="vm-auto-tol" min="30" max="150" value="80" style="width:100%; accent-color:#000; margin-top:4px;">
+                            </label>
+                            <p style="font-size:0.7rem; color:#555; margin-top:2px;">Si el objeto se pierde seguido → <b>subí</b> la sensibilidad. Si el seguimiento se salta a otra cosa parecida → <b>bajala</b>.</p>
+                            <p style="margin-top:8px;">Va desde el instante actual hasta el final del video, registrando un punto según <b>Cada N cuadros</b>. Si el objeto sale de escena, espera a que reaparezca y lo re-engancha. Podés frenar cuando quieras con <b>DETENER</b>, y si queda algún cuadro mal, lo corregís a mano con <b>MARCAR</b>.</p>
                             <div class="btns">
                                 <button class="vm-btn" id="vm-auto-cancel">Cancelar</button>
-                                <button class="vm-btn primary" id="vm-auto-go">Iniciar</button>
+                                <button class="vm-btn primary" id="vm-auto-go">Iniciar seguimiento</button>
                             </div>
                         </div>
                     </div>
@@ -31413,7 +31437,9 @@ bluetooth.startIOPinService()</pre>
                         <li>Con la herramienta <b>Marcar</b> activa, tocá el objeto: el punto queda registrado y el video <b>avanza solo</b> al siguiente cuadro a marcar.</li>
                         <li>¿Querés <b>menos puntos</b>? En la barra de abajo elegí <b>Cada 2, 3, 5 o 10 cuadros</b>: el marcado, los botones ⟨ ⟩ y el seguimiento automático saltan de a ese paso. Ideal para videos largos o para tablas más manejables.</li>
                         <li>Al apoyar el dedo (o mantener apretado el mouse) aparece una <b>lupa</b> para apuntar fino; al soltar se marca el punto. La lupa también funciona al calibrar la <b>Escala</b> y el <b>Origen</b>.</li>
-                        <li>Con <b>Auto</b> el sistema sigue el objeto solo: tocá el objeto, confirmá y lo busca cuadro a cuadro combinando su color, un modelo de fondo del video (compara qué cambia entre cuadros, con la cámara fija) y la predicción del movimiento. Si el objeto sale de escena, espera a que reaparezca y lo re-engancha. Filmá con la <b>cámara quieta</b>: el detector está calibrado para eso.</li>
+                        <li><b>Modo PAD</b> (activado solo en pantallas táctiles; se prende y apaga con el botón <b>PAD</b>): en vez de tocar el objeto —y taparlo con el dedo— movés una <b>mira</b> arrastrando desde <b>cualquier parte de la pantalla</b>, como un mousepad. Un toque corto salta la mira a ese lugar. Cuando la mira está sobre el objeto, tocá el botón <b>MARCAR PUNTO</b> (abajo a la derecha del video). Sirve igual para la Escala, el Origen y para elegir el objeto del AUTO.</li>
+                        <li>El botón <b>GRILLA</b> superpone una cuadrícula al video (densidad Fina / Media / Gruesa). Si ya calibraste la escala, cada cuadro mide un número redondo de metros y arriba a la izquierda te dice cuánto (por ej. "cada cuadro = 0.5 m"): una referencia visual clara de las distancias. Si definiste el origen, las líneas más marcadas pasan por el (0, 0).</li>
+                        <li>Con <b>Auto</b> el sistema sigue el objeto solo. Cómo usarlo bien: <b>1)</b> filmá con la <b>cámara quieta</b> (apoyada o con trípode: el sistema aprende el fondo del video y busca lo que se mueve; si la cámara tiembla, se confunde); <b>2)</b> usá un objeto de <b>color vivo y distinto del fondo</b>; <b>3)</b> tocá el <b>centro del objeto</b> (con PAD y lupa es fácil apuntar) y revisá que el color de la muestra sea el del objeto; <b>4)</b> si lo pierde seguido, <b>subí la sensibilidad</b>; si se salta a otro objeto parecido, <b>bajala</b>. Si el objeto sale de escena, espera a que reaparezca y lo re-engancha; podés frenar con <b>DETENER</b> y corregir cualquier cuadro a mano con MARCAR.</li>
                         <li>¿Le erraste? <b>Deshacer</b> borra el último punto. Si marcás dos veces el mismo cuadro, el punto se reemplaza.</li>
                         <li>Con el teclado: <kbd>←</kbd> y <kbd>→</kbd> mueven un cuadro, <kbd>espacio</kbd> reproduce o pausa.</li>
                     </ul>
@@ -31500,9 +31526,15 @@ bluetooth.startIOPinService()</pre>
         if (!s1) {
             setGuide('Cargá un video para empezar: <b>ABRIR VIDEO</b>, <b>GRABAR</b>, o arrastralo sobre la pantalla.');
         } else if (!s2) {
-            setGuide('Calibrá la escala: tocá <b>ESCALA</b> y marcá los dos extremos de algo de longitud conocida (una regla, una mesa…).');
+            setGuide('<b>Paso 2 · Escala:</b> tocá <b>ESCALA</b> y marcá los dos extremos de algo de longitud conocida que se vea en el video (una regla, una mesa, una puerta…). ' +
+                (padMode ? 'Con el <b>PAD</b>: arrastrá desde cualquier lado para llevar la mira al extremo y tocá <b>PONER EXTREMO</b>.' : 'Mantené apretado y aparece la lupa para apuntar fino.') +
+                ' Después escribí cuánto mide en metros. La <b>GRILLA</b> te ayuda a ver la escala.');
         } else if (!s3) {
-            setGuide('Con <b>MARCAR</b> activo, tocá el objeto en el video: se registra el punto y avanza solo al cuadro siguiente. En táctil, mantené apretado y aparece la lupa.');
+            setGuide('<b>Paso 3 · Marcar:</b> ' +
+                (padMode
+                    ? 'con el <b>PAD</b> activo no tapás el objeto con el dedo: arrastrá desde <b>cualquier parte de la pantalla</b> para mover la mira (un toque corto la salta ahí) y tocá <b>MARCAR PUNTO</b>. El video avanza solo al siguiente cuadro.'
+                    : 'tocá el objeto en el video: se registra el punto y avanza solo al cuadro siguiente. Mantené apretado y aparece la <b>lupa</b> para apuntar fino.') +
+                ' ¿Preferís que lo haga solo? Tocá <b>AUTO</b> y elegí el objeto.');
         } else {
             setGuide('Ya hay <b>' + points.length + ' puntos</b>. Seguí marcando o mirá <b>Gráficas</b> y <b>Tabla</b>. Podés superponer la <b>micro:bit</b> desde su pestaña.', true);
         }
@@ -31510,6 +31542,9 @@ bluetooth.startIOPinService()</pre>
         ['vm-tool-scale', 'vm-tool-origin', 'vm-tool-mark', 'vm-tool-auto'].forEach(function (id) { el(id).disabled = !enable; });
         el('vm-show-vectors').disabled = !enable || points.length < 2;
         el('vm-chrono').disabled = !enable || points.length < 2 || chronoBusy;
+        el('vm-pad-btn').disabled = !enable;
+        el('vm-grid-btn').disabled = !enable;
+        updatePadUi();
         el('vm-undo').disabled = !points.length;
         el('vm-clear-pts').disabled = !points.length && scalePts.length === 0 && !origin;
         el('vm-export-csv').disabled = points.length < 1;
@@ -31561,6 +31596,7 @@ bluetooth.startIOPinService()</pre>
             slider.max = duration.toFixed(3);
             slider.value = 0;
             el('vm-time-dur').textContent = fmtT(duration) + ' s';
+            reticle = { u: (video.videoWidth || 2) / 2, v: (video.videoHeight || 2) / 2 };
             resizeOverlay();
             updateTimeUI();
             refreshSteps();
@@ -31603,7 +31639,7 @@ bluetooth.startIOPinService()</pre>
 
     function playPause() {
         if (!hasVideo) return;
-        if (playing) { pauseVideo(); }
+        if (playing) { pauseVideo(); updatePadUi(); }
         else {
             video.play().then(function () {
                 playing = true;
@@ -31672,6 +31708,11 @@ bluetooth.startIOPinService()</pre>
     var smoothWin = 1;
     var markStep = 1;             // registrar un punto cada N cuadros (como en FizziQ)
     var massKg = 1;               // masa del objeto para las energías (como en FizziQ)
+    var padMode = (navigator.maxTouchPoints || 0) > 0;  // pad estilo FizziQ: por defecto en táctil
+    var reticle = null;           // {u, v} mira del modo pad, en píxeles del video
+    var padDrag = null;           // arrastre en curso del pad {x, y, moved, t0}
+    var gridOn = false;           // grilla sobre el video
+    var gridDensity = 'media';    // fina | media | gruesa
     var chronoBusy = false;       // armado de la cronofotografía en curso
     var chronoUrl = null;         // dataURL de la última cronofotografía
     var fitMode = 'none';         // 'none' | 'auto' | 'lin' | 'quad': curva ideal sobre la gráfica
@@ -31794,6 +31835,8 @@ bluetooth.startIOPinService()</pre>
         if (!hasVideo) return;
         var t = video.currentTime, half = frameDt() / 2;
 
+        drawGrid();
+
         // Segmento de escala
         if (scalePts.length) {
             var a = videoToCss(scalePts[0].u, scalePts[0].v);
@@ -31865,6 +31908,90 @@ bluetooth.startIOPinService()</pre>
                 octx.beginPath(); octx.arc(c.x, c.y, 3.4, 0, Math.PI * 2); octx.fill();
             }
         }
+
+        // Mira del modo pad (siempre visible: es el "cursor" que se maneja
+        // arrastrando desde cualquier parte de la pantalla)
+        if (padMode && reticle && !playing && !autoTracking) {
+            var m2 = reticleCss();
+            octx.save();
+            octx.strokeStyle = '#fff'; octx.lineWidth = 3.4;
+            octx.beginPath(); octx.arc(m2.x, m2.y, 13, 0, Math.PI * 2); octx.stroke();
+            octx.strokeStyle = '#d32f2f'; octx.lineWidth = 1.8;
+            octx.beginPath(); octx.arc(m2.x, m2.y, 13, 0, Math.PI * 2); octx.stroke();
+            octx.beginPath();
+            octx.moveTo(m2.x - 21, m2.y); octx.lineTo(m2.x - 7, m2.y);
+            octx.moveTo(m2.x + 7, m2.y); octx.lineTo(m2.x + 21, m2.y);
+            octx.moveTo(m2.x, m2.y - 21); octx.lineTo(m2.x, m2.y - 7);
+            octx.moveTo(m2.x, m2.y + 7); octx.lineTo(m2.x, m2.y + 21);
+            octx.stroke();
+            octx.fillStyle = '#d32f2f';
+            octx.fillRect(m2.x - 0.75, m2.y - 0.75, 1.5, 1.5);
+            octx.restore();
+        }
+    }
+
+    // Grilla sobre el video: si hay escala, cada cuadro mide un número
+    // redondo de metros (0.1, 0.2, 0.5, 1…); si no, divide el ancho.
+    function niceStep(x) {
+        var p = Math.pow(10, Math.floor(Math.log(x) / Math.LN10));
+        var best = p, dBest = Infinity;
+        [1, 2, 5, 10].forEach(function (m) {
+            var v = m * p;
+            var d = Math.abs(Math.log(v / x));
+            if (d < dBest) { dBest = d; best = v; }
+        });
+        return best;
+    }
+
+    function drawGrid() {
+        var badge = el('vm-grid-badge');
+        if (!gridOn) { badge.style.display = 'none'; return; }
+        var r = contentRect();
+        if (r.scale <= 0) return;
+        var targetCss = { fina: 34, media: 56, gruesa: 92 }[gridDensity] || 56;
+        var mpp = metersPerPixel();
+        var cellPx, label;
+        if (mpp) {
+            var cellM = niceStep(targetCss / r.scale * mpp);
+            cellPx = cellM / mpp;
+            label = 'Grilla: cada cuadro = ' + fmtN(cellM) + ' m';
+        } else {
+            cellPx = targetCss / r.scale;
+            label = 'Grilla sin escala: calibrá con ESCALA para ver metros';
+        }
+        badge.textContent = label;
+        badge.style.display = 'block';
+        // anclada al origen si existe (las líneas pasan por el (0,0))
+        var au = origin ? origin.u : 0, av = origin ? origin.v : 0;
+        var vw = video.videoWidth || 1, vh = video.videoHeight || 1;
+        octx.save();
+        octx.lineWidth = 1;
+        octx.strokeStyle = 'rgba(255,255,255,.38)';
+        octx.shadowColor = 'rgba(0,0,0,.55)';
+        octx.shadowBlur = 1;
+        octx.beginPath();
+        for (var u = au - Math.ceil(au / cellPx) * cellPx; u <= vw; u += cellPx) {
+            if (u < 0) continue;
+            var pA = videoToCss(u, 0), pB = videoToCss(u, vh);
+            octx.moveTo(pA.x, pA.y); octx.lineTo(pB.x, pB.y);
+        }
+        for (var v = av - Math.ceil(av / cellPx) * cellPx; v <= vh; v += cellPx) {
+            if (v < 0) continue;
+            var pC = videoToCss(0, v), pD = videoToCss(vw, v);
+            octx.moveTo(pC.x, pC.y); octx.lineTo(pD.x, pD.y);
+        }
+        octx.stroke();
+        if (origin) {
+            octx.strokeStyle = 'rgba(255,255,255,.7)';
+            octx.lineWidth = 1.6;
+            var o1 = videoToCss(origin.u, 0), o2 = videoToCss(origin.u, vh);
+            var o3 = videoToCss(0, origin.v), o4 = videoToCss(vw, origin.v);
+            octx.beginPath();
+            octx.moveTo(o1.x, o1.y); octx.lineTo(o2.x, o2.y);
+            octx.moveTo(o3.x, o3.y); octx.lineTo(o4.x, o4.y);
+            octx.stroke();
+        }
+        octx.restore();
     }
     function drawX(x, y, color) {
         octx.strokeStyle = color; octx.lineWidth = 2;
@@ -31911,19 +32038,34 @@ bluetooth.startIOPinService()</pre>
     function hideLoupe() { el('vm-loupe').style.display = 'none'; }
 
     /* ================= Interacción sobre el video ================= */
+    var PLACE_LABEL = { mark: 'Marcar punto', scale: 'Poner extremo', origin: 'Poner origen', auto: 'Elegir objeto' };
+
+    function updatePadUi() {
+        var on = padMode && hasVideo;
+        el('vm-pad-btn').classList.toggle('active', padMode);
+        el('vm-place').style.display = on ? 'block' : 'none';
+        el('vm-place').textContent = PLACE_LABEL[tool] || 'Marcar punto';
+        el('vm-pad-hint').style.display = on && points.length < 2 ? 'block' : 'none';
+    }
+
     function setTool(t) {
         if (autoTracking) return;
         tool = t;
         ['mark', 'scale', 'origin', 'auto'].forEach(function (k) {
             el('vm-tool-' + k).classList.toggle('active', k === t);
         });
+        updatePadUi();
         if (t === 'auto') {
             setGuide('Tocá el <b>objeto que querés seguir</b> (mejor si es de un color vivo y distinto del fondo). Podés mantener apretado para apuntar con la lupa.');
         } else if (t === 'scale') {
             scalePts = [];
-            setGuide('Tocá el <b>primer extremo</b> del objeto de longitud conocida.');
+            setGuide(padMode
+                ? 'Llevá la mira al <b>primer extremo</b> del objeto de longitud conocida (arrastrando desde cualquier lado) y tocá <b>PONER EXTREMO</b>.'
+                : 'Tocá el <b>primer extremo</b> del objeto de longitud conocida. Mantené apretado para ver la lupa.');
         } else if (t === 'origin') {
-            setGuide('Tocá el punto del video que será el <b>origen (0, 0)</b>.');
+            setGuide(padMode
+                ? 'Llevá la mira al punto que será el <b>origen (0, 0)</b> y tocá <b>PONER ORIGEN</b>.'
+                : 'Tocá el punto del video que será el <b>origen (0, 0)</b>.');
         } else {
             refreshSteps();
         }
@@ -31943,7 +32085,7 @@ bluetooth.startIOPinService()</pre>
             scalePts.push({ u: vc.u, v: vc.v });
             drawOverlay();
             if (scalePts.length === 1) {
-                setGuide('Ahora tocá el <b>otro extremo</b>.');
+                setGuide(padMode ? 'Ahora llevá la mira al <b>otro extremo</b> y tocá <b>PONER EXTREMO</b>.' : 'Ahora tocá el <b>otro extremo</b>.');
             } else {
                 var dlg = el('vm-scale-dialog');
                 dlg.classList.add('open');
@@ -31974,16 +32116,44 @@ bluetooth.startIOPinService()</pre>
         setTimeout(function () { stepFrames(markStep); }, 80);
     }
 
+    function reticleCss() {
+        if (!reticle) return null;
+        return videoToCss(reticle.u, reticle.v);
+    }
+
     function onPointerDown(e) {
         if (!hasVideo || playing || autoTracking) return;
         e.preventDefault();
         overlay.setPointerCapture && overlay.setPointerCapture(e.pointerId);
+        if (padMode) {
+            // Modo pad (FizziQ): el dedo NO tapa el objeto. Arrastrar desde
+            // cualquier lado mueve la mira en relativo; un toque corto la salta.
+            padDrag = { x: e.clientX, y: e.clientY, moved: false, t0: Date.now() };
+            var rc = reticleCss();
+            if (rc) showLoupe(rc.x, rc.y);
+            return;
+        }
         loupeActive = true;
         var r = overlay.getBoundingClientRect();
         loupePos = { cx: e.clientX - r.left, cy: e.clientY - r.top };
         showLoupe(loupePos.cx, loupePos.cy);
     }
     function onPointerMove(e) {
+        if (padDrag) {
+            e.preventDefault();
+            var dx = e.clientX - padDrag.x, dy = e.clientY - padDrag.y;
+            padDrag.x = e.clientX; padDrag.y = e.clientY;
+            if (Math.abs(dx) + Math.abs(dy) > 0) {
+                if (Math.hypot(dx, dy) > 1.5) padDrag.moved = true;
+                var s = contentRect().scale || 1;
+                reticle.u = clamp(reticle.u + dx / s, 0, video.videoWidth || 1);
+                reticle.v = clamp(reticle.v + dy / s, 0, video.videoHeight || 1);
+                drawOverlay();
+                var rc = reticleCss();
+                if (rc) showLoupe(rc.x, rc.y);
+            }
+            return;
+        }
         if (!loupeActive) return;
         e.preventDefault();
         var r = overlay.getBoundingClientRect();
@@ -31991,6 +32161,18 @@ bluetooth.startIOPinService()</pre>
         showLoupe(loupePos.cx, loupePos.cy);
     }
     function onPointerUp(e) {
+        if (padDrag) {
+            e.preventDefault();
+            var wasTap = !padDrag.moved && (Date.now() - padDrag.t0) < 400;
+            if (wasTap) {
+                var r = overlay.getBoundingClientRect();
+                var vc = cssToVideo(e.clientX - r.left, e.clientY - r.top);
+                if (vc) { reticle = { u: vc.u, v: vc.v }; drawOverlay(); }
+            }
+            padDrag = null;
+            hideLoupe();
+            return;
+        }
         if (!loupeActive) return;
         e.preventDefault();
         loupeActive = false;
@@ -32147,6 +32329,7 @@ bluetooth.startIOPinService()</pre>
     }
 
     function setAutoUiRunning(running) {
+        el('vm-place').style.display = (padMode && hasVideo && !running) ? 'block' : 'none';
         var b = el('vm-tool-auto');
         b.textContent = running ? 'Detener' : 'Auto';
         b.classList.toggle('active', running);
@@ -32850,8 +33033,9 @@ bluetooth.startIOPinService()</pre>
             scaleLen = v;
             el('vm-scale-dialog').classList.remove('open');
             setTool('mark');
-            setGuide('Escala calibrada: ese segmento mide <b>' + v + ' m</b>. Ahora marcá el objeto cuadro a cuadro (opcional: definí el <b>ORIGEN</b>).', true);
+            setGuide('Escala calibrada: ese segmento mide <b>' + v + ' m</b>. Activá la <b>GRILLA</b> para ver la referencia sobre el video (te dice cuántos metros mide cada cuadro). Ahora marcá el objeto cuadro a cuadro (opcional: definí el <b>ORIGEN</b>).', true);
             recomputeAll();
+            drawOverlay();
         });
         el('vm-scale-len').addEventListener('keydown', function (e) {
             if (e.key === 'Enter') el('vm-scale-ok').click();
@@ -32872,6 +33056,30 @@ bluetooth.startIOPinService()</pre>
         // Tabs
         ['graficas', 'tabla', 'microbit'].forEach(function (k) {
             el('vm-tab-' + k).addEventListener('click', function () { switchTab(k); });
+        });
+
+        // Modo pad, botón de confirmación y grilla
+        el('vm-pad-btn').addEventListener('click', function () {
+            padMode = !padMode;
+            if (padMode && !reticle && video.videoWidth) reticle = { u: video.videoWidth / 2, v: video.videoHeight / 2 };
+            updatePadUi();
+            refreshSteps();
+            drawOverlay();
+        });
+        el('vm-place').addEventListener('click', function () {
+            if (!hasVideo || playing || autoTracking || !reticle) return;
+            commitPoint({ u: reticle.u, v: reticle.v });
+            updatePadUi();
+        });
+        el('vm-grid-btn').addEventListener('click', function () {
+            gridOn = !gridOn;
+            this.classList.toggle('active', gridOn);
+            el('vm-grid-size').style.display = gridOn ? '' : 'none';
+            drawOverlay();
+        });
+        el('vm-grid-size').addEventListener('change', function () {
+            gridDensity = this.value;
+            drawOverlay();
         });
 
         // Masa para las energías
