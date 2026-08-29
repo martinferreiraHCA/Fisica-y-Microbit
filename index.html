@@ -31198,6 +31198,7 @@ bluetooth.startIOPinService()</pre>
                     <button class="vm-btn" id="vm-tool-origin" disabled title="Tocá el punto que será el origen (0, 0)">Origen</button>
                     <button class="vm-btn active" id="vm-tool-mark" disabled title="Tocá el objeto en cada cuadro para registrar su posición">Marcar</button>
                     <button class="vm-btn" id="vm-tool-auto" disabled title="Seguir automáticamente un color: tocá el objeto y el sistema lo busca cuadro a cuadro">Auto</button>
+                    <button class="vm-btn" id="vm-show-vectors" disabled title="Dibujar sobre el video la flecha de velocidad en cada punto marcado">Vectores</button>
                     <span class="sep"></span>
                     <button class="vm-btn" id="vm-undo" disabled title="Borrar el último punto marcado">Deshacer</button>
                     <button class="vm-btn" id="vm-clear-pts" disabled title="Borrar todos los puntos marcados">Borrar todo</button>
@@ -31296,9 +31297,18 @@ bluetooth.startIOPinService()</pre>
                         <span style="font-size:0.6rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;" title="Promedia posiciones vecinas antes de derivar: baja el ruido de velocidad y aceleración sin tocar los puntos medidos">Suavizado</span>
                         <button class="vm-chip active" data-sm="1">Sin</button>
                         <button class="vm-chip" data-sm="5">Medio</button>
-                        <button class="vm-chip" data-sm="7">Alto</button>
+                        <button class="vm-chip" data-sm="9">Alto</button>
+                        <button class="vm-chip" data-sm="13">Máximo</button>
+                    </div>
+                    <div class="vm-chart-chips" id="vm-fit-chips" style="padding-top:2px; align-items:center;">
+                        <span style="font-size:0.6rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;" title="Ajusta el modelo por mínimos cuadrados y dibuja la curva ideal sobre tus datos, con la ecuación y el R²">Curva ideal</span>
+                        <button class="vm-chip active" data-fit="none">No</button>
+                        <button class="vm-chip" data-fit="auto">Auto</button>
+                        <button class="vm-chip" data-fit="lin">Recta</button>
+                        <button class="vm-chip" data-fit="quad">Parábola</button>
                     </div>
                     <div class="vm-chart-wrap"><canvas id="vm-chart"></canvas></div>
+                    <div class="vm-stats" id="vm-fit-info" style="padding:0 14px 2px;"></div>
                     <div class="vm-stats" id="vm-chart-stats" style="padding:0 14px 4px;"></div>
                     <div class="vm-chart-note" id="vm-chart-note">Marcá al menos 2 puntos para ver la gráfica. Tocá un punto de la gráfica para ir a ese instante del video.</div>
                 </div>
@@ -31374,7 +31384,9 @@ bluetooth.startIOPinService()</pre>
                     <h4>4 · Analizá</h4>
                     <ul>
                         <li>En <b>Gráficas</b> elegí qué ver: x(t), y(t), velocidades, rapidez, aceleraciones o la trayectoria. Tocá un punto de la gráfica para saltar a ese instante del video. Debajo se muestran la media, el mínimo y el máximo de la magnitud graficada.</li>
-                        <li>Las velocidades y aceleraciones se calculan derivando los puntos marcados; como el marcado siempre tiene algo de ruido, usá el <b>Suavizado</b> (Medio o Alto): ajusta una parábola local en una ventana de puntos, igual que Tracker, y la velocidad y la aceleración salen de esa parábola. No modifica las posiciones medidas, solo cómo se derivan.</li>
+                        <li>Las velocidades y aceleraciones se calculan derivando los puntos marcados; como el marcado siempre tiene algo de ruido, usá el <b>Suavizado</b>: ajusta una parábola local en una ventana de puntos, igual que Tracker, y la velocidad y la aceleración salen de esa parábola. No modifica las posiciones medidas, solo cómo se derivan. Para <b>tiro oblicuo y caída libre</b> conviene <b>Alto</b> o <b>Máximo</b>: como el movimiento real es parabólico, el ajuste no lo distorsiona y las curvas salen ideales.</li>
+                        <li>Con <b>Curva ideal</b> se ajusta una recta o una parábola por mínimos cuadrados a la gráfica y se dibuja punteada sobre tus datos, con la <b>ecuación y el R²</b>. En <b>Auto</b> elige sola el modelo. En x(t) o y(t) con parábola, también te muestra la aceleración del modelo (en caída libre debería dar ≈ −9.8 m/s²).</li>
+                        <li>El botón <b>Vectores</b> dibuja sobre el video la flecha de velocidad en cada punto (más larga = más rápido), para ver cómo cambia la velocidad a lo largo del movimiento.</li>
                         <li>En <b>Tabla</b> están todos los valores; podés exportarlos a CSV o copiarlos para pegar en una planilla.</li>
                         <li>En <b>micro:bit</b> superponés los datos del sensor sobre las gráficas de tiempo y ajustás el Δt hasta que coincidan. Si el video es del botón CÁMARA del sitio, <b>Sincronizar auto</b> alinea los tiempos por vos.</li>
                     </ul>
@@ -31458,6 +31470,7 @@ bluetooth.startIOPinService()</pre>
         }
         var enable = hasVideo;
         ['vm-tool-scale', 'vm-tool-origin', 'vm-tool-mark', 'vm-tool-auto'].forEach(function (id) { el(id).disabled = !enable; });
+        el('vm-show-vectors').disabled = !enable || points.length < 2;
         el('vm-undo').disabled = !points.length;
         el('vm-clear-pts').disabled = !points.length && scalePts.length === 0 && !origin;
         el('vm-export-csv').disabled = points.length < 1;
@@ -31618,6 +31631,8 @@ bluetooth.startIOPinService()</pre>
     // FizziQ: la velocidad es la pendiente del ajuste en el punto y la
     // aceleración su curvatura. No modifica las posiciones medidas.
     var smoothWin = 1;
+    var fitMode = 'none';         // 'none' | 'auto' | 'lin' | 'quad': curva ideal sobre la gráfica
+    var showVectors = false;      // flechas de velocidad sobre el video
 
     // Ajuste y = c0 + c1·τ + c2·τ² (τ centrado en jc) sobre [j0, j1].
     // Devuelve {v: c1, a: 2·c2} o null si el sistema es degenerado.
@@ -31635,6 +31650,39 @@ bluetooth.startIOPinService()</pre>
         var c1 = (S0 * (Sty * S4 - S3 * St2y) - Sy * (S1 * S4 - S2 * S3) + S2 * (S1 * St2y - Sty * S2)) / D;
         var c2 = (S0 * (S2 * St2y - Sty * S3) - S1 * (S1 * St2y - Sty * S2) + Sy * (S1 * S3 - S2 * S2)) / D;
         return { v: c1, a: 2 * c2 };
+    }
+
+    // Ajuste polinómico por mínimos cuadrados (grado 1 o 2) de pares {x, y}.
+    // Devuelve {c: [c0, c1, c2], r2} con y = c0 + c1·x + c2·x².
+    function polyFit(data, deg) {
+        var n = data.length;
+        if (n < deg + 2) return null;
+        var S = [0, 0, 0, 0, 0], Sy = [0, 0, 0];
+        for (var i = 0; i < n; i++) {
+            var x = data[i].x, y = data[i].y, xp = 1;
+            for (var p = 0; p <= 4; p++) { if (p <= 2 * deg) S[p] += xp; if (p <= deg) Sy[p] += xp * y; xp *= x; }
+        }
+        var c;
+        if (deg === 1) {
+            var D1 = S[0] * S[2] - S[1] * S[1];
+            if (Math.abs(D1) < 1e-12) return null;
+            c = [(Sy[0] * S[2] - Sy[1] * S[1]) / D1, (S[0] * Sy[1] - S[1] * Sy[0]) / D1, 0];
+        } else {
+            var D = S[0] * (S[2] * S[4] - S[3] * S[3]) - S[1] * (S[1] * S[4] - S[2] * S[3]) + S[2] * (S[1] * S[3] - S[2] * S[2]);
+            if (Math.abs(D) < 1e-12) return null;
+            c = [
+                (Sy[0] * (S[2] * S[4] - S[3] * S[3]) - S[1] * (Sy[1] * S[4] - Sy[2] * S[3]) + S[2] * (Sy[1] * S[3] - Sy[2] * S[2])) / D,
+                (S[0] * (Sy[1] * S[4] - Sy[2] * S[3]) - Sy[0] * (S[1] * S[4] - S[2] * S[3]) + S[2] * (S[1] * Sy[2] - S[2] * Sy[1])) / D,
+                (S[0] * (S[2] * Sy[2] - S[3] * Sy[1]) - S[1] * (S[1] * Sy[2] - S[2] * Sy[1]) + Sy[0] * (S[1] * S[3] - S[2] * S[2])) / D
+            ];
+        }
+        var mean = Sy[0] / n, ssTot = 0, ssRes = 0;
+        for (var j = 0; j < n; j++) {
+            var yj = data[j].y, fj = c[0] + c[1] * data[j].x + c[2] * data[j].x * data[j].x;
+            ssTot += (yj - mean) * (yj - mean);
+            ssRes += (yj - fj) * (yj - fj);
+        }
+        return { c: c, r2: ssTot > 0 ? 1 - ssRes / ssTot : 1 };
     }
 
     // Serie física completa: posiciones medidas + velocidades y aceleraciones.
@@ -31721,6 +31769,36 @@ bluetooth.startIOPinService()</pre>
             octx.fillStyle = 'rgba(255,235,59,.95)'; octx.font = '700 11px sans-serif';
             octx.fillText('x', o.x + 37, o.y + 4);
             octx.fillText('y', o.x - 3, o.y - 38);
+        }
+
+        // Vectores de velocidad (estilo Tracker): flecha verde en cada punto
+        if (showVectors && points.length >= 2) {
+            var ser = physSeries();
+            var maxV = 0;
+            for (var q = 0; q < ser.length; q++) if (isFinite(ser[q].v) && ser[q].v > maxV) maxV = ser[q].v;
+            if (maxV > 0) {
+                var mpp = metersPerPixel() || 1;
+                var cscale = contentRect().scale;
+                var arrowScale = 52 / (maxV / mpp * cscale);   // el vector más rápido mide 52 px
+                octx.strokeStyle = '#2e7d32'; octx.fillStyle = '#2e7d32'; octx.lineWidth = 1.6;
+                for (var s = 0; s < ser.length; s++) {
+                    if (!isFinite(ser[s].vx) || !isFinite(ser[s].vy)) continue;
+                    var pc = videoToCss(points[s].u, points[s].v);
+                    // El eje y físico apunta hacia arriba; en pantalla, hacia abajo.
+                    var dxv = ser[s].vx / mpp * cscale * arrowScale;
+                    var dyv = -ser[s].vy / mpp * cscale * arrowScale;
+                    var vlen = Math.hypot(dxv, dyv);
+                    if (vlen < 5) continue;
+                    var ex = pc.x + dxv, ey = pc.y + dyv;
+                    octx.beginPath(); octx.moveTo(pc.x, pc.y); octx.lineTo(ex, ey); octx.stroke();
+                    var ang = Math.atan2(dyv, dxv);
+                    octx.beginPath();
+                    octx.moveTo(ex, ey);
+                    octx.lineTo(ex - 7 * Math.cos(ang - 0.42), ey - 7 * Math.sin(ang - 0.42));
+                    octx.lineTo(ex - 7 * Math.cos(ang + 0.42), ey - 7 * Math.sin(ang + 0.42));
+                    octx.closePath(); octx.fill();
+                }
+            }
         }
 
         // Estela de puntos marcados
@@ -32185,6 +32263,48 @@ bluetooth.startIOPinService()</pre>
                 }
             });
         }
+        // Curva ideal: ajuste por mínimos cuadrados sobre los datos del video
+        var fitEl = el('vm-fit-info');
+        fitEl.textContent = '';
+        if (fitMode !== 'none' && data.length >= 4) {
+            var deg;
+            var fLin = polyFit(data, 1), fQuad = polyFit(data, 2), fit = null;
+            if (fitMode === 'lin') { fit = fLin; deg = 1; }
+            else if (fitMode === 'quad') { fit = fQuad; deg = 2; }
+            else { // auto: parábola solo si mejora el R² de forma apreciable
+                if (fQuad && (!fLin || fQuad.r2 - fLin.r2 > 0.015)) { fit = fQuad; deg = 2; }
+                else { fit = fLin; deg = 1; }
+            }
+            if (fit) {
+                var xmin = Infinity, xmax = -Infinity;
+                for (var fi = 0; fi < data.length; fi++) { if (data[fi].x < xmin) xmin = data[fi].x; if (data[fi].x > xmax) xmax = data[fi].x; }
+                var curve = [];
+                for (var fk = 0; fk <= 80; fk++) {
+                    var fx = xmin + (xmax - xmin) * fk / 80;
+                    curve.push({ x: fx, y: fit.c[0] + fit.c[1] * fx + fit.c[2] * fx * fx });
+                }
+                datasets.push({
+                    label: 'Curva ideal (' + (deg === 2 ? 'parábola' : 'recta') + ')',
+                    data: curve,
+                    showLine: true,
+                    borderColor: '#000',
+                    backgroundColor: '#000',
+                    borderDash: [7, 4],
+                    pointRadius: 0,
+                    borderWidth: 2,
+                    tension: 0,
+                    yAxisID: 'y'
+                });
+                var vx2 = isTime ? 't' : 'x';
+                var vy2 = def.yl.split(' ')[0];
+                var eq = vy2 + ' = ';
+                if (deg === 2) eq += fmtN(fit.c[2]) + '·' + vx2 + '² ' + (fit.c[1] < 0 ? '− ' : '+ ') + fmtN(Math.abs(fit.c[1])) + '·' + vx2 + ' ' + (fit.c[0] < 0 ? '− ' : '+ ') + fmtN(Math.abs(fit.c[0]));
+                else eq += fmtN(fit.c[1]) + '·' + vx2 + ' ' + (fit.c[0] < 0 ? '− ' : '+ ') + fmtN(Math.abs(fit.c[0]));
+                fitEl.innerHTML = 'Curva ideal: <b>' + eq + '</b> · R² = <b>' + fit.r2.toFixed(4) + '</b>' +
+                    (deg === 2 && (chartType === 'y' || chartType === 'x') ? ' · aceleración del modelo: <b>' + fmtN(2 * fit.c[2]) + '</b>' : '');
+            }
+        }
+
         chart.data.datasets = datasets;
         chart.options.scales.x.title.text = def.xl;
         chart.options.scales.y.title.text = def.yl + (noScale ? ' [px]' : '');
@@ -32451,6 +32571,22 @@ bluetooth.startIOPinService()</pre>
         // Tabs
         ['graficas', 'tabla', 'microbit'].forEach(function (k) {
             el('vm-tab-' + k).addEventListener('click', function () { switchTab(k); });
+        });
+
+        // Vectores de velocidad
+        el('vm-show-vectors').addEventListener('click', function () {
+            showVectors = !showVectors;
+            this.classList.toggle('active', showVectors);
+            drawOverlay();
+        });
+
+        // Chips de curva ideal
+        Array.prototype.forEach.call(el('vm-fit-chips').querySelectorAll('.vm-chip'), function (c) {
+            c.addEventListener('click', function () {
+                fitMode = c.dataset.fit;
+                Array.prototype.forEach.call(el('vm-fit-chips').querySelectorAll('.vm-chip'), function (x) { x.classList.toggle('active', x === c); });
+                updateChart();
+            });
         });
 
         // Chips de suavizado
