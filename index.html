@@ -31233,7 +31233,7 @@ bluetooth.startIOPinService()</pre>
                         </div>
                         <div class="vm-dialog" id="vm-auto-dialog">
                             <h4>Seguimiento automático</h4>
-                            <p>Se va a buscar este color cuadro a cuadro, desde el instante actual hasta el final del video (o hasta que lo pierda).</p>
+                            <p>Se va a buscar este color cuadro a cuadro, desde el instante actual hasta el final del video (o hasta que lo pierda). Se registra un punto según el selector <b>Cada N cuadros</b> de la barra de abajo.</p>
                             <div class="row" style="align-items:center;">
                                 <span id="vm-auto-swatch" style="width:36px; height:36px; border:2px solid #000; flex:0 0 auto;"></span>
                                 <label style="flex:1; min-width:0; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Sensibilidad
@@ -31258,6 +31258,17 @@ bluetooth.startIOPinService()</pre>
                     <div class="vm-timeline">
                         <input type="range" id="vm-slider" min="0" max="0" step="0.001" value="0" disabled>
                         <div class="vm-timelabel"><span id="vm-time-cur">0.000 s</span><span id="vm-frame-cur">cuadro 0</span><span id="vm-time-dur">0.000 s</span></div>
+                    </div>
+                    <div class="vm-fps">
+                        <span title="Cada cuántos cuadros se registra un punto: con 1 marcás todos los cuadros; con 5, uno de cada cinco. Menos puntos = análisis más rápido y gráficas más espaciadas. Aplica al marcado manual, a los botones de cuadro y al seguimiento automático.">Cada</span>
+                        <select id="vm-step" title="Registrar un punto cada N cuadros">
+                            <option value="1" selected>1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                        </select>
+                        <span title="Cada cuántos cuadros se registra un punto">cuadros</span>
                     </div>
                     <div class="vm-fps">
                         <span title="Cuadros por segundo del video. Si filmaste en cámara lenta, elegí los FPS reales de la filmación.">FPS</span>
@@ -31375,7 +31386,8 @@ bluetooth.startIOPinService()</pre>
                     </ul>
                     <h4>3 · Marcá el objeto cuadro a cuadro</h4>
                     <ul>
-                        <li>Con la herramienta <b>Marcar</b> activa, tocá el objeto: el punto queda registrado y el video <b>avanza solo</b> al cuadro siguiente.</li>
+                        <li>Con la herramienta <b>Marcar</b> activa, tocá el objeto: el punto queda registrado y el video <b>avanza solo</b> al siguiente cuadro a marcar.</li>
+                        <li>¿Querés <b>menos puntos</b>? En la barra de abajo elegí <b>Cada 2, 3, 5 o 10 cuadros</b>: el marcado, los botones ⟨ ⟩ y el seguimiento automático saltan de a ese paso. Ideal para videos largos o para tablas más manejables.</li>
                         <li>Al apoyar el dedo (o mantener apretado el mouse) aparece una <b>lupa</b> para apuntar fino; al soltar se marca el punto. La lupa también funciona al calibrar la <b>Escala</b> y el <b>Origen</b>.</li>
                         <li>Con <b>Auto</b> el sistema sigue el objeto solo: tocá el objeto, confirmá el color y lo busca cuadro a cuadro hasta el final (o hasta perderlo). Funciona mejor con objetos de color vivo; si lo pierde, marcá ese cuadro a mano y tocá AUTO de nuevo para continuar.</li>
                         <li>¿Le erraste? <b>Deshacer</b> borra el último punto. Si marcás dos veces el mismo cuadro, el punto se reemplaza.</li>
@@ -31631,6 +31643,7 @@ bluetooth.startIOPinService()</pre>
     // FizziQ: la velocidad es la pendiente del ajuste en el punto y la
     // aceleración su curvatura. No modifica las posiciones medidas.
     var smoothWin = 1;
+    var markStep = 1;             // registrar un punto cada N cuadros (como en FizziQ)
     var fitMode = 'none';         // 'none' | 'auto' | 'lin' | 'quad': curva ideal sobre la gráfica
     var showVectors = false;      // flechas de velocidad sobre el video
 
@@ -31920,8 +31933,8 @@ bluetooth.startIOPinService()</pre>
         }
         drawOverlay();
         recomputeAll();
-        // Auto-avance al cuadro siguiente para marcar de corrido
-        setTimeout(function () { stepFrames(1); }, 80);
+        // Auto-avance al siguiente cuadro a marcar (según "cada N cuadros")
+        setTimeout(function () { stepFrames(markStep); }, 80);
     }
 
     function onPointerDown(e) {
@@ -32041,6 +32054,7 @@ bluetooth.startIOPinService()</pre>
         var last = { u: autoStart.u, v: autoStart.v };
         var radius = clamp(Math.round((video.videoWidth || 640) * 0.08), 30, 220);
         var f = curFrame();
+        var f0 = f;
         var added = 0, lostAt = -1;
         var totalF = Math.floor(duration / frameDt());
 
@@ -32058,8 +32072,12 @@ bluetooth.startIOPinService()</pre>
             if (!hit) hit = findColor(last.u, last.v, color, tol * 1.35, radius * 2); // más tolerante
             if (!hit) { lostAt = f; break; }
             last = { u: hit.u, v: hit.v };
-            setPointAt(video.currentTime, last.u, last.v);
-            added++;
+            // Se busca el color en todos los cuadros (para no perderlo), pero
+            // se registra un punto solo cada N cuadros, como en FizziQ.
+            if ((f - f0) % markStep === 0) {
+                setPointAt(video.currentTime, last.u, last.v);
+                added++;
+            }
             if (added % 3 === 0 || f >= totalF - 1) {
                 setGuide('Siguiendo el objeto… cuadro <b>' + f + '</b> de ' + totalF + ' (' + (added + 1) + ' puntos). Tocá <b>DETENER</b> para frenar.');
                 drawOverlay();
@@ -32498,13 +32516,16 @@ bluetooth.startIOPinService()</pre>
 
         // Controles
         el('vm-play').addEventListener('click', playPause);
-        el('vm-back1').addEventListener('click', function () { stepFrames(-1); });
-        el('vm-fwd1').addEventListener('click', function () { stepFrames(1); });
+        el('vm-back1').addEventListener('click', function () { stepFrames(-markStep); });
+        el('vm-fwd1').addEventListener('click', function () { stepFrames(markStep); });
         el('vm-back10').addEventListener('click', function () { stepFrames(-10); });
         el('vm-fwd10').addEventListener('click', function () { stepFrames(10); });
         el('vm-slider').addEventListener('input', function () {
             pauseVideo();
             seekTo(parseFloat(this.value) || 0);
+        });
+        el('vm-step').addEventListener('change', function () {
+            markStep = parseInt(this.value, 10) || 1;
         });
         el('vm-fps').addEventListener('change', function () {
             fps = parseFloat(this.value) || 30;
@@ -32662,8 +32683,8 @@ bluetooth.startIOPinService()</pre>
                 return;
             }
             if (typing || !hasVideo) return;
-            if (e.key === 'ArrowLeft') { e.preventDefault(); stepFrames(e.shiftKey ? -10 : -1); }
-            else if (e.key === 'ArrowRight') { e.preventDefault(); stepFrames(e.shiftKey ? 10 : 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); stepFrames(e.shiftKey ? -10 : -markStep); }
+            else if (e.key === 'ArrowRight') { e.preventDefault(); stepFrames(e.shiftKey ? 10 : markStep); }
             else if (e.key === ' ') { e.preventDefault(); playPause(); }
             else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); el('vm-undo').click(); }
         });
