@@ -4824,7 +4824,11 @@
         <div class="view-switcher-inner">
             <button class="view-btn" data-view="experiment" id="viewBtnExperiment" onclick="enterExperimentMode()" style="background: #1976d2; color: white;">LAB</button>
             <button class="view-btn" data-view="split" id="viewBtnSplit" onclick="setViewMode('split')">SPLIT</button>
-            <button class="view-btn active" data-view="graph" id="viewBtnGraph" onclick="setViewMode('graph')">GRÁFICA</button>
+            <!-- GRÁFICA vuelve al layout inicial ('default': gráfica + secciones).
+                 Antes llamaba setViewMode('graph'), que oculta el panel lateral y
+                 agranda la gráfica a pantalla completa: al volver de SPLIT no se
+                 recuperaba nunca la vista con la que abre la página. -->
+            <button class="view-btn active" data-view="graph" id="viewBtnGraph" onclick="setViewMode('default')">GRÁFICA</button>
             <button class="view-btn" data-view="video" id="viewBtnVideo" onclick="setViewMode('video')">VIDEO</button>
             <button class="view-btn" data-view="timeline" id="viewBtnTimeline" onclick="setViewMode('timeline')">TIMELINE</button>
             <button class="view-btn" data-view="config" id="viewBtnConfig" onclick="setViewMode('config')">CONFIG</button>
@@ -22083,9 +22087,10 @@ bluetooth.startIOPinService()</pre>
             // Remove all view classes
             container.classList.remove('view-split', 'view-graph', 'view-video', 'view-timeline', 'view-config');
 
-            // Update active button
+            // Update active button ('default' es la vista inicial y se muestra
+            // con la pestaña GRÁFICA resaltada, igual que al abrir la página)
             document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
-            const activeBtn = document.querySelector(`.view-btn[data-view="${mode}"]`);
+            const activeBtn = document.querySelector(`.view-btn[data-view="${mode === 'default' ? 'graph' : mode}"]`);
             if (activeBtn) activeBtn.classList.add('active');
 
             // Apply new mode
