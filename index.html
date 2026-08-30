@@ -23,11 +23,33 @@
     <!-- Favicon (SVG, blanco y negro): cuadrado negro + curva blanca de datos -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23111111'/><path d='M20 74 H82' fill='none' stroke='%23ffffff' stroke-width='5' stroke-linecap='round' opacity='0.55'/><path d='M22 76 C46 76 58 30 80 28' fill='none' stroke='%23ffffff' stroke-width='8' stroke-linecap='round'/><circle cx='80' cy='28' r='8' fill='%23ffffff'/></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Fallback: si jsDelivr está bloqueado (redes escolares/móviles), reintentar
+         desde un CDN alternativo ANTES de que corra el script principal; sin
+         Chart.js la app entera queda muerta (gráfica en blanco, menús rotos). -->
+    <script>window.Chart || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"><\/script>');</script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script>window.Hammer || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"><\/script>');</script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script>window.ChartZoom || document.write('<script src="https://unpkg.com/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"><\/script>');</script>
     <!-- regression-js: Librería para ajuste de curvas por mínimos cuadrados -->
     <!-- Autor: Tom Alexander - https://github.com/Tom-Alexander/regression-js -->
     <script src="https://cdn.jsdelivr.net/npm/regression@2.0.1/dist/regression.min.js"></script>
+    <script>window.regression || document.write('<script src="https://unpkg.com/regression@2.0.1/dist/regression.min.js"><\/script>');</script>
+    <!-- Último recurso: si Chart.js sigue sin cargar, el script principal aborta
+         y la página queda a medias. Avisar de forma visible en vez de fallar mudo. -->
+    <script>
+      window.addEventListener('DOMContentLoaded', function () {
+        if (window.Chart) return;
+        var div = document.createElement('div');
+        div.setAttribute('role', 'alert');
+        div.style.cssText = 'background:#ffebee;border-bottom:2px solid #c62828;color:#b71c1c;' +
+          'padding:10px 16px;font-size:0.85rem;line-height:1.4;font-weight:600;';
+        div.textContent = 'No se pudieron descargar las librerías de gráficas (¿sin conexión o red bloqueando CDNs?). ' +
+          'La página no funcionará correctamente: verificá tu conexión y recargá. / ' +
+          'Could not download the charting libraries. Check your connection and reload.';
+        document.body.insertBefore(div, document.body.firstChild);
+      });
+    </script>
     <!-- Plotly.js para modo Análisis profesional de MAPEO -->
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer
             onerror="window.__plotlyFailed=true;"></script>
@@ -1503,8 +1525,10 @@
         }
 
         .view-btn {
-            flex: 1;
-            min-width: 0;
+            /* flex-shrink 0: los botones nunca se achican por debajo de su texto;
+               si no entran, .view-switcher scrollea horizontal (antes se
+               recortaban GRÁFICA/TIMELINE/CONFIG a mitad de letra en celulares) */
+            flex: 1 0 auto;
             padding: 10px 12px;
             background: white;
             border: none;
@@ -2247,8 +2271,11 @@
             #sessionTopBtn {
                 display: none;
             }
-            /* Hamburguesa siempre visible aunque la barra se desplace de costado */
-            .toolbar-menu-btn { position: sticky; right: 4px; z-index: 5; box-shadow: -10px 0 10px -6px rgba(0,0,0,.28); }
+            /* Hamburguesa siempre visible aunque la barra se desplace de costado.
+               right:-8px compensa el padding de la toolbar para que quede pegada
+               al borde: antes los botones que scrolleaban debajo (EXTRAS) asomaban
+               en la franja libre y parecía un botón roto encima de otro. */
+            .toolbar-menu-btn { position: sticky; right: -8px; z-index: 5; box-shadow: -10px 0 10px -6px rgba(0,0,0,.28); }
             .toolbar-separator { display: none; }
             .tb-experiment { max-width: 132px; padding: 5px 10px; }
 
@@ -2279,6 +2306,18 @@
                 min-height: 280px;
                 border-right: none;
                 border-bottom: 2px solid black;
+            }
+            /* Barra de título de la gráfica: en pantallas angostas los pills de
+               variables no entran junto a los controles de zoom y quedaban
+               dibujados encima de los botones. Pasarlos a una fila propia. */
+            .graph-title-bar {
+                flex-wrap: wrap;
+                row-gap: 6px;
+            }
+            .graph-legend-compact {
+                order: 3;
+                flex-basis: 100%;
+                margin-left: 0;
             }
             .graphs-container {
                 min-height: 250px;
@@ -2495,6 +2534,18 @@
 
         /* LAB Mode - Landscape orientation: side-by-side layout */
         @media (max-height: 500px) and (orientation: landscape) {
+            /* Vista normal: con poca altura los clamp() en vh dejaban la gráfica
+               en ~150px de alto (ilegible en un celular apaisado) */
+            .graph-wrapper,
+            .graph-wrapper.single,
+            .graph-wrapper.double,
+            .graph-wrapper.triple {
+                min-height: 65vh;
+            }
+            .chart-container {
+                min-height: 55vh;
+            }
+
             .experiment-mode.active {
                 flex-direction: row;
                 flex-wrap: wrap;
