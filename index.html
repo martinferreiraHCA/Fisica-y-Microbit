@@ -19780,14 +19780,32 @@ bluetooth.startIOPinService()</pre>
             const lastFrame = log[log.length - 1].frameNumber;
             if (lastFrame === 0) { _videoWallTimeMap = null; return; }
 
-            // Escala lineal: videoTime = (frameNumber / lastFrame) * realDuration
-            // Esto es más robusto que frameNumber/30 + offset porque compensa
-            // TODA la variación de timing del MediaRecorder/captureStream.
-            _videoWallTimeMap = log.map((entry, i) => ({
-                videoTime: (entry.frameNumber / lastFrame) * realDuration,
-                wallTime: entry.wallTime || (state.rawData[entry.pointIndex] ? (state.rawData[entry.pointIndex].wallTime || state.rawData[entry.pointIndex].time) : 0),
-                frameIdx: i
-            }));
+            // Interpolación por wallTime real de cada fotograma: cada entrada del
+            // frameLog guarda el Date.now() del momento en que se compuso ese
+            // fotograma, así que la posición en el video se estima por tiempo real
+            // transcurrido y no por número de fotograma. A diferencia de la escala
+            // lineal por frameNumber (que asume fotogramas equiespaciados), esto
+            // también compensa tirones NO uniformes del dispositivo (GC, otra app
+            // en primer plano) que desplazaban puntos intermedios 1-3 fotogramas.
+            // Anclas: recordingStartTime = videoTime 0; último wallTime = final.
+            const t0 = state.recordingStartTime || log[0].wallTime || 0;
+            const tEnd = log[log.length - 1].wallTime || 0;
+            const wallSpan = tEnd - t0;
+            _videoWallTimeMap = log.map((entry, i) => {
+                let vt;
+                if (entry.wallTime && wallSpan > 0) {
+                    vt = ((entry.wallTime - t0) / wallSpan) * realDuration;
+                } else {
+                    // Fallback: escala lineal por frameNumber (compensa deriva
+                    // uniforme del MediaRecorder/captureStream)
+                    vt = (entry.frameNumber / lastFrame) * realDuration;
+                }
+                return {
+                    videoTime: Math.min(realDuration, Math.max(0, vt)),
+                    wallTime: entry.wallTime || (state.rawData[entry.pointIndex] ? (state.rawData[entry.pointIndex].wallTime || state.rawData[entry.pointIndex].time) : 0),
+                    frameIdx: i
+                };
+            });
 
             console.log(`[VIDEO-SYNC] Mapa construido: ${_videoWallTimeMap.length} puntos, ` +
                 `primer videoTime=${_videoWallTimeMap[0].videoTime.toFixed(3)}s, ` +
