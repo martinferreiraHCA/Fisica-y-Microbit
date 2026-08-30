@@ -31206,7 +31206,7 @@ bluetooth.startIOPinService()</pre>
     @media (max-width: 980px) {
         .vm-body { flex-direction:column; overflow-y:auto; -webkit-overflow-scrolling:touch; }
         .vm-left { flex:0 0 auto; }
-        .vm-stagecard { height:52vh; min-height:250px; flex:0 0 auto; }
+        .vm-stagecard { height:52vh; height:52dvh; min-height:250px; flex:0 0 auto; }
         .vm-right { max-width:none; min-width:0; flex:0 0 auto; height:auto; }
         .vm-tabbody { max-height:60vh; }
         .vm-chart-wrap { min-height:250px; height:250px; flex:0 0 auto; }
@@ -31216,13 +31216,56 @@ bluetooth.startIOPinService()</pre>
         .vm-topbar { padding:7px 10px; gap:7px; }
         .vm-title h2 { font-size:0.72rem; letter-spacing:1px; }
         .vm-body { padding:6px 8px 8px; }
-        .vm-guide { margin:6px 8px 0; }
-        .vm-stagecard { height:46vh; min-height:220px; }
+        /* Guía más compacta: en celular llegaba a ~90px de alto y empujaba
+           el video abajo del fold */
+        .vm-guide { margin:6px 8px 0; padding:6px 10px; font-size:0.7rem; line-height:1.4; gap:8px; }
+        .vm-guide .vm-btn { padding:6px 8px; font-size:0.62rem; }
+        /* Pasos: compactos para que los 4 entren en 360-390px */
+        .vm-steps { padding:5px 8px; gap:4px; }
+        .vm-step { padding:4px 7px 4px 4px; font-size:0.62rem; letter-spacing:0; gap:5px; }
+        .vm-step .vm-step-n { width:17px; height:17px; font-size:0.6rem; }
+        /* Herramientas: UNA fila con scroll horizontal (como los pasos) en vez
+           de 3 renglones envueltos que comían ~105px de pantalla */
+        .vm-toolrow { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:2px; }
+        .vm-toolrow::-webkit-scrollbar { display:none; }
+        .vm-toolrow .vm-btn { flex:0 0 auto; }
+        .vm-toolrow .sep { flex:0 0 auto; }
+        /* Con el espacio ganado, más video (dvh: no cuenta la barra del navegador) */
+        .vm-stagecard { height:48vh; height:48dvh; min-height:220px; }
         .vm-controls { padding:6px 8px; gap:6px; flex-wrap:wrap; }
         .vm-ctrl { width:44px; height:44px; }
         .vm-fps { order:5; }
         .vm-timeline { min-width:100%; order:4; }
         .vm-btn { padding:8px 9px; }
+        /* El hint del pad iba centrado abajo y el botón MARCAR PUNTO lo tapaba:
+           subirlo arriba del botón, a lo ancho */
+        .vm-pad-hint { bottom:76px; left:10px; right:10px; transform:none; max-width:none; }
+        /* Botón de marcar bien tocable, a lo ancho del borde inferior */
+        .vm-place-btn { left:12px; right:12px; padding:13px 10px; }
+        .vm-loupe { width:110px; height:110px; }
+        /* Tabs y gráfica del panel de datos */
+        .vm-tab { padding:9px 4px; font-size:0.62rem; letter-spacing:0; }
+        .vm-chart-wrap { min-height:220px; height:220px; }
+    }
+    /* Celular apaisado: video y datos lado a lado en vez de una columna
+       con el video aplastado a ~180px */
+    @media (max-height: 500px) and (orientation: landscape) {
+        .vm-body { flex-direction:row; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+        .vm-left { flex:1 1 60%; min-width:0; }
+        /* El video manda: mínimo ~55% de la altura; si los controles no entran,
+           la columna scrollea */
+        .vm-stagecard { height:auto; min-height:55vh; min-height:55dvh; flex:1 1 auto; }
+        .vm-right { flex:1 1 40%; min-width:250px; max-width:none; height:auto; }
+        .vm-tabbody { max-height:none; }
+        .vm-guide { margin:4px 8px 0; padding:4px 10px; font-size:0.68rem; }
+        .vm-steps { padding:4px 8px; }
+        .vm-toolrow { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+        .vm-toolrow::-webkit-scrollbar { display:none; }
+        .vm-toolrow .vm-btn { flex:0 0 auto; }
+        .vm-controls { padding:4px 8px; }
+        .vm-ctrl { width:38px; height:38px; }
+        .vm-place-btn { padding:10px 14px; }
+        .vm-pad-hint { display:none !important; }
     }
     </style>
 
@@ -31769,7 +31812,10 @@ bluetooth.startIOPinService()</pre>
     }
 
     function resizeOverlay() {
-        var dpr = window.devicePixelRatio || 1;
+        // Cap del pixel ratio: en celulares (dpr 3) el overlay quedaba de
+        // ~1100×1150 y se redibuja en cada arrastre de la mira; 2x es
+        // indistinguible a ese tamaño y reduce el trabajo por frame a la mitad.
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
         overlay.width = Math.round(stage.clientWidth * dpr);
         overlay.height = Math.round(stage.clientHeight * dpr);
         octx = overlay.getContext('2d');
@@ -32475,7 +32521,11 @@ bluetooth.startIOPinService()</pre>
         pauseVideo();
 
         var tol = parseFloat(el('vm-auto-tol').value) || 80;
-        var sc = Math.min(1, 640 / (video.videoWidth || 640));
+        // En celulares procesar a 480px de ancho: el modelo de fondo (15
+        // cuadros + mediana por píxel) y la búsqueda por cuadro corren ~1.8x
+        // más rápido, con precisión de sobra a ese tamaño.
+        var procW = (typeof isMobileBrowser !== 'undefined' && isMobileBrowser) ? 480 : 640;
+        var sc = Math.min(1, procW / (video.videoWidth || procW));
         var W = Math.max(4, Math.round(video.videoWidth * sc));
         var H = Math.max(4, Math.round(video.videoHeight * sc));
         var g = workCtx();
