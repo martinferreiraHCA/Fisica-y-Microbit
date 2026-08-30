@@ -16098,19 +16098,46 @@ bluetooth.startIOPinService()</pre>
             }
         });
 
-        // Eliminar seleccionados
-        document.getElementById('deleteSelectedBtn').addEventListener('click', () => {
-            if (state.selectedPoints.size > 0) {
-                const idsToDelete = Array.from(state.selectedPoints);
-                state.rawData = state.rawData.filter(d => !idsToDelete.includes(d.id));
-                state.selectedPoints.clear();
-                _rebuildVideoFrameLogIndices();
-                document.getElementById('pointInfo').style.display = 'none';
-                _revertFitModeIfSelectionEmpty();
+        // Eliminar seleccionados (botón y tecla Delete/Suprimir)
+        function deleteSelectedPoints() {
+            if (state.selectedPoints.size === 0) return;
+            const idsToDelete = Array.from(state.selectedPoints);
+            state.rawData = state.rawData.filter(d => !idsToDelete.includes(d.id));
+            state.selectedPoints.clear();
+            _rebuildVideoFrameLogIndices();
+            document.getElementById('pointInfo').style.display = 'none';
+            _revertFitModeIfSelectionEmpty();
 
-                updateDisplay();
-                updateDebugButtons();
-            }
+            updateDisplay();
+            updateDebugButtons();
+        }
+
+        document.getElementById('deleteSelectedBtn').addEventListener('click', deleteSelectedPoints);
+
+        // Tecla Delete/Suprimir (o Retroceso) = eliminar los puntos seleccionados.
+        // Solo cuando de verdad se está depurando datos: hay selección, no se está
+        // escribiendo en un campo o etiqueta editable, y no hay otro panel a
+        // pantalla completa (Video+movimiento, MAPEO, LAB, visor de fotos, informe
+        // o un modal) capturando el teclado.
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+            if (state.selectedPoints.size === 0) return;
+
+            const t = e.target;
+            if (t && (t.isContentEditable ||
+                /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+
+            const overlayOpen =
+                document.querySelector('.vm-panel.open, .mapeo-panel.open, .informe-panel.open, .s3d-panel.open, .trk-panel.open') ||
+                document.getElementById('experimentMode')?.classList.contains('active') ||
+                document.getElementById('sensorMode')?.classList.contains('active') ||
+                document.querySelector('.desktop-lab-mode.active') ||
+                document.getElementById('smFrameViewer')?.classList.contains('active') ||
+                document.querySelector('.modal-overlay.active, .modal.active');
+            if (overlayOpen) return;
+
+            e.preventDefault();
+            deleteSelectedPoints();
         });
 
         // Actualizar botones con cada cambio en los datos
