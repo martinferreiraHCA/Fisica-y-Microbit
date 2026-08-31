@@ -31581,7 +31581,14 @@ bluetooth.startIOPinService()</pre>
     .vm-stage { position:absolute; inset:0; touch-action:none; }
     .vm-stage video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#111; pointer-events:none; }
     .vm-stage canvas.vm-overlay { position:absolute; inset:0; width:100%; height:100%; cursor:crosshair; touch-action:none; }
-    .vm-loupe { display:none; position:absolute; width:132px; height:132px; border-radius:50%; border:3px solid #fff; box-shadow:0 4px 16px rgba(0,0,0,.45); overflow:hidden; pointer-events:none; z-index:12; background:#000; }
+    .vm-more-wrap { position:relative; display:inline-block; }
+    .vm-more-menu { display:none; position:absolute; left:0; top:calc(100% + 4px); z-index:60; background:#fff; border:2px solid #000; min-width:200px; box-shadow:0 6px 20px rgba(0,0,0,.3); }
+    .vm-more-menu.open { display:block; }
+    .vm-more-menu button { display:block; width:100%; text-align:left; background:#fff; border:none; border-bottom:1px solid #e0e0e0; color:#000; font-size:0.72rem; font-weight:600; letter-spacing:.5px; text-transform:uppercase; padding:11px 14px; cursor:pointer; font-family:inherit; }
+    .vm-more-menu button:last-child { border-bottom:none; }
+    .vm-more-menu button:hover:not(:disabled) { background:#000; color:#fff; }
+    .vm-more-menu button:disabled { opacity:.35; cursor:default; }
+    .vm-loupe { display:none; position:absolute; width:140px; height:140px; border-radius:50%; border:3px solid #fff; box-shadow:0 4px 16px rgba(0,0,0,.45); overflow:hidden; pointer-events:none; z-index:12; background:#000; }
     .vm-loupe canvas { width:100%; height:100%; display:block; }
 
     /* Pantalla vacía (sin video) */
@@ -31679,6 +31686,7 @@ bluetooth.startIOPinService()</pre>
     .vm-trim-actions .vm-tr-msg { flex:1 1 auto; min-width:120px; color:#bbb; font-size:0.64rem; line-height:1.35; }
     .vm-trim-actions .vm-tr-msg a { color:#8ab4ff; }
     @media (max-width: 640px) {
+        .vm-loupe { width:158px; height:158px; }
         #vm-strip { height:48px; }
         .vm-tr-btn { padding:8px 8px; font-size:0.6rem; }
     }
@@ -31800,24 +31808,25 @@ bluetooth.startIOPinService()</pre>
                     <button class="vm-btn" id="vm-record-btn" title="Grabar un video nuevo con la cámara">Grabar</button>
                     <button class="vm-btn" id="vm-use-site-video" title="Usar el último video grabado con el botón CÁMARA del sitio" disabled>Video del sitio</button>
                     <button class="vm-btn" id="vm-trim-btn" disabled title="Quedarte solo con el tramo del video que te interesa; también podés exportarlo como archivo o guardarlo en Google Drive">Recortar</button>
-                    <span class="sep"></span>
                     <button class="vm-btn" id="vm-tool-scale" disabled title="Tocá dos puntos de un objeto de longitud conocida">Escala</button>
                     <button class="vm-btn" id="vm-tool-origin" disabled title="Tocá el punto que será el origen (0, 0)">Origen</button>
                     <button class="vm-btn active" id="vm-tool-mark" disabled title="Tocá el objeto en cada cuadro para registrar su posición">Marcar</button>
                     <button class="vm-btn" id="vm-tool-auto" disabled title="Seguir automáticamente un color: tocá el objeto y el sistema lo busca cuadro a cuadro">Auto</button>
                     <button class="vm-btn" id="vm-show-vectors" disabled title="Dibujar sobre el video la flecha de velocidad en cada punto marcado">Vectores</button>
                     <button class="vm-btn" id="vm-chrono" disabled title="Cronofotografía: armar una imagen con el objeto en todas las posiciones marcadas, para imprimir o pegar en el informe">Crono</button>
-                    <span class="sep"></span>
                     <button class="vm-btn" id="vm-grid-btn" disabled title="Grilla sobre el video para ver la escala: si ya calibraste, te dice cuántos metros mide cada cuadro">Grilla</button>
                     <select id="vm-grid-size" title="Densidad de la grilla" style="display:none; border:2px solid #000; padding:6px 4px; font-size:0.7rem; font-family:inherit; background:#fff; cursor:pointer;">
                         <option value="fina">Fina</option>
                         <option value="media" selected>Media</option>
                         <option value="gruesa">Gruesa</option>
                     </select>
-                    <span class="sep"></span>
                     <button class="vm-btn" id="vm-tool-erase" disabled title="Depurar puntos: llevá la mira sobre un punto rojo y tocá BORRAR PUNTO para eliminarlo (también podés borrarlos desde la Tabla)">Borrar punto</button>
                     <button class="vm-btn" id="vm-undo" disabled title="Borrar el último punto marcado">Deshacer</button>
                     <button class="vm-btn" id="vm-clear-pts" disabled title="Borrar todos los puntos marcados">Borrar todo</button>
+                    <div class="vm-more-wrap" id="vm-more-wrap" style="display:none;">
+                        <button class="vm-btn" id="vm-more-btn" title="Más herramientas">⋯ Más</button>
+                        <div class="vm-more-menu" id="vm-more-menu"></div>
+                    </div>
                 </div>
 
                 <div class="vm-stagecard">
@@ -32045,6 +32054,7 @@ bluetooth.startIOPinService()</pre>
                         <li>¿Querés <b>menos puntos</b>? En la barra de abajo elegí <b>Cada 2, 3, 5 o 10 cuadros</b>: el marcado, los botones ⟨ ⟩ y el seguimiento automático saltan de a ese paso. Ideal para videos largos o para tablas más manejables.</li>
                         <li>Al apoyar el dedo (o mantener apretado el mouse) aparece una <b>lupa</b> para apuntar fino; al soltar se marca el punto. La lupa también funciona al calibrar la <b>Escala</b> y el <b>Origen</b>.</li>
                         <li>El marcado funciona siempre con la <b>mira</b> (estilo FizziQ): en vez de tocar el objeto —y taparlo con el dedo— la movés arrastrando desde <b>cualquier parte de la pantalla</b>, como un mousepad. Un toque corto la salta a ese lugar y la lupa muestra ampliado lo que hay debajo. Cuando la mira está sobre el objeto, tocá el botón grande de abajo a la derecha (<b>MARCAR PUNTO</b> / <b>PONER EXTREMO</b> / <b>PONER ORIGEN</b> / <b>ELEGIR OBJETO</b>, según la herramienta).</li>
+                        <li>La barra de herramientas muestra <b>solo lo del paso actual</b> (como FizziQ); el resto está siempre a mano en el menú <b>⋯ Más</b>.</li>
                         <li>El flujo es <b>guiado y por pasos</b>: MARCAR y AUTO quedan bloqueados hasta que calibres la <b>ESCALA</b> (así los resultados salen en metros). Si no necesitás unidades reales, el botón <b>"Medir en píxeles"</b> de la barra guía te deja saltear ese paso. La barra gris de arriba siempre te dice en qué paso estás y qué hacer.</li>
                         <li><b>Depurar puntos:</b> con la herramienta <b>BORRAR PUNTO</b> llevás la mira sobre un punto rojo mal marcado y lo eliminás; también podés borrar cualquier fila desde la <b>Tabla</b> (✕), borrar el último con <b>DESHACER</b> (o Ctrl+Z), o volver a marcar el mismo cuadro para reemplazarlo.</li>
                         <li>El botón <b>GRILLA</b> superpone una cuadrícula al video (densidad Fina / Media / Gruesa). Si ya calibraste la escala, cada cuadro mide un número redondo de metros y arriba a la izquierda te dice cuánto (por ej. "cada cuadro = 0.5 m"): una referencia visual clara de las distancias. Si definiste el origen, las líneas más marcadas pasan por el (0, 0).</li>
@@ -32175,8 +32185,9 @@ bluetooth.startIOPinService()</pre>
         } else if (!s3) {
             setGuide('<b>Paso 3 de 4 · Marcar puntos:</b> arrastrá desde <b>cualquier parte de la pantalla</b> para mover la mira hasta el objeto (un toque corto la salta ahí, y no tapás nada con el dedo) y tocá <b>MARCAR PUNTO</b>: el video avanza solo al siguiente cuadro. ¿Preferís que lo siga solo? Tocá <b>AUTO</b>, llevá la mira al objeto y tocá <b>ELEGIR OBJETO</b>.');
         } else {
-            setGuide('<b>Paso 4 de 4 · Analizar:</b> ya hay <b>' + points.length + ' puntos</b>. Mirá <b>Gráficas</b> y <b>Tabla</b> (a la derecha o abajo), probá la <b>Curva ideal</b> y el <b>Suavizado</b>. ¿Algún punto salió mal? Depuralo con <b>BORRAR PUNTO</b> o desde la Tabla. También podés superponer la <b>micro:bit</b> desde su pestaña.', true);
+            setGuide('<b>Paso 4 de 4 · Analizar:</b> ya hay <b>' + points.length + ' puntos</b>. Mirá <b>Gráficas</b> y <b>Tabla</b> (a la derecha o abajo), probá la <b>Curva ideal</b> y el <b>Suavizado</b>. ¿Algún punto salió mal? Depuralo con <b>BORRAR PUNTO</b> o desde la Tabla. En <b>⋯ Más</b> tenés Vectores, Crono, Grilla, Recortar y el resto de las herramientas. También podés superponer la <b>micro:bit</b> desde su pestaña.', true);
         }
+        updateToolbar(s1, s2ok);
         var enable = hasVideo;
         var enableMark = hasVideo && s2ok;
         el('vm-tool-scale').disabled = !enable;
@@ -32195,6 +32206,53 @@ bluetooth.startIOPinService()</pre>
         el('vm-chart-csv').disabled = points.length < 2;
         ['vm-back10', 'vm-back1', 'vm-play', 'vm-fwd1', 'vm-fwd10'].forEach(function (id) { el(id).disabled = !enable; });
         el('vm-slider').disabled = !enable;
+    }
+
+    // Barra contextual estilo FizziQ: solo se muestran las herramientas del
+    // paso actual; el resto vive en el menú "⋯ Más". Los toggles activos
+    // (grilla, vectores) se promueven a la barra para poder apagarlos.
+    var VM_ALL_TOOLS = ['vm-load-btn', 'vm-record-btn', 'vm-use-site-video', 'vm-trim-btn', 'vm-tool-scale',
+                        'vm-tool-origin', 'vm-tool-mark', 'vm-tool-auto', 'vm-show-vectors', 'vm-chrono',
+                        'vm-grid-btn', 'vm-tool-erase', 'vm-undo', 'vm-clear-pts'];
+
+    function updateToolbar(hasVid, s2ok) {
+        var essentials, menu;
+        if (!hasVid) {
+            essentials = ['vm-load-btn', 'vm-record-btn', 'vm-use-site-video'];
+            menu = [];
+        } else if (!s2ok) {
+            essentials = ['vm-tool-scale', 'vm-trim-btn'];
+            menu = ['vm-grid-btn', 'vm-load-btn', 'vm-record-btn', 'vm-use-site-video'];
+        } else {
+            essentials = ['vm-tool-mark', 'vm-tool-auto', 'vm-tool-erase', 'vm-undo'];
+            menu = ['vm-tool-scale', 'vm-tool-origin', 'vm-trim-btn', 'vm-grid-btn', 'vm-show-vectors',
+                    'vm-chrono', 'vm-clear-pts', 'vm-load-btn', 'vm-record-btn', 'vm-use-site-video'];
+        }
+        // toggles activos → visibles para poder apagarlos
+        if (gridOn && menu.indexOf('vm-grid-btn') >= 0) { essentials.push('vm-grid-btn'); menu.splice(menu.indexOf('vm-grid-btn'), 1); }
+        if (showVectors && menu.indexOf('vm-show-vectors') >= 0) { essentials.push('vm-show-vectors'); menu.splice(menu.indexOf('vm-show-vectors'), 1); }
+        VM_ALL_TOOLS.forEach(function (id) {
+            var b = el(id);
+            if (b) b.style.display = essentials.indexOf(id) >= 0 ? '' : 'none';
+        });
+        // reconstruir el menú
+        var mm = el('vm-more-menu');
+        mm.innerHTML = '';
+        menu.forEach(function (id) {
+            var src = el(id);
+            if (!src) return;
+            if (id === 'vm-use-site-video' && src.disabled) return;   // sin video del sitio: ni mostrarlo
+            var b = document.createElement('button');
+            b.textContent = src.textContent + (src.classList.contains('active') ? ' ✓' : '');
+            b.title = src.title || '';
+            b.disabled = src.disabled;
+            b.addEventListener('click', function () {
+                mm.classList.remove('open');
+                src.click();
+            });
+            mm.appendChild(b);
+        });
+        el('vm-more-wrap').style.display = mm.children.length ? '' : 'none';
     }
 
     function goToStep(n) {
@@ -32688,7 +32746,7 @@ bluetooth.startIOPinService()</pre>
     }
 
     /* ================= Lupa (precisión táctil) ================= */
-    var LOUPE_ZOOM = 2.6;
+    var LOUPE_ZOOM = 3.4;
     function showLoupe(cssX, cssY) {
         var lp = el('vm-loupe'), lc = el('vm-loupe-canvas');
         var vc = cssToVideo(cssX, cssY);
@@ -34229,6 +34287,15 @@ bluetooth.startIOPinService()</pre>
             el('vm-tab-' + k).addEventListener('click', function () { switchTab(k); });
         });
 
+        // Menú "⋯ Más"
+        el('vm-more-btn').addEventListener('click', function (e) {
+            e.stopPropagation();
+            el('vm-more-menu').classList.toggle('open');
+        });
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest || !e.target.closest('#vm-more-wrap')) el('vm-more-menu').classList.remove('open');
+        });
+
         // Editor de recorte (filmstrip con manijas)
         el('vm-trim-btn').addEventListener('click', openTrimUi);
         el('vm-tr-close').addEventListener('click', closeTrimUi);
@@ -34286,6 +34353,7 @@ bluetooth.startIOPinService()</pre>
             this.classList.toggle('active', gridOn);
             el('vm-grid-size').style.display = gridOn ? '' : 'none';
             drawOverlay();
+            refreshSteps();
         });
         el('vm-grid-size').addEventListener('change', function () {
             gridDensity = this.value;
@@ -34318,6 +34386,7 @@ bluetooth.startIOPinService()</pre>
             showVectors = !showVectors;
             this.classList.toggle('active', showVectors);
             drawOverlay();
+            refreshSteps();
         });
 
         // Chips de curva ideal
