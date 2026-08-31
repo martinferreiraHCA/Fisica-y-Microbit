@@ -31782,6 +31782,7 @@ bluetooth.startIOPinService()</pre>
                     <button class="vm-btn" id="vm-load-btn" title="Elegir un video guardado en este equipo">Abrir video</button>
                     <button class="vm-btn" id="vm-record-btn" title="Grabar un video nuevo con la cámara">Grabar</button>
                     <button class="vm-btn" id="vm-use-site-video" title="Usar el último video grabado con el botón CÁMARA del sitio" disabled>Video del sitio</button>
+                    <button class="vm-btn" id="vm-trim-btn" disabled title="Quedarte solo con el tramo del video que te interesa; también podés exportarlo como archivo o guardarlo en Google Drive">Recortar</button>
                     <span class="sep"></span>
                     <button class="vm-btn" id="vm-tool-scale" disabled title="Tocá dos puntos de un objeto de longitud conocida">Escala</button>
                     <button class="vm-btn" id="vm-tool-origin" disabled title="Tocá el punto que será el origen (0, 0)">Origen</button>
@@ -31996,6 +31997,7 @@ bluetooth.startIOPinService()</pre>
                         <li>Cámara <b>quieta</b> (apoyada o con trípode) y el movimiento visto de costado, perpendicular a la cámara.</li>
                         <li>Que aparezca algo de <b>longitud conocida</b> en el mismo plano del movimiento: una regla, una mesa, una puerta…</li>
                         <li>Podés <b>abrir un video</b> del equipo, <b>grabar</b> uno en el momento, o usar el último grabado con el botón <b>CÁMARA</b> del sitio (ese queda sincronizado con la captura de la micro:bit).</li>
+                        <li>Con <b>RECORTAR</b> te quedás solo con el tramo que te interesa (desde / hasta, con botones "Actual" para marcar el cuadro en pantalla): la línea de tiempo, el marcado y el AUTO trabajan dentro de ese tramo. Desde la misma ventana podés <b>exportar el tramo como archivo</b> (WebM, para seguir otro día) o <b>guardarlo en tu Google Drive</b>, en la carpeta <b>fisicabit / Videos de análisis</b> (usa la misma sesión de Google del resto del sitio).</li>
                         <li>Si filmaste en cámara lenta, poné en <b>FPS</b> los cuadros por segundo reales de la filmación (por ej. 120 o 240).</li>
                     </ul>
                     <h4>2 · Calibrá la escala</h4>
@@ -32034,6 +32036,41 @@ bluetooth.startIOPinService()</pre>
                         <li>Todo el análisis ocurre en tu navegador: el video no se sube a ningún lado.</li>
                     </ul>
                 </div>
+            </div>
+        </div>
+
+        <div class="vm-dialog" id="vm-trim-dialog" style="width:min(480px, calc(100vw - 24px));">
+            <h4>Recortar el video</h4>
+            <p>Elegí el tramo que te interesa analizar: la línea de tiempo, el marcado y el seguimiento automático van a trabajar solo dentro de ese tramo. No se pierde nada: podés quitar el recorte cuando quieras.</p>
+            <div class="row" style="gap:10px; flex-wrap:wrap;">
+                <label style="flex:1; min-width:120px; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Desde (s)
+                    <div style="display:flex; gap:6px; margin-top:3px;">
+                        <input type="number" id="vm-tr-t0" inputmode="decimal" step="any" min="0" style="flex:1; min-width:0;">
+                        <button class="vm-btn" id="vm-tr-set0" title="Usar el cuadro actual del video como inicio" style="padding:6px 8px;">Actual</button>
+                    </div>
+                </label>
+                <label style="flex:1; min-width:120px; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Hasta (s)
+                    <div style="display:flex; gap:6px; margin-top:3px;">
+                        <input type="number" id="vm-tr-t1" inputmode="decimal" step="any" min="0" style="flex:1; min-width:0;">
+                        <button class="vm-btn" id="vm-tr-set1" title="Usar el cuadro actual del video como final" style="padding:6px 8px;">Actual</button>
+                    </div>
+                </label>
+            </div>
+            <p style="font-size:0.7rem; color:#555; margin-top:8px;">Consejo: reproducí el video, pausalo donde empieza lo que te interesa y tocá <b>Actual</b> en "Desde"; repetí para "Hasta".</p>
+            <div class="btns" style="justify-content:flex-start; flex-wrap:wrap;">
+                <button class="vm-btn primary" id="vm-tr-apply">Aplicar recorte</button>
+                <button class="vm-btn" id="vm-tr-clear">Quitar recorte</button>
+            </div>
+            <div style="border-top:1px solid #ccc; margin-top:12px; padding-top:10px;">
+                <p style="font-size:0.72rem; color:#333; margin-bottom:8px;"><b>Guardar el tramo recortado</b> como video nuevo (formato WebM), para seguir trabajando con él otro día o en otro equipo:</p>
+                <div class="btns" style="justify-content:flex-start; flex-wrap:wrap;">
+                    <button class="vm-btn" id="vm-tr-export">Exportar archivo</button>
+                    <button class="vm-btn" id="vm-tr-drive">Guardar en Google Drive</button>
+                </div>
+                <p id="vm-tr-status" style="font-size:0.7rem; color:#555; margin-top:8px;"></p>
+            </div>
+            <div class="btns">
+                <button class="vm-btn" id="vm-tr-close">Cerrar</button>
             </div>
         </div>
 
@@ -32135,7 +32172,7 @@ bluetooth.startIOPinService()</pre>
         if (!s1) {
             setGuide('<b>Paso 1 de 4 · Video:</b> cargá un video para empezar — <b>ABRIR VIDEO</b>, <b>GRABAR</b> con la cámara, o arrastralo sobre la pantalla. Consejo: filmá con la cámara quieta y con algo de longitud conocida en la escena. Los pasos siguientes se van a ir habilitando solos.');
         } else if (!s2ok) {
-            setGuide('<b>Paso 2 de 4 · Escala:</b> con la herramienta <b>ESCALA</b> activa, arrastrá desde cualquier parte de la pantalla para llevar la <b>mira</b> a un extremo de algo de longitud conocida (una regla, una mesa…) y tocá <b>PONER EXTREMO</b>; repetí en el otro extremo y escribí cuánto mide. <b>MARCAR y AUTO se habilitan al terminar este paso</b> (o tocá "Medir en píxeles" para saltearlo).');
+            setGuide('<b>Paso 2 de 4 · Escala:</b> con la herramienta <b>ESCALA</b> activa, arrastrá desde cualquier parte de la pantalla para llevar la <b>mira</b> a un extremo de algo de longitud conocida (una regla, una mesa…) y tocá <b>PONER EXTREMO</b>; repetí en el otro extremo y escribí cuánto mide. <b>MARCAR y AUTO se habilitan al terminar este paso</b> (o tocá "Medir en píxeles" para saltearlo). ¿El video tiene partes que no sirven? Con <b>RECORTAR</b> te quedás solo con el tramo útil.');
         } else if (!s3) {
             setGuide('<b>Paso 3 de 4 · Marcar puntos:</b> arrastrá desde <b>cualquier parte de la pantalla</b> para mover la mira hasta el objeto (un toque corto la salta ahí, y no tapás nada con el dedo) y tocá <b>MARCAR PUNTO</b>: el video avanza solo al siguiente cuadro. ¿Preferís que lo siga solo? Tocá <b>AUTO</b>, llevá la mira al objeto y tocá <b>ELEGIR OBJETO</b>.');
         } else {
@@ -32149,6 +32186,7 @@ bluetooth.startIOPinService()</pre>
         el('vm-show-vectors').disabled = !enable || points.length < 2;
         el('vm-chrono').disabled = !enable || points.length < 2 || chronoBusy;
         el('vm-grid-btn').disabled = !enable;
+        el('vm-trim-btn').disabled = !enable || trimBusy;
         updatePadUi();
         el('vm-undo').disabled = !points.length;
         el('vm-clear-pts').disabled = !points.length && scalePts.length === 0 && !origin;
@@ -32207,7 +32245,10 @@ bluetooth.startIOPinService()</pre>
         fixDurationThen(function (d) {
             duration = d || 0;
             hasVideo = true;
+            trimStart = 0; trimEnd = duration; trimmedBlob = null;
+            el('vm-trim-btn').classList.remove('active');
             var slider = el('vm-slider');
+            slider.min = 0;
             slider.max = duration.toFixed(3);
             slider.value = 0;
             el('vm-time-dur').textContent = fmtT(duration) + ' s';
@@ -32226,7 +32267,7 @@ bluetooth.startIOPinService()</pre>
     function curFrame() { return Math.round(video.currentTime / frameDt()); }
 
     function seekTo(t) {
-        t = clamp(t, 0, Math.max(0, duration - 0.0005));
+        t = clamp(t, trimStart, Math.max(trimStart, (trimEnd || duration) - 0.0005));
         if (isSeeking) { pendingSeek = t; return; }
         isSeeking = true;
         try { video.currentTime = t; } catch (e) { isSeeking = false; }
@@ -32256,11 +32297,13 @@ bluetooth.startIOPinService()</pre>
         if (!hasVideo) return;
         if (playing) { pauseVideo(); updatePadUi(); }
         else {
+            if (trimEnd && video.currentTime >= trimEnd - 0.02) { seekTo(trimStart); }
             video.play().then(function () {
                 playing = true;
                 el('vm-play').textContent = '❚❚';
                 var loop = function () {
                     if (!playing) return;
+                    if (trimEnd && video.currentTime >= trimEnd) { pauseVideo(); seekTo(trimEnd); return; }
                     el('vm-slider').value = video.currentTime;
                     updateTimeUI();
                     drawOverlay();
@@ -32335,6 +32378,10 @@ bluetooth.startIOPinService()</pre>
     var chronoBusy = false;       // armado de la cronofotografía en curso
     var chronoUrl = null;         // dataURL de la última cronofotografía
     var bgCache = null;           // modelo de fondo cacheado por video {W, H, data}
+    var trimStart = 0;            // recorte lógico del video: inicio (s)
+    var trimEnd = 0;              // recorte lógico del video: fin (s); 0 = sin video
+    var trimmedBlob = null;       // caché del tramo exportado como WebM
+    var trimBusy = false;         // exportación / subida del tramo en curso
     var fitMode = 'none';         // 'none' | 'auto' | 'lin' | 'quad': curva ideal sobre la gráfica
     var showVectors = false;      // flechas de velocidad sobre el video
 
@@ -32876,9 +32923,10 @@ bluetooth.startIOPinService()</pre>
     async function vmBuildBackground(W, H) {
         var g = workCtx();
         var N = 15, all = [];
+        var tA = trimStart, tB = trimEnd || duration;
         for (var i = 0; i < N; i++) {
             if (autoStop) return null;
-            await seekAsync(duration * (i + 0.5) / N);
+            await seekAsync(tA + (tB - tA) * (i + 0.5) / N);
             all.push(vmGrab(g, W, H).slice(0));
             if (i % 4 === 3) setGuide('Analizando el video (modelo de fondo)… ' + Math.round((i + 1) * 100 / N) + '%');
         }
@@ -33036,14 +33084,15 @@ bluetooth.startIOPinService()</pre>
         var tol2 = tol * tol;
         var f0 = curFrame(), f = f0;
         var added = 1, waiting = false, lostAt = -1, cand = null, reacqBuf = null, prevData = null;
-        var totalF = Math.floor(duration / frameDt());
+        var tEndTrack = trimEnd || duration;
+        var totalF = Math.floor(tEndTrack / frameDt());
         setPointAt(video.currentTime, pos.u / sc, pos.v / sc);
         drawOverlay();
 
         while (!autoStop) {
             f++;
             var t = f * frameDt();
-            if (t > duration - 0.0005) break;
+            if (t > tEndTrack - 0.0005) break;
             await seekAsync(t);
             if (autoStop) break;
             var data = vmGrab(g, W, H);
@@ -33334,6 +33383,159 @@ bluetooth.startIOPinService()</pre>
         a.href = chronoUrl;
         a.download = 'cronofotografia.png';
         a.click();
+    }
+
+    /* ================= Recorte del video, exportación y Drive ================= */
+    function applyTrim(t0, t1) {
+        t0 = clamp(t0, 0, duration); t1 = clamp(t1, 0, duration);
+        if (t1 - t0 < 3 * frameDt()) return false;
+        trimStart = t0; trimEnd = t1;
+        trimmedBlob = null;
+        bgCache = null;   // el modelo de fondo se recalcula sobre el tramo
+        var slider = el('vm-slider');
+        slider.min = t0.toFixed(3);
+        slider.max = t1.toFixed(3);
+        el('vm-time-dur').textContent = fmtT(t1) + ' s';
+        el('vm-trim-btn').classList.toggle('active', t0 > 0 || t1 < duration - 0.001);
+        seekTo(clamp(video.currentTime, t0, t1));
+        updateTimeUI();
+        refreshSteps();
+        return true;
+    }
+
+    // Re-graba el tramo recortado como un WebM nuevo (reproduce el tramo una
+    // vez, en tiempo real, capturando los cuadros a un canvas).
+    async function exportTrimmedBlob(onProgress) {
+        if (trimmedBlob) return trimmedBlob;
+        var vw = video.videoWidth, vh = video.videoHeight;
+        var c = document.createElement('canvas');
+        c.width = vw; c.height = vh;
+        var g2 = c.getContext('2d');
+        var stream = c.captureStream(30);
+        var rec;
+        try { rec = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8', videoBitsPerSecond: 4000000 }); }
+        catch (e) { rec = new MediaRecorder(stream); }
+        var chunks = [];
+        rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+        var stopped = new Promise(function (r) { rec.onstop = r; });
+        pauseVideo();
+        await seekAsync(trimStart);
+        g2.drawImage(video, 0, 0, vw, vh);
+        rec.start(200);
+        await video.play();
+        await new Promise(function (res) {
+            function loop() {
+                if (video.currentTime >= trimEnd - 0.01 || video.ended) { res(); return; }
+                g2.drawImage(video, 0, 0, vw, vh);
+                if (onProgress) onProgress(clamp((video.currentTime - trimStart) / Math.max(0.01, trimEnd - trimStart), 0, 1));
+                requestAnimationFrame(loop);
+            }
+            loop();
+        });
+        video.pause();
+        rec.stop();
+        await stopped;
+        await seekAsync(trimStart);
+        trimmedBlob = new Blob(chunks, { type: 'video/webm' });
+        return trimmedBlob;
+    }
+
+    function trimFileName() {
+        var d = new Date();
+        var stmp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '-' +
+                   String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+        return 'video_analisis_' + stmp + '.webm';
+    }
+
+    async function trimExportDownload() {
+        if (trimBusy || !hasVideo) return;
+        var st = el('vm-tr-status');
+        trimBusy = true; refreshSteps();
+        try {
+            st.textContent = 'Grabando el tramo… (dura lo que dura el tramo)';
+            var blob = await exportTrimmedBlob(function (p) { st.textContent = 'Grabando el tramo… ' + Math.round(p * 100) + '%'; });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = trimFileName();
+            a.click();
+            URL.revokeObjectURL(url);
+            st.textContent = 'Video recortado descargado (' + (blob.size / 1048576).toFixed(1) + ' MB, formato WebM). Podés volver a cargarlo otro día con ABRIR VIDEO.';
+        } catch (e) {
+            st.textContent = 'No se pudo exportar el tramo con este video.';
+        }
+        trimBusy = false; refreshSteps();
+    }
+
+    // Carpeta «Videos de análisis» dentro de la carpeta «fisicabit» del Drive
+    // del usuario (misma sesión de Google que el resto del sitio).
+    var _vmDriveFolderId = null;
+    async function vmDriveFolder() {
+        if (_vmDriveFolderId) return _vmDriveFolderId;
+        var parent = await window.FbitGoogle.rootFolderId();
+        var q = "mimeType='application/vnd.google-apps.folder' and name='Videos de análisis' and '" + parent + "' in parents and trashed=false";
+        var r = await window.FbitGoogle.api('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&spaces=drive');
+        var j = await r.json();
+        if (j.files && j.files.length) { _vmDriveFolderId = j.files[0].id; return _vmDriveFolderId; }
+        var cr = await window.FbitGoogle.api('drive/v3/files?fields=id', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'Videos de análisis', mimeType: 'application/vnd.google-apps.folder', parents: [parent] })
+        });
+        var cj = await cr.json();
+        _vmDriveFolderId = cj.id;
+        return _vmDriveFolderId;
+    }
+
+    async function trimSaveToDrive() {
+        if (trimBusy || !hasVideo) return;
+        var st = el('vm-tr-status');
+        if (!window.FbitGoogle || !window.FbitGoogle.configured()) {
+            st.textContent = 'Falta configurar el Client ID de Google del sitio (ver GOOGLE_CLIENT_ID en el código).';
+            return;
+        }
+        trimBusy = true; refreshSteps();
+        try {
+            st.textContent = 'Conectando con tu cuenta de Google…';
+            var ok = await window.FbitGoogle.connect(true);
+            if (!ok) { st.textContent = 'No se pudo iniciar sesión en Google. Probá de nuevo.'; trimBusy = false; refreshSteps(); return; }
+            st.textContent = 'Grabando el tramo…';
+            var blob = await exportTrimmedBlob(function (p) { st.textContent = 'Grabando el tramo… ' + Math.round(p * 100) + '%'; });
+            st.textContent = 'Subiendo a Google Drive…';
+            await window.FbitGoogle.ensureToken();
+            var folderId = await vmDriveFolder();
+            var name = trimFileName();
+            var meta = { name: name, parents: [folderId], mimeType: 'video/webm' };
+            var boundary = 'fbitvm' + Date.now();
+            var body = new Blob([
+                '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) + '\r\n',
+                '--' + boundary + '\r\nContent-Type: video/webm\r\n\r\n', blob, '\r\n--' + boundary + '--'
+            ]);
+            var r = await window.FbitGoogle.api('upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', {
+                method: 'POST',
+                headers: { 'Content-Type': 'multipart/related; boundary=' + boundary },
+                body: body
+            });
+            var j = await r.json();
+            if (j && j.id) {
+                st.innerHTML = 'Guardado en Drive → carpeta <b>fisicabit / Videos de análisis</b> como <b>' + name + '</b>' +
+                    (j.webViewLink ? ' · <a href="' + j.webViewLink + '" target="_blank" rel="noopener">abrir en Drive</a>' : '') + '.';
+            } else {
+                st.textContent = 'Google Drive rechazó la subida. Probá de nuevo en un rato.';
+            }
+        } catch (e) {
+            st.textContent = 'No se pudo guardar en Google Drive (¿sin internet?).';
+        }
+        trimBusy = false; refreshSteps();
+    }
+
+    function openTrimDialog() {
+        if (!hasVideo || trimBusy) return;
+        pauseVideo();
+        el('vm-tr-t0').value = fmtT(trimStart);
+        el('vm-tr-t1').value = fmtT(trimEnd || duration);
+        el('vm-tr-status').textContent = '';
+        el('vm-trim-dialog').classList.add('open');
     }
 
     /* ================= Recalcular todo (tabla + gráfica) ================= */
@@ -33878,6 +34080,28 @@ bluetooth.startIOPinService()</pre>
             el('vm-tab-' + k).addEventListener('click', function () { switchTab(k); });
         });
 
+        // Recortar / exportar / guardar el video
+        el('vm-trim-btn').addEventListener('click', openTrimDialog);
+        el('vm-tr-close').addEventListener('click', function () { el('vm-trim-dialog').classList.remove('open'); });
+        el('vm-tr-set0').addEventListener('click', function () { el('vm-tr-t0').value = fmtT(video.currentTime); });
+        el('vm-tr-set1').addEventListener('click', function () { el('vm-tr-t1').value = fmtT(video.currentTime); });
+        el('vm-tr-apply').addEventListener('click', function () {
+            var t0 = parseFloat(el('vm-tr-t0').value), t1 = parseFloat(el('vm-tr-t1').value);
+            var st = el('vm-tr-status');
+            if (!isFinite(t0) || !isFinite(t1) || t1 <= t0) { st.textContent = '"Hasta" tiene que ser mayor que "Desde".'; return; }
+            if (!applyTrim(t0, t1)) { st.textContent = 'El tramo es demasiado corto (menos de 3 cuadros).'; return; }
+            st.textContent = 'Recorte aplicado: se trabaja de ' + fmtT(trimStart) + ' s a ' + fmtT(trimEnd) + ' s.';
+            setGuide('Recorte aplicado: la línea de tiempo, el marcado y el AUTO trabajan solo entre <b>' + fmtT(trimStart) + ' s</b> y <b>' + fmtT(trimEnd) + ' s</b>. Lo quitás cuando quieras desde <b>RECORTAR</b>.', true);
+        });
+        el('vm-tr-clear').addEventListener('click', function () {
+            applyTrim(0, duration);
+            el('vm-trim-dialog').classList.remove('open');
+            el('vm-trim-btn').classList.remove('active');
+            setGuide('Recorte quitado: se vuelve a trabajar con el video completo.', true);
+        });
+        el('vm-tr-export').addEventListener('click', trimExportDownload);
+        el('vm-tr-drive').addEventListener('click', trimSaveToDrive);
+
         // Saltear la calibración (medir en píxeles)
         el('vm-guide-skip').addEventListener('click', function () {
             skipScale = true;
@@ -34009,6 +34233,7 @@ bluetooth.startIOPinService()</pre>
                 if (el('vm-scale-dialog').classList.contains('open')) { el('vm-scale-cancel').click(); return; }
                 if (el('vm-auto-dialog').classList.contains('open')) { el('vm-auto-cancel').click(); return; }
                 if (el('vm-chrono-dialog').classList.contains('open')) { el('vm-ch-cancel').click(); return; }
+                if (el('vm-trim-dialog').classList.contains('open')) { el('vm-tr-close').click(); return; }
                 if (autoTracking) { autoStop = true; return; }
                 if (!typing) closePanel();
                 return;
