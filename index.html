@@ -32051,7 +32051,7 @@ bluetooth.startIOPinService()</pre>
                         <li>Que aparezca algo de <b>longitud conocida</b> en el mismo plano del movimiento: una regla, una mesa, una puerta…</li>
                         <li>Podés <b>abrir un video</b> del equipo, <b>grabar</b> uno en el momento, o usar el último grabado con el botón <b>CÁMARA</b> del sitio (ese queda sincronizado con la captura de la micro:bit).</li>
                         <li>Con <b>RECORTAR</b> se abre un <b>editor de recorte</b> sobre el video: una tira de miniaturas con dos <b>manijas blancas</b> que arrastrás para elegir dónde empieza y termina el tramo (mientras arrastrás, el video te muestra ese cuadro). <b>▶ Tramo</b> reproduce solo la selección, <b>Aplicar</b> hace que la línea de tiempo, el marcado y el AUTO trabajen dentro del tramo, y desde la misma barra podés <b>Exportar</b> el tramo como video nuevo (WebM) o guardarlo en tu <b>Google Drive</b>, en la carpeta <b>fisicabit / Videos de análisis</b>.</li>
-                        <li>Si filmaste en cámara lenta, poné en <b>FPS</b> los cuadros por segundo reales de la filmación (por ej. 120 o 240).</li>
+                        <li>Al cargar el video, el sistema <b>detecta solo</b> los FPS del archivo (midiendo los cuadros) y, si el celular lo dejó anotado en los metadatos, también la <b>cámara lenta</b> (Android e iPhone lo escriben) — y corrige los tiempos automáticamente. Si tu video no trae ese dato, elegí a mano "Filmado a 120/240" en la barra de abajo.</li>
                     </ul>
                     <h4>2 · Calibrá la escala</h4>
                     <ul>
@@ -32286,6 +32286,7 @@ bluetooth.startIOPinService()</pre>
     function loadVideoBlob(blob, fromSite) {
         if (videoURL) { URL.revokeObjectURL(videoURL); videoURL = null; }
         videoURL = URL.createObjectURL(blob);
+        currentBlob = blob;
         bgCache = null;
         siteVideoLoaded = !!fromSite;
         hasVideo = false;
@@ -32328,7 +32329,144 @@ bluetooth.startIOPinService()</pre>
             refreshSteps();
             if (points.length === 0 && scalePts.length === 0) setTool('scale');
             drawOverlay();
+            autoDetectFps();
         });
+    }
+
+    /* ============ Detección automática de FPS del video ============ */
+    // 1) FPS del ARCHIVO: se reproducen unos cuadros con
+    //    requestVideoFrameCallback y se mide la mediana del intervalo
+    //    entre cuadros presentados (mediaTime).
+    function measureFileFps() {
+        return new Promise(function (resolve) {
+            if (!video.requestVideoFrameCallback) { resolve(0); return; }
+            var times = [], done = false;
+            function finish() {
+                if (done) return;
+                done = true;
+                try { video.pause(); } catch (e) {}
+                var ds = [];
+                for (var i = 1; i < times.length; i++) {
+                    var d = times[i] - times[i - 1];
+                    if (d > 0.002 && d < 0.5) ds.push(d);
+                }
+                if (ds.length < 4) { resolve(0); return; }
+                ds.sort(function (a, b) { return a - b; });
+                resolve(1 / ds[ds.length >> 1]);
+            }
+            function cb(now, meta) {
+                times.push(meta.mediaTime);
+                if (times.length >= 14) { finish(); return; }
+                video.requestVideoFrameCallback(cb);
+            }
+            video.requestVideoFrameCallback(cb);
+            video.muted = true;
+            video.play().catch(function () { finish(); });
+            setTimeout(finish, 2200);
+        });
+    }
+
+    // 2) FPS de FILMACIÓN (cámara lenta): los celulares lo escriben en los
+    //    metadatos del MP4/MOV — 'com.android.capture.fps' (Android) o
+    //    'com.apple.quicktime.camera.frame-rate' (iPhone). Se buscan las
+    //    claves en los bytes del archivo (la caja moov va al inicio o al
+    //    final) y se lee el número que las acompaña (float BE o texto).
+    async function scanCaptureFps(blob) {
+        if (!blob) return 0;
+        var M = 3 * 1024 * 1024;
+        var parts = [new Uint8Array(await blob.slice(0, Math.min(M, blob.size)).arrayBuffer())];
+        if (blob.size > M) parts.push(new Uint8Array(await blob.slice(blob.size - M).arrayBuffer()));
+        var keys = ['com.android.capture.fps', 'com.apple.quicktime.camera.frame-rate'];
+        for (var p = 0; p < parts.length; p++) {
+            var buf = parts[p];
+            for (var k = 0; k < keys.length; k++) {
+                var idx = findAscii(buf, keys[k]);
+                if (idx < 0) continue;
+                var v = readFpsNear(buf, idx + keys[k].length);
+                if (v) return v;
+            }
+        }
+        return 0;
+    }
+    function findAscii(buf, s) {
+        outer: for (var i = 0; i + s.length <= buf.length; i++) {
+            for (var j = 0; j < s.length; j++) {
+                if (buf[i + j] !== s.charCodeAt(j)) continue outer;
+            }
+            return i;
+        }
+        return -1;
+    }
+    function readFpsNear(buf, from) {
+        var end = Math.min(buf.length - 4, from + 400);
+        var dv = new DataView(buf.buffer, buf.byteOffset);
+        var txt = '';
+        for (var i = from; i < end; i++) {
+            // float32 big-endian plausible (24..1000 fps)
+            var f = dv.getFloat32(i, false);
+            if (isFinite(f) && f >= 24 && f <= 1000 && Math.abs(f - Math.round(f)) < 0.51) return Math.round(f);
+            var ch = buf[i];
+            txt += (ch >= 32 && ch < 127) ? String.fromCharCode(ch) : ' ';
+        }
+        var m = txt.match(/(\d{2,4})(?:\.\d+)?/);
+        if (m) {
+            var n = parseInt(m[1], 10);
+            if (n >= 24 && n <= 1000) return n;
+        }
+        return 0;
+    }
+
+    function nearestOption(sel, value) {
+        var best = null, bd = Infinity;
+        for (var i = 0; i < sel.options.length; i++) {
+            var v = parseFloat(sel.options[i].value);
+            if (!isFinite(v) || v <= 0) continue;
+            var d = Math.abs(v - value) / value;
+            if (d < bd) { bd = d; best = sel.options[i].value; }
+        }
+        return (bd < 0.12) ? best : null;
+    }
+
+    async function autoDetectFps() {
+        var tPrev = video.currentTime;
+        var measured = await measureFileFps();
+        await seekAsync(tPrev);
+        var msg = [];
+        if (measured > 0) {
+            var std = [24, 25, 30, 50, 60, 120, 240].reduce(function (b, v) {
+                return Math.abs(v - measured) / v < Math.abs(b - measured) / b ? v : b;
+            }, 30);
+            if (Math.abs(std - measured) / std > 0.08) std = Math.round(measured);
+            var sel = el('vm-fps');
+            var opt = nearestOption(sel, std);
+            if (opt) { sel.value = opt; fps = parseFloat(opt); }
+            else {
+                var o = document.createElement('option');
+                o.value = String(std); o.textContent = String(std);
+                sel.appendChild(o); sel.value = o.value; fps = std;
+            }
+            msg.push('archivo a <b>' + fps + ' fps</b>');
+        }
+        var cap = 0;
+        try { cap = await scanCaptureFps(currentBlob); } catch (e) {}
+        if (cap > (fps || 30) * 1.5) {
+            var sel2 = el('vm-capfps');
+            var opt2 = nearestOption(sel2, cap);
+            if (!opt2) {
+                var o2 = document.createElement('option');
+                o2.value = String(cap); o2.textContent = String(cap);
+                sel2.appendChild(o2); opt2 = o2.value;
+            }
+            sel2.value = opt2;
+            captureFps = parseFloat(opt2);
+            msg.push('filmado en <b>cámara lenta a ' + captureFps + ' fps</b> (tiempos corregidos, factor ' + fmtN(timeFactor()) + ')');
+        }
+        if (msg.length) {
+            recomputeAll();
+            updateTimeUI();
+            setGuide('Detectado automáticamente: ' + msg.join(' · ') + '. Si no coincide con tu filmación, cambialo en la barra de abajo. ' +
+                '<b>Ahora seguí con el paso 2:</b> calibrá la <b>ESCALA</b>.', true);
+        }
     }
 
     /* ================= Tiempo, cuadros y navegación ================= */
@@ -32465,6 +32603,7 @@ bluetooth.startIOPinService()</pre>
     var trimEnd = 0;              // recorte lógico del video: fin (s); 0 = sin video
     var trimmedBlob = null;       // caché del tramo exportado como WebM
     var trimBusy = false;         // exportación / subida del tramo en curso
+    var currentBlob = null;       // blob del video cargado (para leer metadatos)
     var trimUi = false;           // editor de recorte abierto
     var previewStop = null;       // reproducir-tramo: frenar acá
     var trimSelA = 0, trimSelB = 0;   // selección de trabajo del editor (s)
