@@ -31671,6 +31671,8 @@ bluetooth.startIOPinService()</pre>
     .vm-dialog ul li { margin-bottom:5px; }
     .vm-place-btn { display:none; position:absolute; right:12px; bottom:12px; z-index:14; background:#000; color:#fff; border:2px solid #fff; font-size:0.78rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:14px 20px; cursor:pointer; font-family:inherit; box-shadow:0 4px 14px rgba(0,0,0,.5); touch-action:manipulation; }
     .vm-place-btn:active { background:#333; }
+    .vm-place-btn.pulse { animation: vmPulse 0.55s ease-in-out 3; }
+    @keyframes vmPulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.12); box-shadow:0 0 16px rgba(255,255,255,.8); } }
     .vm-grid-badge { display:none; position:absolute; left:10px; top:10px; z-index:13; background:rgba(0,0,0,.72); color:#fff; font-size:0.68rem; font-weight:700; letter-spacing:.5px; padding:5px 10px; pointer-events:none; }
     .vm-trim-bar { display:none; position:absolute; left:0; right:0; bottom:0; z-index:16; background:rgba(0,0,0,.92); padding:8px 10px 9px; box-sizing:border-box; }
     .vm-trim-bar.open { display:block; }
@@ -31836,7 +31838,7 @@ bluetooth.startIOPinService()</pre>
                         <div class="vm-loupe" id="vm-loupe"><canvas id="vm-loupe-canvas" width="264" height="264"></canvas></div>
                         <button class="vm-place-btn" id="vm-place">Marcar punto</button>
                         <div class="vm-grid-badge" id="vm-grid-badge"></div>
-                        <div class="vm-pad-hint" id="vm-pad-hint">Arrastrá desde cualquier lado para mover la mira · un toque la salta ahí</div>
+                        <div class="vm-pad-hint" id="vm-pad-hint">Arrastrá desde cualquier lado para mover la mira · un toque la salta · doble toque = confirmar</div>
                         <div class="vm-trim-bar" id="vm-trim-bar">
                             <div class="vm-trim-info">
                                 <span>Entrada: <span id="vm-tr-lab-in">0.000 s</span></span>
@@ -32063,7 +32065,7 @@ bluetooth.startIOPinService()</pre>
                         <li>Con la herramienta <b>Marcar</b> activa, tocá el objeto: el punto queda registrado y el video <b>avanza solo</b> al siguiente cuadro a marcar.</li>
                         <li>¿Querés <b>menos puntos</b>? En la barra de abajo elegí <b>Cada 2, 3, 5 o 10 cuadros</b>: el marcado, los botones ⟨ ⟩ y el seguimiento automático saltan de a ese paso. Ideal para videos largos o para tablas más manejables.</li>
                         <li>Al apoyar el dedo (o mantener apretado el mouse) aparece una <b>lupa</b> para apuntar fino; al soltar se marca el punto. La lupa también funciona al calibrar la <b>Escala</b> y el <b>Origen</b>.</li>
-                        <li>El marcado funciona siempre con la <b>mira</b> (estilo FizziQ): en vez de tocar el objeto —y taparlo con el dedo— la movés arrastrando desde <b>cualquier parte de la pantalla</b>, como un mousepad. Un toque corto la salta a ese lugar y la lupa muestra ampliado lo que hay debajo. Cuando la mira está sobre el objeto, tocá el botón grande de abajo a la derecha (<b>MARCAR PUNTO</b> / <b>PONER EXTREMO</b> / <b>PONER ORIGEN</b> / <b>ELEGIR OBJETO</b>, según la herramienta).</li>
+                        <li>El marcado funciona siempre con la <b>mira</b> (estilo FizziQ): en vez de tocar el objeto —y taparlo con el dedo— la movés arrastrando desde <b>cualquier parte de la pantalla</b>, como un mousepad. Un toque corto la salta a ese lugar y la lupa muestra ampliado lo que hay debajo. Para confirmar: el botón grande de abajo a la derecha (<b>MARCAR PUNTO</b> / <b>PONER EXTREMO</b> / <b>PONER ORIGEN</b> / <b>ELEGIR OBJETO</b>, según la herramienta) o un <b>doble toque</b> en el lugar. Ojo: hasta que no confirmes, no queda nada registrado.</li>
                         <li>La barra de herramientas muestra <b>solo lo del paso actual</b> (como FizziQ); el resto está siempre a mano en el menú <b>⋯ Más</b>.</li>
                         <li>El flujo es <b>guiado y por pasos</b>: MARCAR y AUTO quedan bloqueados hasta que calibres la <b>ESCALA</b> (así los resultados salen en metros). Si no necesitás unidades reales, el botón <b>"Medir en píxeles"</b> de la barra guía te deja saltear ese paso. La barra gris de arriba siempre te dice en qué paso estás y qué hacer.</li>
                         <li><b>Depurar puntos:</b> con la herramienta <b>BORRAR PUNTO</b> llevás la mira sobre un punto rojo mal marcado y lo eliminás; también podés borrar cualquier fila desde la <b>Tabla</b> (✕), borrar el último con <b>DESHACER</b> (o Ctrl+Z), o volver a marcar el mismo cuadro para reemplazarlo.</li>
@@ -32242,6 +32244,9 @@ bluetooth.startIOPinService()</pre>
         // toggles activos → visibles para poder apagarlos
         if (gridOn && menu.indexOf('vm-grid-btn') >= 0) { essentials.push('vm-grid-btn'); menu.splice(menu.indexOf('vm-grid-btn'), 1); }
         if (showVectors && menu.indexOf('vm-show-vectors') >= 0) { essentials.push('vm-show-vectors'); menu.splice(menu.indexOf('vm-show-vectors'), 1); }
+        // la HERRAMIENTA activa siempre visible (p.ej. Origen elegido desde el menú)
+        var activeToolBtn = 'vm-tool-' + tool;
+        if (menu.indexOf(activeToolBtn) >= 0) { essentials.push(activeToolBtn); menu.splice(menu.indexOf(activeToolBtn), 1); }
         VM_ALL_TOOLS.forEach(function (id) {
             var b = el(id);
             if (b) b.style.display = essentials.indexOf(id) >= 0 ? '' : 'none';
@@ -32593,6 +32598,7 @@ bluetooth.startIOPinService()</pre>
     var padMode = true;           // el pad estilo FizziQ es SIEMPRE el modo de marcado
     var reticle = null;           // {u, v} mira del modo pad, en píxeles del video
     var padDrag = null;           // arrastre en curso del pad {x, y, moved, t0}
+    var lastTap = null;           // último tap del pad {x, y, t} para doble toque = confirmar
     var skipScale = false;        // el usuario eligió medir en píxeles (sin calibrar)
     var gridOn = false;           // grilla sobre el video
     var gridDensity = 'media';    // fina | media | gruesa
@@ -32949,6 +32955,12 @@ bluetooth.startIOPinService()</pre>
             el('vm-tool-' + k).classList.toggle('active', k === t);
         });
         updatePadUi();
+        updateToolbar(hasVideo, !!metersPerPixel() || skipScale);
+        // llamar la atención sobre el botón de confirmación del pad
+        var pb = el('vm-place');
+        pb.classList.remove('pulse');
+        void pb.offsetWidth;
+        pb.classList.add('pulse');
         if (t === 'erase') {
             setGuide('<b>Depurar puntos:</b> llevá la mira sobre el punto rojo que quieras eliminar y tocá <b>BORRAR PUNTO</b>. También podés borrar cualquier fila desde la <b>Tabla</b> (✕) o el último con <b>DESHACER</b>. Cuando termines, volvé a <b>MARCAR</b>.');
         } else if (t === 'auto') {
@@ -32959,9 +32971,7 @@ bluetooth.startIOPinService()</pre>
                 ? 'Llevá la mira al <b>primer extremo</b> del objeto de longitud conocida (arrastrando desde cualquier lado) y tocá <b>PONER EXTREMO</b>.'
                 : 'Tocá el <b>primer extremo</b> del objeto de longitud conocida. Mantené apretado para ver la lupa.');
         } else if (t === 'origin') {
-            setGuide(padMode
-                ? 'Llevá la mira al punto que será el <b>origen (0, 0)</b> y tocá <b>PONER ORIGEN</b>.'
-                : 'Tocá el punto del video que será el <b>origen (0, 0)</b>.');
+            setGuide('Llevá la mira al punto que será el <b>origen (0, 0)</b> y tocá el botón <b>PONER ORIGEN</b> (o hacé <b>doble toque</b>). Hasta que no confirmes, el origen sigue siendo el primer punto marcado.');
         } else {
             refreshSteps();
         }
@@ -33082,8 +33092,21 @@ bluetooth.startIOPinService()</pre>
             var wasTap = !padDrag.moved && (Date.now() - padDrag.t0) < 400;
             if (wasTap) {
                 var r = overlay.getBoundingClientRect();
-                var vc = cssToVideo(e.clientX - r.left, e.clientY - r.top);
+                var cx = e.clientX - r.left, cy = e.clientY - r.top;
+                // DOBLE TOQUE en el mismo lugar = confirmar (igual que el botón)
+                if (lastTap && (Date.now() - lastTap.t) < 380 && Math.hypot(cx - lastTap.x, cy - lastTap.y) < 26) {
+                    lastTap = null;
+                    padDrag = null;
+                    hideLoupe();
+                    if (reticle) commitPoint({ u: reticle.u, v: reticle.v });
+                    updatePadUi();
+                    return;
+                }
+                lastTap = { x: cx, y: cy, t: Date.now() };
+                var vc = cssToVideo(cx, cy);
                 if (vc) { reticle = { u: vc.u, v: vc.v }; drawOverlay(); }
+            } else {
+                lastTap = null;
             }
             padDrag = null;
             hideLoupe();
@@ -34477,7 +34500,13 @@ bluetooth.startIOPinService()</pre>
         // Menú "⋯ Más"
         el('vm-more-btn').addEventListener('click', function (e) {
             e.stopPropagation();
-            el('vm-more-menu').classList.toggle('open');
+            var mm = el('vm-more-menu');
+            mm.classList.toggle('open');
+            if (mm.classList.contains('open')) {
+                mm.style.left = ''; mm.style.right = '';
+                var rr = mm.getBoundingClientRect();
+                if (rr.right > window.innerWidth - 6) { mm.style.left = 'auto'; mm.style.right = '0'; }
+            }
         });
         document.addEventListener('click', function (e) {
             if (!e.target.closest || !e.target.closest('#vm-more-wrap')) el('vm-more-menu').classList.remove('open');
