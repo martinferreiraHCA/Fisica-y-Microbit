@@ -27519,6 +27519,19 @@ bluetooth.startIOPinService()</pre>
         var cr = await gApi('drive/v3/files?fields=id', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: GDRIVE_FOLDER, mimeType: 'application/vnd.google-apps.folder' }) });
         var cj = await cr.json(); _gFolderId = cj.id; return _gFolderId;
       }
+      // Puente para otros módulos (ej. Piezas 3D): comparte la MISMA sesión de
+      // Google y la carpeta raíz «fisicabit», así el usuario inicia sesión una
+      // sola vez para experimentos y piezas.
+      window.FbitGoogle = {
+        configured: gConfigured,
+        connected: gConnected,
+        connect: gConnect,           // (interactive) → Promise<bool>
+        ensureToken: gEnsureToken,   // renueva el token en silencio si expiró
+        api: gApi,                   // fetch autenticado contra googleapis.com
+        rootFolderId: gGetFolderId,  // id de la carpeta «fisicabit» (la crea si falta)
+        user: function () { return _gUser; },
+        refreshUI: function () { try { gUpdateDriveUI(); } catch (e) {} }
+      };
       // El nombre del proyecto activo = «Título del experimento» (el identificador que ves y elegís).
       function gProjectDisplayName() { var t = (I.meta && I.meta.title || '').trim(); return t || 'Experimento sin nombre'; }
       function gProjectFileName() {
@@ -28879,6 +28892,15 @@ bluetooth.startIOPinService()</pre>
     .s3d-piece-card-name { font-size:11px; color:#d6dbe4; margin-top:5px; line-height:1.3; word-break:break-word; }
     .s3d-piece-card-kind { font-size:9px; letter-spacing:1px; color:#6f7887; text-transform:uppercase; margin-top:2px; }
     .s3d-folder-note { font-size:10px; color:#6f7887; margin-top:8px; line-height:1.5; }
+    .s3d-piece-group-row { display:flex; align-items:center; gap:6px; }
+    .s3d-piece-group-row .s3d-piece-group { flex:1; margin:8px 2px 6px; }
+    .s3d-mini-btn { background:none; border:1px solid #2b303b; color:#8a919e; font-size:10px; line-height:1; padding:3px 6px; cursor:pointer; }
+    .s3d-mini-btn:hover { color:#fff; border-color:#fff; }
+    .s3d-piece-card { position:relative; }
+    .s3d-card-actions { position:absolute; top:3px; right:3px; display:none; gap:3px; }
+    .s3d-piece-card:hover .s3d-card-actions { display:flex; }
+    .s3d-card-actions .s3d-mini-btn { background:rgba(10,11,14,.85); }
+    .s3d-cloud-mark { position:absolute; top:5px; left:5px; font-size:10px; color:#57c98a; text-shadow:0 0 4px #000; pointer-events:none; }
     .s3d-wizard { display:none; position:absolute; inset:0; z-index:40; background:rgba(10,11,14,.74); align-items:flex-start; justify-content:center; overflow-y:auto; padding:26px 14px; box-sizing:border-box; }
     .s3d-wizard.open { display:flex; }
     .s3d-wizard-card { background:#181b21; border:1px solid #444; width:100%; max-width:720px; margin-bottom:26px; }
@@ -28984,9 +29006,16 @@ bluetooth.startIOPinService()</pre>
                 <div class="s3d-section">
                     <div class="s3d-section-title">Acciones</div>
                     <button id="s3d-render" class="s3d-btn primary">Renderizar</button>
+                    <button id="s3d-save" class="s3d-btn">💾 Guardar pieza…</button>
                     <button id="s3d-dl-stl" class="s3d-btn" disabled>Descargar STL</button>
                     <button id="s3d-dl-scad" class="s3d-btn">Descargar código .scad</button>
                     <label class="s3d-check"><input type="checkbox" id="s3d-auto" checked> Render automático al cambiar parámetros</label>
+                </div>
+                <div class="s3d-section">
+                    <div class="s3d-section-title">Mis piezas · Google Drive</div>
+                    <div id="s3d-drive-status" class="s3d-empty-params" style="margin-bottom:8px">Iniciá sesión con Google para guardar tus piezas en Drive y recuperarlas en cualquier equipo.</div>
+                    <button id="s3d-drive-connect" class="s3d-btn">Iniciar sesión con Google</button>
+                    <button id="s3d-drive-sync" class="s3d-btn" style="display:none">☁ Sincronizar con Drive</button>
                 </div>
                 <div class="s3d-section">
                     <div class="s3d-section-title">Ayuda</div>
@@ -29052,8 +29081,26 @@ bluetooth.startIOPinService()</pre>
                         <textarea id="s3d-wiz-resp" rows="6" placeholder="Pegá la respuesta completa; el sistema extrae solo el código OpenSCAD."></textarea>
                         <button id="s3d-wiz-load" class="s3d-btn primary">Cargar la pieza en el editor</button>
                         <div id="s3d-wiz-msg" class="s3d-wiz-msg"></div>
-                        <div class="s3d-folder-note">Si la pieza sale con errores o querés ajustarla, volvé a abrir este asistente: hay modos para corregir o modificar sin empezar de cero. Cuando estés conforme, usá DESCARGAR CÓDIGO .SCAD para guardar la pieza en tu equipo.</div>
+                        <div class="s3d-folder-note">Si la pieza sale con errores o querés ajustarla, volvé a abrir este asistente: hay modos para corregir o modificar sin empezar de cero. Al crear una pieza nueva se genera un diseño nuevo (no se pisa ninguna pieza guardada). Cuando estés conforme, usá GUARDAR PIEZA para sumarla a tu biblioteca (y a tu Google Drive si iniciaste sesión) o DESCARGAR CÓDIGO .SCAD para guardarla en tu equipo.</div>
                     </div>
+                </div>
+            </div>
+        </div>
+        <div id="s3d-save-modal" class="s3d-wizard" aria-hidden="true">
+            <div class="s3d-wizard-card" style="max-width:440px">
+                <div class="s3d-wizard-head">
+                    <h3>Guardar pieza</h3>
+                    <button id="s3d-save-close" class="s3d-close" title="Cerrar">✕</button>
+                </div>
+                <div class="s3d-wizard-body">
+                    <div class="s3d-wiz-steptitle">Nombre de la pieza</div>
+                    <input type="text" id="s3d-save-nombre" placeholder="Ej.: soporte para sensor HC-SR04">
+                    <div class="s3d-wiz-steptitle">Biblioteca / categoría</div>
+                    <input type="text" id="s3d-save-cat" list="s3d-cat-list" placeholder="Ej.: Mis piezas, Soportes, Poleas…">
+                    <datalist id="s3d-cat-list"></datalist>
+                    <div class="s3d-folder-note" id="s3d-save-note">La pieza se guarda en este navegador y, si iniciaste sesión con Google, también en la carpeta «fisicabit / piezas 3d» de tu Drive.</div>
+                    <button id="s3d-save-ok" class="s3d-btn primary" style="margin-top:10px">Guardar</button>
+                    <div id="s3d-save-msg" class="s3d-wiz-msg"></div>
                 </div>
             </div>
         </div>
@@ -29155,6 +29202,49 @@ bluetooth.startIOPinService()</pre>
     var viewer = null;          // { three, scene, camera, renderer, mesh, ... }
     var opened = false;
     var fitOnNextRender = false; // reencuadrar al renderizar una pieza nueva
+
+    /* ---------- Biblioteca del usuario (localStorage + Google Drive) ---------- */
+    // Cada entrada: { id, nombre, categoria, code, createdAt, updatedAt, driveId }
+    var LIB_KEY = 's3d_library_v1';
+    var DEFAULT_CAT = 'Mis piezas';
+    var lib = [];
+    var driveSyncBusy = false;
+    var driveAutoSynced = false;
+
+    function loadLib() {
+        try { lib = JSON.parse(localStorage.getItem(LIB_KEY) || '[]') || []; } catch (e) { lib = []; }
+        if (!Array.isArray(lib)) lib = [];
+    }
+    function persistLib() {
+        try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); }
+        catch (e) { setStatus('No se pudo guardar la biblioteca (almacenamiento lleno).', 'error'); }
+    }
+    function newLibId() {
+        return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+    function libCategories() {
+        var cats = [];
+        lib.forEach(function (e) { if (cats.indexOf(e.categoria) < 0) cats.push(e.categoria); });
+        return cats;
+    }
+    function libEntryById(id) {
+        for (var i = 0; i < lib.length; i++) if (lib[i].id === id) return lib[i];
+        return null;
+    }
+    // Convierte una entrada de la biblioteca en una "pieza" del catálogo.
+    // libPiecesArr mantiene objetos estables para el menú y las miniaturas.
+    var libPiecesArr = [];
+    function libPiece(e) {
+        return { id: 'lib:' + e.id, nombre: e.nombre, kind: 'scad', code: e.code,
+                 categoria: e.categoria, libId: e.id, updatedAt: e.updatedAt, driveId: e.driveId };
+    }
+    function rebuildLibPieces() {
+        libPiecesArr = lib.map(function (e) {
+            var p = libPiece(e);
+            try { p.thumb = localStorage.getItem(thumbKey(p)) || null; } catch (er) {}
+            return p;
+        });
+    }
 
     /* ---------- Utilidades ---------- */
     function setStatus(msg, cls) {
@@ -29922,8 +30012,9 @@ bluetooth.startIOPinService()</pre>
             folderNote = pieces.length ? '' : 'La carpeta «' + FOLDER_NAME + '» no tiene todavía archivos .scad o .stl.';
             renderPieceMenu();
             queueThumbs();
-            // Elegir la primera pieza del catálogo al abrir
-            if (!currentPiece && pieces.length) selectPiece(pieces[0], false);
+            // Elegir la primera pieza al abrir: primero las del usuario
+            if (!currentPiece && libPiecesArr.length) selectPiece(libPiecesArr[0], false);
+            else if (!currentPiece && pieces.length) selectPiece(pieces[0], false);
             else if (!pieces.length) setStatus('La carpeta «' + FOLDER_NAME + '» está vacía. Subí un .scad o .stl, o usá «Generá tu propia pieza».', '');
         }).catch(function (e) {
             folderError = true;
@@ -29943,12 +30034,29 @@ bluetooth.startIOPinService()</pre>
         var menu = el('s3d-piece-menu');
         if (!menu) return;
         menu.innerHTML = '';
-        function grid(list, title) {
+        function grid(list, title, opts) {
+            opts = opts || {};
             if (!list.length) return;
-            var t = document.createElement('div');
-            t.className = 's3d-piece-group';
-            t.textContent = title;
-            menu.appendChild(t);
+            if (opts.renameCat) {
+                var row = document.createElement('div');
+                row.className = 's3d-piece-group-row';
+                var t0 = document.createElement('div');
+                t0.className = 's3d-piece-group';
+                t0.textContent = title;
+                row.appendChild(t0);
+                var rb = document.createElement('button');
+                rb.className = 's3d-mini-btn';
+                rb.textContent = '✎';
+                rb.title = 'Renombrar esta categoría';
+                rb.addEventListener('click', function (e) { e.stopPropagation(); renameCategory(opts.renameCat); });
+                row.appendChild(rb);
+                menu.appendChild(row);
+            } else {
+                var t = document.createElement('div');
+                t.className = 's3d-piece-group';
+                t.textContent = title;
+                menu.appendChild(t);
+            }
             var g = document.createElement('div');
             g.className = 's3d-piece-grid';
             list.forEach(function (piece) {
@@ -29965,6 +30073,13 @@ bluetooth.startIOPinService()</pre>
                     imgBox.textContent = 'generando…';
                 }
                 card.appendChild(imgBox);
+                if (piece.driveId) {
+                    var cm = document.createElement('span');
+                    cm.className = 's3d-cloud-mark';
+                    cm.textContent = '☁';
+                    cm.title = 'Guardada en Google Drive';
+                    card.appendChild(cm);
+                }
                 var nm = document.createElement('div');
                 nm.className = 's3d-piece-card-name';
                 nm.textContent = piece.nombre;
@@ -29973,6 +30088,23 @@ bluetooth.startIOPinService()</pre>
                 kd.className = 's3d-piece-card-kind';
                 kd.textContent = piece.kind === 'stl' ? 'STL' : 'personalizable';
                 card.appendChild(kd);
+                if (piece.libId) {
+                    var acts = document.createElement('div');
+                    acts.className = 's3d-card-actions';
+                    var eb = document.createElement('button');
+                    eb.className = 's3d-mini-btn';
+                    eb.textContent = '✎';
+                    eb.title = 'Renombrar o cambiar de categoría';
+                    eb.addEventListener('click', function (e) { e.stopPropagation(); editLibPiece(piece.libId); });
+                    acts.appendChild(eb);
+                    var db = document.createElement('button');
+                    db.className = 's3d-mini-btn';
+                    db.textContent = '✕';
+                    db.title = 'Eliminar de la biblioteca';
+                    db.addEventListener('click', function (e) { e.stopPropagation(); deleteLibPiece(piece.libId); });
+                    acts.appendChild(db);
+                    card.appendChild(acts);
+                }
                 card.addEventListener('click', function () {
                     toggleMenu(false);
                     selectPiece(piece, true);
@@ -29981,6 +30113,11 @@ bluetooth.startIOPinService()</pre>
             });
             menu.appendChild(g);
         }
+        // Biblioteca del usuario primero, agrupada por categoría
+        libCategories().forEach(function (cat) {
+            var list = libPiecesArr.filter(function (p) { return p.categoria === cat; });
+            grid(list, cat, { renameCat: cat });
+        });
         grid(pieces, 'Piezas · carpeta «' + FOLDER_NAME + '»');
         var note = document.createElement('div');
         note.className = 's3d-folder-note';
@@ -30009,6 +30146,11 @@ bluetooth.startIOPinService()</pre>
         el('s3d-piece-name').textContent = piece.nombre;
         setPickerThumb(piece);
         renderPieceMenu();
+        if (piece.code != null) {
+            loadScadIntoEditor(piece.code, '');
+            setStatus('Pieza «' + piece.nombre + '» cargada desde tu biblioteca.', '');
+            return;
+        }
         if (piece.kind === 'scad') {
             setStatus('Descargando «' + piece.nombre + '»…', 'busy');
             fetch(piece.url).then(function (r) {
@@ -30073,6 +30215,7 @@ bluetooth.startIOPinService()</pre>
     var thumbQueue = [], thumbBusy = false, thumbWorker = null, thumbRenderer = null;
 
     function thumbKey(piece) {
+        if (piece.libId) return 's3d-thumb-lib-' + piece.libId + '-' + (piece.updatedAt || 0);
         if (piece.sha) return 's3d-thumb-' + piece.sha;
         var s = piece.id;
         var h = 5381;
@@ -30096,7 +30239,7 @@ bluetooth.startIOPinService()</pre>
     }
 
     function queueThumbs() {
-        pieces.forEach(function (piece) {
+        pieces.concat(libPiecesArr).forEach(function (piece) {
             if (piece.thumb) return;
             try {
                 var c = localStorage.getItem(thumbKey(piece));
@@ -30128,7 +30271,9 @@ bluetooth.startIOPinService()</pre>
             return fetch(piece.url).then(function (r) { return r.arrayBuffer(); })
                 .then(function (buf) { return snapshotGeometry(positionsFromStlBuffer(buf)); });
         }
-        var codeP = fetch(piece.url).then(function (r) { return r.text(); });
+        var codeP = piece.code != null
+            ? Promise.resolve(piece.code)
+            : fetch(piece.url).then(function (r) { return r.text(); });
         return codeP.then(function (code) {
             return new Promise(function (resolve, reject) {
                 if (!workerBlobUrl) {
@@ -30355,17 +30500,293 @@ bluetooth.startIOPinService()</pre>
             return;
         }
         var mode = wizMode();
-        var nombre = mode === 'nueva'
-            ? (el('s3d-wiz-nombre').value.trim() || 'pieza generada')
-            : currentName();
-        if (!confirmReplace(nombre)) return;
-        currentPiece = { id: 'ai:' + slug(nombre), nombre: nombre, kind: 'scad' };
-        el('s3d-piece-name').textContent = nombre;
-        renderPieceMenu();
+        if (mode === 'nueva') {
+            // Una pieza nueva es un DISEÑO NUEVO: no toca la pieza que estaba
+            // cargada ni ninguna guardada. Queda como borrador hasta que el
+            // usuario la guarde en su biblioteca con «Guardar pieza».
+            var nombre = el('s3d-wiz-nombre').value.trim() || 'pieza generada';
+            if (!confirmReplace(nombre)) return;
+            currentPiece = { id: 'ai:' + slug(nombre) + ':' + Date.now().toString(36), nombre: nombre, kind: 'scad' };
+            el('s3d-piece-name').textContent = nombre;
+            renderPieceMenu();
+            loadScadIntoEditor(code, '');
+            el('s3d-wiz-resp').value = '';
+            closeWizard();
+            setStatus('Nuevo diseño «' + nombre + '» creado con IA: renderizando… Usá GUARDAR PIEZA para conservarlo.', 'busy');
+            return;
+        }
+        // «iterar» / «corregir»: sí modifican la pieza actual, a pedido
+        var nombreCur = currentName();
+        if (!confirmReplace(nombreCur)) return;
         loadScadIntoEditor(code, '');
         el('s3d-wiz-resp').value = '';
         closeWizard();
-        setStatus('Pieza «' + nombre + '» cargada desde la IA: renderizando…', 'busy');
+        setStatus('Pieza «' + nombreCur + '» actualizada desde la IA: renderizando…', 'busy');
+    }
+
+    /* ---------- Guardar en la biblioteca + editar categorías ---------- */
+    function libChanged(entriesToPush) {
+        persistLib();
+        rebuildLibPieces();
+        renderPieceMenu();
+        queueThumbs();
+        (entriesToPush || []).forEach(function (e) { drivePushPiece(e); });
+    }
+
+    function openSaveModal() {
+        if (stlMode) { setStatus('Los STL no se guardan en la biblioteca: solo las piezas con código .scad.', 'error'); return; }
+        if (!codeEl.value.trim()) { setStatus('No hay código para guardar.', 'error'); return; }
+        var entry = currentPiece && currentPiece.libId ? libEntryById(currentPiece.libId) : null;
+        el('s3d-save-nombre').value = entry ? entry.nombre : (currentPiece ? currentPiece.nombre : '');
+        el('s3d-save-cat').value = entry ? entry.categoria : DEFAULT_CAT;
+        var dl = el('s3d-cat-list');
+        dl.innerHTML = '';
+        var cats = libCategories();
+        if (cats.indexOf(DEFAULT_CAT) < 0) cats.unshift(DEFAULT_CAT);
+        cats.forEach(function (c) {
+            var o = document.createElement('option'); o.value = c; dl.appendChild(o);
+        });
+        el('s3d-save-msg').textContent = '';
+        el('s3d-save-modal').classList.add('open');
+        el('s3d-save-modal').setAttribute('aria-hidden', 'false');
+        el('s3d-save-nombre').focus();
+    }
+    function closeSaveModal() {
+        el('s3d-save-modal').classList.remove('open');
+        el('s3d-save-modal').setAttribute('aria-hidden', 'true');
+    }
+
+    function doSavePiece() {
+        var nombre = el('s3d-save-nombre').value.trim();
+        if (!nombre) { el('s3d-save-msg').textContent = 'Poné un nombre para la pieza.'; el('s3d-save-msg').className = 's3d-wiz-msg err'; return; }
+        var cat = el('s3d-save-cat').value.trim() || DEFAULT_CAT;
+        var entry = currentPiece && currentPiece.libId ? libEntryById(currentPiece.libId) : null;
+        if (entry) {
+            try { localStorage.removeItem(thumbKey(libPiece(entry))); } catch (e) {}
+            entry.nombre = nombre;
+            entry.categoria = cat;
+            entry.code = codeEl.value;
+            entry.updatedAt = Date.now();
+        } else {
+            entry = { id: newLibId(), nombre: nombre, categoria: cat, code: codeEl.value,
+                      createdAt: Date.now(), updatedAt: Date.now(), driveId: null };
+            lib.push(entry);
+        }
+        currentPiece = libPiece(entry);
+        el('s3d-piece-name').textContent = entry.nombre;
+        window.__s3dLoadedCode = codeEl.value; // el guardado deja el editor "limpio"
+        libChanged([entry]);
+        closeSaveModal();
+        setStatus('Pieza «' + entry.nombre + '» guardada en «' + entry.categoria + '»' +
+                  (gReady() ? ' · subiendo a Drive…' : ' (en este navegador).'), '');
+    }
+
+    function editLibPiece(libId) {
+        var entry = libEntryById(libId);
+        if (!entry) return;
+        var nombre = prompt('Nombre de la pieza:', entry.nombre);
+        if (nombre === null) return;
+        nombre = nombre.trim();
+        var cat = prompt('Categoría / biblioteca:', entry.categoria);
+        if (cat === null) return;
+        cat = cat.trim() || DEFAULT_CAT;
+        if (!nombre) nombre = entry.nombre;
+        try { localStorage.removeItem(thumbKey(libPiece(entry))); } catch (e) {}
+        entry.nombre = nombre;
+        entry.categoria = cat;
+        entry.updatedAt = Date.now();
+        if (currentPiece && currentPiece.libId === libId) {
+            currentPiece = libPiece(entry);
+            el('s3d-piece-name').textContent = entry.nombre;
+        }
+        libChanged([entry]);
+    }
+
+    function deleteLibPiece(libId) {
+        var entry = libEntryById(libId);
+        if (!entry) return;
+        if (!confirm('¿Eliminar «' + entry.nombre + '» de tu biblioteca' + (entry.driveId ? ' y de Google Drive' : '') + '?')) return;
+        try { localStorage.removeItem(thumbKey(libPiece(entry))); } catch (e) {}
+        lib = lib.filter(function (e) { return e.id !== libId; });
+        if (entry.driveId) driveTrash(entry.driveId);
+        if (currentPiece && currentPiece.libId === libId) {
+            currentPiece = { id: 'ai:borrador', nombre: entry.nombre + ' (sin guardar)', kind: 'scad' };
+            el('s3d-piece-name').textContent = currentPiece.nombre;
+        }
+        libChanged();
+        setStatus('Pieza «' + entry.nombre + '» eliminada de la biblioteca.', '');
+    }
+
+    function renameCategory(cat) {
+        var nuevo = prompt('Nuevo nombre para la categoría «' + cat + '»:', cat);
+        if (nuevo === null) return;
+        nuevo = nuevo.trim();
+        if (!nuevo || nuevo === cat) return;
+        var changed = [];
+        lib.forEach(function (e) {
+            if (e.categoria === cat) { e.categoria = nuevo; e.updatedAt = Date.now(); changed.push(e); }
+        });
+        libChanged(changed);
+        setStatus('Categoría «' + cat + '» renombrada a «' + nuevo + '».', '');
+    }
+
+    /* ---------- Google Drive: guardar y recuperar las piezas ---------- */
+    // Usa la MISMA sesión de Google del resto de la app (window.FbitGoogle).
+    // Las piezas viven como archivos *.pieza3d.json dentro de la subcarpeta
+    // «piezas 3d» de la carpeta «fisicabit» del Drive del usuario.
+    var DRIVE_SUBFOLDER = 'piezas 3d';
+    var _drvFolderId = null;
+
+    function gBridge() { return window.FbitGoogle || null; }
+    function gReady() { var g = gBridge(); return !!(g && g.connected()); }
+
+    async function driveFolderId() {
+        if (_drvFolderId) return _drvFolderId;
+        var g = gBridge();
+        var rootId = await g.rootFolderId();
+        var q = "mimeType='application/vnd.google-apps.folder' and name='" + DRIVE_SUBFOLDER + "' and '" + rootId + "' in parents and trashed=false";
+        var r = await g.api('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&spaces=drive');
+        var j = await r.json();
+        if (j.files && j.files.length) { _drvFolderId = j.files[0].id; return _drvFolderId; }
+        var cr = await g.api('drive/v3/files?fields=id', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: DRIVE_SUBFOLDER, mimeType: 'application/vnd.google-apps.folder', parents: [rootId] })
+        });
+        var cj = await cr.json();
+        _drvFolderId = cj.id;
+        return _drvFolderId;
+    }
+
+    function pieceFileName(entry) { return slug(entry.nombre) + '.pieza3d.json'; }
+    function pieceFileBody(entry) {
+        return JSON.stringify({ tipo: 'fisicabit-pieza3d', id: entry.id, nombre: entry.nombre,
+                                categoria: entry.categoria, code: entry.code,
+                                createdAt: entry.createdAt, updatedAt: entry.updatedAt });
+    }
+
+    // Sube (crea o actualiza) UNA pieza. Silencioso si no hay sesión de Google.
+    async function drivePushPiece(entry) {
+        var g = gBridge();
+        if (!g || !(await g.ensureToken())) return false;
+        try {
+            var folderId = await driveFolderId();
+            var body = pieceFileBody(entry);
+            if (entry.driveId) {
+                var ur = await g.api('upload/drive/v3/files/' + entry.driveId + '?uploadType=media', {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: body });
+                if (ur.status === 404) { entry.driveId = null; } // lo borraron en Drive: recrear
+                else {
+                    try { await g.api('drive/v3/files/' + entry.driveId + '?fields=id', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: pieceFileName(entry) }) }); } catch (e) {}
+                }
+            }
+            if (!entry.driveId) {
+                var boundary = 's3d' + Date.now().toString(16);
+                var meta = { name: pieceFileName(entry), mimeType: 'application/json', parents: [folderId] };
+                var mbody = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
+                            '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + body + '\r\n--' + boundary + '--';
+                var cr = await g.api('upload/drive/v3/files?uploadType=multipart&fields=id', {
+                    method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: mbody });
+                var cj = await cr.json();
+                if (cj && cj.id) entry.driveId = cj.id;
+            }
+            persistLib();
+            rebuildLibPieces();
+            renderPieceMenu();
+            updateDriveS3dUI('«' + entry.nombre + '» guardada en Drive ✓');
+            return true;
+        } catch (e) {
+            updateDriveS3dUI('No se pudo subir «' + entry.nombre + '» a Drive.');
+            return false;
+        }
+    }
+
+    async function driveTrash(driveId) {
+        var g = gBridge();
+        if (!g || !(await g.ensureToken())) return;
+        try { await g.api('drive/v3/files/' + driveId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) }); } catch (e) {}
+    }
+
+    // Baja todas las piezas de Drive y las combina con las locales: gana la
+    // más nueva (updatedAt); las que solo están en Drive se agregan acá.
+    async function drivePullPieces() {
+        var g = gBridge();
+        var folderId = await driveFolderId();
+        var q = "'" + folderId + "' in parents and trashed=false and name contains '.pieza3d.json'";
+        var r = await g.api('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&pageSize=200&spaces=drive');
+        var j = await r.json();
+        var files = j.files || [];
+        var nuevos = 0, actualizados = 0;
+        for (var i = 0; i < files.length; i++) {
+            try {
+                var fr = await g.api('drive/v3/files/' + files[i].id + '?alt=media');
+                var data = await fr.json();
+                if (!data || data.tipo !== 'fisicabit-pieza3d' || typeof data.code !== 'string') continue;
+                var local = data.id ? libEntryById(String(data.id)) : null;
+                if (!local) {
+                    lib.push({ id: String(data.id || newLibId()), nombre: String(data.nombre || files[i].name),
+                               categoria: String(data.categoria || DEFAULT_CAT), code: data.code,
+                               createdAt: data.createdAt || Date.now(), updatedAt: data.updatedAt || Date.now(),
+                               driveId: files[i].id });
+                    nuevos++;
+                } else {
+                    local.driveId = files[i].id;
+                    if ((data.updatedAt || 0) > (local.updatedAt || 0)) {
+                        try { localStorage.removeItem(thumbKey(libPiece(local))); } catch (e) {}
+                        local.nombre = String(data.nombre || local.nombre);
+                        local.categoria = String(data.categoria || local.categoria);
+                        local.code = data.code;
+                        local.updatedAt = data.updatedAt;
+                        actualizados++;
+                    }
+                }
+            } catch (e) {}
+        }
+        return { nuevos: nuevos, actualizados: actualizados, total: files.length };
+    }
+
+    // Sincronización completa: baja lo de Drive y sube lo local pendiente.
+    async function driveSyncAll(interactive) {
+        var g = gBridge();
+        if (!g) { updateDriveS3dUI('Google Drive no está disponible en esta página.'); return; }
+        if (driveSyncBusy) return;
+        driveSyncBusy = true;
+        updateDriveS3dUI('Conectando con Google…');
+        try {
+            var ok = g.connected() || await g.connect(!!interactive);
+            if (!ok) { updateDriveS3dUI('No se pudo iniciar sesión con Google.'); return; }
+            g.refreshUI();
+            updateDriveS3dUI('Sincronizando con Drive…');
+            var res = await drivePullPieces();
+            persistLib();
+            var pendientes = lib.filter(function (e) { return !e.driveId; });
+            for (var i = 0; i < pendientes.length; i++) await drivePushPiece(pendientes[i]);
+            rebuildLibPieces();
+            renderPieceMenu();
+            queueThumbs();
+            var msg = 'Sincronizado ✓';
+            if (res.nuevos) msg += ' · ' + res.nuevos + ' pieza' + (res.nuevos === 1 ? '' : 's') + ' recuperada' + (res.nuevos === 1 ? '' : 's') + ' de Drive';
+            if (pendientes.length) msg += ' · ' + pendientes.length + ' subida' + (pendientes.length === 1 ? '' : 's');
+            updateDriveS3dUI(msg + '.');
+        } catch (e) {
+            updateDriveS3dUI('Error al sincronizar con Drive.');
+        } finally {
+            driveSyncBusy = false;
+        }
+    }
+
+    function updateDriveS3dUI(msg) {
+        var st = el('s3d-drive-status'), bc = el('s3d-drive-connect'), bs = el('s3d-drive-sync');
+        if (!st) return;
+        var g = gBridge();
+        var on = gReady();
+        if (bc) bc.style.display = on ? 'none' : '';
+        if (bs) bs.style.display = on ? '' : 'none';
+        if (msg) { st.textContent = msg; return; }
+        if (!g) st.textContent = 'Google Drive no está disponible en esta página.';
+        else if (on) {
+            var u = g.user();
+            st.textContent = 'Conectado como ' + ((u && u.emailAddress) || 'tu cuenta') + '. Tus piezas se guardan en «fisicabit / ' + DRIVE_SUBFOLDER + '».';
+        } else st.textContent = 'Iniciá sesión con Google para guardar tus piezas en Drive y recuperarlas en cualquier equipo.';
     }
 
     /* ---------- Apertura / cierre ---------- */
@@ -30377,6 +30798,9 @@ bluetooth.startIOPinService()</pre>
         if (viewer) { viewer.resize(); viewer.startLoop(); }
         // El catálogo (y la primera pieza) se cargan desde la carpeta del repo.
         loadFolder();
+        updateDriveS3dUI();
+        // Si ya hay sesión de Google, recuperar las piezas de Drive en silencio
+        if (!driveAutoSynced && gReady()) { driveAutoSynced = true; driveSyncAll(false); }
         if (!viewer) initViewer().then(queueThumbs).catch(function (err) {
             overlayMsgEl.textContent = 'No se pudo cargar el visor 3D (¿sin conexión?): ' + err;
         });
@@ -30409,6 +30833,8 @@ bluetooth.startIOPinService()</pre>
         if (!panel) return;
 
         buildPieces();
+        loadLib();
+        rebuildLibPieces();
         renderPieceMenu();
         queueThumbs(); // levanta las miniaturas ya guardadas en caché
         el('s3d-piece-btn').addEventListener('click', function (e) {
@@ -30461,6 +30887,7 @@ bluetooth.startIOPinService()</pre>
 
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape' || !opened) return;
+            if (el('s3d-save-modal').classList.contains('open')) { closeSaveModal(); return; }
             if (el('s3d-wizard').classList.contains('open')) { closeWizard(); return; }
             if (document.activeElement !== codeEl) closePanel();
         });
@@ -30471,6 +30898,16 @@ bluetooth.startIOPinService()</pre>
             if (this.files && this.files[0]) openLocalFile(this.files[0]);
             this.value = '';
         });
+
+        // Guardar en la biblioteca + Google Drive
+        el('s3d-save').addEventListener('click', openSaveModal);
+        el('s3d-save-close').addEventListener('click', closeSaveModal);
+        el('s3d-save-modal').addEventListener('click', function (e) { if (e.target === this) closeSaveModal(); });
+        el('s3d-save-ok').addEventListener('click', doSavePiece);
+        el('s3d-save-nombre').addEventListener('keydown', function (e) { if (e.key === 'Enter') doSavePiece(); });
+        el('s3d-save-cat').addEventListener('keydown', function (e) { if (e.key === 'Enter') doSavePiece(); });
+        el('s3d-drive-connect').addEventListener('click', function () { driveSyncAll(true); });
+        el('s3d-drive-sync').addEventListener('click', function () { driveSyncAll(true); });
 
         // Asistente «Generá tu propia pieza»
         el('s3d-wiz-open').addEventListener('click', openWizard);
