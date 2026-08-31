@@ -31923,7 +31923,17 @@ bluetooth.startIOPinService()</pre>
                         <span title="Cada cuántos cuadros se registra un punto">cuadros</span>
                     </div>
                     <div class="vm-fps">
-                        <span title="Cuadros por segundo del video. Si filmaste en cámara lenta, elegí los FPS reales de la filmación.">FPS</span>
+                        <span title="Si filmaste en CÁMARA LENTA, elegí acá a cuántos cuadros por segundo FILMÓ la cámara (120 o 240): el tiempo del análisis se corrige solo. En un video normal dejalo en '= FPS'.">Filmado a</span>
+                        <select id="vm-capfps" title="FPS reales de la filmación (cámara lenta)">
+                            <option value="0" selected>= FPS</option>
+                            <option value="60">60</option>
+                            <option value="120">120</option>
+                            <option value="240">240</option>
+                            <option value="480">480</option>
+                        </select>
+                    </div>
+                    <div class="vm-fps">
+                        <span title="Cuadros por segundo del ARCHIVO de video (cómo se reproduce). Casi siempre 30.">FPS</span>
                         <select id="vm-fps">
                             <option value="24">24</option>
                             <option value="25">25</option>
@@ -32077,6 +32087,7 @@ bluetooth.startIOPinService()</pre>
                     <h4>Consejos</h4>
                     <ul>
                         <li>La velocidad y la aceleración se calculan con diferencias entre cuadros vecinos: si las curvas salen "ruidosas", subí el <b>Suavizado</b>, marcá con más cuidado o usá más FPS. La aceleración es la más sensible al ruido (con caída libre deberías ver a_y ≈ −9.8 m/s²).</li>
+                        <li><b>¿No te da g ≈ 9.8 en caída libre?</b> Las tres causas de siempre: <b>1)</b> filmaste en <b>cámara lenta</b> y no lo declaraste — elegí "Filmado a 120/240" en la barra de abajo y todo se corrige solo (sin eso, g sale 16 o 64 veces menor); <b>2)</b> el objeto de la <b>escala</b> no estaba en el mismo plano que la caída — la regla tiene que estar a la misma distancia de la cámara que el objeto (si está más cerca, g sale menor); <b>3)</b> mirar la gráfica de a_y sin <b>Suavizado</b> — usá la <b>Curva ideal parábola en y(t)</b>, que reporta la aceleración del modelo y la marca con <b>≈ g ✓</b> cuando da bien.</li>
                         <li>Todo el análisis ocurre en tu navegador: el video no se sube a ningún lado.</li>
                     </ul>
                 </div>
@@ -32417,6 +32428,13 @@ bluetooth.startIOPinService()</pre>
         if (trimUi) drawStrip();
     }
 
+    // Factor que convierte el tiempo del archivo en tiempo REAL del fenómeno.
+    // En cámara lenta el archivo reproduce a 30 fps lo que se filmó a 120 o
+    // 240: sin esta corrección, g sale 16 o 64 veces más chica.
+    function timeFactor() {
+        return (captureFps > 0 && fps > 0) ? (fps / captureFps) : 1;
+    }
+
     /* ================= Coordenadas físicas ================= */
     function toPhysical(p) {
         var mpp = metersPerPixel();
@@ -32432,6 +32450,7 @@ bluetooth.startIOPinService()</pre>
     // aceleración su curvatura. No modifica las posiciones medidas.
     var smoothWin = 1;
     var markStep = 1;             // registrar un punto cada N cuadros (como en FizziQ)
+    var captureFps = 0;           // FPS reales de la filmación (cámara lenta); 0 = igual al archivo
     var massKg = 1;               // masa del objeto para las energías (como en FizziQ)
     var padMode = true;           // el pad estilo FizziQ es SIEMPRE el modo de marcado
     var reticle = null;           // {u, v} mira del modo pad, en píxeles del video
@@ -32508,10 +32527,11 @@ bluetooth.startIOPinService()</pre>
     // Serie física completa: posiciones medidas + velocidades y aceleraciones.
     function physSeries() {
         var out = [], xs = [], ys = [], ts = [];
+        var TF = timeFactor();
         for (var i = 0; i < points.length; i++) {
             var ph = toPhysical(points[i]);
-            out.push({ t: points[i].t, x: ph.x, y: ph.y, vx: NaN, vy: NaN, v: NaN, ax: NaN, ay: NaN, a: NaN });
-            xs.push(ph.x); ys.push(ph.y); ts.push(points[i].t);
+            out.push({ t: points[i].t * TF, x: ph.x, y: ph.y, vx: NaN, vy: NaN, v: NaN, ax: NaN, ay: NaN, a: NaN });
+            xs.push(ph.x); ys.push(ph.y); ts.push(points[i].t * TF);
         }
         var n = out.length;
         if (smoothWin <= 1) {
@@ -34008,8 +34028,29 @@ bluetooth.startIOPinService()</pre>
                 var eq = vy2 + ' = ';
                 if (deg === 2) eq += fmtN(fit.c[2]) + '·' + vx2 + '² ' + (fit.c[1] < 0 ? '− ' : '+ ') + fmtN(Math.abs(fit.c[1])) + '·' + vx2 + ' ' + (fit.c[0] < 0 ? '− ' : '+ ') + fmtN(Math.abs(fit.c[0]));
                 else eq += fmtN(fit.c[1]) + '·' + vx2 + ' ' + (fit.c[0] < 0 ? '− ' : '+ ') + fmtN(Math.abs(fit.c[0]));
-                fitEl.innerHTML = 'Curva ideal: <b>' + eq + '</b> · R² = <b>' + fit.r2.toFixed(4) + '</b>' +
-                    (deg === 2 && (chartType === 'y' || chartType === 'x') ? ' · aceleración del modelo: <b>' + fmtN(2 * fit.c[2]) + '</b>' : '');
+                var extraG = '';
+                if (deg === 2 && (chartType === 'y' || chartType === 'x')) {
+                    var aMod = 2 * fit.c[2];
+                    extraG = ' · aceleración del modelo: <b>' + fmtN(aMod) + '</b>';
+                    if (metersPerPixel()) {
+                        var absA = Math.abs(aMod);
+                        if (absA > 8.3 && absA < 11.3) {
+                            extraG += ' <span style="color:#2e7d32; font-weight:700;">≈ g ✓</span>';
+                        } else if (absA > 0.05 && absA < 5) {
+                            // ¿cámara lenta sin declarar? g/|a| cerca de 4, 16 o 64
+                            var ratio = 9.81 / absA;
+                            [4, 16, 64].some(function (k) {
+                                if (ratio > k * 0.6 && ratio < k * 1.5) {
+                                    extraG += ' <span style="color:#c62828;">· ¿filmaste en cámara lenta? Elegí "Filmado a ' +
+                                        Math.round(Math.sqrt(k) * (fps || 30)) + '" en la barra de abajo</span>';
+                                    return true;
+                                }
+                                return false;
+                            });
+                        }
+                    }
+                }
+                fitEl.innerHTML = 'Curva ideal: <b>' + eq + '</b> · R² = <b>' + fit.r2.toFixed(4) + '</b>' + extraG;
             }
         }
 
@@ -34046,7 +34087,7 @@ bluetooth.startIOPinService()</pre>
         var k = -1;
         for (var j = 0; j < ser.length; j++) {
             var p = def.get(ser[j]);
-            if (isFinite(p.x) && isFinite(p.y)) { k++; if (k === i) { seekTo(ser[j].t); switchToStageOnPhone(); return; } }
+            if (isFinite(p.x) && isFinite(p.y)) { k++; if (k === i) { seekTo(points[j].t); switchToStageOnPhone(); return; } }
         }
     }
 
@@ -34218,10 +34259,17 @@ bluetooth.startIOPinService()</pre>
         el('vm-step').addEventListener('change', function () {
             markStep = parseInt(this.value, 10) || 1;
         });
+        el('vm-capfps').addEventListener('change', function () {
+            captureFps = parseFloat(this.value) || 0;
+            recomputeAll();
+            if (captureFps > 0) {
+                setGuide('Cámara lenta declarada: el archivo va a ' + fps + ' fps pero se filmó a <b>' + captureFps + ' fps</b>. Los tiempos, velocidades y aceleraciones ya están corregidos (factor ' + fmtN(timeFactor()) + ').', true);
+            }
+        });
         el('vm-fps').addEventListener('change', function () {
             fps = parseFloat(this.value) || 30;
             updateTimeUI();
-            renderTable();
+            recomputeAll();
         });
 
         // Herramientas
