@@ -33388,7 +33388,9 @@ bluetooth.startIOPinService()</pre>
         // En celulares procesar a 480px de ancho: el modelo de fondo (15
         // cuadros + mediana por píxel) y la búsqueda por cuadro corren ~1.8x
         // más rápido, con precisión de sobra a ese tamaño.
-        var procW = (typeof isMobileBrowser !== 'undefined' && isMobileBrowser) ? 480 : 640;
+        // Detección propia: no depender de variables de otros módulos (si su
+        // script falló al cargar, hasta typeof lanza por la zona muerta de let/const).
+        var procW = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 480 : 640;
         var sc = Math.min(1, procW / (video.videoWidth || procW));
         var W = Math.max(4, Math.round(video.videoWidth * sc));
         var H = Math.max(4, Math.round(video.videoHeight * sc));
