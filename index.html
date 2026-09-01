@@ -31850,8 +31850,8 @@ bluetooth.startIOPinService()</pre>
                                 <button class="vm-tr-btn" id="vm-tr-play" title="Reproducir solo el tramo seleccionado">▶ Tramo</button>
                                 <button class="vm-tr-btn primary" id="vm-tr-apply" title="Trabajar solo con el tramo seleccionado (no se pierde nada del video)">Aplicar</button>
                                 <button class="vm-tr-btn" id="vm-tr-clear" title="Volver al video completo">Quitar</button>
-                                <button class="vm-tr-btn" id="vm-tr-export" title="Descargar el tramo como video nuevo (WebM)">Exportar</button>
-                                <button class="vm-tr-btn" id="vm-tr-drive" title="Guardar el tramo en tu Google Drive, carpeta fisicabit / Videos de análisis">Drive</button>
+                                <button class="vm-tr-btn" id="vm-tr-export" title="Descargar el tramo como video nuevo (WebM). Ojo: el clip exportado se re-graba y pierde precisión de tiempos — sirve para compartir; para MEDIR usá el video original con Aplicar">Exportar</button>
+                                <button class="vm-tr-btn" id="vm-tr-drive" title="Guardar el tramo en tu Google Drive, carpeta fisicabit / Videos de análisis. Ojo: el clip se re-graba y pierde precisión de tiempos — para MEDIR usá el video original con Aplicar">Drive</button>
                                 <span class="vm-tr-msg" id="vm-tr-status"></span>
                                 <button class="vm-tr-btn" id="vm-tr-close" title="Cerrar el editor de recorte">✕</button>
                             </div>
@@ -31981,6 +31981,7 @@ bluetooth.startIOPinService()</pre>
                         <div><b>energías (t)</b> · Ec = ½mv², Ep = mgy y Em = Ec + Ep con tu masa. Sin rozamiento, la <b>Em (negra) se mantiene casi constante</b> mientras Ec y Ep se intercambian.</div>
                         <div><b>trayectoria</b> · el camino y(x) en el plano, como se ve en el video. Tiro oblicuo: parábola.</div>
                         <div style="margin-top:6px; color:#555;">Consejo: tocá un punto de cualquier gráfica de tiempo para saltar a ese instante del video, y usá <b>Curva ideal</b> para comparar tus datos con el modelo físico.</div>
+                        <div style="margin-top:6px; border-top:1px solid #ddd; padding-top:6px;"><b>Para medir g</b> · analizá SOLO la caída: recortá el video (o borrá con la goma los puntos donde el objeto todavía está en la mano — la curva ideal se ajusta a todos los puntos). Filmá con <b>buena luz</b> (con poca luz la cámara repite cuadros y desenfoca), desde ~1 m o más de caída, con la regla de referencia en el mismo plano que cae el objeto. Después: gráfica <b>y (t)</b> → Curva ideal <b>parábola</b> → la "aceleración del modelo" debería dar ≈ −9.8. Si da mucho menos, revisá el aviso de FPS en la <b>Tabla</b> y el selector <b>Filmado a</b> (cámara lenta). Y medí siempre sobre el <b>video original</b> de la cámara: un clip exportado por el recortador se re-graba y pierde cuadros y precisión de tiempos (sirve para compartir, no para medir).</div>
                     </div>
                     <div class="vm-chart-chips" id="vm-mass-row" style="padding-top:2px; align-items:center; display:none;">
                         <span style="font-size:0.6rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;" title="Masa del objeto, para calcular las energías">Masa</span>
@@ -32169,6 +32170,7 @@ bluetooth.startIOPinService()</pre>
     var isSeeking = false;
     var pendingSeek = null;
     var lastFrameT = NaN;         // PTS real (mediaTime) del último cuadro presentado
+    var lastFrameFor = NaN;       // currentTime al que corresponde ese PTS
     var playing = false;
     var rafId = null;
     var siteVideoLoaded = false;  // el video actual proviene del botón CÁMARA del sitio
@@ -32503,7 +32505,7 @@ bluetooth.startIOPinService()</pre>
     function armFrameClock() {
         if (!video.requestVideoFrameCallback) return;
         video.requestVideoFrameCallback(function (now, meta) {
-            if (meta && meta.mediaTime != null) lastFrameT = meta.mediaTime;
+            if (meta && meta.mediaTime != null) { lastFrameT = meta.mediaTime; lastFrameFor = video.currentTime; }
             armFrameClock();
         });
     }
@@ -32516,7 +32518,13 @@ bluetooth.startIOPinService()</pre>
     // a un cuadro y se descarta.
     function frameTimeNow() {
         var ct = video.currentTime;
-        if (isFinite(lastFrameT) && Math.abs(lastFrameT - ct) < 0.55 * frameDt()) return lastFrameT;
+        if (isFinite(lastFrameT)) {
+            // PTS confirmado: el callback disparó para ESTE currentTime, así
+            // que es el cuadro en pantalla aunque quede lejos del tiempo
+            // pedido (videos de celular con cuadros de duración variable).
+            if (ct === lastFrameFor && ct - lastFrameT > -0.005 && ct - lastFrameT < 0.3) return lastFrameT;
+            if (Math.abs(lastFrameT - ct) < 0.55 * frameDt()) return lastFrameT;
+        }
         return ct;
     }
 
@@ -33211,7 +33219,7 @@ bluetooth.startIOPinService()</pre>
             }
             if (video.requestVideoFrameCallback) {
                 video.requestVideoFrameCallback(function (now, meta) {
-                    if (meta && meta.mediaTime != null) lastFrameT = meta.mediaTime;
+                    if (meta && meta.mediaTime != null) { lastFrameT = meta.mediaTime; lastFrameFor = video.currentTime; }
                     framed = true;
                     finish();
                 });
@@ -33400,6 +33408,7 @@ bluetooth.startIOPinService()</pre>
 
         var pos = { u: autoStart.u * sc, v: autoStart.v * sc };
         var vel = { u: 0, v: 0 };
+        var fAccept = null;           // último cuadro donde se encontró el objeto
         var c0 = [autoStart.color[0], autoStart.color[1], autoStart.color[2]];
         var c0init = c0.slice(0);
         var tol2 = tol * tol;
@@ -33420,8 +33429,12 @@ bluetooth.startIOPinService()</pre>
             var prevD = prevData;
             prevData = data;
             var res = null;
+            // Cuadros transcurridos desde el último hallazgo: tras saltear
+            // duplicados el objeto avanzó varios cuadros de una vez, así que
+            // la predicción (y la ventana de búsqueda) se escalan por kPred.
+            var kPred = (fAccept != null) ? Math.max(1, Math.min(6, f - fAccept)) : 1;
             if (!waiting) {
-                res = vmFindObject(data, prevD, bg, W, H, pos, vel, c0, tol);
+                res = vmFindObject(data, prevD, bg, W, H, pos, { u: vel.u * kPred, v: vel.v * kPred }, c0, tol);
                 if (!res) {
                     waiting = true;
                     reacqBuf = null;    // el tramo re-adquirido no se confirmó: descartarlo
@@ -33440,8 +33453,28 @@ bluetooth.startIOPinService()</pre>
                 if (waiting && !res) cand = vmReacquire(data, bg, W, H, pos, c0, tol);
             }
             if (!res) continue;
-            vel = { u: 0.6 * vel.u + 0.4 * (res.u - pos.u), v: 0.6 * vel.v + 0.4 * (res.v - pos.v) };
+            // Cuadro duplicado: con poca luz la cámara repite la imagen
+            // anterior con un timestamp nuevo. Registrar ese punto aplasta la
+            // parábola (g da de menos). Detección: en la ventana del objeto la
+            // imagen es casi idéntica al cuadro anterior (un cuadro real de un
+            // objeto en movimiento difiere muchísimo ahí). Se saltea entero,
+            // sin registrar punto ni tocar la velocidad.
+            if (prevD) {
+                var dupSum = 0, dupCnt = 0, dupPx = Math.round(res.u), dupPy = Math.round(res.v);
+                for (var dyD = -14; dyD <= 14; dyD += 2) {
+                    for (var dxD = -14; dxD <= 14; dxD += 2) {
+                        var xxD = dupPx + dxD, yyD = dupPy + dyD;
+                        if (xxD < 0 || yyD < 0 || xxD >= W || yyD >= H) continue;
+                        var iiD = (yyD * W + xxD) * 4;
+                        dupSum += Math.abs(data[iiD] - prevD[iiD]) + Math.abs(data[iiD + 1] - prevD[iiD + 1]) + Math.abs(data[iiD + 2] - prevD[iiD + 2]);
+                        dupCnt++;
+                    }
+                }
+                if (dupCnt && dupSum / (dupCnt * 3) < 0.45) continue;
+            }
+            vel = { u: 0.6 * vel.u + 0.4 * (res.u - pos.u) / kPred, v: 0.6 * vel.v + 0.4 * (res.v - pos.v) / kPred };
             pos = res;
+            fAccept = f;
             // Adaptación de color lenta, solo con coincidencia fuerte (el
             // desenfoque de movimiento no debe contaminar la referencia).
             var ci = (Math.round(clamp(pos.v, 0, H - 1)) * W + Math.round(clamp(pos.u, 0, W - 1))) * 4;
@@ -34279,6 +34312,19 @@ bluetooth.startIOPinService()</pre>
                 if (deg === 2) eq += fmtN(fit.c[2]) + '·' + vx2 + '² ' + (fit.c[1] < 0 ? '− ' : '+ ') + fmtN(Math.abs(fit.c[1])) + '·' + vx2 + ' ' + (fit.c[0] < 0 ? '− ' : '+ ') + fmtN(Math.abs(fit.c[0]));
                 else eq += fmtN(fit.c[1]) + '·' + vx2 + ' ' + (fit.c[0] < 0 ? '− ' : '+ ') + fmtN(Math.abs(fit.c[0]));
                 var extraG = '';
+                // Puntos en reposo mezclados con el movimiento: distorsionan
+                // el ajuste (y disparan falsos avisos de cámara lenta).
+                var hasRest = false;
+                if (deg === 2 && (chartType === 'y' || chartType === 'x') && data.length >= 6) {
+                    var dvQ = [];
+                    for (var qi = 1; qi < data.length; qi++) {
+                        var dtQ = data[qi].x - data[qi - 1].x;
+                        if (dtQ > 0) dvQ.push(Math.abs((data[qi].y - data[qi - 1].y) / dtQ));
+                    }
+                    var vmxQ = Math.max.apply(null, dvQ), nRest = 0;
+                    for (var qj = 0; qj < dvQ.length; qj++) if (dvQ[qj] < 0.06 * vmxQ) nRest++;
+                    hasRest = vmxQ > 0 && nRest >= Math.max(3, dvQ.length * 0.3);
+                }
                 if (deg === 2 && (chartType === 'y' || chartType === 'x')) {
                     var aMod = 2 * fit.c[2];
                     extraG = ' · aceleración del modelo: <b>' + fmtN(aMod) + '</b>';
@@ -34286,7 +34332,7 @@ bluetooth.startIOPinService()</pre>
                         var absA = Math.abs(aMod);
                         if (absA > 8.3 && absA < 11.3) {
                             extraG += ' <span style="color:#2e7d32; font-weight:700;">≈ g ✓</span>';
-                        } else if (absA > 0.05 && absA < 5) {
+                        } else if (absA > 0.05 && absA < 5 && !hasRest) {
                             // ¿cámara lenta sin declarar? g/|a| cerca de 4, 16 o 64
                             var ratio = 9.81 / absA;
                             [4, 16, 64].some(function (k) {
@@ -34300,6 +34346,10 @@ bluetooth.startIOPinService()</pre>
                         }
                     }
                 }
+                if (hasRest) {
+                    extraG += ' <span style="color:#c62828;">· ojo: hay puntos con el objeto quieto y la curva se ajusta a TODOS los puntos — borrá los del reposo con la goma, o recortá el video al tramo del movimiento</span>';
+                }
+                if (deg === 2 && data.length < 8) extraG += ' · <span style="color:#666;">pocos puntos: resultado orientativo</span>';
                 fitEl.innerHTML = 'Curva ideal: <b>' + eq + '</b> · R² = <b>' + fit.r2.toFixed(4) + '</b>' + extraG;
             }
         }
