@@ -31968,6 +31968,19 @@ bluetooth.startIOPinService()</pre>
                         <button class="vm-chip" data-chart="a">|a| (t)</button>
                         <button class="vm-chip" data-chart="energy">energías (t)</button>
                         <button class="vm-chip" data-chart="tray">trayectoria</button>
+                        <button class="vm-chip" id="vm-chart-q" title="¿Qué muestra cada gráfica y qué forma esperar?" style="font-weight:800;">?</button>
+                    </div>
+                    <div id="vm-chart-guide" style="display:none; margin:4px 12px 6px; border:1.5px solid #000; background:#fafafa; padding:10px 12px; font-size:0.7rem; color:#333; line-height:1.55;">
+                        <div style="font-weight:700; letter-spacing:1px; text-transform:uppercase; font-size:0.64rem; margin-bottom:6px;">Qué muestra cada gráfica</div>
+                        <div><b>x (t)</b> · posición horizontal vs. tiempo. MRU: recta (su pendiente es vₓ). Caída libre: constante. Tiro oblicuo: recta.</div>
+                        <div><b>y (t)</b> · posición vertical vs. tiempo. Caída libre y tiro: <b>parábola</b> (ajustala con Curva ideal: su curvatura da g). Péndulo: onda.</div>
+                        <div><b>vₓ (t)</b> · velocidad horizontal. MRU y tiro oblicuo: constante (¡nada la empuja de costado!).</div>
+                        <div><b>v_y (t)</b> · velocidad vertical. Caída y tiro: <b>recta de pendiente −g ≈ −9.8</b>; cruza cero en el punto más alto.</div>
+                        <div><b>rapidez (t)</b> · módulo de la velocidad. Tiro oblicuo: baja hasta el punto más alto y vuelve a subir.</div>
+                        <div><b>aₓ, a_y, |a| (t)</b> · aceleraciones. Caída y tiro: a_y ≈ −9.8 m/s² constante y aₓ ≈ 0. Son las más sensibles al ruido: usá <b>Suavizado Alto/Máximo</b> y mirá la media.</div>
+                        <div><b>energías (t)</b> · Ec = ½mv², Ep = mgy y Em = Ec + Ep con tu masa. Sin rozamiento, la <b>Em (negra) se mantiene casi constante</b> mientras Ec y Ep se intercambian.</div>
+                        <div><b>trayectoria</b> · el camino y(x) en el plano, como se ve en el video. Tiro oblicuo: parábola.</div>
+                        <div style="margin-top:6px; color:#555;">Consejo: tocá un punto de cualquier gráfica de tiempo para saltar a ese instante del video, y usá <b>Curva ideal</b> para comparar tus datos con el modelo físico.</div>
                     </div>
                     <div class="vm-chart-chips" id="vm-mass-row" style="padding-top:2px; align-items:center; display:none;">
                         <span style="font-size:0.6rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;" title="Masa del objeto, para calcular las energías">Masa</span>
@@ -32155,6 +32168,7 @@ bluetooth.startIOPinService()</pre>
     var loupePos = null;          // {cx, cy} en px del canvas (CSS)
     var isSeeking = false;
     var pendingSeek = null;
+    var lastFrameT = NaN;         // PTS real (mediaTime) del último cuadro presentado
     var playing = false;
     var rafId = null;
     var siteVideoLoaded = false;  // el video actual proviene del botón CÁMARA del sitio
@@ -32432,10 +32446,17 @@ bluetooth.startIOPinService()</pre>
         return (bd < 0.12) ? best : null;
     }
 
+    var detectPending = null;     // seek del usuario durante la detección de FPS
+
     async function autoDetectFps() {
         var tPrev = video.currentTime;
+        detectPending = { user: null };
         var measured = await measureFileFps();
-        await seekAsync(tPrev);
+        // restaurar a donde estaba, salvo que el usuario haya buscado otra
+        // posición mientras medíamos: en ese caso respetar la del usuario
+        var backTo = (detectPending && detectPending.user != null) ? detectPending.user : tPrev;
+        detectPending = null;
+        await seekAsync(backTo);
         var msg = [];
         if (measured > 0) {
             var std = [24, 25, 30, 50, 60, 120, 240].reduce(function (b, v) {
@@ -32472,6 +32493,31 @@ bluetooth.startIOPinService()</pre>
             setGuide('Detectado automáticamente: ' + msg.join(' · ') + '. Si no coincide con tu filmación, cambialo en la barra de abajo. ' +
                 '<b>Ahora seguí con el paso 2:</b> calibrá la <b>ESCALA</b>.', true);
         }
+    }
+
+    // Reloj de cuadros: requestVideoFrameCallback informa el mediaTime (PTS)
+    // exacto de CADA cuadro que se presenta. Los celulares graban con frame
+    // rate variable: usar el tiempo pedido al buscar (currentTime) en vez del
+    // tiempo real del cuadro mostrado mete ruido y sesgo en v y a. Este reloj
+    // se rearma solo y mantiene siempre el timestamp verdadero.
+    function armFrameClock() {
+        if (!video.requestVideoFrameCallback) return;
+        video.requestVideoFrameCallback(function (now, meta) {
+            if (meta && meta.mediaTime != null) lastFrameT = meta.mediaTime;
+            armFrameClock();
+        });
+    }
+
+    // Tiempo físico del cuadro en pantalla. El PTS real (mediaTime) es más
+    // exacto que currentTime en videos de celular con frame rate variable,
+    // PERO el callback de cuadro a veces no dispara en un seek y deja el PTS
+    // del cuadro ANTERIOR (rezago de un cuadro entero). Regla: usar el PTS
+    // solo si está a menos de MEDIO cuadro del currentTime; el rezagado queda
+    // a un cuadro y se descarta.
+    function frameTimeNow() {
+        var ct = video.currentTime;
+        if (isFinite(lastFrameT) && Math.abs(lastFrameT - ct) < 0.55 * frameDt()) return lastFrameT;
+        return ct;
     }
 
     /* ================= Tiempo, cuadros y navegación ================= */
@@ -33028,8 +33074,9 @@ bluetooth.startIOPinService()</pre>
             recomputeAll();
             return;
         }
-        // Marcar: un punto por cuadro (reemplaza si ya existe)
-        var t = video.currentTime, half = frameDt() / 2;
+        // Marcar: un punto por cuadro (reemplaza si ya existe), con el
+        // timestamp REAL del cuadro mostrado
+        var t = frameTimeNow(), half = frameDt() / 2;
         var idx = points.findIndex(function (p) { return Math.abs(p.t - t) <= half; });
         if (idx >= 0) points[idx] = { t: t, u: vc.u, v: vc.v };
         else {
@@ -33143,12 +33190,35 @@ bluetooth.startIOPinService()</pre>
     }
 
     function seekAsync(t) {
+        // Espera el 'seeked' Y la presentación real del cuadro (rvfc), así
+        // lastFrameT (el PTS verdadero) corresponde al cuadro que quedó en
+        // pantalla y no al anterior. Si el seek no presenta cuadro nuevo
+        // (cae en el mismo), un colchón de 120 ms lo destraba.
         return new Promise(function (resolve) {
-            var done = false;
-            var h = function () { if (done) return; done = true; video.removeEventListener('seeked', h); resolve(); };
-            video.addEventListener('seeked', h);
-            setTimeout(h, 1500); // por si 'seeked' no llega (fin del video)
-            try { video.currentTime = t; } catch (e) { h(); }
+            var seeked = false, framed = !video.requestVideoFrameCallback, done = false;
+            function finish(force) {
+                if (done) return;
+                if (force || (seeked && framed)) {
+                    done = true;
+                    video.removeEventListener('seeked', onSk);
+                    resolve();
+                }
+            }
+            function onSk() {
+                seeked = true;
+                setTimeout(function () { finish(true); }, 120);
+                finish();
+            }
+            if (video.requestVideoFrameCallback) {
+                video.requestVideoFrameCallback(function (now, meta) {
+                    if (meta && meta.mediaTime != null) lastFrameT = meta.mediaTime;
+                    framed = true;
+                    finish();
+                });
+            }
+            video.addEventListener('seeked', onSk);
+            setTimeout(function () { finish(true); }, 1500);
+            try { video.currentTime = t; } catch (e) { finish(true); }
         });
     }
 
@@ -33337,7 +33407,7 @@ bluetooth.startIOPinService()</pre>
         var added = 1, waiting = false, lostAt = -1, cand = null, reacqBuf = null, prevData = null;
         var tEndTrack = trimEnd || duration;
         var totalF = Math.floor(tEndTrack / frameDt());
-        setPointAt(video.currentTime, pos.u / sc, pos.v / sc);
+        setPointAt(frameTimeNow(), pos.u / sc, pos.v / sc);
         drawOverlay();
 
         while (!autoStop) {
@@ -33396,11 +33466,12 @@ bluetooth.startIOPinService()</pre>
             // recortado y sesga las gráficas justo cuando el objeto sale.
             var nearEdge = pos.u < 6 || pos.u > W - 6 || pos.v < 6 || pos.v > H - 6;
             var rec = !nearEdge && (f - f0) % markStep === 0;
+            var tFrame = frameTimeNow();
             if (reacqBuf) {
                 // Un tramo re-adquirido recién se confirma si el objeto se
                 // sigue encontrando 3 cuadros seguidos: un reflejo fugaz que
                 // engañó a la re-adquisición no llega y se descarta solo.
-                reacqBuf.push(rec ? { t: video.currentTime, u: pos.u / sc, v: pos.v / sc } : null);
+                reacqBuf.push(rec ? { t: tFrame, u: pos.u / sc, v: pos.v / sc } : null);
                 if (reacqBuf.length >= 3) {
                     for (var rb = 0; rb < reacqBuf.length; rb++) {
                         if (reacqBuf[rb]) { setPointAt(reacqBuf[rb].t, reacqBuf[rb].u, reacqBuf[rb].v); added++; }
@@ -33408,7 +33479,7 @@ bluetooth.startIOPinService()</pre>
                     reacqBuf = null;
                 }
             } else if (rec) {
-                setPointAt(video.currentTime, pos.u / sc, pos.v / sc);
+                setPointAt(tFrame, pos.u / sc, pos.v / sc);
                 added++;
             }
             if (added % 3 === 0 || f >= totalF - 1) {
@@ -33959,8 +34030,25 @@ bluetooth.startIOPinService()</pre>
             var dist = 0;
             for (var j = 1; j < ser.length; j++) dist += Math.hypot(ser[j].x - ser[j - 1].x, ser[j].y - ser[j - 1].y);
             var T = ser[ser.length - 1].t - ser[0].t;
+            // Δt real entre puntos consecutivos (mediana) y fps efectivo: si no
+            // coinciden con lo configurado, algo anda mal (FPS o cámara lenta)
+            var dts = [];
+            for (var q = 1; q < ser.length; q++) {
+                var dq = ser[q].t - ser[q - 1].t;
+                if (dq > 0 && dq < 1) dts.push(dq);
+            }
+            var fpsInfo = '';
+            if (dts.length >= 3) {
+                dts.sort(function (a, b) { return a - b; });
+                var dtMed = dts[dts.length >> 1];
+                var effFps = markStep / (dtMed * timeFactor());   // fps del archivo implícito
+                fpsInfo = ' · Δt entre puntos <b>' + fmtN(dtMed * 1000) + ' ms</b>';
+                if (fps > 0 && Math.abs(effFps - fps) / fps > 0.2) {
+                    fpsInfo += ' <span style="color:#c62828;">⚠ no coincide con FPS = ' + fps + ': revisá FPS y "Filmado a"</span>';
+                }
+            }
             st.innerHTML = '<b>' + ser.length + '</b> puntos · duración <b>' + fmtT(T) + ' s</b> · recorrido <b>' +
-                fmtN(dist) + ' m</b> · rapidez media <b>' + fmtN(T > 0 ? dist / T : NaN) + ' m/s</b>' +
+                fmtN(dist) + ' m</b> · rapidez media <b>' + fmtN(T > 0 ? dist / T : NaN) + ' m/s</b>' + fpsInfo +
                 (metersPerPixel() ? '' : ' · <span style="color:#c62828;">sin escala: valores en píxeles</span>');
         } else {
             st.textContent = '';
@@ -34399,6 +34487,7 @@ bluetooth.startIOPinService()</pre>
 
         // Video events
         video.addEventListener('loadedmetadata', onMetadata);
+        armFrameClock();
         video.addEventListener('seeked', onSeeked);
         video.addEventListener('ended', pauseVideo);
         video.addEventListener('pause', function () { if (playing) pauseVideo(); updateTimeUI(); drawOverlay(); });
@@ -34416,7 +34505,9 @@ bluetooth.startIOPinService()</pre>
         el('vm-fwd10').addEventListener('click', function () { stepFrames(10); });
         el('vm-slider').addEventListener('input', function () {
             pauseVideo();
-            seekTo(parseFloat(this.value) || 0);
+            var tv = parseFloat(this.value) || 0;
+            if (detectPending) detectPending.user = tv;
+            seekTo(tv);
         });
         el('vm-step').addEventListener('change', function () {
             markStep = parseInt(this.value, 10) || 1;
@@ -34623,11 +34714,19 @@ bluetooth.startIOPinService()</pre>
             });
         });
 
+        // Botón "?" de las gráficas
+        el('vm-chart-q').addEventListener('click', function () {
+            var g = el('vm-chart-guide');
+            g.style.display = g.style.display === 'none' ? 'block' : 'none';
+            this.classList.toggle('active', g.style.display !== 'none');
+        });
+
         // Chips de gráfica
         Array.prototype.forEach.call(el('vm-chart-chips').children, function (c) {
             c.addEventListener('click', function () {
+                if (!c.dataset.chart) return;
                 chartType = c.dataset.chart;
-                Array.prototype.forEach.call(el('vm-chart-chips').children, function (x) { x.classList.toggle('active', x === c); });
+                Array.prototype.forEach.call(el('vm-chart-chips').children, function (x) { if (x.dataset.chart) x.classList.toggle('active', x === c); });
                 updateChart();
             });
         });
