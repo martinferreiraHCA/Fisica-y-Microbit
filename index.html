@@ -31756,6 +31756,11 @@ bluetooth.startIOPinService()</pre>
         .vm-toolrow::-webkit-scrollbar { display:none; }
         .vm-toolrow .vm-btn { flex:0 0 auto; }
         .vm-toolrow .sep { flex:0 0 auto; }
+        /* El menú Más no puede vivir dentro de la barra con overflow: se abre
+           como hoja fija al pie de la pantalla, siempre visible entera. */
+        .vm-more-menu { position:fixed; left:8px; right:8px; top:auto; bottom:8px; max-height:62vh; overflow-y:auto; min-width:0; box-shadow:0 -6px 24px rgba(0,0,0,.35); }
+        .vm-more-menu button { padding:14px 16px; font-size:0.8rem; }
+        .vm-more-menu::before { content:'Más herramientas · tocá afuera para cerrar'; display:block; padding:9px 16px; font-size:0.62rem; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; background:#000; color:#fff; }
         /* Con el espacio ganado, más video (dvh: no cuenta la barra del navegador) */
         .vm-stagecard { height:48vh; height:48dvh; min-height:220px; }
         .vm-controls { padding:6px 8px; gap:6px; flex-wrap:wrap; }
@@ -31788,6 +31793,9 @@ bluetooth.startIOPinService()</pre>
         .vm-toolrow { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
         .vm-toolrow::-webkit-scrollbar { display:none; }
         .vm-toolrow .vm-btn { flex:0 0 auto; }
+        .vm-more-menu { position:fixed; left:8px; right:8px; top:auto; bottom:8px; max-height:62vh; overflow-y:auto; min-width:0; box-shadow:0 -6px 24px rgba(0,0,0,.35); }
+        .vm-more-menu button { padding:14px 16px; font-size:0.8rem; }
+        .vm-more-menu::before { content:'Más herramientas · tocá afuera para cerrar'; display:block; padding:9px 16px; font-size:0.62rem; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; background:#000; color:#fff; }
         .vm-controls { padding:4px 8px; }
         .vm-ctrl { width:38px; height:38px; }
         .vm-place-btn { padding:10px 14px; }
@@ -31859,6 +31867,7 @@ bluetooth.startIOPinService()</pre>
                             </div>
                             <canvas id="vm-strip"></canvas>
                             <div class="vm-trim-actions">
+                                <button class="vm-tr-btn" id="vm-tr-auto" title="Detectar automáticamente dónde hay movimiento y poner las manijas ahí">Auto</button>
                                 <button class="vm-tr-btn" id="vm-tr-play" title="Reproducir solo el tramo seleccionado">▶ Tramo</button>
                                 <button class="vm-tr-btn primary" id="vm-tr-apply" title="Trabajar solo con el tramo seleccionado (no se pierde nada del video)">Aplicar</button>
                                 <button class="vm-tr-btn" id="vm-tr-clear" title="Volver al video completo">Quitar</button>
@@ -32935,7 +32944,8 @@ bluetooth.startIOPinService()</pre>
         return {
             n: n, used: used, seg: seg, restExcluded: restExcluded, noisy: noisy,
             nUsed: used.filter(Boolean).length, t0: tU[0], t1: tU[tU.length - 1],
-            fx: fx, fy: fy, lx: lx, ly: ly, kind: kind, period: period
+            fx: fx, fy: fy, lx: lx, ly: ly, kind: kind, period: period,
+            ampU: Math.max(Math.max.apply(null, xU) - Math.min.apply(null, xU), Math.max.apply(null, yU) - Math.min.apply(null, yU))
         };
     }
 
@@ -34447,10 +34457,56 @@ bluetooth.startIOPinService()</pre>
         el('vm-trim-bar').dataset.ready = '';
         el('vm-tr-status').textContent = '';
         updatePadUi();
-        setGuide('<b>Recorte:</b> arrastrá las <b>manijas blancas</b> para elegir dónde empieza y termina el tramo (el video te muestra ese cuadro mientras arrastrás). Tocá <b>▶ Tramo</b> para verlo, <b>Aplicar</b> para trabajar solo con eso, o <b>Exportar / Drive</b> para guardarlo como video nuevo.');
+        setGuide('<b>Recorte:</b> tocá <b>Auto</b> para que el sistema encuentre solo el tramo donde hay movimiento, o arrastrá las <b>manijas blancas</b> para elegir dónde empieza y termina (el video te muestra ese cuadro mientras arrastrás). Tocá <b>▶ Tramo</b> para verlo, <b>Aplicar</b> para trabajar solo con eso, o <b>Exportar / Drive</b> para guardarlo como video nuevo.');
         buildStrip().then(drawStrip);
         drawStrip();
     }
+    // Autocrop: energía de movimiento a lo largo del video (diferencia entre
+    // cuadros muestreados, a baja resolución) → tramo donde pasa algo.
+    async function suggestTrimRange() {
+        var N = Math.min(60, Math.max(24, Math.round(duration * 8)));
+        var g = workCtx(), W = 160, H = Math.max(8, Math.round(160 * video.videoHeight / Math.max(1, video.videoWidth)));
+        var prev = null, energy = [], times = [];
+        var tSave = video.currentTime;
+        for (var i = 0; i < N; i++) {
+            var t = duration * (i + 0.5) / N;
+            await seekAsync(t);
+            var d = vmGrab(g, W, H);
+            if (prev) {
+                // Energía = cantidad de píxeles que cambiaron de verdad (más
+                // de 25 niveles): un objeto chico que se mueve cuenta aunque
+                // el resto del cuadro no cambie; el ruido del sensor no cuenta.
+                var moved = 0;
+                for (var p = 0; p < d.length; p += 4) {
+                    if ((Math.abs(d[p] - prev[p]) + Math.abs(d[p + 1] - prev[p + 1]) + Math.abs(d[p + 2] - prev[p + 2])) / 3 > 25) moved++;
+                }
+                energy.push(moved);
+                times.push(t);
+            }
+            prev = d.slice(0);
+            el('vm-tr-status').textContent = 'Buscando movimiento… ' + Math.round((i + 1) * 100 / N) + '%';
+        }
+        await seekAsync(tSave);
+        if (!energy.length) return null;
+        // Filtro de máximo (3 muestras): une tramos partidos por un cuadro
+        // sin cambios (cuadro repetido o presentación rezagada del seek).
+        energy = energy.map(function (e, i, arr) { return Math.max(arr[i - 1] || 0, e, arr[i + 1] || 0); });
+        var sorted = energy.slice().sort(function (a, b) { return a - b; });
+        var floor = sorted[Math.floor(sorted.length * 0.3)], peak = sorted[sorted.length - 1];
+        if (peak - floor < 6) return null;      // no hay nada que se mueva claramente
+        var thr = floor + 0.15 * (peak - floor);
+        // tramo contiguo más "energético" (suma de energía sobre el umbral)
+        var best = null, start = -1, acc = 0;
+        for (var k = 0; k <= energy.length; k++) {
+            var on = k < energy.length && energy[k] > thr;
+            if (on) { if (start < 0) { start = k; acc = 0; } acc += energy[k] - thr; }
+            if (!on && start >= 0) { if (!best || acc > best.acc) best = { i0: start, i1: k - 1, acc: acc }; start = -1; }
+        }
+        if (!best) return null;
+        var step = duration / N;
+        return { a: clamp(times[best.i0] - 2.5 * step, 0, duration), b: clamp(times[best.i1] + 2 * step, 0, duration) };
+    }
+
     function closeTrimUi() {
         trimUi = false;
         stripDrag = null;
@@ -34875,7 +34931,9 @@ bluetooth.startIOPinService()</pre>
         var noScale = !metersPerPixel();
         var uL = noScale ? 'px' : 'm', uA = uL + '/s²', uV = uL + '/s';
         var h = '<div class="vm-res-h">Resultado del análisis</div>';
-        var meta = 'Tramo analizado <b>' + fmtT(an.t0) + '–' + fmtT(an.t1) + ' s</b> · ' + an.nUsed + ' de ' + an.n + ' puntos';
+        var meta = 'Tramo sugerido para analizar: <b>' + fmtT(an.t0) + '–' + fmtT(an.t1) + ' s</b> · ' + an.nUsed + ' de ' + an.n + ' puntos';
+        var canTrim = hasVideo && (an.t0 - 2 * frameDt() > trimStart + 0.001 || an.t1 + 2 * frameDt() < (trimEnd || duration) - 0.001);
+        if (canTrim) meta += ' · <button class="vm-res-link" data-act="trim">recortar el video a este tramo</button>';
         if (an.restExcluded) meta += ' · <b>' + an.restExcluded + ' en reposo excluidos</b> (antes de soltar / después de frenar)';
         if (an.noisy) meta += ' · ' + an.noisy + ' descartado' + (an.noisy > 1 ? 's' : '') + ' por ruido';
         if (an.restExcluded || an.noisy) meta += ' · <button class="vm-res-link" data-act="all">usar todos los puntos</button>';
@@ -34910,6 +34968,16 @@ bluetooth.startIOPinService()</pre>
             body += '<div class="vm-res-kind">Movimiento general</div>';
             body += '<div>a<sub>x</sub> = ' + fmtPM(an.fx.a, an.fx.seA, uA) + ' &nbsp; a<sub>y</sub> = ' + fmtPM(an.fy.a, an.fy.seA, uA) + ' (modelo parabólico, R² ' + an.fy.r2.toFixed(3) + ')</div>';
         }
+        // Qué conviene medir en este experimento
+        var tip = {
+            'acel-const': 'Qué medir: a<sub>y</sub> frente a g = 9.81 (gráfica y(t) o v<sub>y</sub>(t)); en un tiro, además a<sub>x</sub> ≈ 0 y v<sub>x</sub> constante.',
+            'uniforme': 'Qué medir: la velocidad como pendiente de x(t) o y(t); comprobá que la aceleración sea ≈ 0.',
+            'oscilacion': 'Qué medir: el período T (no debería depender de la amplitud: probá con otra) y la amplitud; en un péndulo, T ≈ 2π√(L/g).',
+            'general': 'Qué medir: mirá v(t) y a(t) por tramos; si hay choques o cambios de régimen, recortá el video a un tramo y analizalo por separado.'
+        }[an.kind];
+        if (an.kind === 'uniforme') body += '<div>Aceleración: a<sub>x</sub> = ' + fmtPM(an.fx.a, an.fx.seA, uA) + ' &nbsp; a<sub>y</sub> = ' + fmtPM(an.fy.a, an.fy.seA, uA) + (Math.abs(an.fx.a) < 3 * an.fx.seA && Math.abs(an.fy.a) < 3 * an.fy.seA ? ' <span class="vm-res-ok">≈ 0 ✓</span>' : '') + '</div>';
+        if (an.kind === 'oscilacion' && isFinite(an.ampU)) body += '<div>Amplitud ≈ ' + fmtPM(an.ampU / 2, NaN, uL) + '</div>';
+        body += '<div class="vm-res-meta" style="color:#333;">' + tip + '</div>';
         if (an.nUsed < 8) body += '<div class="vm-res-meta" style="color:#c62828;">Pocos puntos: filmá más recorrido y con buena luz para afinar el resultado.</div>';
         box.innerHTML = h + body + '<div class="vm-res-meta">' + meta + '</div>';
         box.style.display = 'block';
@@ -35198,8 +35266,10 @@ bluetooth.startIOPinService()</pre>
             mm.classList.toggle('open');
             if (mm.classList.contains('open')) {
                 mm.style.left = ''; mm.style.right = '';
-                var rr = mm.getBoundingClientRect();
-                if (rr.right > window.innerWidth - 6) { mm.style.left = 'auto'; mm.style.right = '0'; }
+                if (getComputedStyle(mm).position !== 'fixed') {
+                    var rr = mm.getBoundingClientRect();
+                    if (rr.right > window.innerWidth - 6) { mm.style.left = 'auto'; mm.style.right = '0'; }
+                }
             }
         });
         document.addEventListener('click', function (e) {
@@ -35214,6 +35284,19 @@ bluetooth.startIOPinService()</pre>
         strip.addEventListener('pointermove', onStripMove);
         strip.addEventListener('pointerup', onStripUp);
         strip.addEventListener('pointercancel', onStripUp);
+        el('vm-tr-auto').addEventListener('click', async function () {
+            if (trimBusy || !hasVideo) return;
+            trimBusy = true;
+            var st = el('vm-tr-status');
+            try {
+                var rg = await suggestTrimRange();
+                if (!rg) { st.textContent = 'No encontré un tramo con movimiento claro: movete las manijas a mano.'; return; }
+                trimSelA = rg.a; trimSelB = rg.b;
+                drawStrip();
+                seekTo(rg.a);
+                st.innerHTML = 'Tramo sugerido: <b>' + fmtT(rg.a) + '–' + fmtT(rg.b) + ' s</b> (donde hay movimiento). Ajustá las manijas si querés y tocá <b>Aplicar</b>.';
+            } finally { trimBusy = false; refreshSteps(); }
+        });
         el('vm-tr-play').addEventListener('click', function () {
             if (!trimUi) return;
             if (playing) { pauseVideo(); return; }
@@ -35328,6 +35411,14 @@ bluetooth.startIOPinService()</pre>
         el('vm-result').addEventListener('click', function (e) {
             var b = e.target.closest('button[data-act]');
             if (!b) return;
+            if (b.dataset.act === 'trim') {
+                var anT = analyzeMotion(physSeries());
+                if (anT && applyTrim(anT.t0 - 2 * frameDt(), anT.t1 + 2 * frameDt())) {
+                    setGuide('Video recortado al tramo analizado (<b>' + fmtT(trimStart) + '–' + fmtT(trimEnd) + ' s</b>). Con <b>Recortar → Quitar</b> volvés al video completo.', true);
+                    recomputeAll();
+                }
+                return;
+            }
             useAllPoints = b.dataset.act === 'all';
             updateChart();
         });
