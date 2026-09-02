@@ -32207,6 +32207,7 @@ bluetooth.startIOPinService()</pre>
     var scaleLen = null;          // longitud real en metros del segmento de escala
     var origin = null;            // {u,v} origen de coordenadas (elegido por el usuario)
     var autoOrigin = null;        // origen automático: primer punto válido del movimiento
+    var padHintSeen = false, padHintTimer = null;   // ayuda del pad: efímera
     var chartType = 'y';
     var chart = null;
     var mbOn = false;
@@ -33298,7 +33299,14 @@ bluetooth.startIOPinService()</pre>
         var on = padMode && hasVideo && !trimUi;
         el('vm-place').style.display = on ? 'block' : 'none';
         el('vm-place').textContent = PLACE_LABEL[tool] || 'Marcar punto';
-        el('vm-pad-hint').style.display = on && points.length < 2 ? 'block' : 'none';
+        // La ayuda del pad no debe tapar el video: se muestra unos segundos
+        // al activarse (solo mientras no hay puntos) y se esconde al primer toque.
+        var hint = el('vm-pad-hint'), showHint = on && points.length < 2 && !padHintSeen;
+        hint.style.display = showHint ? 'block' : 'none';
+        if (showHint) {
+            clearTimeout(padHintTimer);
+            padHintTimer = setTimeout(function () { hint.style.display = 'none'; padHintSeen = true; }, 4500);
+        }
     }
 
     function setTool(t) {
@@ -35362,6 +35370,9 @@ bluetooth.startIOPinService()</pre>
         });
 
         // Guía: en celular se muestra recortada; tocarla la expande
+        el('vm-stage').addEventListener('pointerdown', function () {
+            if (!padHintSeen) { padHintSeen = true; el('vm-pad-hint').style.display = 'none'; }
+        }, { capture: true, passive: true });
         el('vm-guide').addEventListener('click', function (e) {
             if (e.target.closest('button')) return;
             this.classList.toggle('expanded');
