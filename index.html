@@ -31745,8 +31745,16 @@ bluetooth.startIOPinService()</pre>
         .vm-body { padding:6px 8px 8px; }
         /* Guía más compacta: en celular llegaba a ~90px de alto y empujaba
            el video abajo del fold */
-        .vm-guide { margin:6px 8px 0; padding:6px 10px; font-size:0.7rem; line-height:1.4; gap:8px; }
+        .vm-guide { margin:6px 8px 0; padding:6px 10px; font-size:0.7rem; line-height:1.4; gap:8px; cursor:pointer; }
         .vm-guide .vm-btn { padding:6px 8px; font-size:0.62rem; }
+        /* El cartel no puede tapar el video: en celular se ve recortado a
+           2 renglones y se expande al tocarlo */
+        .vm-guide:not(.expanded) #vm-guide-txt { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .vm-guide:not(.expanded)::after { content:'▾'; flex:0 0 auto; color:#666; font-size:0.8rem; }
+        .vm-guide.expanded::after { content:'▴'; flex:0 0 auto; color:#666; font-size:0.8rem; }
+        /* Botón de confirmar: pastilla chica abajo a la derecha, no una barra
+           que cruza el video */
+        .vm-place-btn { left:auto; right:10px; bottom:10px; padding:10px 14px; font-size:0.7rem; background:rgba(0,0,0,.78); }
         /* Pasos: compactos para que los 4 entren en 360-390px */
         .vm-steps { padding:5px 8px; gap:4px; }
         .vm-step { padding:4px 7px 4px 4px; font-size:0.62rem; letter-spacing:0; gap:5px; }
@@ -31773,7 +31781,7 @@ bluetooth.startIOPinService()</pre>
            subirlo arriba del botón, a lo ancho */
         .vm-pad-hint { bottom:76px; left:10px; right:10px; transform:none; max-width:none; }
         /* Botón de marcar bien tocable, a lo ancho del borde inferior */
-        .vm-place-btn { left:12px; right:12px; padding:13px 10px; }
+        .vm-place-btn { left:auto; right:10px; bottom:10px; padding:10px 14px; font-size:0.7rem; background:rgba(0,0,0,.78); }
         .vm-loupe { width:110px; height:110px; }
         /* Tabs y gráfica del panel de datos */
         .vm-tab { padding:9px 4px; font-size:0.62rem; letter-spacing:0; }
@@ -31992,6 +32000,7 @@ bluetooth.startIOPinService()</pre>
                                 <option value="vy">v_y (t) · velocidad vertical</option>
                                 <option value="vx">vₓ (t) · velocidad horizontal</option>
                                 <option value="v">Rapidez (t)</option>
+                                <option value="th">θ_v (t) · ángulo del vector velocidad</option>
                             </optgroup>
                             <optgroup label="Aceleración">
                                 <option value="ay">a_y (t) · aceleración vertical</option>
@@ -32052,7 +32061,7 @@ bluetooth.startIOPinService()</pre>
                     <div class="vm-stats" id="vm-stats"></div>
                     <div class="vm-table-wrap">
                         <table class="vm-table">
-                            <thead><tr><th>t (s)</th><th>x (m)</th><th>y (m)</th><th>vₓ (m/s)</th><th>v_y (m/s)</th><th>v (m/s)</th><th>aₓ (m/s²)</th><th>a_y (m/s²)</th><th>a (m/s²)</th><th></th></tr></thead>
+                            <thead><tr><th>t (s)</th><th>x (m)</th><th>y (m)</th><th>vₓ (m/s)</th><th>v_y (m/s)</th><th>v (m/s)</th><th title="Ángulo del vector velocidad respecto del eje x (90° arriba, −90° caída)">θ_v (°)</th><th>aₓ (m/s²)</th><th>a_y (m/s²)</th><th>a (m/s²)</th><th></th></tr></thead>
                             <tbody id="vm-tbody"></tbody>
                         </table>
                     </div>
@@ -32196,7 +32205,9 @@ bluetooth.startIOPinService()</pre>
     var points = [];              // [{t, u, v}] en píxeles intrínsecos del video, ordenados por t
     var scalePts = [];            // 0, 1 o 2 puntos {u,v} de la calibración
     var scaleLen = null;          // longitud real en metros del segmento de escala
-    var origin = null;            // {u,v} origen de coordenadas
+    var origin = null;            // {u,v} origen de coordenadas (elegido por el usuario)
+    var autoOrigin = null;        // origen automático: primer punto válido del movimiento
+    var padHintSeen = false, padHintTimer = null;   // ayuda del pad: efímera
     var chartType = 'y';
     var chart = null;
     var mbOn = false;
@@ -32670,7 +32681,7 @@ bluetooth.startIOPinService()</pre>
     /* ================= Coordenadas físicas ================= */
     function toPhysical(p) {
         var mpp = metersPerPixel();
-        var o = origin || (points.length ? points[0] : (scalePts.length ? scalePts[0] : { u: 0, v: video.videoHeight || 0 }));
+        var o = origin || autoOrigin || (points.length ? points[0] : (scalePts.length ? scalePts[0] : { u: 0, v: video.videoHeight || 0 }));
         var k = mpp || 1;
         return { x: (p.u - o.u) * k, y: (o.v - p.v) * k };
     }
@@ -32976,7 +32987,7 @@ bluetooth.startIOPinService()</pre>
         } else if (accY || accX) kind = 'acel-const';
         else if ((lx && lx.r2 > 0.98 && Math.abs(lx.m) > 0) || (ly && ly.r2 > 0.98)) kind = 'uniforme';
         return {
-            n: n, used: used, seg: seg, restExcluded: restExcluded, noisy: noisy, repDropped: repDropped, repKept: repKept,
+            n: n, used: used, seg: seg, restExcluded: restExcluded, noisy: noisy, repDropped: repDropped, repKept: repKept, vmax: vmax,
             nUsed: used.filter(Boolean).length, t0: tU[0], t1: tU[tU.length - 1],
             fx: fx, fy: fy, lx: lx, ly: ly, kind: kind, period: period,
             ampU: Math.max(Math.max.apply(null, xU) - Math.min.apply(null, xU), Math.max.apply(null, yU) - Math.min.apply(null, yU))
@@ -33052,6 +33063,12 @@ bluetooth.startIOPinService()</pre>
             out[e].ep = massKg * G * out[e].y;
             out[e].em = (isFinite(out[e].ec)) ? out[e].ec + out[e].ep : NaN;
         }
+        // Ángulo del vector velocidad respecto del eje +x (grados, −180..180):
+        // 90° = hacia arriba, −90° = caída, 0° = hacia +x.
+        for (var th = 0; th < n; th++) {
+            var o2 = out[th];
+            o2.th = (isFinite(o2.vx) && isFinite(o2.vy) && o2.v > 0) ? Math.atan2(o2.vy, o2.vx) * 180 / Math.PI : NaN;
+        }
         return out;
     }
 
@@ -33080,15 +33097,19 @@ bluetooth.startIOPinService()</pre>
             }
         }
 
-        // Origen y ejes
-        if (origin) {
-            var o = videoToCss(origin.u, origin.v);
+        // Origen y ejes (el automático, punteado)
+        var oShow = origin || autoOrigin;
+        if (oShow) {
+            var o = videoToCss(oShow.u, oShow.v);
+            octx.setLineDash(origin ? [] : [4, 3]);
             octx.strokeStyle = 'rgba(255,235,59,.85)'; octx.lineWidth = 1.4;
             octx.beginPath(); octx.moveTo(o.x - 28, o.y); octx.lineTo(o.x + 34, o.y); octx.stroke();
             octx.beginPath(); octx.moveTo(o.x, o.y + 28); octx.lineTo(o.x, o.y - 34); octx.stroke();
             octx.fillStyle = 'rgba(255,235,59,.95)'; octx.font = '700 11px sans-serif';
             octx.fillText('x', o.x + 37, o.y + 4);
             octx.fillText('y', o.x - 3, o.y - 38);
+            if (!origin) { octx.font = '600 9px sans-serif'; octx.fillText('origen auto', o.x + 6, o.y + 14); }
+            octx.setLineDash([]);
         }
 
         // Vectores de velocidad (estilo Tracker): flecha verde en cada punto
@@ -33117,6 +33138,12 @@ bluetooth.startIOPinService()</pre>
                     octx.lineTo(ex - 7 * Math.cos(ang - 0.42), ey - 7 * Math.sin(ang - 0.42));
                     octx.lineTo(ex - 7 * Math.cos(ang + 0.42), ey - 7 * Math.sin(ang + 0.42));
                     octx.closePath(); octx.fill();
+                    // ángulo del vector (grados) junto a la punta
+                    if (vlen >= 16 && isFinite(ser[s].th)) {
+                        octx.font = '700 10px sans-serif';
+                        octx.fillStyle = '#2e7d32';
+                        octx.fillText(Math.round(ser[s].th) + '°', ex + 8 * Math.cos(ang) + (Math.cos(ang) >= 0 ? 2 : -24), ey + 8 * Math.sin(ang) + 4);
+                    }
                 }
             }
         }
@@ -33189,7 +33216,8 @@ bluetooth.startIOPinService()</pre>
         badge.textContent = label;
         badge.style.display = 'block';
         // anclada al origen si existe (las líneas pasan por el (0,0))
-        var au = origin ? origin.u : 0, av = origin ? origin.v : 0;
+        var oG = origin || autoOrigin;
+        var au = oG ? oG.u : 0, av = oG ? oG.v : 0;
         var vw = video.videoWidth || 1, vh = video.videoHeight || 1;
         octx.save();
         octx.lineWidth = 1;
@@ -33271,7 +33299,14 @@ bluetooth.startIOPinService()</pre>
         var on = padMode && hasVideo && !trimUi;
         el('vm-place').style.display = on ? 'block' : 'none';
         el('vm-place').textContent = PLACE_LABEL[tool] || 'Marcar punto';
-        el('vm-pad-hint').style.display = on && points.length < 2 ? 'block' : 'none';
+        // La ayuda del pad no debe tapar el video: se muestra unos segundos
+        // al activarse (solo mientras no hay puntos) y se esconde al primer toque.
+        var hint = el('vm-pad-hint'), showHint = on && points.length < 2 && !padHintSeen;
+        hint.style.display = showHint ? 'block' : 'none';
+        if (showHint) {
+            clearTimeout(padHintTimer);
+            padHintTimer = setTimeout(function () { hint.style.display = 'none'; padHintSeen = true; }, 4500);
+        }
     }
 
     function setTool(t) {
@@ -34571,9 +34606,21 @@ bluetooth.startIOPinService()</pre>
 
     /* ================= Recalcular todo (tabla + gráfica) ================= */
     function recomputeAll() {
+        updateAutoOrigin();
         renderTable();
         updateChart();
         refreshSteps();
+    }
+
+    // Origen automático: si el usuario no fijó uno, el (0,0) va al primer
+    // punto válido del movimiento (el análisis descarta el reposo previo),
+    // así x e y arrancan en cero donde empieza lo que se estudia.
+    function updateAutoOrigin() {
+        if (origin || points.length < 4) { autoOrigin = points.length ? points[0] : null; return; }
+        var an = analyzeMotion(physSeries());   // la segmentación no depende del origen
+        var idx = 0;
+        if (an) { for (var i = 0; i < an.used.length; i++) if (an.used[i]) { idx = i; break; } }
+        autoOrigin = points[idx];
     }
 
     function fmtN(x) {
@@ -34590,7 +34637,7 @@ bluetooth.startIOPinService()</pre>
         for (var i = 0; i < ser.length; i++) {
             var d = ser[i];
             html += '<tr data-i="' + i + '"' + (d.rep ? ' class="rep" title="Cuadro que parece repetido por la cámara (misma imagen con otro tiempo): el análisis lo usa solo si es coherente con el movimiento"' : '') + '><td>' + fmtT(d.t) + (d.rep ? ' <span style="color:#999;">≡</span>' : '') + '</td><td>' + fmtN(d.x) + '</td><td>' + fmtN(d.y) +
-                '</td><td>' + fmtN(d.vx) + '</td><td>' + fmtN(d.vy) + '</td><td>' + fmtN(d.v) +
+                '</td><td>' + fmtN(d.vx) + '</td><td>' + fmtN(d.vy) + '</td><td>' + fmtN(d.v) + '</td><td>' + (isFinite(d.th) ? d.th.toFixed(1) : '–') +
                 '</td><td>' + fmtN(d.ax) + '</td><td>' + fmtN(d.ay) + '</td><td>' + fmtN(d.a) +
                 '</td><td><button class="vm-del" data-del="' + i + '" title="Borrar este punto">✕</button></td></tr>';
         }
@@ -34698,6 +34745,7 @@ bluetooth.startIOPinService()</pre>
         vx:   { label: 'vₓ (m/s)',     get: function (d) { return { x: d.t, y: d.vx }; }, xl: 'Tiempo (s)', yl: 'vₓ (m/s)' },
         vy:   { label: 'v_y (m/s)',    get: function (d) { return { x: d.t, y: d.vy }; }, xl: 'Tiempo (s)', yl: 'v_y (m/s)' },
         v:    { label: 'rapidez (m/s)',get: function (d) { return { x: d.t, y: d.v }; },  xl: 'Tiempo (s)', yl: 'v (m/s)' },
+        th:   { label: 'θ_v (°)',      get: function (d) { return { x: d.t, y: d.th }; }, xl: 'Tiempo (s)', yl: 'θ_v (°)' },
         ax:   { label: 'aₓ (m/s²)',    get: function (d) { return { x: d.t, y: d.ax }; }, xl: 'Tiempo (s)', yl: 'aₓ (m/s²)' },
         ay:   { label: 'a_y (m/s²)',   get: function (d) { return { x: d.t, y: d.ay }; }, xl: 'Tiempo (s)', yl: 'a_y (m/s²)' },
         a:    { label: '|a| (m/s²)',   get: function (d) { return { x: d.t, y: d.a }; },  xl: 'Tiempo (s)', yl: '|a| (m/s²)' },
@@ -34778,7 +34826,7 @@ bluetooth.startIOPinService()</pre>
         el('vm-mass-row').style.display = (chartType === 'energy') ? 'flex' : 'none';
         // La curva ideal aplica a posición y velocidad; en aceleración la
         // referencia ya es la recta del modelo, y en energías no tiene sentido.
-        el('vm-fit-chips').style.display = (chartType === 'energy' || chartType === 'ax' || chartType === 'ay' || chartType === 'a') ? 'none' : 'flex';
+        el('vm-fit-chips').style.display = (chartType === 'energy' || chartType === 'ax' || chartType === 'ay' || chartType === 'a' || chartType === 'th') ? 'none' : 'flex';
         if (chartType === 'energy') { updateEnergyChart(); return; }
         var def = CHART_DEFS[chartType];
         var ser = physSeries();
@@ -34989,6 +35037,7 @@ bluetooth.startIOPinService()</pre>
         var canTrim = hasVideo && (an.t0 - 2 * frameDt() > trimStart + 0.001 || an.t1 + 2 * frameDt() < (trimEnd || duration) - 0.001);
         if (canTrim) meta += ' · <button class="vm-res-link" data-act="trim">recortar el video a este tramo</button>';
         if (an.restExcluded) meta += ' · <b>' + an.restExcluded + ' en reposo excluidos</b> (antes de soltar / después de frenar)';
+        meta += origin ? ' · origen: el que fijaste' : ' · origen automático en el primer punto del movimiento (t = ' + fmtT(an.t0) + ' s; con ORIGEN podés fijar otro)';
         if (an.noisy) meta += ' · ' + an.noisy + ' descartado' + (an.noisy > 1 ? 's' : '') + ' por ruido';
         if (an.repDropped) meta += ' · <b>' + an.repDropped + '</b> cuadro' + (an.repDropped > 1 ? 's' : '') + ' repetido' + (an.repDropped > 1 ? 's' : '') + ' por la cámara apartado' + (an.repDropped > 1 ? 's' : '') + ' (misma imagen con otro tiempo)';
         if (an.restExcluded || an.noisy || an.repDropped) meta += ' · <button class="vm-res-link" data-act="all">usar todos los puntos</button>';
@@ -35012,7 +35061,12 @@ bluetooth.startIOPinService()</pre>
                 }
             }
             body += ' &nbsp; a<sub>x</sub> = ' + fmtPM(an.fx.a, an.fx.seA, uA) + '</div>';
-            body += '<div>v<sub>0y</sub> = ' + fmtPM(an.fy.v0, NaN, uV) + ' &nbsp; v<sub>0x</sub> = ' + fmtPM(an.fx.v0, NaN, uV) + ' &nbsp; R² = ' + an.fy.r2.toFixed(4) + '</div>';
+            body += '<div>v<sub>0y</sub> = ' + fmtPM(an.fy.v0, NaN, uV) + ' &nbsp; v<sub>0x</sub> = ' + fmtPM(an.fx.v0, NaN, uV);
+            // Ángulo de lanzamiento solo si hay componente horizontal real (tiro), no en una caída
+            if (an.vmax > 0 && Math.abs(an.fx.v0) > 0.25 * an.vmax) {
+                body += ' &nbsp; θ<sub>0</sub> = <span class="vm-res-val">' + (Math.atan2(an.fy.v0, an.fx.v0) * 180 / Math.PI).toFixed(1) + '°</span> (ángulo de v al inicio del tramo)';
+            }
+            body += ' &nbsp; R² = ' + an.fy.r2.toFixed(4) + '</div>';
         } else if (an.kind === 'uniforme') {
             body += '<div class="vm-res-kind">Movimiento rectilíneo uniforme</div>';
             body += '<div>v<sub>x</sub> = ' + fmtPM(an.lx ? an.lx.m : NaN, NaN, uV) + ' &nbsp; v<sub>y</sub> = ' + fmtPM(an.ly ? an.ly.m : NaN, NaN, uV) + '</div>';
@@ -35046,6 +35100,7 @@ bluetooth.startIOPinService()</pre>
         vx:  '<b>vₓ (t)</b> · velocidad horizontal. En MRU y en tiro oblicuo debería ser <b>constante</b>: nada empuja al objeto de costado.',
         vy:  '<b>v_y (t)</b> · velocidad vertical. Caída y tiro: <b>recta de pendiente −g ≈ −9.8</b> (probá <b>Curva ideal · Recta</b>); cruza cero en el punto más alto.',
         v:   '<b>Rapidez (t)</b> · módulo de la velocidad. Tiro oblicuo: baja hasta el punto más alto y vuelve a subir. Caída libre: crece linealmente.',
+        th:  '<b>θ_v (t)</b> · ángulo del vector velocidad respecto del eje x (0° hacia +x, 90° hacia arriba, −90° cayendo). Tiro: arranca en el ángulo de lanzamiento, pasa por 0° en el punto más alto y termina negativo. Caída libre: −90° constante. MRU: constante.',
         ax:  '<b>aₓ (t)</b> · aceleración horizontal. Caída y tiro: ≈ 0. La recta roja es la aceleración del modelo (parábola ajustada a x(t)).',
         ay:  '<b>a_y (t)</b> · aceleración vertical. Caída y tiro: ≈ <b>−9.8 m/s²</b> constante (línea gris). Los puntos son ruidosos por naturaleza: fijate en la <b>recta roja del modelo</b>.',
         a:   '<b>|a| (t)</b> · módulo de la aceleración. Caída y tiro: ≈ 9.8 m/s² (línea gris). La recta roja es el módulo de la aceleración del modelo.',
@@ -35080,11 +35135,11 @@ bluetooth.startIOPinService()</pre>
         var ser = physSeries();
         var noScale = !metersPerPixel();
         var u = noScale ? 'px' : 'm';
-        var lines = [['t (s)', 'x (' + u + ')', 'y (' + u + ')', 'vx (' + u + '/s)', 'vy (' + u + '/s)', 'v (' + u + '/s)',
+        var lines = [['t (s)', 'x (' + u + ')', 'y (' + u + ')', 'vx (' + u + '/s)', 'vy (' + u + '/s)', 'v (' + u + '/s)', 'theta_v (deg)',
                       'ax (' + u + '/s2)', 'ay (' + u + '/s2)', 'a (' + u + '/s2)', 'Ec (J)', 'Ep (J)', 'Em (J)'].join(sep)];
         for (var i = 0; i < ser.length; i++) {
             var d = ser[i];
-            lines.push([fmtT(d.t), num6(d.x), num6(d.y), num6(d.vx), num6(d.vy), num6(d.v), num6(d.ax), num6(d.ay), num6(d.a),
+            lines.push([fmtT(d.t), num6(d.x), num6(d.y), num6(d.vx), num6(d.vy), num6(d.v), num6(d.th), num6(d.ax), num6(d.ay), num6(d.a),
                         num6(d.ec), num6(d.ep), num6(d.em)].join(sep));
         }
         if (mbOn) {
@@ -35314,6 +35369,15 @@ bluetooth.startIOPinService()</pre>
             el('vm-tab-' + k).addEventListener('click', function () { switchTab(k); });
         });
 
+        // Guía: en celular se muestra recortada; tocarla la expande
+        el('vm-stage').addEventListener('pointerdown', function () {
+            if (!padHintSeen) { padHintSeen = true; el('vm-pad-hint').style.display = 'none'; }
+        }, { capture: true, passive: true });
+        el('vm-guide').addEventListener('click', function (e) {
+            if (e.target.closest('button')) return;
+            this.classList.toggle('expanded');
+        });
+
         // Menú "⋯ Más"
         el('vm-more-btn').addEventListener('click', function (e) {
             e.stopPropagation();
@@ -35363,6 +35427,9 @@ bluetooth.startIOPinService()</pre>
             var st = el('vm-tr-status');
             if (!applyTrim(trimSelA, trimSelB)) { st.textContent = 'El tramo es demasiado corto (menos de 3 cuadros).'; return; }
             st.textContent = 'Aplicado: se trabaja de ' + fmtT(trimStart) + ' s a ' + fmtT(trimEnd) + ' s.';
+            // Cerrar el editor: si queda abierto tapa el video en el celular
+            setGuide('Recorte aplicado: se trabaja de <b>' + fmtT(trimStart) + ' s</b> a <b>' + fmtT(trimEnd) + ' s</b>. Con <b>Recortar → Quitar</b> volvés al video completo.', true);
+            closeTrimUi();
             setGuide('Recorte aplicado: la línea de tiempo, el marcado y el AUTO trabajan solo entre <b>' + fmtT(trimStart) + ' s</b> y <b>' + fmtT(trimEnd) + ' s</b>. Cerrá el editor con ✕ y seguí con el análisis; lo quitás cuando quieras desde <b>RECORTAR</b>.', true);
             drawStrip();
         });
