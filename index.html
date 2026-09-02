@@ -31658,6 +31658,7 @@ bluetooth.startIOPinService()</pre>
     table.vm-table tr { cursor:pointer; }
     table.vm-table tr:hover td { background:#f5f5f5; }
     table.vm-table tr.cur td { background:#eee; font-weight:700; }
+    table.vm-table tr.rep td { color:#999; font-style:italic; }
     table.vm-table .vm-del { border:none; background:none; color:#bbb; font-size:0.78rem; cursor:pointer; padding:2px 6px; font-family:inherit; }
     table.vm-table .vm-del:hover { color:#c62828; }
     .vm-table-actions { display:flex; gap:8px; padding:10px 12px; border-top:1px solid #ccc; flex:0 0 auto; flex-wrap:wrap; }
@@ -32846,23 +32847,30 @@ bluetooth.startIOPinService()</pre>
             else if (Math.abs(dd) > 0.25 * rng) { reversals++; dir = -dir; ext = dom[rv]; }
         }
         var isOsc = reversals >= 3 && n >= 8;
+        // La segmentación trabaja sobre la subsecuencia de cuadros NO
+        // repetidos (un repetido tiene rapidez cero y partiría el tramo);
+        // los repetidos dentro del tramo se readmiten después si son coherentes.
+        var nr = [];
+        for (var q0 = 0; q0 < n; q0++) if (useAllPoints || !ser[q0].rep) nr.push(q0);
+        if (nr.length < 4) nr = ts.map(function (_, i) { return i; });
+        var nn = nr.length;
         // Rapidez de cada intervalo; tramos "en movimiento" (> 15 % de la máxima)
         var sp = [0];
-        for (var k = 1; k < n; k++) {
-            var dt = ts[k] - ts[k - 1];
-            sp.push(dt > 0 ? Math.hypot(xs[k] - xs[k - 1], ys[k] - ys[k - 1]) / dt : 0);
+        for (var k = 1; k < nn; k++) {
+            var ia = nr[k - 1], ib = nr[k], dt = ts[ib] - ts[ia];
+            sp.push(dt > 0 ? Math.hypot(xs[ib] - xs[ia], ys[ib] - ys[ia]) / dt : 0);
         }
         var vmax = Math.max.apply(null, sp);
         var movPt = [];
-        for (var m = 0; m < n; m++) {
-            var a1 = m > 0 ? sp[m] : 0, a2 = m < n - 1 ? sp[m + 1] : 0;
+        for (var m = 0; m < nn; m++) {
+            var a1 = m > 0 ? sp[m] : 0, a2 = m < nn - 1 ? sp[m + 1] : 0;
             movPt.push(Math.max(a1, a2) > 0.15 * vmax);
         }
         // Núcleo: el tramo en movimiento de mayor rapidez media (la caída, el
         // tiro), no el más largo (el temblor de la mano puede ser largo).
         var runs = [], start = -1;
-        for (var p = 0; p <= n; p++) {
-            var mv = p < n && movPt[p];
+        for (var p = 0; p <= nn; p++) {
+            var mv = p < nn && movPt[p];
             if (mv && start < 0) start = p;
             if (!mv && start >= 0) { runs.push({ i0: start, i1: p - 1 }); start = -1; }
         }
@@ -32874,42 +32882,41 @@ bluetooth.startIOPinService()</pre>
             r.mean = sm / Math.max(1, r.i1 - r.i0);
             if (!core || r.mean > core.mean) core = r;
         });
-        var used = movPt.map(function () { return true; }), seg = null, restExcluded = 0;
-        if (!useAllPoints && !isOsc && core && core.i1 - core.i0 + 1 < n) {
+        var used = ts.map(function (_, i) { return useAllPoints || !ser[i].rep; }), seg = null, restExcluded = 0;
+        if (!useAllPoints && !isOsc && core && core.i1 - core.i0 + 1 < nn) {
             // Extender el núcleo hacia ambos lados mientras la parábola siga
-            // ajustando: el punto donde el objeto todavía estaba quieto (o ya
-            // frenó) rompe el ajuste y frena la extensión.
-            var i0 = core.i0, i1 = core.i1;
-            while (i1 - i0 + 1 < 4 && (i0 > 0 || i1 < n - 1)) { if (i0 > 0) i0--; else i1++; }
+            // PREDICIENDO el punto siguiente: el punto donde el objeto todavía
+            // estaba quieto (o ya frenó) rompe la predicción y frena la extensión.
+            var j0 = core.i0, j1 = core.i1;   // índices en la subsecuencia
+            while (j1 - j0 + 1 < 4 && (j0 > 0 || j1 < nn - 1)) { if (j0 > 0) j0--; else j1++; }
             var fitSeg = function (a0, a1) {
-                var tt = ts.slice(a0, a1 + 1);
-                var fxx = quadFitSE(tt, xs.slice(a0, a1 + 1)), fyy = quadFitSE(tt, ys.slice(a0, a1 + 1));
+                var tt = [], xx2 = [], yy2 = [];
+                for (var w0 = a0; w0 <= a1; w0++) { tt.push(ts[nr[w0]]); xx2.push(xs[nr[w0]]); yy2.push(ys[nr[w0]]); }
+                var fxx = quadFitSE(tt, xx2), fyy = quadFitSE(tt, yy2);
                 if (!fxx || !fyy) return null;
                 var ss = 0;
                 for (var w = 0; w < tt.length; w++) ss += fxx.res[w] * fxx.res[w] + fyy.res[w] * fyy.res[w];
                 return { fx: fxx, fy: fyy, rms: Math.sqrt(ss / tt.length) };
             };
-            // Residuo de EXTRAPOLACIÓN del punto candidato respecto de la
-            // parábola ajustada sin él (re-ajustar con él absorbería un punto
-            // de reposo: 3 parámetros se acomodan a casi cualquier cosa).
             var predErr = function (fs, j) {
-                var T = ts[j] - fs.fx.tm, T2 = ts[j] - fs.fy.tm;
-                var ex = xs[j] - (fs.fx.c[0] + fs.fx.c[1] * T + fs.fx.c[2] * T * T);
-                var ey = ys[j] - (fs.fy.c[0] + fs.fy.c[1] * T2 + fs.fy.c[2] * T2 * T2);
+                var oi = nr[j], T = ts[oi] - fs.fx.tm, T2 = ts[oi] - fs.fy.tm;
+                var ex = xs[oi] - (fs.fx.c[0] + fs.fx.c[1] * T + fs.fx.c[2] * T * T);
+                var ey = ys[oi] - (fs.fy.c[0] + fs.fy.c[1] * T2 + fs.fy.c[2] * T2 * T2);
                 return Math.hypot(ex, ey);
             };
-            var cur = fitSeg(i0, i1);
+            var cur = fitSeg(j0, j1);
             var tol = cur ? Math.max(4 * cur.rms, 2.5 * mpp) : 0;   // piso: ~2.5 px de ruido de marcado
             var grew = !!cur;
             while (grew) {
                 grew = false;
-                if (i0 > 0 && predErr(cur, i0 - 1) <= tol) { i0--; grew = true; cur = fitSeg(i0, i1) || cur; }
-                if (i1 < n - 1 && predErr(cur, i1 + 1) <= tol) { i1++; grew = true; cur = fitSeg(i0, i1) || cur; }
+                if (j0 > 0 && predErr(cur, j0 - 1) <= tol) { j0--; grew = true; cur = fitSeg(j0, j1) || cur; }
+                if (j1 < nn - 1 && predErr(cur, j1 + 1) <= tol) { j1++; grew = true; cur = fitSeg(j0, j1) || cur; }
             }
-            if (i1 - i0 + 1 < n) {
+            if (j1 - j0 + 1 < nn) {
+                var i0 = nr[j0], i1 = nr[j1];
                 seg = { i0: i0, i1: i1 };
-                used = used.map(function (u, i) { return i >= i0 && i <= i1; });
-                restExcluded = n - (i1 - i0 + 1);
+                used = used.map(function (u, i) { return u && i >= i0 && i <= i1; });
+                restExcluded = nn - (j1 - j0 + 1);
             }
         }
         var tU = [], xU = [], yU = [], idxU = [];
@@ -32921,6 +32928,33 @@ bluetooth.startIOPinService()</pre>
         [fx, fy].forEach(function (f) {
             if (f.keep) for (var q = 0; q < f.keep.length; q++) if (!f.keep[q] && used[idxU[q]]) { used[idxU[q]] = false; noisy++; }
         });
+        // Cuadros marcados como repetidos dentro del tramo: se readmiten si
+        // son coherentes con la parábola (p. ej. un objeto que apenas se movía
+        // a 60 fps); se apartan solo los que la contradicen (verdaderos
+        // duplicados: misma posición con otro tiempo).
+        var repDropped = 0, repKept = 0;
+        (function () {
+            var cand = [];
+            for (var ri = 0; ri < n; ri++) if (ser[ri].rep && (!seg || (ri >= seg.i0 && ri <= seg.i1))) cand.push(ri);
+            if (!cand.length) return;
+            var ss = 0;
+            for (var rj = 0; rj < fx.res.length; rj++) ss += fx.res[rj] * fx.res[rj] + fy.res[rj] * fy.res[rj];
+            var tolR = Math.max(2.5 * Math.sqrt(ss / Math.max(1, fx.res.length)), 2 * mpp);
+            var re = [];
+            cand.forEach(function (ci) {
+                var Tx = ts[ci] - fx.tm, Ty = ts[ci] - fy.tm;
+                var ex = xs[ci] - (fx.c[0] + fx.c[1] * Tx + fx.c[2] * Tx * Tx);
+                var ey = ys[ci] - (fy.c[0] + fy.c[1] * Ty + fy.c[2] * Ty * Ty);
+                if (Math.hypot(ex, ey) <= tolR) re.push(ci); else repDropped++;
+            });
+            if (re.length) {
+                re.forEach(function (ci) { used[ci] = true; });
+                tU = []; xU = []; yU = []; idxU = [];
+                for (var u2 = 0; u2 < n; u2++) if (used[u2]) { tU.push(ts[u2]); xU.push(xs[u2]); yU.push(ys[u2]); idxU.push(u2); }
+                var fx2 = robustQuad(tU, xU), fy2 = robustQuad(tU, yU);
+                if (fx2 && fy2) { fx = fx2; fy = fy2; repKept = re.length; }
+            }
+        })();
         var lx = linFitR2(tU, xU), ly = linFitR2(tU, yU);
         // Tipo de movimiento
         var kind = 'general', period = NaN;
@@ -32942,7 +32976,7 @@ bluetooth.startIOPinService()</pre>
         } else if (accY || accX) kind = 'acel-const';
         else if ((lx && lx.r2 > 0.98 && Math.abs(lx.m) > 0) || (ly && ly.r2 > 0.98)) kind = 'uniforme';
         return {
-            n: n, used: used, seg: seg, restExcluded: restExcluded, noisy: noisy,
+            n: n, used: used, seg: seg, restExcluded: restExcluded, noisy: noisy, repDropped: repDropped, repKept: repKept,
             nUsed: used.filter(Boolean).length, t0: tU[0], t1: tU[tU.length - 1],
             fx: fx, fy: fy, lx: lx, ly: ly, kind: kind, period: period,
             ampU: Math.max(Math.max.apply(null, xU) - Math.min.apply(null, xU), Math.max.apply(null, yU) - Math.min.apply(null, yU))
@@ -32955,7 +32989,7 @@ bluetooth.startIOPinService()</pre>
         var TF = timeFactor();
         for (var i = 0; i < points.length; i++) {
             var ph = toPhysical(points[i]);
-            out.push({ t: points[i].t * TF, x: ph.x, y: ph.y, vx: NaN, vy: NaN, v: NaN, ax: NaN, ay: NaN, a: NaN });
+            out.push({ t: points[i].t * TF, x: ph.x, y: ph.y, vx: NaN, vy: NaN, v: NaN, ax: NaN, ay: NaN, a: NaN, rep: !!points[i].rep });
             xs.push(ph.x); ys.push(ph.y); ts.push(points[i].t * TF);
         }
         var n = out.length;
@@ -33783,11 +33817,13 @@ bluetooth.startIOPinService()</pre>
         return (spread < 30) ? { u: nu, v: nv } : null;
     }
 
-    function setPointAt(t, u, v) {
+    function setPointAt(t, u, v, repFlag) {
         var half = frameDt() / 2;
         var idx = points.findIndex(function (p) { return Math.abs(p.t - t) <= half; });
-        if (idx >= 0) points[idx] = { t: t, u: u, v: v };
-        else points.push({ t: t, u: u, v: v });
+        var pt = { t: t, u: u, v: v };
+        if (repFlag) pt.rep = true;   // cuadro sospechoso de repetido (misma imagen con otro tiempo)
+        if (idx >= 0) points[idx] = pt;
+        else points.push(pt);
         points.sort(function (a, b) { return a.t - b.t; });
     }
 
@@ -33840,7 +33876,7 @@ bluetooth.startIOPinService()</pre>
         var c0init = c0.slice(0);
         var tol2 = tol * tol;
         var f0 = curFrame(), f = f0;
-        var added = 1, waiting = false, lostAt = -1, cand = null, reacqBuf = null, prevData = null;
+        var added = 1, waiting = false, lostAt = -1, cand = null, reacqBuf = null, prevData = null, repCount = 0;
         var tEndTrack = trimEnd || duration;
         var totalF = Math.floor(tEndTrack / frameDt());
         setPointAt(frameTimeNow(), pos.u / sc, pos.v / sc);
@@ -33909,7 +33945,24 @@ bluetooth.startIOPinService()</pre>
                         dupCnt++;
                     }
                 }
-                if (dupCnt && dupSum / (dupCnt * 3) < 0.45) continue;
+                if (dupCnt && dupSum / (dupCnt * 3) < 0.45) {
+                    // ¿Todo el cuadro es igual al anterior? (un duplicado del
+                    // grabador repite la imagen entera; un objeto quieto con
+                    // el resto de la escena viva, no)
+                    var gSum = 0, gCnt = 0;
+                    for (var gi = 0; gi < data.length; gi += 16) { gSum += Math.abs(data[gi] - prevD[gi]) + Math.abs(data[gi + 1] - prevD[gi + 1]) + Math.abs(data[gi + 2] - prevD[gi + 2]); gCnt++; }
+                    var isRep = gCnt && gSum / (gCnt * 3) < 0.25;
+                    // NO se descarta nada: el punto se registra igual, con la
+                    // marca "rep" si parece repetido. El análisis lo usa si es
+                    // coherente con el movimiento y lo aparta solo si no lo es.
+                    var nearEdgeR = pos.u < 6 || pos.u > W - 6 || pos.v < 6 || pos.v > H - 6;
+                    if (!nearEdgeR && (f - f0) % markStep === 0 && !reacqBuf) {
+                        setPointAt(frameTimeNow(), pos.u / sc, pos.v / sc, isRep);
+                        added++;
+                        if (isRep) repCount++;
+                    }
+                    continue;   // la velocidad y la predicción no se tocan
+                }
             }
             vel = { u: 0.6 * vel.u + 0.4 * (res.u - pos.u) / kPred, v: 0.6 * vel.v + 0.4 * (res.v - pos.v) / kPred };
             pos = res;
@@ -33972,7 +34025,8 @@ bluetooth.startIOPinService()</pre>
         } else if (waiting) {
             setGuide('Se siguió el objeto hasta el cuadro <b>' + (lostAt - 1) + '</b> (' + added + ' puntos); después salió de escena y no volvió a aparecer. Podés completar a mano con <b>MARCAR</b>.', true);
         } else {
-            setGuide('Seguimiento completo: <b>' + added + ' puntos</b> registrados' + (lostAt >= 0 ? ' (con una pausa donde el objeto salió de escena)' : '') + '. Mirá <b>Gráficas</b> y <b>Tabla</b>.', true);
+            setGuide('Seguimiento completo: <b>' + added + ' puntos</b> registrados' + (lostAt >= 0 ? ' (con una pausa donde el objeto salió de escena)' : '') +
+                (repCount ? '. <b>' + repCount + '</b> cuadros parecen repetidos por la cámara (misma imagen con otro tiempo): están en la tabla en gris y el análisis los usa solo si son coherentes con el movimiento' : '') + '. Mirá <b>Gráficas</b> y <b>Tabla</b>.', true);
         }
     }
 
@@ -34535,7 +34589,7 @@ bluetooth.startIOPinService()</pre>
         var html = '';
         for (var i = 0; i < ser.length; i++) {
             var d = ser[i];
-            html += '<tr data-i="' + i + '"><td>' + fmtT(d.t) + '</td><td>' + fmtN(d.x) + '</td><td>' + fmtN(d.y) +
+            html += '<tr data-i="' + i + '"' + (d.rep ? ' class="rep" title="Cuadro que parece repetido por la cámara (misma imagen con otro tiempo): el análisis lo usa solo si es coherente con el movimiento"' : '') + '><td>' + fmtT(d.t) + (d.rep ? ' <span style="color:#999;">≡</span>' : '') + '</td><td>' + fmtN(d.x) + '</td><td>' + fmtN(d.y) +
                 '</td><td>' + fmtN(d.vx) + '</td><td>' + fmtN(d.vy) + '</td><td>' + fmtN(d.v) +
                 '</td><td>' + fmtN(d.ax) + '</td><td>' + fmtN(d.ay) + '</td><td>' + fmtN(d.a) +
                 '</td><td><button class="vm-del" data-del="' + i + '" title="Borrar este punto">✕</button></td></tr>';
@@ -34936,7 +34990,8 @@ bluetooth.startIOPinService()</pre>
         if (canTrim) meta += ' · <button class="vm-res-link" data-act="trim">recortar el video a este tramo</button>';
         if (an.restExcluded) meta += ' · <b>' + an.restExcluded + ' en reposo excluidos</b> (antes de soltar / después de frenar)';
         if (an.noisy) meta += ' · ' + an.noisy + ' descartado' + (an.noisy > 1 ? 's' : '') + ' por ruido';
-        if (an.restExcluded || an.noisy) meta += ' · <button class="vm-res-link" data-act="all">usar todos los puntos</button>';
+        if (an.repDropped) meta += ' · <b>' + an.repDropped + '</b> cuadro' + (an.repDropped > 1 ? 's' : '') + ' repetido' + (an.repDropped > 1 ? 's' : '') + ' por la cámara apartado' + (an.repDropped > 1 ? 's' : '') + ' (misma imagen con otro tiempo)';
+        if (an.restExcluded || an.noisy || an.repDropped) meta += ' · <button class="vm-res-link" data-act="all">usar todos los puntos</button>';
         else if (useAllPoints) meta += ' · <button class="vm-res-link" data-act="auto">volver al análisis automático</button>';
         var body = '';
         if (an.kind === 'acel-const') {
