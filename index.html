@@ -31954,6 +31954,23 @@ bluetooth.startIOPinService()</pre>
                         </select>
                         <span title="Cada cuántos cuadros se registra un punto">cuadros</span>
                     </div>
+                    <div class="vm-fps" id="vm-vec-row" style="display:none;">
+                        <span title="Tamaño de las flechas de velocidad sobre el video (para que no se superpongan)">Vectores</span>
+                        <select id="vm-vec-scale" title="Tamaño de las flechas">
+                            <option value="0.5">×0.5</option>
+                            <option value="0.75">×0.75</option>
+                            <option value="1" selected>×1</option>
+                            <option value="1.5">×1.5</option>
+                            <option value="2">×2</option>
+                            <option value="3">×3</option>
+                        </select>
+                        <select id="vm-vec-label" title="Qué escribir sobre cada flecha">
+                            <option value="none" selected>sin valor</option>
+                            <option value="v">|v|</option>
+                            <option value="th">ángulo</option>
+                            <option value="both">|v| y ángulo</option>
+                        </select>
+                    </div>
                     <div class="vm-fps">
                         <span title="Si filmaste en CÁMARA LENTA, elegí acá a cuántos cuadros por segundo FILMÓ la cámara (120 o 240): el tiempo del análisis se corrige solo. En un video normal dejalo en '= FPS'.">Filmado a</span>
                         <select id="vm-capfps" title="FPS reales de la filmación (cámara lenta)">
@@ -32177,6 +32194,26 @@ bluetooth.startIOPinService()</pre>
                 <input type="range" id="vm-ch-size" min="0.4" max="2" step="0.1" value="1" style="width:100%; accent-color:#000; margin-top:4px;">
             </label>
             <label class="vm-check" style="margin-top:8px;"><input type="checkbox" id="vm-ch-vec"><span>Dibujar los vectores de velocidad</span></label>
+            <div class="row" id="vm-ch-vecopts" style="gap:10px; flex-wrap:wrap; margin-top:6px;">
+                <label style="flex:1; min-width:120px; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Tamaño de los vectores
+                    <select id="vm-ch-vscale" style="width:100%; box-sizing:border-box; margin-top:3px; border:2px solid #000; padding:7px 6px; font-size:0.8rem; font-family:inherit; background:#fff;">
+                        <option value="0.5">×0.5</option>
+                        <option value="0.75">×0.75</option>
+                        <option value="1" selected>×1</option>
+                        <option value="1.5">×1.5</option>
+                        <option value="2">×2</option>
+                    </select>
+                </label>
+                <label style="flex:1; min-width:120px; font-size:0.66rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#666;">Valor sobre el vector
+                    <select id="vm-ch-vlabel" style="width:100%; box-sizing:border-box; margin-top:3px; border:2px solid #000; padding:7px 6px; font-size:0.8rem; font-family:inherit; background:#fff;">
+                        <option value="none" selected>ninguno</option>
+                        <option value="v">|v|</option>
+                        <option value="th">ángulo</option>
+                        <option value="both">|v| y ángulo</option>
+                    </select>
+                </label>
+            </div>
+            <label class="vm-check" style="margin-top:8px;"><input type="checkbox" id="vm-ch-band" checked><span>Banda informativa debajo: intervalo entre fotos, escala de referencia y tramo</span></label>
             <img id="vm-ch-prev" alt="Vista previa de la cronofotografía" style="display:none; width:100%; border:2px solid #000; margin-top:10px;">
             <p id="vm-ch-status" style="font-size:0.7rem; color:#555; margin-top:6px;">Todavía no hay vista previa.</p>
             <div class="btns">
@@ -32717,6 +32754,8 @@ bluetooth.startIOPinService()</pre>
     var stripDrag = null;         // arrastre en curso: 'a' | 'b' | 'scrub'
     var fitMode = 'none';         // 'none' | 'auto' | 'lin' | 'quad': curva ideal sobre la gráfica
     var showVectors = false;      // flechas de velocidad sobre el video
+    var vecScale = 1;             // tamaño relativo de las flechas (×)
+    var vecLabel = 'none';        // etiqueta sobre cada flecha: none | v | th | both
 
     // Ajuste y = c0 + c1·τ + c2·τ² (τ centrado en jc) sobre [j0, j1].
     // Devuelve {v: c1, a: 2·c2} o null si el sistema es degenerado.
@@ -33072,6 +33111,48 @@ bluetooth.startIOPinService()</pre>
         return out;
     }
 
+    // Texto de la etiqueta de un vector según la opción elegida
+    function vecLabelText(d, unitV) {
+        var parts = [];
+        if ((vecLabel === 'v' || vecLabel === 'both') && isFinite(d.v)) parts.push((d.v >= 10 ? d.v.toFixed(1) : d.v.toFixed(2)) + unitV);
+        if ((vecLabel === 'th' || vecLabel === 'both') && isFinite(d.th)) parts.push(Math.round(d.th) + '°');
+        return parts.join(' · ');
+    }
+    // Ubica una etiqueta cerca de la punta de la flecha probando 4 posiciones
+    // (adelante, a los costados, atrás) y la omite si todas pisan otra.
+    function placeVecLabel(ctx, txt, ex, ey, ang, placed, fontPx) {
+        ctx.font = '700 ' + fontPx + 'px sans-serif';
+        var w = ctx.measureText(txt).width + 6, h = fontPx + 4, gap = 9;
+        var cands = [
+            [ex + gap * Math.cos(ang), ey + gap * Math.sin(ang)],
+            [ex + gap * Math.cos(ang + Math.PI / 2), ey + gap * Math.sin(ang + Math.PI / 2)],
+            [ex + gap * Math.cos(ang - Math.PI / 2), ey + gap * Math.sin(ang - Math.PI / 2)],
+            [ex - (gap + 4) * Math.cos(ang), ey - (gap + 4) * Math.sin(ang)]
+        ];
+        for (var c = 0; c < cands.length; c++) {
+            var cx = cands[c][0], cy = cands[c][1];
+            // el rectángulo se apoya del lado hacia donde apunta el candidato
+            var dxs = cx - ex, dys = cy - ey;
+            var rx = dxs >= 0 ? cx : cx - w, ry = dys >= 0 ? cy : cy - h;
+            var ok = true;
+            for (var p = 0; p < placed.length; p++) {
+                var r = placed[p];
+                if (rx < r.x + r.w && rx + w > r.x && ry < r.y + r.h && ry + h > r.y) { ok = false; break; }
+            }
+            if (!ok) continue;
+            placed.push({ x: rx, y: ry, w: w, h: h });
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,.72)';
+            ctx.fillRect(rx, ry, w, h);
+            ctx.fillStyle = '#fff';
+            ctx.textBaseline = 'top';
+            ctx.fillText(txt, rx + 3, ry + 2);
+            ctx.restore();
+            return true;
+        }
+        return false;
+    }
+
     /* ================= Dibujo del overlay ================= */
     function drawOverlay() {
         if (!octx) return;
@@ -33120,7 +33201,9 @@ bluetooth.startIOPinService()</pre>
             if (maxV > 0) {
                 var mpp = metersPerPixel() || 1;
                 var cscale = contentRect().scale;
-                var arrowScale = 52 / (maxV / mpp * cscale);   // el vector más rápido mide 52 px
+                var arrowScale = 52 * vecScale / (maxV / mpp * cscale);   // el vector más rápido mide 52 px × tamaño
+                var placed = [];   // rectángulos de etiquetas ya dibujadas (evitar superposición)
+                var unitV = metersPerPixel() ? ' m/s' : ' px/s';
                 octx.strokeStyle = '#2e7d32'; octx.fillStyle = '#2e7d32'; octx.lineWidth = 1.6;
                 for (var s = 0; s < ser.length; s++) {
                     if (!isFinite(ser[s].vx) || !isFinite(ser[s].vy)) continue;
@@ -33138,11 +33221,10 @@ bluetooth.startIOPinService()</pre>
                     octx.lineTo(ex - 7 * Math.cos(ang - 0.42), ey - 7 * Math.sin(ang - 0.42));
                     octx.lineTo(ex - 7 * Math.cos(ang + 0.42), ey - 7 * Math.sin(ang + 0.42));
                     octx.closePath(); octx.fill();
-                    // ángulo del vector (grados) junto a la punta
-                    if (vlen >= 16 && isFinite(ser[s].th)) {
-                        octx.font = '700 10px sans-serif';
-                        octx.fillStyle = '#2e7d32';
-                        octx.fillText(Math.round(ser[s].th) + '°', ex + 8 * Math.cos(ang) + (Math.cos(ang) >= 0 ? 2 : -24), ey + 8 * Math.sin(ang) + 4);
+                    // etiqueta (|v| y/o ángulo) junto a la punta, sin pisar otras
+                    if (vecLabel !== 'none' && vlen >= 10) {
+                        var txt = vecLabelText(ser[s], unitV);
+                        if (txt) placeVecLabel(octx, txt, ex, ey, ang, placed, 10);
                     }
                 }
             }
@@ -33418,18 +33500,36 @@ bluetooth.startIOPinService()</pre>
     // Recorte 32x32 a resolución nativa alrededor del punto marcado, para
     // reconocer cuadros repetidos al marcar a mano.
     var fpCanvas = null, lastMarkFp = null;
+    // Huella del cuadro: recorte 32x32 alrededor del punto + miniatura del
+    // cuadro entero (64x36). Un cuadro repetido por la cámara coincide en
+    // AMBAS; marcar sobre un fondo liso en cuadros distintos solo en la primera.
     function markFingerprint(u, v) {
-        if (!fpCanvas) { fpCanvas = document.createElement('canvas'); fpCanvas.width = 32; fpCanvas.height = 32; }
+        var vw = video.videoWidth, vh = video.videoHeight;
+        if (!fpCanvas) fpCanvas = document.createElement('canvas');
+        if (fpCanvas.width !== vw || fpCanvas.height !== vh) { fpCanvas.width = vw; fpCanvas.height = vh; }
         var c = fpCanvas.getContext('2d', { willReadFrequently: true });
-        var x0 = clamp(Math.round(u) - 16, 0, Math.max(0, video.videoWidth - 32));
-        var y0 = clamp(Math.round(v) - 16, 0, Math.max(0, video.videoHeight - 32));
-        try { c.drawImage(video, x0, y0, 32, 32, 0, 0, 32, 32); return c.getImageData(0, 0, 32, 32).data; } catch (e) { return null; }
+        var x0 = clamp(Math.round(u) - 16, 0, Math.max(0, vw - 32));
+        var y0 = clamp(Math.round(v) - 16, 0, Math.max(0, vh - 32));
+        try {
+            c.drawImage(video, 0, 0, vw, vh);
+            return { crop: c.getImageData(x0, y0, 32, 32).data, glob: c.getImageData(0, 0, vw, vh).data, w: vw };
+        } catch (e) { return null; }
     }
     function sameCrop(a, b) {
-        if (!a || !b || a.length !== b.length) return false;
-        var s = 0;
-        for (var i = 0; i < a.length; i += 4) s += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
-        return s / (a.length * 0.75) < 0.45;
+        if (!a || !b || !a.glob || !b.glob || a.glob.length !== b.glob.length) return false;
+        var s2 = 0;
+        for (var i = 0; i < a.crop.length; i += 4) s2 += Math.abs(a.crop[i] - b.crop[i]) + Math.abs(a.crop[i + 1] - b.crop[i + 1]) + Math.abs(a.crop[i + 2] - b.crop[i + 2]);
+        if (s2 / (a.crop.length * 0.75) >= 0.45) return false;
+        // Cuadro entero a resolución nativa, muestreado cada 6 px: cuántos
+        // píxeles cambiaron de verdad. Un duplicado: casi ninguno. Un objeto
+        // chico que se movió: decenas, aunque el resto del cuadro esté quieto.
+        var changed = 0, step = 6 * 4, rowStride = a.w * 4;
+        for (var y = 0; y < a.glob.length; y += rowStride * 6) {
+            for (var x = y; x < Math.min(a.glob.length, y + rowStride); x += step) {
+                if ((Math.abs(a.glob[x] - b.glob[x]) + Math.abs(a.glob[x + 1] - b.glob[x + 1]) + Math.abs(a.glob[x + 2] - b.glob[x + 2])) / 3 > 25) { changed++; if (changed >= 6) return false; }
+            }
+        }
+        return true;
     }
 
     function reticleCss() {
@@ -34117,7 +34217,8 @@ bluetooth.startIOPinService()</pre>
         gFull.drawImage(pc, x0, y0);
     }
 
-    async function makeChrono(t0, t1, everyN, sizeF, withVectors) {
+    async function makeChrono(t0, t1, everyN, sizeF, withVectors, opts) {
+        opts = opts || {};
         if (chronoBusy || !hasVideo) return;
         var st = el('vm-ch-status');
         var half = frameDt() / 2;
@@ -34158,8 +34259,11 @@ bluetooth.startIOPinService()</pre>
                 var maxV = 0;
                 sel.forEach(function (si) { if (isFinite(ser[si].v) && ser[si].v > maxV) maxV = ser[si].v; });
                 if (maxV > 0) {
-                    var arrowScale = (vw * 0.14) / (maxV / mpp);
+                    var arrowScale = (vw * 0.14 * (opts.vscale || 1)) / (maxV / mpp);
                     var lw = Math.max(2, vw / 300);
+                    var placedC = [], fontC = Math.max(11, Math.round(vw / 60));
+                    var savedLabel = vecLabel; vecLabel = opts.vlabel || 'none';
+                    var unitC = metersPerPixel() ? ' m/s' : ' px/s';
                     sel.forEach(function (si) {
                         if (!isFinite(ser[si].vx) || !isFinite(ser[si].vy)) return;
                         var px = points[si].u, py = points[si].v;
@@ -34178,8 +34282,64 @@ bluetooth.startIOPinService()</pre>
                             g.lineTo(ex - hb * Math.cos(ang + 0.42), ey - hb * Math.sin(ang + 0.42));
                             g.closePath(); g.fill();
                         });
+                        if (vecLabel !== 'none') {
+                            var txtC = vecLabelText(ser[si], unitC);
+                            if (txtC) placeVecLabel(g, txtC, ex, ey, ang, placedC, fontC);
+                        }
                     });
+                    vecLabel = savedLabel;
                 }
+            }
+            // Banda informativa (no altera la foto): intervalo entre fotos,
+            // escala con línea de referencia y tramo analizado.
+            if (opts.band !== false) {
+                var bandH = Math.round(clamp(vh * 0.11, 54, 130));
+                var c2 = document.createElement('canvas');
+                c2.width = vw; c2.height = vh + bandH;
+                var g2 = c2.getContext('2d');
+                g2.drawImage(c, 0, 0);
+                g2.fillStyle = '#000'; g2.fillRect(0, vh, vw, bandH);
+                var fpx = Math.round(bandH * 0.26), pad = Math.round(bandH * 0.22);
+                var TF = timeFactor();
+                var dts = [];
+                for (var di = 1; di < sel.length; di++) dts.push((points[sel[di]].t - points[sel[di - 1]].t) * TF);
+                dts.sort(function (a, b) { return a - b; });
+                var dtMed = dts.length ? dts[dts.length >> 1] : 0;
+                var l1 = 'Cronofotografía · ' + sel.length + ' posiciones · una foto cada ' + fmtT(dtMed) + ' s' +
+                         (everyN > 1 ? ' (1 de cada ' + everyN + ' cuadros)' : '') + ' · ' + (fps || 30) + ' fps' +
+                         (captureFps && captureFps !== fps ? ' · filmado a ' + captureFps + ' fps (cámara lenta)' : '');
+                var l2 = 'Tramo ' + fmtT(points[sel[0]].t * TF) + ' – ' + fmtT(points[sel[sel.length - 1]].t * TF) + ' s' +
+                         (withVectors ? ' · flechas verdes: velocidad' + (opts.vlabel && opts.vlabel !== 'none' ? ' con su valor' : '') : '');
+                // Escala de referencia: barra blanca de longitud "linda" (o 100 px sin escala)
+                var mppB = metersPerPixel();
+                var barPx, barLabel;
+                if (mppB) {
+                    var nice = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10], L = nice[0];
+                    nice.forEach(function (n2) { if (n2 / mppB <= vw * 0.28) L = n2; });
+                    barPx = L / mppB; barLabel = (L >= 1 ? L + ' m' : (L * 100) + ' cm');
+                } else { barPx = 100; barLabel = '100 px (sin escala)'; }
+                var bx1 = vw - pad - barPx, by = vh + bandH * 0.5;
+                // Texto a la izquierda, en el ancho que deja la barra; la letra
+                // se achica lo necesario para que nada se pise.
+                var availW = bx1 - pad * 2;
+                var fitFont = function (txt, weight, px0) {
+                    var px = px0;
+                    while (px > 9) { g2.font = weight + ' ' + px + 'px sans-serif'; if (g2.measureText(txt).width <= availW) break; px -= 1; }
+                    return px;
+                };
+                g2.fillStyle = '#fff'; g2.textBaseline = 'middle';
+                fitFont(l1, '700', fpx);
+                g2.fillText(l1, pad, vh + bandH * 0.32);
+                fitFont(l2, '500', Math.round(fpx * 0.86));
+                g2.fillText(l2, pad, vh + bandH * 0.7);
+                g2.strokeStyle = '#fff'; g2.lineWidth = Math.max(2, bandH / 22); g2.lineCap = 'butt';
+                g2.beginPath(); g2.moveTo(bx1, by); g2.lineTo(bx1 + barPx, by); g2.stroke();
+                g2.beginPath(); g2.moveTo(bx1, by - bandH * 0.14); g2.lineTo(bx1, by + bandH * 0.14); g2.stroke();
+                g2.beginPath(); g2.moveTo(bx1 + barPx, by - bandH * 0.14); g2.lineTo(bx1 + barPx, by + bandH * 0.14); g2.stroke();
+                g2.font = '700 ' + Math.round(fpx * 0.9) + 'px sans-serif'; g2.textAlign = 'center';
+                g2.fillText(barLabel, bx1 + barPx / 2, by - bandH * 0.27);
+                g2.textAlign = 'left';
+                c = c2;
             }
             chronoUrl = c.toDataURL('image/png');
             var prev = el('vm-ch-prev');
@@ -35369,6 +35529,10 @@ bluetooth.startIOPinService()</pre>
             el('vm-tab-' + k).addEventListener('click', function () { switchTab(k); });
         });
 
+        // Vectores: tamaño y etiqueta
+        el('vm-vec-scale').addEventListener('change', function () { vecScale = parseFloat(this.value) || 1; drawOverlay(); });
+        el('vm-vec-label').addEventListener('change', function () { vecLabel = this.value; drawOverlay(); });
+
         // Guía: en celular se muestra recortada; tocarla la expande
         el('vm-stage').addEventListener('pointerdown', function () {
             if (!padHintSeen) { padHintSeen = true; el('vm-pad-hint').style.display = 'none'; }
@@ -35488,7 +35652,8 @@ bluetooth.startIOPinService()</pre>
         el('vm-ch-go').addEventListener('click', function () {
             var t0 = parseFloat(el('vm-ch-t0').value), t1 = parseFloat(el('vm-ch-t1').value);
             if (!isFinite(t0) || !isFinite(t1) || t1 <= t0) { el('vm-ch-t1').focus(); return; }
-            makeChrono(t0, t1, parseInt(el('vm-ch-step').value, 10) || 1, parseFloat(el('vm-ch-size').value) || 1, el('vm-ch-vec').checked);
+            makeChrono(t0, t1, parseInt(el('vm-ch-step').value, 10) || 1, parseFloat(el('vm-ch-size').value) || 1, el('vm-ch-vec').checked,
+                { vscale: parseFloat(el('vm-ch-vscale').value) || 1, vlabel: el('vm-ch-vlabel').value, band: el('vm-ch-band').checked });
         });
         el('vm-ch-dl').addEventListener('click', downloadChrono);
 
@@ -35500,6 +35665,7 @@ bluetooth.startIOPinService()</pre>
         el('vm-show-vectors').addEventListener('click', function () {
             showVectors = !showVectors;
             this.classList.toggle('active', showVectors);
+            el('vm-vec-row').style.display = showVectors ? '' : 'none';
             drawOverlay();
             refreshSteps();
         });
