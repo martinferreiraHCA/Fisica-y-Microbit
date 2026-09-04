@@ -8195,7 +8195,7 @@ basic.forever(function () {
         <li><strong>+ / − Zoom</strong> - Acerca o aleja la vista de la gráfica.</li>
         <li><strong>⊡ Encuadrar</strong> - Ajusta automáticamente la vista para mostrar todos los datos con un margen del 5%.</li>
         <li><strong>↻ Restablecer zoom</strong> - Vuelve al nivel de zoom original.</li>
-        <li><strong>✎ Anotar</strong> - Abre un editor aparte, a pantalla completa, para escribir y dibujar sobre la gráfica: textos, flechas, líneas, rectángulos, elipses, lápiz libre y resaltador. Las anotaciones quedan sobre la gráfica, se descargan con ella en el PNG, entran en el informe y se guardan con el proyecto.</li>
+        <li><strong>✎ Anotar</strong> - Abre un editor aparte, a pantalla completa, para escribir y dibujar sobre la gráfica: textos, flechas, líneas, rectángulos, elipses, lápiz libre y resaltador. Al elegir la herramienta de texto (o al seleccionar un texto ya escrito) aparecen las opciones de formato: tamaño, tipografía (sans / serif / mono), negrita, cursiva, subrayado, alineación y fondo (sin fondo, blanco, del color del texto o recuadrado). Las anotaciones quedan sobre la gráfica, se descargan con ella en el PNG, entran en el informe y se guardan con el proyecto.</li>
         <li><strong>💾 Guardar imagen</strong> - Guarda la gráfica como imagen PNG de alta resolución (con las anotaciones, si las hay).</li>
     </ul>
     <p><strong>Interacción:</strong> Puedes hacer clic en un punto de la gráfica para seleccionarlo o deseleccionarlo individualmente. Con la cámara activa, al seleccionar un punto se muestra el fotograma del video correspondiente a ese instante.</p>
@@ -8792,7 +8792,7 @@ bluetooth.startIOPinService()</pre>
         <li><strong>+ / − Zoom</strong> - Zooms in or out on the graph.</li>
         <li><strong>⊡ Fit to data</strong> - Automatically adjusts the view to show all data with a 5% margin.</li>
         <li><strong>↻ Reset zoom</strong> - Returns to the original zoom level.</li>
-        <li><strong>✎ Annotate</strong> - Opens a separate full-screen editor to write and draw over the graph: text, arrows, lines, rectangles, ellipses, freehand pen and highlighter. Annotations stay on the graph, are included in the PNG and in the report, and are saved with the project.</li>
+        <li><strong>✎ Annotate</strong> - Opens a separate full-screen editor to write and draw over the graph: text, arrows, lines, rectangles, ellipses, freehand pen and highlighter. Picking the text tool (or selecting a text already written) reveals the formatting options: size, typeface (sans / serif / mono), bold, italic, underline, alignment and backdrop (none, white, tinted with the text colour, or outlined). Annotations stay on the graph, are included in the PNG and in the report, and are saved with the project.</li>
         <li><strong>💾 Save image</strong> - Saves the graph as a high-resolution PNG image (annotations included).</li>
     </ul>
     <p><strong>Interaction:</strong> Click on a graph point to select or deselect it individually. With the camera active, selecting a point shows the corresponding video frame at that instant.</p>
@@ -9389,7 +9389,7 @@ bluetooth.startIOPinService()</pre>
         <li><strong>+ / − Zoom</strong> - Aproxima ou afasta a visualização do gráfico.</li>
         <li><strong>⊡ Enquadrar</strong> - Ajusta automaticamente a visualização para mostrar todos os dados com margem de 5%.</li>
         <li><strong>↻ Redefinir zoom</strong> - Volta ao nível de zoom original.</li>
-        <li><strong>✎ Anotar</strong> - Abre um editor à parte, em tela cheia, para escrever e desenhar sobre o gráfico: textos, setas, linhas, retângulos, elipses, lápis livre e marca-texto. As anotações ficam sobre o gráfico, saem no PNG, entram no relatório e são salvas com o projeto.</li>
+        <li><strong>✎ Anotar</strong> - Abre um editor à parte, em tela cheia, para escrever e desenhar sobre o gráfico: textos, setas, linhas, retângulos, elipses, lápis livre e marca-texto. Ao escolher a ferramenta de texto (ou ao selecionar um texto já escrito) aparecem as opções de formato: tamanho, tipografia (sans / serif / mono), negrito, itálico, sublinhado, alinhamento e fundo (sem fundo, branco, na cor do texto ou com moldura). As anotações ficam sobre o gráfico, saem no PNG, entram no relatório e são salvas com o projeto.</li>
         <li><strong>💾 Salvar imagem</strong> - Salva o gráfico como imagem PNG de alta resolução (com as anotações, se houver).</li>
     </ul>
     <p><strong>Interação:</strong> Clique em um ponto do gráfico para selecioná-lo ou desselecioná-lo individualmente. Com a câmera ativa, ao selecionar um ponto é exibido o quadro do vídeo correspondente àquele instante.</p>
@@ -35882,6 +35882,15 @@ bluetooth.startIOPinService()</pre>
     .gan-check { display:flex; align-items:center; gap:4px; font-size:0.6rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#333; cursor:pointer; white-space:nowrap; }
     .gan-check input { accent-color:#000; width:15px; height:15px; }
 
+    /* Formato de texto: negrita/cursiva/subrayado, alineación, tipografía y fondo */
+    .gan-fmt { width:28px; height:28px; font-size:0.85rem; }
+    .gan-fmt-b { font-family:Georgia, 'Times New Roman', serif; font-weight:800; }
+    .gan-fmt-i { font-family:Georgia, 'Times New Roman', serif; font-weight:700; font-style:italic; }
+    .gan-fmt-u { font-family:Georgia, 'Times New Roman', serif; font-weight:700; text-decoration:underline; }
+    .gan-fmt svg { width:15px; height:15px; display:block; fill:currentColor; }
+    .gan-select { border:2px solid #000; background:#fff; color:#000; font-family:inherit; font-size:0.6rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; padding:6px 4px; cursor:pointer; flex:0 0 auto; }
+    .gan-group.gan-off { display:none; }
+
     /* Lienzo */
     .gan-stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:12px; background:#e9e9e9; overflow:auto; }
     .gan-wrap { position:relative; background:#fff; box-shadow:0 2px 14px rgba(0,0,0,.22); line-height:0; }
@@ -35905,9 +35914,20 @@ bluetooth.startIOPinService()</pre>
     @media (max-width: 700px) {
         .gan-topbar { padding:6px 8px; gap:6px; }
         .gan-title small { display:none; }
-        .gan-toolbar { padding:6px 8px; gap:6px; }
+        /* En pantalla angosta la barra se parte en renglones: con las opciones
+           de formato, una sola fila con scroll lateral las dejaba escondidas. */
+        .gan-toolbar { padding:6px 8px; gap:5px; row-gap:6px; flex-wrap:wrap; overflow-x:visible; }
+        /* Cada grupo ocupa su propio renglón y parte adentro si hace falta: con
+           flex:0 0 auto el grupo conservaba su ancho máximo y el último control
+           quedaba cortado contra el borde. */
+        .gan-group { flex:1 1 100%; flex-wrap:wrap; row-gap:5px; }
         .gan-tool { width:30px; height:30px; font-size:0.86rem; }
+        .gan-fmt { width:26px; height:26px; font-size:0.78rem; }
+        .gan-fmt svg { width:13px; height:13px; }
+        .gan-select { font-size:0.55rem; padding:5px 2px; }
+        .gan-swatch { width:20px; height:20px; }
         .gan-range { width:64px; }
+        .gan-sep { display:none; }
         .gan-stage { padding:6px; }
         .gan-hint { font-size:0.6rem; padding:5px 8px; }
     }
@@ -35933,17 +35953,38 @@ bluetooth.startIOPinService()</pre>
             <div class="gan-group" id="ganColors"></div>
             <input type="color" class="gan-color-custom" id="ganColorCustom" value="#d32f2f" title="Otro color">
             <div class="gan-sep"></div>
-            <div class="gan-group">
+
+            <!-- Propiedades de figuras (línea, flecha, rectángulo, elipse, lápiz…) -->
+            <div class="gan-group" id="ganShapeProps">
                 <span class="gan-lbl" id="ganWidthLbl">Grosor</span>
                 <input type="range" class="gan-range" id="ganWidthRange" min="1" max="16" step="1" value="3">
+                <label class="gan-check" id="ganFillWrap"><input type="checkbox" id="ganFillChk"><span id="ganFillLbl">Relleno</span></label>
             </div>
-            <div class="gan-group">
+
+            <!-- Propiedades de texto: aparecen al elegir la herramienta T o al
+                 seleccionar un texto ya escrito. -->
+            <div class="gan-group gan-off" id="ganTextProps">
                 <span class="gan-lbl" id="ganFontLbl">Texto</span>
                 <input type="range" class="gan-range" id="ganFontRange" min="10" max="90" step="1" value="28">
+                <select class="gan-select" id="ganFamilySel">
+                    <option value="sans">SANS</option>
+                    <option value="serif">SERIF</option>
+                    <option value="mono">MONO</option>
+                </select>
+                <button class="gan-tool gan-fmt gan-fmt-b" type="button" id="ganBoldBtn">B</button>
+                <button class="gan-tool gan-fmt gan-fmt-i" type="button" id="ganItalicBtn">I</button>
+                <button class="gan-tool gan-fmt gan-fmt-u" type="button" id="ganUnderBtn">U</button>
+                <button class="gan-tool gan-fmt" type="button" id="ganAlignLBtn" data-align="left"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="2" width="14" height="2"/><rect x="1" y="7" width="9" height="2"/><rect x="1" y="12" width="12" height="2"/></svg></button>
+                <button class="gan-tool gan-fmt" type="button" id="ganAlignCBtn" data-align="center"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="2" width="14" height="2"/><rect x="4" y="7" width="8" height="2"/><rect x="2" y="12" width="12" height="2"/></svg></button>
+                <button class="gan-tool gan-fmt" type="button" id="ganAlignRBtn" data-align="right"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="2" width="14" height="2"/><rect x="6" y="7" width="9" height="2"/><rect x="3" y="12" width="12" height="2"/></svg></button>
+                <select class="gan-select" id="ganBoxSel">
+                    <option value="none">SIN FONDO</option>
+                    <option value="white">FONDO BLANCO</option>
+                    <option value="tint">FONDO COLOR</option>
+                    <option value="outline">RECUADRO</option>
+                </select>
             </div>
-            <div class="gan-sep"></div>
-            <label class="gan-check"><input type="checkbox" id="ganFillChk"><span id="ganFillLbl">Relleno</span></label>
-            <label class="gan-check"><input type="checkbox" id="ganBoxChk" checked><span id="ganBoxLbl">Fondo</span></label>
+
             <div class="gan-sep"></div>
             <button class="gan-btn" id="ganEditTextBtn" style="display:none;">EDITAR TEXTO</button>
             <button class="gan-btn danger" id="ganDelBtn" title="Borrar seleccionado">&#128465;</button>
@@ -35984,6 +36025,9 @@ bluetooth.startIOPinService()</pre>
             count: function (n) { return n === 1 ? '1 anotación' : n + ' anotaciones'; },
             askClear: '¿Borrar todas las anotaciones de esta gráfica?',
             noChart: 'Todavía no hay una gráfica para anotar.',
+            bold: 'Negrita', italic: 'Cursiva', underline: 'Subrayado',
+            family: 'Tipografía', alignL: 'Alinear a la izquierda', alignC: 'Centrar', alignR: 'Alinear a la derecha',
+            boxNone: 'Sin fondo', boxWhite: 'Fondo blanco', boxTint: 'Fondo color', boxOutline: 'Recuadro',
             cancel: 'Cancelar', askDiscard: '¿Salir sin guardar los cambios de las anotaciones?',
             saved: 'PNG descargado ✓', savedErr: 'No se pudo generar el PNG.'
         },
@@ -36000,6 +36044,9 @@ bluetooth.startIOPinService()</pre>
             count: function (n) { return n === 1 ? '1 annotation' : n + ' annotations'; },
             askClear: 'Delete every annotation on this graph?',
             noChart: 'There is no graph to annotate yet.',
+            bold: 'Bold', italic: 'Italic', underline: 'Underline',
+            family: 'Typeface', alignL: 'Align left', alignC: 'Center', alignR: 'Align right',
+            boxNone: 'No backdrop', boxWhite: 'White backdrop', boxTint: 'Tinted backdrop', boxOutline: 'Outlined',
             cancel: 'Cancel', askDiscard: 'Leave without saving the annotation changes?',
             saved: 'PNG downloaded ✓', savedErr: 'Could not build the PNG.'
         },
@@ -36016,6 +36063,9 @@ bluetooth.startIOPinService()</pre>
             count: function (n) { return n === 1 ? '1 anotação' : n + ' anotações'; },
             askClear: 'Apagar todas as anotações deste gráfico?',
             noChart: 'Ainda não há um gráfico para anotar.',
+            bold: 'Negrito', italic: 'Itálico', underline: 'Sublinhado',
+            family: 'Tipografia', alignL: 'Alinhar à esquerda', alignC: 'Centralizar', alignR: 'Alinhar à direita',
+            boxNone: 'Sem fundo', boxWhite: 'Fundo branco', boxTint: 'Fundo colorido', boxOutline: 'Moldura',
             cancel: 'Cancelar', askDiscard: 'Sair sem salvar as alterações das anotações?',
             saved: 'PNG baixado ✓', savedErr: 'Não foi possível gerar o PNG.'
         }
@@ -36033,6 +36083,14 @@ bluetooth.startIOPinService()</pre>
     // en pantalla, en el PNG a 2x y dentro del informe.
     var REF_W = 1000;
     var FONT_STACK = 'Arial, Helvetica, sans-serif';
+    // Tipografías elegibles para los textos. Son familias presentes en todos
+    // los sistemas, así el PNG y el informe se ven igual en cualquier máquina.
+    var FONT_FAMS = {
+        sans: 'Arial, Helvetica, sans-serif',
+        serif: "Georgia, 'Times New Roman', Times, serif",
+        mono: "'Courier New', Courier, monospace"
+    };
+    var BOX_MODES = ['none', 'white', 'tint', 'outline'];
     var PALETTE = ['#d32f2f', '#1565c0', '#2e7d32', '#ef6c00', '#6a1b9a', '#000000', '#ffffff'];
     var TOOLS = [
         { id: 'select', icon: '✥', key: 'tSelect' },
@@ -36055,7 +36113,10 @@ bluetooth.startIOPinService()</pre>
         chart: null,
         baseImg: null,       // Image con la foto de la gráfica
         cssW: 0, cssH: 0, dpr: 1,
-        tool: 'select', color: '#d32f2f', width: 3, fontSize: 28, fill: false, box: true,
+        tool: 'select', color: '#d32f2f', width: 3, fill: false,
+        // Formato de texto por defecto (lo que se aplica al escribir uno nuevo)
+        fontSize: 28, bold: true, italic: false, underline: false,
+        family: 'sans', align: 'left', boxMode: 'white',
         sel: null, drawing: null, drag: null,
         editing: null,
         undo: [], redo: [],
@@ -36094,7 +36155,19 @@ bluetooth.startIOPinService()</pre>
     // (0..1), así que la misma lista sirve para la gráfica en vivo, el editor y
     // cualquier exportación en alta resolución.
 
-    function annFont(a, S) { return '700 ' + (a.fontSize * S) + 'px ' + FONT_STACK; }
+    // Cadena de fuente para canvas y para el textarea de edición. El peso por
+    // defecto es negrita: sobre una gráfica, un texto fino no se lee.
+    function annFontCss(a, fp) {
+        return (a.italic ? 'italic ' : '') + (a.bold === false ? '400 ' : '700 ') +
+            fp + 'px ' + (FONT_FAMS[a.family] || FONT_FAMS.sans);
+    }
+    function annFont(a, S) { return annFontCss(a, Math.max(4, (a.fontSize || 28) * S)); }
+
+    // Los textos guardados antes del formato extendido sólo tenían box: true/false.
+    function boxModeOf(a) {
+        if (a.boxMode && BOX_MODES.indexOf(a.boxMode) >= 0) return a.boxMode;
+        return a.box ? 'white' : 'none';
+    }
 
     function textBox(ctx, a, W, H) {
         var S = W / REF_W;
@@ -36102,15 +36175,16 @@ bluetooth.startIOPinService()</pre>
         var lh = fp * 1.24;
         var lines = String(a.text == null ? '' : a.text).split('\n');
         ctx.save();
-        ctx.font = annFont({ fontSize: a.fontSize || 28 }, S);
-        var w = 0;
+        ctx.font = annFont(a, S);
+        var widths = [], w = 0;
         for (var i = 0; i < lines.length; i++) {
             var m = ctx.measureText(lines[i] || ' ').width;
+            widths.push(m);
             if (m > w) w = m;
         }
         ctx.restore();
-        var pad = fp * 0.22;
-        return { x: a.x * W, y: a.y * H, w: w, h: lines.length * lh, lh: lh, fp: fp, pad: pad, lines: lines };
+        var pad = fp * 0.26;
+        return { x: a.x * W, y: a.y * H, w: w, h: lines.length * lh, lh: lh, fp: fp, pad: pad, lines: lines, widths: widths };
     }
 
     function roundRect(ctx, x, y, w, h, r) {
@@ -36140,6 +36214,81 @@ bluetooth.startIOPinService()</pre>
         ctx.fill();
     }
 
+    // ---------- Trazo a mano alzada ----------
+    // Se dibuja con curvas cuadráticas que pasan por los puntos medios de cada
+    // par de muestras: es la técnica clásica para que un trazo hecho con el
+    // mouse o el dedo salga curvo y parejo en vez de una polilínea con
+    // esquinas. El primer y el último tramo se rematan contra los extremos
+    // reales para que el trazo empiece y termine exactamente donde el usuario.
+    function strokeFreehand(ctx, pts, W, H) {
+        var n = pts.length;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x * W, pts[0].y * H);
+        if (n === 2) {
+            ctx.lineTo(pts[1].x * W, pts[1].y * H);
+        } else {
+            for (var i = 1; i < n - 2; i++) {
+                var cx = pts[i].x * W, cy = pts[i].y * H;
+                var mx = (pts[i].x + pts[i + 1].x) / 2 * W;
+                var my = (pts[i].y + pts[i + 1].y) / 2 * H;
+                ctx.quadraticCurveTo(cx, cy, mx, my);
+            }
+            ctx.quadraticCurveTo(pts[n - 2].x * W, pts[n - 2].y * H, pts[n - 1].x * W, pts[n - 1].y * H);
+        }
+        ctx.stroke();
+    }
+
+    // Promedio móvil de 3: saca el temblor del pulso sin mover el trazo.
+    function smoothPts(pts) {
+        if (pts.length < 3) return pts;
+        var out = [pts[0]];
+        for (var i = 1; i < pts.length - 1; i++) {
+            out.push({
+                x: (pts[i - 1].x + 2 * pts[i].x + pts[i + 1].x) / 4,
+                y: (pts[i - 1].y + 2 * pts[i].y + pts[i + 1].y) / 4
+            });
+        }
+        out.push(pts[pts.length - 1]);
+        return out;
+    }
+
+    // Ramer-Douglas-Peucker iterativo (sin recursión: un trazo largo puede
+    // tener miles de muestras). Tira los puntos que no aportan forma, así el
+    // proyecto guardado no engorda y la curva queda más limpia.
+    function simplifyPts(pts, tolPx, W, H) {
+        var n = pts.length;
+        if (n < 3) return pts;
+        var px = new Array(n);
+        for (var i = 0; i < n; i++) px[i] = { x: pts[i].x * W, y: pts[i].y * H };
+        var keep = new Array(n);
+        keep[0] = keep[n - 1] = true;
+        var stack = [[0, n - 1]];
+        while (stack.length) {
+            var seg = stack.pop(), first = seg[0], last = seg[1];
+            var maxD = -1, idx = -1;
+            for (var j = first + 1; j < last; j++) {
+                var d = distToSeg(px[j].x, px[j].y, px[first].x, px[first].y, px[last].x, px[last].y);
+                if (d > maxD) { maxD = d; idx = j; }
+            }
+            if (maxD > tolPx && idx > 0) {
+                keep[idx] = true;
+                stack.push([first, idx]);
+                stack.push([idx, last]);
+            }
+        }
+        var out = [];
+        for (var k = 0; k < n; k++) if (keep[k]) out.push(pts[k]);
+        return out;
+    }
+
+    function pathLengthPx(pts, W, H) {
+        var d = 0;
+        for (var i = 1; i < pts.length; i++) {
+            d += Math.hypot((pts[i].x - pts[i - 1].x) * W, (pts[i].y - pts[i - 1].y) * H);
+        }
+        return d;
+    }
+
     function drawOne(ctx, a, W, H) {
         if (!a) return;
         var S = W / REF_W;
@@ -36155,19 +36304,41 @@ bluetooth.startIOPinService()</pre>
 
         if (a.type === 'text') {
             var tb = textBox(ctx, a, W, H);
-            if (a.box) {
-                ctx.fillStyle = 'rgba(255,255,255,0.88)';
+            var mode = boxModeOf(a);
+            if (mode !== 'none') {
                 roundRect(ctx, tb.x - tb.pad, tb.y - tb.pad, tb.w + tb.pad * 2, tb.h + tb.pad * 2, tb.pad);
-                ctx.fill();
-                ctx.strokeStyle = 'rgba(0,0,0,0.16)';
-                ctx.lineWidth = Math.max(0.6, S);
+                if (mode === 'tint') {
+                    ctx.globalAlpha = 0.16;
+                    ctx.fillStyle = a.color || '#d32f2f';
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                    ctx.strokeStyle = a.color || '#d32f2f';
+                    ctx.lineWidth = Math.max(0.8, S * 1.3);
+                } else {
+                    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                    ctx.fill();
+                    if (mode === 'outline') {
+                        ctx.strokeStyle = a.color || '#d32f2f';
+                        ctx.lineWidth = Math.max(1, S * 2.4);
+                    } else {
+                        ctx.strokeStyle = 'rgba(0,0,0,0.16)';
+                        ctx.lineWidth = Math.max(0.6, S);
+                    }
+                }
                 ctx.stroke();
             }
             ctx.fillStyle = a.color || '#d32f2f';
             ctx.font = annFont(a, S);
             ctx.textBaseline = 'top';
+            var align = a.align || 'left';
             for (var i = 0; i < tb.lines.length; i++) {
-                ctx.fillText(tb.lines[i], tb.x, tb.y + i * tb.lh + (tb.lh - tb.fp) / 2);
+                var slack = tb.w - tb.widths[i];
+                var offX = align === 'center' ? slack / 2 : (align === 'right' ? slack : 0);
+                var lineY = tb.y + i * tb.lh + (tb.lh - tb.fp) / 2;
+                ctx.fillText(tb.lines[i], tb.x + offX, lineY);
+                if (a.underline && tb.lines[i]) {
+                    ctx.fillRect(tb.x + offX, lineY + tb.fp * 1.04, tb.widths[i], Math.max(0.8, tb.fp * 0.07));
+                }
             }
         } else if (a.type === 'line' || a.type === 'arrow') {
             ctx.beginPath();
@@ -36190,11 +36361,14 @@ bluetooth.startIOPinService()</pre>
             var pts = a.points || [];
             if (pts.length) {
                 if (a.type === 'mark') { ctx.globalAlpha = 0.32; ctx.lineWidth = lw * 3.2; ctx.lineCap = 'square'; }
-                ctx.beginPath();
-                ctx.moveTo(pts[0].x * W, pts[0].y * H);
-                if (pts.length === 1) ctx.lineTo(pts[0].x * W + 0.01, pts[0].y * H);
-                for (var p = 1; p < pts.length; p++) ctx.lineTo(pts[p].x * W, pts[p].y * H);
-                ctx.stroke();
+                if (pts.length === 1) {
+                    // Un toque suelto: punto redondo del grosor del trazo.
+                    ctx.beginPath();
+                    ctx.arc(pts[0].x * W, pts[0].y * H, Math.max(0.4, ctx.lineWidth / 2), 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    strokeFreehand(ctx, pts, W, H);
+                }
                 ctx.globalAlpha = 1;
             }
         }
@@ -36401,6 +36575,14 @@ bluetooth.startIOPinService()</pre>
         render();
     }
 
+    // Dibujar como mucho una vez por cuadro: al trazar a mano llegan decenas de
+    // muestras por cuadro y repintar el fondo en cada una traba el lápiz.
+    var rafId = 0;
+    function renderSoon() {
+        if (rafId) return;
+        rafId = requestAnimationFrame(function () { rafId = 0; render(); });
+    }
+
     function render() {
         if (!A.open) return;
         var cv = $('ganCanvas'); if (!cv) return;
@@ -36568,7 +36750,9 @@ bluetooth.startIOPinService()</pre>
         var ta = $('ganTextIn');
         var fp = Math.max(8, a.fontSize * (A.cssW / REF_W));
         ta.style.display = 'block';
-        ta.style.font = '700 ' + fp + 'px ' + FONT_STACK;
+        ta.style.font = annFontCss(a, fp);
+        ta.style.textDecoration = a.underline ? 'underline' : 'none';
+        ta.style.textAlign = a.align || 'left';
         ta.style.color = a.color;
         ta.style.left = Math.round(a.x * A.cssW - 4) + 'px';
         ta.style.top = Math.round(a.y * A.cssH - 4) + 'px';
@@ -36580,7 +36764,7 @@ bluetooth.startIOPinService()</pre>
         var lines = ta.value.split('\n');
         var cv = $('ganCanvas'), ctx = cv.getContext('2d');
         ctx.save();
-        ctx.font = '700 ' + fp + 'px ' + FONT_STACK;
+        ctx.font = annFontCss(a, fp);
         var w = 0;
         for (var i = 0; i < lines.length; i++) w = Math.max(w, ctx.measureText(lines[i] || ' ').width);
         ctx.restore();
@@ -36656,6 +36840,8 @@ bluetooth.startIOPinService()</pre>
                 A.drag = { mode: 'move', lx: px, ly: py, moved: false };
                 e.target.setPointerCapture(e.pointerId);
                 pushToolbarFrom(a);
+            } else {
+                updateContext();
             }
             render();
             return;
@@ -36664,7 +36850,9 @@ bluetooth.startIOPinService()</pre>
         if (A.tool === 'text') {
             snap();
             var t = {
-                id: uid(), type: 'text', color: A.color, fontSize: A.fontSize, box: A.box,
+                id: uid(), type: 'text', color: A.color, fontSize: A.fontSize,
+                bold: A.bold, italic: A.italic, underline: A.underline,
+                family: A.family, align: A.align, boxMode: A.boxMode,
                 x: px / A.cssW, y: py / A.cssH, text: '', _new: true
             };
             A.anns.push(t);
@@ -36686,6 +36874,19 @@ bluetooth.startIOPinService()</pre>
         render();
     }
 
+    // Cada pointermove trae, en los navegadores modernos, todas las muestras que
+    // el sistema juntó desde el evento anterior. Usarlas da un trazo con la
+    // resolución real del dispositivo en vez de un punto por cuadro.
+    function samplesOf(e) {
+        try {
+            if (e.getCoalescedEvents) {
+                var list = e.getCoalescedEvents();
+                if (list && list.length) return list;
+            }
+        } catch (err) {}
+        return [e];
+    }
+
     function onMove(e) {
         if (!A.open) return;
         if (!A.drawing && !A.drag) return;
@@ -36694,10 +36895,18 @@ bluetooth.startIOPinService()</pre>
 
         if (A.drawing) {
             if (A.drawing.points) {
-                var last = A.drawing.points[A.drawing.points.length - 1];
-                if (Math.hypot((nx - last.x) * A.cssW, (ny - last.y) * A.cssH) > 1.5) {
-                    A.drawing.points.push({ x: nx, y: ny });
+                var pts = A.drawing.points;
+                var samples = samplesOf(e);
+                for (var si = 0; si < samples.length; si++) {
+                    var q = pos(samples[si]);
+                    var qx = q.px / A.cssW, qy = q.py / A.cssH;
+                    var last = pts[pts.length - 1];
+                    if (Math.hypot((qx - last.x) * A.cssW, (qy - last.y) * A.cssH) > 1) {
+                        pts.push({ x: qx, y: qy });
+                    }
                 }
+                renderSoon();
+                return;
             } else {
                 if (e.shiftKey && (A.drawing.type === 'line' || A.drawing.type === 'arrow')) {
                     // Shift: forzar horizontal / vertical / 45°
@@ -36708,7 +36917,7 @@ bluetooth.startIOPinService()</pre>
                 }
                 A.drawing.x2 = nx; A.drawing.y2 = ny;
             }
-            render();
+            renderSoon();
             return;
         }
 
@@ -36724,7 +36933,7 @@ bluetooth.startIOPinService()</pre>
                 else if (h === 'q1') { A.sel.x2 = nx; A.sel.y = ny; }
                 else if (h === 'q2') { A.sel.x = nx; A.sel.y2 = ny; }
             }
-            render();
+            renderSoon();
         }
     }
 
@@ -36739,11 +36948,20 @@ bluetooth.startIOPinService()</pre>
             var a = A.drawing;
             A.drawing = null;
             var tiny = false;
-            if (a.points) tiny = a.points.length < 2;
-            else tiny = Math.hypot((a.x2 - a.x) * A.cssW, (a.y2 - a.y) * A.cssH) < 6;
+            if (a.points) {
+                // Un trazo apenas insinuado no es un trazo: se descarta. Los
+                // demás se suavizan y se simplifican antes de guardarlos.
+                tiny = a.points.length < 2 || pathLengthPx(a.points, A.cssW, A.cssH) < 4;
+                if (!tiny) {
+                    var pts = smoothPts(a.points);
+                    a.points = simplifyPts(pts, 0.7, A.cssW, A.cssH);
+                }
+            } else {
+                tiny = Math.hypot((a.x2 - a.x) * A.cssW, (a.y2 - a.y) * A.cssH) < 6;
+            }
             if (tiny) {
-                var i = A.anns.indexOf(a);
-                if (i >= 0) A.anns.splice(i, 1);
+                var ti = A.anns.indexOf(a);
+                if (ti >= 0) A.anns.splice(ti, 1);
                 A.undo.pop(); // el trazo nunca existió: no ensuciar el historial
             } else {
                 A.sel = null;
@@ -36810,21 +37028,61 @@ bluetooth.startIOPinService()</pre>
             b.classList.toggle('active', b.getAttribute('data-tool') === id);
         });
         if (id !== 'select') A.sel = null;
+        updateContext();
         render();
+    }
+
+    // La barra muestra las opciones de lo que se está por dibujar o de lo que
+    // está seleccionado: con un texto elegido aparecen las de formato, con una
+    // figura las de trazo. Sin nada seleccionado valen las de figura, que son
+    // las que se aplicarán al próximo trazo.
+    function contextType() {
+        if (A.sel) return A.sel.type;
+        return A.tool === 'select' ? 'line' : A.tool;
+    }
+    function updateContext() {
+        var t = contextType();
+        var isText = (t === 'text');
+        $('ganTextProps').classList.toggle('gan-off', !isText);
+        $('ganShapeProps').classList.toggle('gan-off', isText);
+        // "Relleno" sólo tiene sentido en rectángulo y elipse.
+        $('ganFillWrap').style.display = (t === 'rect' || t === 'ellipse') ? '' : 'none';
+        markFormatButtons();
+    }
+
+    function markFormatButtons() {
+        $('ganBoldBtn').classList.toggle('active', A.bold !== false);
+        $('ganItalicBtn').classList.toggle('active', !!A.italic);
+        $('ganUnderBtn').classList.toggle('active', !!A.underline);
+        ['L', 'C', 'R'].forEach(function (k) {
+            var b = $('ganAlign' + k + 'Btn');
+            b.classList.toggle('active', b.getAttribute('data-align') === (A.align || 'left'));
+        });
+        $('ganFamilySel').value = A.family || 'sans';
+        $('ganBoxSel').value = A.boxMode || 'white';
     }
 
     // Al seleccionar una anotación, la barra refleja sus propiedades.
     function pushToolbarFrom(a) {
         if (a.color) { A.color = a.color; $('ganColorCustom').value = /^#[0-9a-f]{6}$/i.test(a.color) ? a.color : '#d32f2f'; }
         if (a.width) { A.width = a.width; $('ganWidthRange').value = a.width; }
-        if (a.fontSize) { A.fontSize = a.fontSize; $('ganFontRange').value = a.fontSize; }
-        if (a.type === 'text') $('ganBoxChk').checked = !!a.box;
-        else $('ganFillChk').checked = !!a.fill;
+        if (a.type === 'text') {
+            if (a.fontSize) { A.fontSize = a.fontSize; $('ganFontRange').value = a.fontSize; }
+            A.bold = a.bold !== false;
+            A.italic = !!a.italic;
+            A.underline = !!a.underline;
+            A.family = a.family || 'sans';
+            A.align = a.align || 'left';
+            A.boxMode = boxModeOf(a);
+        } else {
+            $('ganFillChk').checked = !!a.fill;
+        }
         markSwatches();
+        updateContext();
     }
 
     function markSwatches() {
-        Array.prototype.forEach.call($('ganColors').children, function (b) {
+        Array.prototype.forEach.call($('ganColors').querySelectorAll('.gan-swatch'), function (b) {
             b.classList.toggle('active', (b.getAttribute('data-color') || '').toLowerCase() === A.color.toLowerCase());
         });
     }
@@ -36832,7 +37090,7 @@ bluetooth.startIOPinService()</pre>
     // Cambiar una propiedad: aplica a la selección o queda como valor por defecto.
     function applyProp(fn) {
         if (A.sel) { snap(); fn(A.sel); }
-        if (A.editing) placeTextInput();
+        if (A.editing) { fn(A.editing); placeTextInput(); }
         render();
     }
 
@@ -36840,7 +37098,23 @@ bluetooth.startIOPinService()</pre>
         $('ganWidthLbl').textContent = T('width');
         $('ganFontLbl').textContent = T('textSize');
         $('ganFillLbl').textContent = T('fill');
-        $('ganBoxLbl').textContent = T('box');
+        $('ganBoldBtn').title = T('bold');
+        $('ganItalicBtn').title = T('italic');
+        $('ganUnderBtn').title = T('underline');
+        $('ganAlignLBtn').title = T('alignL');
+        $('ganAlignCBtn').title = T('alignC');
+        $('ganAlignRBtn').title = T('alignR');
+        $('ganFamilySel').title = T('family');
+        ['bold', 'italic', 'underline', 'alignL', 'alignC', 'alignR'].forEach(function (k, i) {
+            var ids = ['ganBoldBtn', 'ganItalicBtn', 'ganUnderBtn', 'ganAlignLBtn', 'ganAlignCBtn', 'ganAlignRBtn'];
+            $(ids[i]).setAttribute('aria-label', T(k));
+        });
+        var boxOpts = $('ganBoxSel').options;
+        boxOpts[0].textContent = T('boxNone');
+        boxOpts[1].textContent = T('boxWhite');
+        boxOpts[2].textContent = T('boxTint');
+        boxOpts[3].textContent = T('boxOutline');
+        $('ganBoxSel').title = T('box');
         $('ganClearBtn').textContent = T('clear');
         $('ganDoneBtn').textContent = T('done');
         $('ganPngBtn').textContent = T('png');
@@ -36855,6 +37129,7 @@ bluetooth.startIOPinService()</pre>
             var tl = b.getAttribute('data-tip-key');
             if (tl) { b.title = T(tl); b.setAttribute('aria-label', T(tl)); }
         });
+        markFormatButtons();
         setTool(A.tool);
     }
 
@@ -36888,6 +37163,7 @@ bluetooth.startIOPinService()</pre>
             });
             cols.appendChild(b);
         });
+        cols.appendChild($('ganColorCustom'));
     }
 
     // ================= EXPORTAR PNG =================
@@ -36963,9 +37239,34 @@ bluetooth.startIOPinService()</pre>
             A.fill = this.checked;
             applyProp(function (a) { if (a.type === 'rect' || a.type === 'ellipse') a.fill = A.fill; });
         });
-        $('ganBoxChk').addEventListener('change', function () {
-            A.box = this.checked;
-            applyProp(function (a) { if (a.type === 'text') a.box = A.box; });
+
+        // --- Formato de texto ---
+        function toggleTextProp(btn, prop) {
+            $(btn).addEventListener('click', function () {
+                A[prop] = !A[prop];
+                markFormatButtons();
+                applyProp(function (a) { if (a.type === 'text') a[prop] = A[prop]; });
+            });
+        }
+        toggleTextProp('ganBoldBtn', 'bold');
+        toggleTextProp('ganItalicBtn', 'italic');
+        toggleTextProp('ganUnderBtn', 'underline');
+
+        ['ganAlignLBtn', 'ganAlignCBtn', 'ganAlignRBtn'].forEach(function (id) {
+            $(id).addEventListener('click', function () {
+                A.align = this.getAttribute('data-align');
+                markFormatButtons();
+                applyProp(function (a) { if (a.type === 'text') a.align = A.align; });
+            });
+        });
+
+        $('ganFamilySel').addEventListener('change', function () {
+            A.family = this.value;
+            applyProp(function (a) { if (a.type === 'text') a.family = A.family; });
+        });
+        $('ganBoxSel').addEventListener('change', function () {
+            A.boxMode = this.value;
+            applyProp(function (a) { if (a.type === 'text') { a.boxMode = A.boxMode; delete a.box; } });
         });
 
         markButtons();
