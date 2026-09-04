@@ -5920,6 +5920,7 @@ basic.forever(function () {
             <div class="dlab-separator"></div>
             <button class="dlab-btn" id="dlabDiffBtn" onclick="dlabToggleDiffMode()">DIFERENCIA</button>
             <button class="dlab-btn" id="dlabResetZoomBtn" onclick="dlabResetZoom()">RESET ZOOM</button>
+            <button class="dlab-btn" id="dlabAnnotBtn" onclick="openDlabAnnotator()" title="Anotar la gráfica">&#9998; ANOTAR</button>
             <span class="dlab-status" id="dlabStatus">DESCONECTADO</span>
             <div class="dlab-separator"></div>
             <button class="dlab-btn" onclick="exitDesktopLabMode()">INICIO</button>
@@ -6656,6 +6657,7 @@ basic.forever(function () {
                 tipZoomOut: 'Alejar',
                 tipFit: 'Encuadrar datos',
                 tipResetZoom: 'Restablecer zoom',
+                tipAnnotate: 'Anotar: escribir y dibujar sobre la gráfica',
                 tipSave: 'Guardar como imagen',
                 showDropLinesLabel: 'Líneas punteadas a los ejes',
                 pillClickColor: 'Click para cambiar el color',
@@ -7044,6 +7046,7 @@ basic.forever(function () {
                 tipZoomOut: 'Zoom out',
                 tipFit: 'Fit all data',
                 tipResetZoom: 'Reset zoom',
+                tipAnnotate: 'Annotate: write and draw over the graph',
                 tipSave: 'Save as image',
                 showDropLinesLabel: 'Dashed projection lines to axes',
                 pillClickColor: 'Click to change color',
@@ -7432,6 +7435,7 @@ basic.forever(function () {
                 tipZoomOut: 'Afastar',
                 tipFit: 'Enquadrar dados',
                 tipResetZoom: 'Restaurar zoom',
+                tipAnnotate: 'Anotar: escrever e desenhar sobre o gráfico',
                 tipSave: 'Salvar como imagem',
                 showDropLinesLabel: 'Linhas pontilhadas aos eixos',
                 pillClickColor: 'Clique para mudar a cor',
@@ -8191,7 +8195,8 @@ basic.forever(function () {
         <li><strong>+ / − Zoom</strong> - Acerca o aleja la vista de la gráfica.</li>
         <li><strong>⊡ Encuadrar</strong> - Ajusta automáticamente la vista para mostrar todos los datos con un margen del 5%.</li>
         <li><strong>↻ Restablecer zoom</strong> - Vuelve al nivel de zoom original.</li>
-        <li><strong>💾 Guardar imagen</strong> - Guarda la gráfica como imagen PNG de alta resolución.</li>
+        <li><strong>✎ Anotar</strong> - Abre un editor aparte, a pantalla completa, para escribir y dibujar sobre la gráfica: textos, flechas, líneas, rectángulos, elipses, lápiz libre y resaltador. Las anotaciones quedan sobre la gráfica, se descargan con ella en el PNG, entran en el informe y se guardan con el proyecto.</li>
+        <li><strong>💾 Guardar imagen</strong> - Guarda la gráfica como imagen PNG de alta resolución (con las anotaciones, si las hay).</li>
     </ul>
     <p><strong>Interacción:</strong> Puedes hacer clic en un punto de la gráfica para seleccionarlo o deseleccionarlo individualmente. Con la cámara activa, al seleccionar un punto se muestra el fotograma del video correspondiente a ese instante.</p>
     <p><strong>Zoom con teclado:</strong> Mantén presionada la tecla <strong>Shift</strong> y arrastra para hacer zoom en un área específica. Arrastra sin Shift para desplazar (pan) la gráfica.</p>
@@ -8787,7 +8792,8 @@ bluetooth.startIOPinService()</pre>
         <li><strong>+ / − Zoom</strong> - Zooms in or out on the graph.</li>
         <li><strong>⊡ Fit to data</strong> - Automatically adjusts the view to show all data with a 5% margin.</li>
         <li><strong>↻ Reset zoom</strong> - Returns to the original zoom level.</li>
-        <li><strong>💾 Save image</strong> - Saves the graph as a high-resolution PNG image.</li>
+        <li><strong>✎ Annotate</strong> - Opens a separate full-screen editor to write and draw over the graph: text, arrows, lines, rectangles, ellipses, freehand pen and highlighter. Annotations stay on the graph, are included in the PNG and in the report, and are saved with the project.</li>
+        <li><strong>💾 Save image</strong> - Saves the graph as a high-resolution PNG image (annotations included).</li>
     </ul>
     <p><strong>Interaction:</strong> Click on a graph point to select or deselect it individually. With the camera active, selecting a point shows the corresponding video frame at that instant.</p>
     <p><strong>Keyboard zoom:</strong> Hold <strong>Shift</strong> and drag to zoom into a specific area. Drag without Shift to pan the graph.</p>
@@ -9383,7 +9389,8 @@ bluetooth.startIOPinService()</pre>
         <li><strong>+ / − Zoom</strong> - Aproxima ou afasta a visualização do gráfico.</li>
         <li><strong>⊡ Enquadrar</strong> - Ajusta automaticamente a visualização para mostrar todos os dados com margem de 5%.</li>
         <li><strong>↻ Redefinir zoom</strong> - Volta ao nível de zoom original.</li>
-        <li><strong>💾 Salvar imagem</strong> - Salva o gráfico como imagem PNG de alta resolução.</li>
+        <li><strong>✎ Anotar</strong> - Abre um editor à parte, em tela cheia, para escrever e desenhar sobre o gráfico: textos, setas, linhas, retângulos, elipses, lápis livre e marca-texto. As anotações ficam sobre o gráfico, saem no PNG, entram no relatório e são salvas com o projeto.</li>
+        <li><strong>💾 Salvar imagem</strong> - Salva o gráfico como imagem PNG de alta resolução (com as anotações, se houver).</li>
     </ul>
     <p><strong>Interação:</strong> Clique em um ponto do gráfico para selecioná-lo ou desselecioná-lo individualmente. Com a câmera ativa, ao selecionar um ponto é exibido o quadro do vídeo correspondente àquele instante.</p>
     <p><strong>Zoom com teclado:</strong> Mantenha pressionada a tecla <strong>Shift</strong> e arraste para ampliar uma área específica. Arraste sem Shift para deslocar (pan) o gráfico.</p>
@@ -11194,6 +11201,7 @@ bluetooth.startIOPinService()</pre>
                     <button onclick="zoomChart(${i}, 'out')" data-tip="${_escHtml(t.tipZoomOut || 'Alejar')}" aria-label="${_escHtml(t.tipZoomOut || 'Alejar')}">&minus;</button>
                     <button onclick="fitChartToData(${i})" data-tip="${_escHtml(t.tipFit || 'Encuadrar todos los datos')}" aria-label="${_escHtml(t.tipFit || 'Encuadrar todos los datos')}">⊡</button>
                     <button onclick="resetChartZoom(${i})" data-tip="${_escHtml(t.tipResetZoom || 'Restablecer zoom')}" aria-label="${_escHtml(t.tipResetZoom || 'Restablecer zoom')}">&#8634;</button>
+                    <button id="annotBtn${i}" onclick="openGraphAnnotator(${i})" data-tip="${_escHtml(t.tipAnnotate || 'Anotar la gráfica')}" aria-label="${_escHtml(t.tipAnnotate || 'Anotar la gráfica')}">&#9998;</button>
                     <button onclick="saveChartAsImage(${i})" data-tip="${_escHtml(t.tipSave || 'Guardar como imagen')}" aria-label="${_escHtml(t.tipSave || 'Guardar como imagen')}">&#128190;</button>
                 `;
 
@@ -11255,6 +11263,9 @@ bluetooth.startIOPinService()</pre>
                 }
                 updateDataTable();
             }
+
+            // Marcar en negro el botón ✎ de las gráficas que ya tienen anotaciones
+            if (typeof ganMarkButtons === 'function') ganMarkButtons();
         }
 
         // ========== PLUGIN CHART.JS: OVERLAY DE FRECUENCIA DE MUESTREO ==========
@@ -18113,6 +18124,9 @@ bluetooth.startIOPinService()</pre>
             chart.options.scales.y.title.display = true;
             chart.options.scales.x.title.text = (cfg.xLabel || '').toUpperCase();
             chart.options.scales.y.title.text = (cfg.yLabel || '').toUpperCase();
+            // Las anotaciones se apagan en el canvas y se redibujan más abajo a
+            // escala completa, para que el texto salga nítido y no duplicado.
+            if (typeof ganSuppressLive === 'function') ganSuppressLive(true);
             chart.update('none');
 
             try {
@@ -18135,6 +18149,12 @@ bluetooth.startIOPinService()</pre>
                 exportCtx.scale(scale, scale);
                 exportCtx.drawImage(originalCanvas, 0, 0);
 
+                // Anotaciones del editor (coordenadas normalizadas 0..1): se
+                // dibujan sobre la imagen ya escalada, así salen nítidas.
+                if (typeof ganDrawAnnotations === 'function') {
+                    ganDrawAnnotations(exportCtx, cfg.annotations, w, h);
+                }
+
                 // Descargar como PNG
                 const link = document.createElement('a');
                 link.download = `${graphTitle.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, '_')}.png`;
@@ -18142,6 +18162,7 @@ bluetooth.startIOPinService()</pre>
                 link.click();
             } finally {
                 // Restaurar estado para no duplicar títulos en pantalla
+                if (typeof ganSuppressLive === 'function') ganSuppressLive(false);
                 chart.options.scales.x.title.display = prevXDisp;
                 chart.options.scales.y.title.display = prevYDisp;
                 chart.options.scales.x.title.text = prevXText;
@@ -18863,6 +18884,12 @@ bluetooth.startIOPinService()</pre>
                     state.extraDataSets = [];
                     if (typeof _renderExtraDataSetsPanel === 'function') _renderExtraDataSetsPanel();
                 }
+                // Las anotaciones del editor describían estos datos: sin datos
+                // quedarían flotando sobre una gráfica vacía.
+                for (let gi = 0; gi < state.graphs.length; gi++) {
+                    if (state.graphs[gi]) state.graphs[gi].annotations = [];
+                }
+                if (typeof ganMarkButtons === 'function') ganMarkButtons();
                 updateDisplay();
             });
         });
@@ -25609,23 +25636,29 @@ bluetooth.startIOPinService()</pre>
             sc.x.title.display = true; sc.y.title.display = true;
             sc.x.title.text = (cfg.xLabel || '').toUpperCase();
             sc.y.title.text = (cfg.yLabel || '').toUpperCase();
-            chart.update('none');
           }
+          if (typeof ganSuppressLive === 'function') ganSuppressLive(true);
+          chart.update('none');
           var scale = 2, oc = chart.canvas;
           var ec = document.createElement('canvas');
           ec.width = oc.width * scale; ec.height = oc.height * scale;
           var ctx = ec.getContext('2d');
           ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, ec.width, ec.height);
           ctx.scale(scale, scale); ctx.drawImage(oc, 0, 0);
+          if (typeof ganDrawAnnotations === 'function') ganDrawAnnotations(ctx, cfg.annotations, oc.width, oc.height);
           return ec.toDataURL('image/png', 1.0);
         } catch (e) {
           try { return chart.toBase64Image ? chart.toBase64Image('image/png', 1) : null; } catch (e2) { return null; }
         } finally {
-          if (saved && sc) {
-            sc.x.title.display = saved.xd; sc.y.title.display = saved.yd;
-            sc.x.title.text = saved.xt; sc.y.title.text = saved.yt;
-            try { chart.update('none'); } catch (e3) {}
+          if (typeof ganSuppressLive === 'function') ganSuppressLive(false);
+          // Chart.js rehace chart.options en cada update(): hay que releerlo para
+          // que la restauración de los rótulos de eje surta efecto.
+          var sc2 = chart.options && chart.options.scales;
+          if (saved && sc2 && sc2.x && sc2.x.title && sc2.y && sc2.y.title) {
+            sc2.x.title.display = saved.xd; sc2.y.title.display = saved.yd;
+            sc2.x.title.text = saved.xt; sc2.y.title.text = saved.yt;
           }
+          try { chart.update('none'); } catch (e3) {}
         }
       }
 
@@ -35799,6 +35832,1176 @@ bluetooth.startIOPinService()</pre>
     }
     })();
     /* ===== ANÁLISIS DE VIDEO + MOVIMIENTO MODULE END ===== */
+    </script>
+
+
+    <!-- ============================================================
+         ANOTAR GRÁFICAS — editor de anotaciones
+         Después de armar una gráfica, se abre un editor aparte (a
+         pantalla completa) para escribirle encima: textos, flechas,
+         líneas, rectángulos, elipses, lápiz libre y resaltador.
+         Las anotaciones se guardan en state.graphs[i].annotations en
+         coordenadas normalizadas (0..1 del lienzo), así que viajan con
+         el proyecto (.fisicabit.json), se ven en vivo sobre la gráfica
+         y se incrustan en el PNG y en el informe.
+         Todo corre 100% en el navegador, sin librerías extra.
+         ============================================================ -->
+    <style id="gan-style">
+    .gan-panel { display:none; position:fixed; inset:0; z-index:9300; background:#fff; color:#000; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; flex-direction:column; overscroll-behavior:contain; }
+    .gan-panel.open { display:flex; }
+
+    .gan-topbar { display:flex; align-items:center; gap:8px; background:#fff; border-bottom:2px solid #000; padding:8px 12px; flex:0 0 auto; }
+    .gan-title { min-width:0; }
+    .gan-title h2 { font-size:0.85rem; font-weight:700; margin:0; letter-spacing:2px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .gan-title small { display:block; font-size:0.66rem; font-weight:600; color:#666; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .gan-top-spacer { flex:1; }
+
+    .gan-btn { background:#fff; border:2px solid #000; color:#000; font-size:clamp(0.62rem, 1.3vw, 0.74rem); font-weight:600; padding:6px 10px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s; text-transform:uppercase; }
+    .gan-btn:hover:not(:disabled) { background:#000; color:#fff; }
+    .gan-btn:disabled { opacity:.3; cursor:not-allowed; }
+    .gan-btn.primary { background:#000; color:#fff; }
+    .gan-btn.primary:hover:not(:disabled) { background:#333; }
+    .gan-btn.danger:hover:not(:disabled) { background:#c62828; border-color:#c62828; color:#fff; }
+
+    /* Barra de herramientas */
+    .gan-toolbar { display:flex; align-items:center; gap:8px; padding:7px 12px; border-bottom:1px solid #ccc; flex:0 0 auto; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; background:#fafafa; }
+    .gan-toolbar::-webkit-scrollbar { display:none; }
+    .gan-sep { width:1px; align-self:stretch; background:#ccc; flex:0 0 auto; margin:0 2px; }
+    .gan-group { display:flex; align-items:center; gap:4px; flex:0 0 auto; }
+    .gan-lbl { font-size:0.58rem; font-weight:700; letter-spacing:1px; color:#666; text-transform:uppercase; white-space:nowrap; }
+
+    .gan-tool { width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:#fff; border:2px solid #000; cursor:pointer; font-size:0.95rem; line-height:1; padding:0; flex:0 0 auto; transition:all .12s; }
+    .gan-tool:hover { background:#eee; }
+    .gan-tool.active { background:#000; color:#fff; }
+
+    .gan-swatch { width:22px; height:22px; border:2px solid #000; cursor:pointer; padding:0; flex:0 0 auto; }
+    .gan-swatch.active { outline:2px solid #000; outline-offset:2px; }
+    .gan-color-custom { width:30px; height:26px; border:2px solid #000; background:#fff; padding:1px; cursor:pointer; flex:0 0 auto; }
+
+    .gan-range { width:88px; flex:0 0 auto; accent-color:#000; }
+    .gan-check { display:flex; align-items:center; gap:4px; font-size:0.6rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#333; cursor:pointer; white-space:nowrap; }
+    .gan-check input { accent-color:#000; width:15px; height:15px; }
+
+    /* Lienzo */
+    .gan-stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:12px; background:#e9e9e9; overflow:auto; }
+    .gan-wrap { position:relative; background:#fff; box-shadow:0 2px 14px rgba(0,0,0,.22); line-height:0; }
+    .gan-wrap canvas { display:block; touch-action:none; cursor:crosshair; }
+    .gan-wrap.tool-select canvas { cursor:default; }
+    .gan-wrap.tool-text canvas { cursor:text; }
+
+    .gan-textin { position:absolute; display:none; margin:0; padding:2px 4px; border:2px dashed #000; background:rgba(255,255,255,.94); resize:none; overflow:hidden; outline:none; line-height:1.25; min-width:80px; white-space:pre; z-index:5; }
+
+    .gan-hint { flex:0 0 auto; border-top:1px solid #ccc; padding:6px 12px; font-size:0.66rem; color:#555; background:#fff; display:flex; align-items:center; gap:10px; }
+    .gan-hint b { color:#000; }
+    .gan-hint-text { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .gan-count { flex:0 0 auto; font-size:0.62rem; font-weight:700; letter-spacing:1px; color:#666; text-transform:uppercase; white-space:nowrap; }
+
+    .gan-toast { position:fixed; left:50%; bottom:26px; transform:translateX(-50%); background:#000; color:#fff; padding:9px 16px; font-size:0.74rem; font-weight:600; z-index:9400; opacity:0; pointer-events:none; transition:opacity .2s; }
+    .gan-toast.show { opacity:1; }
+
+    /* Botón de la barra de la gráfica cuando ya tiene anotaciones */
+    .graph-controls button.gan-has { background:#000; color:#fff; }
+
+    @media (max-width: 700px) {
+        .gan-topbar { padding:6px 8px; gap:6px; }
+        .gan-title small { display:none; }
+        .gan-toolbar { padding:6px 8px; gap:6px; }
+        .gan-tool { width:30px; height:30px; font-size:0.86rem; }
+        .gan-range { width:64px; }
+        .gan-stage { padding:6px; }
+        .gan-hint { font-size:0.6rem; padding:5px 8px; }
+    }
+    </style>
+
+    <div class="gan-panel" id="ganPanel" role="dialog" aria-modal="true" aria-labelledby="ganTitleTxt">
+        <div class="gan-topbar">
+            <div class="gan-title">
+                <h2 id="ganTitleTxt">ANOTAR GRÁFICA</h2>
+                <small id="ganSubTxt"></small>
+            </div>
+            <div class="gan-top-spacer"></div>
+            <button class="gan-btn" id="ganUndoBtn" title="Deshacer">&#8634;</button>
+            <button class="gan-btn" id="ganRedoBtn" title="Rehacer">&#8635;</button>
+            <button class="gan-btn" id="ganPngBtn">&#11015; PNG</button>
+            <button class="gan-btn" id="ganCancelBtn">&#10005;</button>
+            <button class="gan-btn primary" id="ganDoneBtn">LISTO</button>
+        </div>
+
+        <div class="gan-toolbar" id="ganToolbar">
+            <div class="gan-group" id="ganTools"></div>
+            <div class="gan-sep"></div>
+            <div class="gan-group" id="ganColors"></div>
+            <input type="color" class="gan-color-custom" id="ganColorCustom" value="#d32f2f" title="Otro color">
+            <div class="gan-sep"></div>
+            <div class="gan-group">
+                <span class="gan-lbl" id="ganWidthLbl">Grosor</span>
+                <input type="range" class="gan-range" id="ganWidthRange" min="1" max="16" step="1" value="3">
+            </div>
+            <div class="gan-group">
+                <span class="gan-lbl" id="ganFontLbl">Texto</span>
+                <input type="range" class="gan-range" id="ganFontRange" min="10" max="90" step="1" value="28">
+            </div>
+            <div class="gan-sep"></div>
+            <label class="gan-check"><input type="checkbox" id="ganFillChk"><span id="ganFillLbl">Relleno</span></label>
+            <label class="gan-check"><input type="checkbox" id="ganBoxChk" checked><span id="ganBoxLbl">Fondo</span></label>
+            <div class="gan-sep"></div>
+            <button class="gan-btn" id="ganEditTextBtn" style="display:none;">EDITAR TEXTO</button>
+            <button class="gan-btn danger" id="ganDelBtn" title="Borrar seleccionado">&#128465;</button>
+            <button class="gan-btn danger" id="ganClearBtn">LIMPIAR</button>
+        </div>
+
+        <div class="gan-stage" id="ganStage">
+            <div class="gan-wrap" id="ganWrap">
+                <canvas id="ganCanvas"></canvas>
+                <textarea class="gan-textin" id="ganTextIn" spellcheck="false" wrap="off" autocomplete="off"></textarea>
+            </div>
+        </div>
+
+        <div class="gan-hint">
+            <span class="gan-hint-text" id="ganHintText"></span>
+            <span class="gan-count" id="ganCount"></span>
+        </div>
+    </div>
+    <div class="gan-toast" id="ganToast"></div>
+
+    <script>
+    /* ===== ANOTAR GRÁFICAS MODULE START ===== */
+    (function () {
+    'use strict';
+
+    // ---------- i18n (mismo esquema que el resto del sitio: es / en / pt) ----------
+    var DICT = {
+        es: {
+            title: 'Anotar gráfica', done: 'Listo', png: '⬇ PNG', clear: 'Limpiar',
+            editText: 'Editar texto', width: 'Grosor', textSize: 'Texto',
+            fill: 'Relleno', box: 'Fondo', del: 'Borrar',
+            undo: 'Deshacer', redo: 'Rehacer', other: 'Otro color',
+            tSelect: 'Seleccionar y mover', tText: 'Texto', tArrow: 'Flecha', tLine: 'Línea',
+            tRect: 'Rectángulo', tEllipse: 'Elipse', tPen: 'Lápiz', tMark: 'Resaltador',
+            hintSelect: 'Arrastrá una anotación para moverla; tirá de los tiradores para redimensionar. Doble clic en un texto para editarlo. <b>Supr</b> borra la seleccionada.',
+            hintText: 'Tocá donde querés escribir. <b>Enter</b> confirma, <b>Shift+Enter</b> hace un renglón nuevo, <b>Esc</b> cancela.',
+            hintDraw: 'Arrastrá sobre la gráfica para dibujar. Después podés moverlo o redimensionarlo con la herramienta de selección.',
+            count: function (n) { return n === 1 ? '1 anotación' : n + ' anotaciones'; },
+            askClear: '¿Borrar todas las anotaciones de esta gráfica?',
+            noChart: 'Todavía no hay una gráfica para anotar.',
+            cancel: 'Cancelar', askDiscard: '¿Salir sin guardar los cambios de las anotaciones?',
+            saved: 'PNG descargado ✓', savedErr: 'No se pudo generar el PNG.'
+        },
+        en: {
+            title: 'Annotate graph', done: 'Done', png: '⬇ PNG', clear: 'Clear',
+            editText: 'Edit text', width: 'Width', textSize: 'Text',
+            fill: 'Fill', box: 'Backdrop', del: 'Delete',
+            undo: 'Undo', redo: 'Redo', other: 'Custom color',
+            tSelect: 'Select and move', tText: 'Text', tArrow: 'Arrow', tLine: 'Line',
+            tRect: 'Rectangle', tEllipse: 'Ellipse', tPen: 'Pen', tMark: 'Highlighter',
+            hintSelect: 'Drag an annotation to move it; drag the handles to resize. Double-click a text to edit it. <b>Del</b> removes the selected one.',
+            hintText: 'Tap where you want to write. <b>Enter</b> confirms, <b>Shift+Enter</b> adds a line, <b>Esc</b> cancels.',
+            hintDraw: 'Drag over the graph to draw. You can move or resize it later with the select tool.',
+            count: function (n) { return n === 1 ? '1 annotation' : n + ' annotations'; },
+            askClear: 'Delete every annotation on this graph?',
+            noChart: 'There is no graph to annotate yet.',
+            cancel: 'Cancel', askDiscard: 'Leave without saving the annotation changes?',
+            saved: 'PNG downloaded ✓', savedErr: 'Could not build the PNG.'
+        },
+        pt: {
+            title: 'Anotar gráfico', done: 'Pronto', png: '⬇ PNG', clear: 'Limpar',
+            editText: 'Editar texto', width: 'Espessura', textSize: 'Texto',
+            fill: 'Preenchim.', box: 'Fundo', del: 'Apagar',
+            undo: 'Desfazer', redo: 'Refazer', other: 'Outra cor',
+            tSelect: 'Selecionar e mover', tText: 'Texto', tArrow: 'Seta', tLine: 'Linha',
+            tRect: 'Retângulo', tEllipse: 'Elipse', tPen: 'Lápis', tMark: 'Marca-texto',
+            hintSelect: 'Arraste uma anotação para movê-la; puxe as alças para redimensionar. Duplo clique num texto para editá-lo. <b>Del</b> apaga a selecionada.',
+            hintText: 'Toque onde quer escrever. <b>Enter</b> confirma, <b>Shift+Enter</b> abre outra linha, <b>Esc</b> cancela.',
+            hintDraw: 'Arraste sobre o gráfico para desenhar. Depois dá para movê-lo ou redimensioná-lo com a ferramenta de seleção.',
+            count: function (n) { return n === 1 ? '1 anotação' : n + ' anotações'; },
+            askClear: 'Apagar todas as anotações deste gráfico?',
+            noChart: 'Ainda não há um gráfico para anotar.',
+            cancel: 'Cancelar', askDiscard: 'Sair sem salvar as alterações das anotações?',
+            saved: 'PNG baixado ✓', savedErr: 'Não foi possível gerar o PNG.'
+        }
+    };
+    function T(k) {
+        var lang = 'es';
+        try { if (typeof currentLanguage !== 'undefined' && DICT[currentLanguage]) lang = currentLanguage; } catch (e) {}
+        var d = DICT[lang] || DICT.es;
+        return (d[k] !== undefined) ? d[k] : (DICT.es[k] !== undefined ? DICT.es[k] : k);
+    }
+
+    // ---------- Constantes de dibujo ----------
+    // Los tamaños (grosor de trazo, cuerpo de letra) se guardan en unidades de
+    // un lienzo de referencia de 1000 px de ancho, así la anotación se ve igual
+    // en pantalla, en el PNG a 2x y dentro del informe.
+    var REF_W = 1000;
+    var FONT_STACK = 'Arial, Helvetica, sans-serif';
+    var PALETTE = ['#d32f2f', '#1565c0', '#2e7d32', '#ef6c00', '#6a1b9a', '#000000', '#ffffff'];
+    var TOOLS = [
+        { id: 'select', icon: '✥', key: 'tSelect' },
+        { id: 'text', icon: 'T', key: 'tText' },
+        { id: 'arrow', icon: '↗', key: 'tArrow' },
+        { id: 'line', icon: '╱', key: 'tLine' },
+        { id: 'rect', icon: '▭', key: 'tRect' },
+        { id: 'ellipse', icon: '◯', key: 'tEllipse' },
+        { id: 'pen', icon: '✎', key: 'tPen' },
+        { id: 'mark', icon: '▨', key: 'tMark' }
+    ];
+
+    // ---------- Estado del editor ----------
+    var A = {
+        open: false,
+        anns: [],            // copia de trabajo; se vuelca al store al confirmar
+        initial: '[]',       // estado al abrir, para poder descartar
+        set: null,           // volcado al store del destino
+        label: '',
+        chart: null,
+        baseImg: null,       // Image con la foto de la gráfica
+        cssW: 0, cssH: 0, dpr: 1,
+        tool: 'select', color: '#d32f2f', width: 3, fontSize: 28, fill: false, box: true,
+        sel: null, drawing: null, drag: null,
+        editing: null,
+        undo: [], redo: [],
+        suppressLive: false  // evita fotografiar la gráfica con sus propias anotaciones
+    };
+    var dlabAnns = [];       // store del modo LAB de escritorio
+
+    function $(id) { return document.getElementById(id); }
+    function clone(o) { return JSON.parse(JSON.stringify(o || [])); }
+    function uid() { return 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+    // El sitio tiene sus propios diálogos (uiConfirm, promesa); se usan si están,
+    // con el confirm del navegador como respaldo.
+    function askConfirm(msgKey, cb) {
+        var msg = T(msgKey);
+        try {
+            if (typeof uiConfirm === 'function') {
+                uiConfirm(msg).then(function (ok) { if (ok) cb(); });
+                return;
+            }
+        } catch (e) {}
+        if (window.confirm(msg)) cb();
+    }
+
+    var toastTimer = null;
+    function toast(msg) {
+        var el = $('ganToast'); if (!el) return;
+        el.textContent = msg; el.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2200);
+    }
+
+    // ================= DIBUJO DE ANOTACIONES =================
+    // Se dibuja en el sistema de coordenadas actual del contexto: (W, H) son el
+    // ancho y alto útiles en esas unidades. Las anotaciones están normalizadas
+    // (0..1), así que la misma lista sirve para la gráfica en vivo, el editor y
+    // cualquier exportación en alta resolución.
+
+    function annFont(a, S) { return '700 ' + (a.fontSize * S) + 'px ' + FONT_STACK; }
+
+    function textBox(ctx, a, W, H) {
+        var S = W / REF_W;
+        var fp = Math.max(4, (a.fontSize || 28) * S);
+        var lh = fp * 1.24;
+        var lines = String(a.text == null ? '' : a.text).split('\n');
+        ctx.save();
+        ctx.font = annFont({ fontSize: a.fontSize || 28 }, S);
+        var w = 0;
+        for (var i = 0; i < lines.length; i++) {
+            var m = ctx.measureText(lines[i] || ' ').width;
+            if (m > w) w = m;
+        }
+        ctx.restore();
+        var pad = fp * 0.22;
+        return { x: a.x * W, y: a.y * H, w: w, h: lines.length * lh, lh: lh, fp: fp, pad: pad, lines: lines };
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+        r = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+    }
+
+    function drawArrowHead(ctx, x1, y1, x2, y2, lw) {
+        var ang = Math.atan2(y2 - y1, x2 - x1);
+        var len = Math.max(lw * 3.4, lw * 2 + 6);
+        var spread = 0.42;
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - len * Math.cos(ang - spread), y2 - len * Math.sin(ang - spread));
+        ctx.lineTo(x2 - len * Math.cos(ang + spread), y2 - len * Math.sin(ang + spread));
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    function drawOne(ctx, a, W, H) {
+        if (!a) return;
+        var S = W / REF_W;
+        var lw = Math.max(0.6, (a.width || 3) * S);
+        var x1 = a.x * W, y1 = a.y * H, x2 = (a.x2 != null ? a.x2 : a.x) * W, y2 = (a.y2 != null ? a.y2 : a.y) * H;
+
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = a.color || '#d32f2f';
+        ctx.fillStyle = a.color || '#d32f2f';
+        ctx.lineWidth = lw;
+
+        if (a.type === 'text') {
+            var tb = textBox(ctx, a, W, H);
+            if (a.box) {
+                ctx.fillStyle = 'rgba(255,255,255,0.88)';
+                roundRect(ctx, tb.x - tb.pad, tb.y - tb.pad, tb.w + tb.pad * 2, tb.h + tb.pad * 2, tb.pad);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.16)';
+                ctx.lineWidth = Math.max(0.6, S);
+                ctx.stroke();
+            }
+            ctx.fillStyle = a.color || '#d32f2f';
+            ctx.font = annFont(a, S);
+            ctx.textBaseline = 'top';
+            for (var i = 0; i < tb.lines.length; i++) {
+                ctx.fillText(tb.lines[i], tb.x, tb.y + i * tb.lh + (tb.lh - tb.fp) / 2);
+            }
+        } else if (a.type === 'line' || a.type === 'arrow') {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            if (a.type === 'arrow') drawArrowHead(ctx, x1, y1, x2, y2, lw);
+        } else if (a.type === 'rect') {
+            var rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
+            if (a.fill) { ctx.globalAlpha = 0.18; ctx.fillRect(rx, ry, rw, rh); ctx.globalAlpha = 1; }
+            ctx.strokeRect(rx, ry, rw, rh);
+        } else if (a.type === 'ellipse') {
+            var cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+            var ra = Math.abs(x2 - x1) / 2, rb = Math.abs(y2 - y1) / 2;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, Math.max(ra, 0.5), Math.max(rb, 0.5), 0, 0, Math.PI * 2);
+            if (a.fill) { ctx.globalAlpha = 0.18; ctx.fill(); ctx.globalAlpha = 1; }
+            ctx.stroke();
+        } else if (a.type === 'pen' || a.type === 'mark') {
+            var pts = a.points || [];
+            if (pts.length) {
+                if (a.type === 'mark') { ctx.globalAlpha = 0.32; ctx.lineWidth = lw * 3.2; ctx.lineCap = 'square'; }
+                ctx.beginPath();
+                ctx.moveTo(pts[0].x * W, pts[0].y * H);
+                if (pts.length === 1) ctx.lineTo(pts[0].x * W + 0.01, pts[0].y * H);
+                for (var p = 1; p < pts.length; p++) ctx.lineTo(pts[p].x * W, pts[p].y * H);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+        }
+        ctx.restore();
+    }
+
+    // API pública: pintar una lista de anotaciones sobre cualquier contexto.
+    function drawAll(ctx, anns, W, H) {
+        if (!ctx || !anns || !anns.length || !W || !H) return;
+        for (var i = 0; i < anns.length; i++) {
+            try { drawOne(ctx, anns[i], W, H); } catch (e) {}
+        }
+    }
+    window.ganDrawAnnotations = drawAll;
+    // Las exportaciones apagan la capa en vivo y redibujan las anotaciones
+    // a resolución completa, para que no salgan duplicadas ni pixeladas.
+    window.ganSuppressLive = function (v) { A.suppressLive = !!v; };
+
+    // ================= STORES POR DESTINO =================
+    function graphStore(index) {
+        return {
+            label: (function () {
+                try {
+                    if (typeof computeGraphTitle === 'function') {
+                        var ct = computeGraphTitle(index);
+                        if (ct) return ct;
+                    }
+                    var c = state.graphs[index];
+                    return (c && c.title) || ('Gráfica ' + (index + 1));
+                } catch (e) { return 'Gráfica ' + (index + 1); }
+            })(),
+            get: function () {
+                try {
+                    if (!Array.isArray(state.graphs[index].annotations)) state.graphs[index].annotations = [];
+                    return state.graphs[index].annotations;
+                } catch (e) { return []; }
+            },
+            set: function (list) { try { state.graphs[index].annotations = list; } catch (e) {} }
+        };
+    }
+    function dlabStore(label) {
+        return {
+            label: label || 'LAB',
+            get: function () { return dlabAnns; },
+            set: function (list) { dlabAnns = list; }
+        };
+    }
+    // Anotaciones de una gráfica principal (para exportaciones externas).
+    window.ganAnnotationsFor = function (index) {
+        try {
+            var l = state.graphs[index] && state.graphs[index].annotations;
+            return Array.isArray(l) ? l : null;
+        } catch (e) { return null; }
+    };
+
+    // ================= PLUGIN: anotaciones sobre la gráfica en vivo =================
+    var livePlugin = {
+        id: 'ganAnnotations',
+        afterDraw: function (chart) {
+            if (A.suppressLive) return;
+            var list = null;
+            try {
+                if (typeof dlabChart !== 'undefined' && dlabChart === chart) list = dlabAnns;
+                else if (state && state.charts) {
+                    var i = state.charts.indexOf(chart);
+                    if (i >= 0 && state.graphs[i]) list = state.graphs[i].annotations;
+                }
+            } catch (e) { return; }
+            if (!list || !list.length) return;
+            drawAll(chart.ctx, list, chart.width, chart.height);
+        }
+    };
+    try { if (window.Chart && Chart.register) Chart.register(livePlugin); } catch (e) {}
+
+    // ================= FOTO DE LA GRÁFICA =================
+    // Mismo criterio que "Guardar como imagen": fondo blanco, rótulos de eje
+    // visibles (en pantalla son etiquetas HTML) y sin las anotaciones, que se
+    // dibujan aparte encima.
+    function snapshot(chart, cfg, scale) {
+        var saved = null, sc = null;
+        A.suppressLive = true;
+        try {
+            sc = chart.options && chart.options.scales;
+            if (cfg && sc && sc.x && sc.x.title && sc.y && sc.y.title) {
+                saved = { xd: sc.x.title.display, yd: sc.y.title.display, xt: sc.x.title.text, yt: sc.y.title.text };
+                sc.x.title.display = true; sc.y.title.display = true;
+                sc.x.title.text = String(cfg.xLabel || '').toUpperCase();
+                sc.y.title.text = String(cfg.yLabel || '').toUpperCase();
+            }
+            chart.update('none');
+            var oc = chart.canvas;
+            var ec = document.createElement('canvas');
+            ec.width = Math.max(1, oc.width * scale);
+            ec.height = Math.max(1, oc.height * scale);
+            var ctx = ec.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, ec.width, ec.height);
+            ctx.scale(scale, scale);
+            ctx.drawImage(oc, 0, 0);
+            return ec.toDataURL('image/png', 1.0);
+        } catch (e) {
+            return null;
+        } finally {
+            // OJO: Chart.js rehace chart.options en cada update(), así que hay que
+            // volver a leerlo; escribir sobre la referencia vieja no hace nada y
+            // los rótulos de eje quedarían encendidos en pantalla.
+            var sc2 = chart.options && chart.options.scales;
+            if (saved && sc2 && sc2.x && sc2.x.title && sc2.y && sc2.y.title) {
+                sc2.x.title.display = saved.xd; sc2.y.title.display = saved.yd;
+                sc2.x.title.text = saved.xt; sc2.y.title.text = saved.yt;
+            }
+            A.suppressLive = false;
+            try { chart.update('none'); } catch (e2) {}
+        }
+    }
+
+    // ================= APERTURA / CIERRE =================
+    function openFor(chart, cfg, store) {
+        if (!chart || !chart.canvas) { toast(T('noChart')); return; }
+        var url = snapshot(chart, cfg, 2);
+        if (!url) { toast(T('noChart')); return; }
+
+        A.chart = chart;
+        A.set = store.set;
+        A.anns = clone(store.get());
+        A.initial = JSON.stringify(A.anns);
+        A.label = store.label;
+        A.sel = null; A.drawing = null; A.drag = null;
+        A.undo = []; A.redo = [];
+
+        var img = new Image();
+        img.onload = function () {
+            A.baseImg = img;
+            A.open = true;
+            $('ganPanel').classList.add('open');
+            $('ganTitleTxt').textContent = T('title');
+            $('ganSubTxt').textContent = A.label;
+            syncToolbar();
+            layout();
+            document.addEventListener('keydown', onKey, true);
+            window.addEventListener('resize', layout);
+        };
+        img.onerror = function () { toast(T('noChart')); };
+        img.src = url;
+
+        try { if (typeof track === 'function') track('anotar_grafica', 'graficas'); } catch (e) {}
+    }
+
+    // Salir descartando lo hecho en esta sesión del editor (con confirmación
+    // sólo si de verdad cambió algo).
+    function cancel() {
+        if (!A.open) return;
+        commitText(true);
+        if (JSON.stringify(A.anns) === A.initial) { close(false); return; }
+        askConfirm('askDiscard', function () { close(false); });
+    }
+
+    function close(save) {
+        if (!A.open) return;
+        commitText(true);
+        if (save !== false && A.set) A.set(clone(A.anns));
+        A.open = false;
+        $('ganPanel').classList.remove('open');
+        document.removeEventListener('keydown', onKey, true);
+        window.removeEventListener('resize', layout);
+        A.baseImg = null;
+        // Refrescar la gráfica en vivo para que muestre las anotaciones nuevas.
+        try { if (A.chart) A.chart.update('none'); } catch (e) {}
+        markButtons();
+        A.chart = null;
+    }
+
+    // Marca en negro el botón ✏ de las gráficas que ya tienen anotaciones.
+    function markButtons() {
+        try {
+            for (var i = 0; i < 3; i++) {
+                var b = $('annotBtn' + i);
+                if (!b) continue;
+                var l = state.graphs[i] && state.graphs[i].annotations;
+                if (l && l.length) b.classList.add('gan-has'); else b.classList.remove('gan-has');
+            }
+        } catch (e) {}
+    }
+    window.ganMarkButtons = markButtons;
+
+    // ================= LAYOUT DEL LIENZO =================
+    function layout() {
+        if (!A.open || !A.baseImg) return;
+        var stage = $('ganStage'), wrap = $('ganWrap'), cv = $('ganCanvas');
+        var availW = Math.max(120, stage.clientWidth - 24);
+        var availH = Math.max(120, stage.clientHeight - 24);
+        var ar = A.baseImg.naturalWidth / A.baseImg.naturalHeight || 1.6;
+        var w = availW, h = w / ar;
+        if (h > availH) { h = availH; w = h * ar; }
+        A.cssW = Math.round(w); A.cssH = Math.round(h);
+        A.dpr = Math.min(window.devicePixelRatio || 1, 2);
+        wrap.style.width = A.cssW + 'px';
+        wrap.style.height = A.cssH + 'px';
+        cv.style.width = A.cssW + 'px';
+        cv.style.height = A.cssH + 'px';
+        cv.width = Math.round(A.cssW * A.dpr);
+        cv.height = Math.round(A.cssH * A.dpr);
+        if (A.editing) placeTextInput();
+        render();
+    }
+
+    function render() {
+        if (!A.open) return;
+        var cv = $('ganCanvas'); if (!cv) return;
+        var ctx = cv.getContext('2d');
+        ctx.setTransform(A.dpr, 0, 0, A.dpr, 0, 0);
+        ctx.clearRect(0, 0, A.cssW, A.cssH);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, A.cssW, A.cssH);
+        if (A.baseImg) ctx.drawImage(A.baseImg, 0, 0, A.cssW, A.cssH);
+        for (var i = 0; i < A.anns.length; i++) {
+            if (A.editing && A.anns[i] === A.editing) continue; // se está tipeando en el textarea
+            drawOne(ctx, A.anns[i], A.cssW, A.cssH);
+        }
+        if (A.sel) drawHandles(ctx, A.sel);
+        $('ganHintText').innerHTML = hintHtml();
+        $('ganCount').textContent = T('count')(A.anns.length);
+        $('ganUndoBtn').disabled = !A.undo.length;
+        $('ganRedoBtn').disabled = !A.redo.length;
+        $('ganDelBtn').disabled = !A.sel;
+        $('ganEditTextBtn').style.display = (A.sel && A.sel.type === 'text') ? '' : 'none';
+    }
+
+    function hintHtml() {
+        if (A.tool === 'select') return T('hintSelect');
+        if (A.tool === 'text') return T('hintText');
+        return T('hintDraw');
+    }
+
+    function handlesOf(a) {
+        var W = A.cssW, H = A.cssH, hs = [];
+        if (a.type === 'line' || a.type === 'arrow') {
+            hs.push({ id: 'p1', x: a.x * W, y: a.y * H });
+            hs.push({ id: 'p2', x: a.x2 * W, y: a.y2 * H });
+        } else if (a.type === 'rect' || a.type === 'ellipse') {
+            hs.push({ id: 'p1', x: a.x * W, y: a.y * H });
+            hs.push({ id: 'p2', x: a.x2 * W, y: a.y2 * H });
+            hs.push({ id: 'q1', x: a.x2 * W, y: a.y * H });
+            hs.push({ id: 'q2', x: a.x * W, y: a.y2 * H });
+        }
+        return hs;
+    }
+
+    function drawHandles(ctx, a) {
+        var b = boundsOf(a);
+        ctx.save();
+        ctx.setLineDash([5, 4]);
+        ctx.strokeStyle = '#0b57d0';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(b.x - 4, b.y - 4, b.w + 8, b.h + 8);
+        ctx.setLineDash([]);
+        var hs = handlesOf(a);
+        for (var i = 0; i < hs.length; i++) {
+            ctx.fillStyle = '#fff';
+            ctx.strokeStyle = '#0b57d0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.rect(hs[i].x - 5, hs[i].y - 5, 10, 10);
+            ctx.fill();
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    function boundsOf(a) {
+        var W = A.cssW, H = A.cssH;
+        if (a.type === 'text') {
+            var cv = $('ganCanvas'), ctx = cv.getContext('2d');
+            var tb = textBox(ctx, a, W, H);
+            return { x: tb.x - tb.pad, y: tb.y - tb.pad, w: tb.w + tb.pad * 2, h: tb.h + tb.pad * 2 };
+        }
+        if (a.type === 'pen' || a.type === 'mark') {
+            var xs = [], ys = [];
+            (a.points || []).forEach(function (p) { xs.push(p.x * W); ys.push(p.y * H); });
+            if (!xs.length) return { x: 0, y: 0, w: 0, h: 0 };
+            var mnx = Math.min.apply(null, xs), mxx = Math.max.apply(null, xs);
+            var mny = Math.min.apply(null, ys), mxy = Math.max.apply(null, ys);
+            return { x: mnx, y: mny, w: mxx - mnx, h: mxy - mny };
+        }
+        var x1 = a.x * W, y1 = a.y * H, x2 = a.x2 * W, y2 = a.y2 * H;
+        return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
+    }
+
+    // ================= HIT TESTING =================
+    function distToSeg(px, py, x1, y1, x2, y2) {
+        var dx = x2 - x1, dy = y2 - y1;
+        var l2 = dx * dx + dy * dy;
+        if (l2 === 0) return Math.hypot(px - x1, py - y1);
+        var t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2));
+        return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+    }
+
+    function hit(a, px, py) {
+        var W = A.cssW, H = A.cssH;
+        var tol = Math.max(7, (a.width || 3) * (W / REF_W) * 1.4);
+        if (a.type === 'text') {
+            var b = boundsOf(a);
+            return px >= b.x - 2 && px <= b.x + b.w + 2 && py >= b.y - 2 && py <= b.y + b.h + 2;
+        }
+        if (a.type === 'pen' || a.type === 'mark') {
+            var pts = a.points || [];
+            if (a.type === 'mark') tol *= 2.2;
+            for (var i = 1; i < pts.length; i++) {
+                if (distToSeg(px, py, pts[i - 1].x * W, pts[i - 1].y * H, pts[i].x * W, pts[i].y * H) <= tol) return true;
+            }
+            if (pts.length === 1) return Math.hypot(px - pts[0].x * W, py - pts[0].y * H) <= tol;
+            return false;
+        }
+        var x1 = a.x * W, y1 = a.y * H, x2 = a.x2 * W, y2 = a.y2 * H;
+        if (a.type === 'line' || a.type === 'arrow') return distToSeg(px, py, x1, y1, x2, y2) <= tol;
+        var rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
+        if (a.fill) return px >= rx - tol && px <= rx + rw + tol && py >= ry - tol && py <= ry + rh + tol;
+        if (a.type === 'rect') {
+            var insideOuter = px >= rx - tol && px <= rx + rw + tol && py >= ry - tol && py <= ry + rh + tol;
+            var insideInner = px >= rx + tol && px <= rx + rw - tol && py >= ry + tol && py <= ry + rh - tol;
+            return insideOuter && !insideInner;
+        }
+        // elipse: distancia al borde
+        var cx = rx + rw / 2, cy = ry + rh / 2, ra = Math.max(rw / 2, 1), rb = Math.max(rh / 2, 1);
+        var d = Math.abs(Math.hypot((px - cx) / ra, (py - cy) / rb) - 1);
+        return d * Math.min(ra, rb) <= tol;
+    }
+
+    function pick(px, py) {
+        for (var i = A.anns.length - 1; i >= 0; i--) {
+            if (hit(A.anns[i], px, py)) return A.anns[i];
+        }
+        return null;
+    }
+
+    function pickHandle(px, py) {
+        if (!A.sel) return null;
+        var hs = handlesOf(A.sel);
+        for (var i = 0; i < hs.length; i++) {
+            if (Math.abs(px - hs[i].x) <= 9 && Math.abs(py - hs[i].y) <= 9) return hs[i].id;
+        }
+        return null;
+    }
+
+    // ================= UNDO / REDO =================
+    function snap() {
+        A.undo.push(clone(A.anns));
+        if (A.undo.length > 60) A.undo.shift();
+        A.redo.length = 0;
+    }
+    function undo() {
+        if (!A.undo.length) return;
+        commitText(true);
+        A.redo.push(clone(A.anns));
+        A.anns = A.undo.pop();
+        A.sel = null;
+        render();
+    }
+    function redo() {
+        if (!A.redo.length) return;
+        commitText(true);
+        A.undo.push(clone(A.anns));
+        A.anns = A.redo.pop();
+        A.sel = null;
+        render();
+    }
+
+    // ================= EDICIÓN DE TEXTO EN LÍNEA =================
+    function placeTextInput() {
+        var a = A.editing; if (!a) return;
+        var ta = $('ganTextIn');
+        var fp = Math.max(8, a.fontSize * (A.cssW / REF_W));
+        ta.style.display = 'block';
+        ta.style.font = '700 ' + fp + 'px ' + FONT_STACK;
+        ta.style.color = a.color;
+        ta.style.left = Math.round(a.x * A.cssW - 4) + 'px';
+        ta.style.top = Math.round(a.y * A.cssH - 4) + 'px';
+        autosizeTextInput();
+    }
+    function autosizeTextInput() {
+        var ta = $('ganTextIn'), a = A.editing; if (!a) return;
+        var fp = Math.max(8, a.fontSize * (A.cssW / REF_W));
+        var lines = ta.value.split('\n');
+        var cv = $('ganCanvas'), ctx = cv.getContext('2d');
+        ctx.save();
+        ctx.font = '700 ' + fp + 'px ' + FONT_STACK;
+        var w = 0;
+        for (var i = 0; i < lines.length; i++) w = Math.max(w, ctx.measureText(lines[i] || ' ').width);
+        ctx.restore();
+        var maxW = Math.max(60, A.cssW - a.x * A.cssW - 6);
+        ta.style.width = Math.min(maxW, Math.max(70, w + fp * 0.9)) + 'px';
+        ta.style.height = (lines.length * fp * 1.25 + 8) + 'px';
+    }
+    function startTextEdit(a) {
+        commitText(true);
+        A.editing = a;
+        A.sel = a;
+        var ta = $('ganTextIn');
+        ta.value = a.text || '';
+        placeTextInput();
+        render();
+        setTimeout(function () { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 10);
+    }
+    function commitText(silent) {
+        var a = A.editing; if (!a) return;
+        var ta = $('ganTextIn');
+        var txt = ta.value.replace(/\s+$/, '');
+        A.editing = null;
+        ta.style.display = 'none';
+        ta.value = '';
+        if (!txt) {
+            var i = A.anns.indexOf(a);
+            if (i >= 0) A.anns.splice(i, 1);
+            if (a._new) A.undo.pop();
+            if (A.sel === a) A.sel = null;
+        } else {
+            a.text = txt;
+            delete a._new;
+        }
+        render();
+    }
+    function cancelText() {
+        var a = A.editing; if (!a) return;
+        A.editing = null;
+        $('ganTextIn').style.display = 'none';
+        $('ganTextIn').value = '';
+        if (!a.text) {
+            var i = A.anns.indexOf(a);
+            if (i >= 0) A.anns.splice(i, 1);
+            if (a._new) A.undo.pop();
+            if (A.sel === a) A.sel = null;
+        }
+        render();
+    }
+
+    // ================= PUNTERO =================
+    function pos(e) {
+        var cv = $('ganCanvas');
+        var r = cv.getBoundingClientRect();
+        return {
+            px: (e.clientX - r.left) * (A.cssW / r.width),
+            py: (e.clientY - r.top) * (A.cssH / r.height)
+        };
+    }
+
+    function onDown(e) {
+        if (!A.open) return;
+        var p = pos(e);
+        var px = p.px, py = p.py;
+        if (A.editing) { commitText(); }
+
+        if (A.tool === 'select') {
+            var h = pickHandle(px, py);
+            if (h) { snap(); A.drag = { mode: 'handle', h: h }; e.target.setPointerCapture(e.pointerId); return; }
+            var a = pick(px, py);
+            A.sel = a;
+            if (a) {
+                snap();
+                A.drag = { mode: 'move', lx: px, ly: py, moved: false };
+                e.target.setPointerCapture(e.pointerId);
+                pushToolbarFrom(a);
+            }
+            render();
+            return;
+        }
+
+        if (A.tool === 'text') {
+            snap();
+            var t = {
+                id: uid(), type: 'text', color: A.color, fontSize: A.fontSize, box: A.box,
+                x: px / A.cssW, y: py / A.cssH, text: '', _new: true
+            };
+            A.anns.push(t);
+            startTextEdit(t);
+            return;
+        }
+
+        snap();
+        var nx = px / A.cssW, ny = py / A.cssH;
+        var ann = {
+            id: uid(), type: A.tool, color: A.color, width: A.width, fill: A.fill,
+            x: nx, y: ny, x2: nx, y2: ny
+        };
+        if (A.tool === 'pen' || A.tool === 'mark') ann.points = [{ x: nx, y: ny }];
+        A.anns.push(ann);
+        A.drawing = ann;
+        A.sel = null;
+        try { e.target.setPointerCapture(e.pointerId); } catch (err) {}
+        render();
+    }
+
+    function onMove(e) {
+        if (!A.open) return;
+        if (!A.drawing && !A.drag) return;
+        var p = pos(e), px = p.px, py = p.py;
+        var nx = px / A.cssW, ny = py / A.cssH;
+
+        if (A.drawing) {
+            if (A.drawing.points) {
+                var last = A.drawing.points[A.drawing.points.length - 1];
+                if (Math.hypot((nx - last.x) * A.cssW, (ny - last.y) * A.cssH) > 1.5) {
+                    A.drawing.points.push({ x: nx, y: ny });
+                }
+            } else {
+                if (e.shiftKey && (A.drawing.type === 'line' || A.drawing.type === 'arrow')) {
+                    // Shift: forzar horizontal / vertical / 45°
+                    var dx = nx - A.drawing.x, dy = ny - A.drawing.y;
+                    var adx = Math.abs(dx * A.cssW), ady = Math.abs(dy * A.cssH);
+                    if (adx > ady * 2) ny = A.drawing.y;
+                    else if (ady > adx * 2) nx = A.drawing.x;
+                }
+                A.drawing.x2 = nx; A.drawing.y2 = ny;
+            }
+            render();
+            return;
+        }
+
+        if (A.drag && A.sel) {
+            if (A.drag.mode === 'move') {
+                var ddx = (px - A.drag.lx) / A.cssW, ddy = (py - A.drag.ly) / A.cssH;
+                A.drag.lx = px; A.drag.ly = py; A.drag.moved = true;
+                translate(A.sel, ddx, ddy);
+            } else if (A.drag.mode === 'handle') {
+                var h = A.drag.h;
+                if (h === 'p1') { A.sel.x = nx; A.sel.y = ny; }
+                else if (h === 'p2') { A.sel.x2 = nx; A.sel.y2 = ny; }
+                else if (h === 'q1') { A.sel.x2 = nx; A.sel.y = ny; }
+                else if (h === 'q2') { A.sel.x = nx; A.sel.y2 = ny; }
+            }
+            render();
+        }
+    }
+
+    function translate(a, dx, dy) {
+        a.x += dx; a.y += dy;
+        if (a.x2 != null) { a.x2 += dx; a.y2 += dy; }
+        if (a.points) a.points.forEach(function (p) { p.x += dx; p.y += dy; });
+    }
+
+    function onUp() {
+        if (A.drawing) {
+            var a = A.drawing;
+            A.drawing = null;
+            var tiny = false;
+            if (a.points) tiny = a.points.length < 2;
+            else tiny = Math.hypot((a.x2 - a.x) * A.cssW, (a.y2 - a.y) * A.cssH) < 6;
+            if (tiny) {
+                var i = A.anns.indexOf(a);
+                if (i >= 0) A.anns.splice(i, 1);
+                A.undo.pop(); // el trazo nunca existió: no ensuciar el historial
+            } else {
+                A.sel = null;
+            }
+            render();
+        }
+        if (A.drag) {
+            if (A.drag.mode === 'move' && !A.drag.moved && A.undo.length) {
+                // Un clic simple de selección no debe ensuciar el historial.
+                A.undo.pop();
+            }
+            A.drag = null;
+            render();
+        }
+    }
+
+    function onDblClick(e) {
+        if (!A.open) return;
+        var p = pos(e);
+        var a = pick(p.px, p.py);
+        if (a && a.type === 'text') { A.sel = a; startTextEdit(a); }
+    }
+
+    function onKey(e) {
+        if (!A.open) return;
+        // Con un diálogo del sitio abierto encima, el teclado es suyo.
+        if (document.querySelector('.inf-dialog.open')) return;
+        var ta = $('ganTextIn');
+        if (A.editing && document.activeElement === ta) {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelText(); }
+            else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); commitText(); }
+            return;
+        }
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancel(); return; }
+        if ((e.key === 'Delete' || e.key === 'Backspace') && A.sel) {
+            e.preventDefault(); e.stopPropagation(); delSel(); return;
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+            e.preventDefault(); e.stopPropagation();
+            if (e.shiftKey) redo(); else undo();
+            return;
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) {
+            e.preventDefault(); e.stopPropagation(); redo(); return;
+        }
+    }
+
+    function delSel() {
+        if (!A.sel) return;
+        snap();
+        var i = A.anns.indexOf(A.sel);
+        if (i >= 0) A.anns.splice(i, 1);
+        A.sel = null;
+        render();
+    }
+
+    // ================= TOOLBAR =================
+    function setTool(id) {
+        commitText(true);
+        A.tool = id;
+        var wrap = $('ganWrap');
+        wrap.className = 'gan-wrap tool-' + id;
+        Array.prototype.forEach.call($('ganTools').children, function (b) {
+            b.classList.toggle('active', b.getAttribute('data-tool') === id);
+        });
+        if (id !== 'select') A.sel = null;
+        render();
+    }
+
+    // Al seleccionar una anotación, la barra refleja sus propiedades.
+    function pushToolbarFrom(a) {
+        if (a.color) { A.color = a.color; $('ganColorCustom').value = /^#[0-9a-f]{6}$/i.test(a.color) ? a.color : '#d32f2f'; }
+        if (a.width) { A.width = a.width; $('ganWidthRange').value = a.width; }
+        if (a.fontSize) { A.fontSize = a.fontSize; $('ganFontRange').value = a.fontSize; }
+        if (a.type === 'text') $('ganBoxChk').checked = !!a.box;
+        else $('ganFillChk').checked = !!a.fill;
+        markSwatches();
+    }
+
+    function markSwatches() {
+        Array.prototype.forEach.call($('ganColors').children, function (b) {
+            b.classList.toggle('active', (b.getAttribute('data-color') || '').toLowerCase() === A.color.toLowerCase());
+        });
+    }
+
+    // Cambiar una propiedad: aplica a la selección o queda como valor por defecto.
+    function applyProp(fn) {
+        if (A.sel) { snap(); fn(A.sel); }
+        if (A.editing) placeTextInput();
+        render();
+    }
+
+    function syncToolbar() {
+        $('ganWidthLbl').textContent = T('width');
+        $('ganFontLbl').textContent = T('textSize');
+        $('ganFillLbl').textContent = T('fill');
+        $('ganBoxLbl').textContent = T('box');
+        $('ganClearBtn').textContent = T('clear');
+        $('ganDoneBtn').textContent = T('done');
+        $('ganPngBtn').textContent = T('png');
+        $('ganEditTextBtn').textContent = T('editText');
+        $('ganCancelBtn').title = T('cancel');
+        $('ganCancelBtn').setAttribute('aria-label', T('cancel'));
+        $('ganUndoBtn').title = T('undo');
+        $('ganRedoBtn').title = T('redo');
+        $('ganDelBtn').title = T('del');
+        $('ganColorCustom').title = T('other');
+        Array.prototype.forEach.call($('ganTools').children, function (b) {
+            var tl = b.getAttribute('data-tip-key');
+            if (tl) { b.title = T(tl); b.setAttribute('aria-label', T(tl)); }
+        });
+        setTool(A.tool);
+    }
+
+    function buildToolbar() {
+        var tools = $('ganTools');
+        tools.innerHTML = '';
+        TOOLS.forEach(function (t) {
+            var b = document.createElement('button');
+            b.className = 'gan-tool';
+            b.type = 'button';
+            b.textContent = t.icon;
+            b.setAttribute('data-tool', t.id);
+            b.setAttribute('data-tip-key', t.key);
+            b.addEventListener('click', function () { setTool(t.id); });
+            tools.appendChild(b);
+        });
+        var cols = $('ganColors');
+        cols.innerHTML = '';
+        PALETTE.forEach(function (c) {
+            var b = document.createElement('button');
+            b.className = 'gan-swatch';
+            b.type = 'button';
+            b.style.background = c;
+            b.setAttribute('data-color', c);
+            b.title = c;
+            b.addEventListener('click', function () {
+                A.color = c;
+                $('ganColorCustom').value = c;
+                markSwatches();
+                applyProp(function (a) { a.color = c; });
+            });
+            cols.appendChild(b);
+        });
+    }
+
+    // ================= EXPORTAR PNG =================
+    function exportPng() {
+        if (!A.baseImg) return;
+        try {
+            var W = A.baseImg.naturalWidth, H = A.baseImg.naturalHeight;
+            var cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            var ctx = cv.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, W, H);
+            ctx.drawImage(A.baseImg, 0, 0, W, H);
+            drawAll(ctx, A.anns, W, H);
+            var name = String(A.label || 'grafica').replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s_-]/g, '_').trim() || 'grafica';
+            var link = document.createElement('a');
+            link.download = name + '_anotada.png';
+            link.href = cv.toDataURL('image/png', 1.0);
+            link.click();
+            toast(T('saved'));
+            try { if (typeof track === 'function') track('exportar_png_anotado', 'exportar'); } catch (e) {}
+        } catch (e) {
+            toast(T('savedErr'));
+        }
+    }
+
+    // ================= CABLEADO =================
+    function init() {
+        buildToolbar();
+
+        var cv = $('ganCanvas');
+        cv.addEventListener('pointerdown', onDown);
+        cv.addEventListener('pointermove', onMove);
+        cv.addEventListener('pointerup', onUp);
+        cv.addEventListener('pointercancel', onUp);
+        cv.addEventListener('dblclick', onDblClick);
+
+        var ta = $('ganTextIn');
+        ta.addEventListener('input', autosizeTextInput);
+        ta.addEventListener('blur', function () { if (A.editing) commitText(); });
+
+        $('ganDoneBtn').addEventListener('click', function () { close(true); });
+        $('ganCancelBtn').addEventListener('click', cancel);
+        $('ganPngBtn').addEventListener('click', exportPng);
+        $('ganUndoBtn').addEventListener('click', undo);
+        $('ganRedoBtn').addEventListener('click', redo);
+        $('ganDelBtn').addEventListener('click', delSel);
+        $('ganEditTextBtn').addEventListener('click', function () { if (A.sel && A.sel.type === 'text') startTextEdit(A.sel); });
+        $('ganClearBtn').addEventListener('click', function () {
+            if (!A.anns.length) return;
+            askConfirm('askClear', function () {
+                snap();
+                A.anns = [];
+                A.sel = null;
+                render();
+            });
+        });
+
+        $('ganColorCustom').addEventListener('input', function () {
+            A.color = this.value;
+            markSwatches();
+            applyProp(function (a) { a.color = A.color; });
+        });
+        $('ganWidthRange').addEventListener('input', function () {
+            A.width = parseFloat(this.value) || 3;
+            applyProp(function (a) { if (a.type !== 'text') a.width = A.width; });
+        });
+        $('ganFontRange').addEventListener('input', function () {
+            A.fontSize = parseFloat(this.value) || 28;
+            applyProp(function (a) { if (a.type === 'text') a.fontSize = A.fontSize; });
+        });
+        $('ganFillChk').addEventListener('change', function () {
+            A.fill = this.checked;
+            applyProp(function (a) { if (a.type === 'rect' || a.type === 'ellipse') a.fill = A.fill; });
+        });
+        $('ganBoxChk').addEventListener('change', function () {
+            A.box = this.checked;
+            applyProp(function (a) { if (a.type === 'text') a.box = A.box; });
+        });
+
+        markButtons();
+    }
+
+    // ---------- API pública ----------
+    window.openGraphAnnotator = function (index) {
+        try {
+            var chart = state.charts && state.charts[index];
+            var cfg = state.graphs && state.graphs[index];
+            if (!chart) { toast(T('noChart')); return; }
+            openFor(chart, cfg, graphStore(index));
+        } catch (e) { toast(T('noChart')); }
+    };
+
+    window.openDlabAnnotator = function () {
+        try {
+            if (typeof dlabChart === 'undefined' || !dlabChart) { toast(T('noChart')); return; }
+            var cfg = null, label = 'LAB';
+            try {
+                cfg = {
+                    xLabel: (document.getElementById('dlabAxisValueX') || {}).textContent || '',
+                    yLabel: (document.getElementById('dlabAxisValueY') || {}).textContent || ''
+                };
+                if (cfg.yLabel || cfg.xLabel) label = (cfg.yLabel || '?') + ' vs ' + (cfg.xLabel || '?');
+            } catch (e2) {}
+            openFor(dlabChart, cfg, dlabStore(label));
+        } catch (e) { toast(T('noChart')); }
+    };
+
+    window.ganClose = function () { close(true); };
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+    })();
+    /* ===== ANOTAR GRÁFICAS MODULE END ===== */
     </script>
 
 
