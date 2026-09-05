@@ -15578,11 +15578,15 @@ bluetooth.startIOPinService()</pre>
                 if (!set.visible || !set.points || set.points.length === 0) return;
                 config.yVars.forEach((varIdx, idx) => {
                     if (varIdx >= set.numVariables) return;
-                    const baseTs = set.points[0].time; // alinear contra el inicio del set
+                    // Origen del set: el instante en que se importó, para que el eje
+                    // muestre los tiempos que trae el CSV (y no arranque siempre en 0,
+                    // que descolocaba un archivo que empieza, por ejemplo, en 12,5 s).
+                    // Los proyectos guardados antes de esto no tienen baseTs: ahí se
+                    // sigue usando el primer punto.
+                    const baseTs = (set.baseTs != null) ? set.baseTs : set.points[0].time;
                     const data = set.points.map(p => {
                         let xVal;
                         if (config.xAxis === 'time') {
-                            // Reusar el offset relativo al inicio del propio set
                             xVal = (p.time - baseTs) / timeUnitValue;
                         } else {
                             const xVarIdx = parseInt(config.xAxis.replace('var', ''));
@@ -18688,12 +18692,13 @@ bluetooth.startIOPinService()</pre>
                 if (hasTime) {
                     timestamp = baseTs + (r.time * timeUnitValue);
                 } else {
-                    timestamp = baseTs + i;
+                    timestamp = baseTs + (i * timeUnitValue);
                 }
                 return { time: timestamp, values: r.values };
             });
             const setObj = {
                 id: 'extra-' + baseTs + '-' + Math.random().toString(36).substr(2, 6),
+                baseTs: baseTs,   // origen del set: deja el eje en los tiempos del CSV
                 name: name,
                 color: _nextExtraColor(),
                 visible: true,
@@ -18807,7 +18812,9 @@ bluetooth.startIOPinService()</pre>
                 if (hasTime) {
                     timestamp = baseTs + (r.time * timeUnitValue);
                 } else {
-                    timestamp = baseTs + i;
+                    // Sin columna de tiempo: una unidad por fila (0, 1, 2…), que
+                    // se lee mucho mejor que un milisegundo por fila.
+                    timestamp = baseTs + (i * timeUnitValue);
                 }
                 return {
                     time: timestamp,
@@ -18816,6 +18823,12 @@ bluetooth.startIOPinService()</pre>
                 };
             });
 
+            // Internamente los tiempos se guardan como marcas absolutas y el eje X
+            // se dibuja como (time - timeZeroOffset) / unidad. Sin mover el origen,
+            // un CSV que empieza en 0 aparecía sobre 1,789×10⁹ (la hora del reloj
+            // en segundos). Con el origen en baseTs, el eje muestra exactamente los
+            // valores de la columna de tiempo del archivo.
+            state.timeZeroOffset = baseTs;
             state.rawData = importedData;
             updateDisplay();
             uiAlert(tr('alertImportOk', { count: importedData.length, vars: numVars }));
