@@ -11779,7 +11779,7 @@ bluetooth.startIOPinService()</pre>
                 ];
 
                 state.port = await navigator.serial.requestPort({ filters });
-                await state.port.open({ baudRate: 115200 });
+                await openSerialPort(state.port);
                 state.isConnected = true;
                 state.isBluetooth = false;
                 if (typeof updateGraphLegendPills === 'function') {
@@ -12476,7 +12476,7 @@ bluetooth.startIOPinService()</pre>
                         let valueOffset = 0;
 
                         if (hasTimestamp) {
-                            const mt = +parts[0];
+                            const mt = parseSerialNumber(parts[0]);
                             if (mt !== mt || !isFinite(mt)) continue; // NaN / Infinity
                             if (mt < 0) continue; // Timestamp negativo: probable sensor en columna incorrecta
                             valueOffset = 1;
@@ -12492,8 +12492,8 @@ bluetooth.startIOPinService()</pre>
                         const values = new Array(numVars);
                         let valid = true;
                         for (let vi = 0; vi < numVars; vi++) {
-                            const n = +parts[vi + valueOffset];
-                            if (n !== n) { valid = false; break; }
+                            const n = parseSerialNumber(parts[vi + valueOffset]);
+                            if (n !== n || !isFinite(n)) { valid = false; break; }
                             values[vi] = n;
                         }
                         if (!valid) continue;
@@ -13074,7 +13074,9 @@ bluetooth.startIOPinService()</pre>
             _mbTimeShift = 0;
             _backwardsRun = 0;
             _backwardsPrevRaw = -1;
+            resetMicrobitClockCalibration();
             _lastBrowserPointTime = 0;
+            _bbActive = false;
             _corruptionBuffer = {};
             _spikeFilterHistory = {};
             _spikeLastValue = {};
@@ -13607,6 +13609,13 @@ bluetooth.startIOPinService()</pre>
         let _mbTimeShift = 0;           // Corrimiento aplicado a timestamps del micro:bit tras un reinicio
         let _backwardsRun = 0;          // Racha de timestamps consecutivos que retroceden
         let _backwardsPrevRaw = -1;     // Último mt crudo de la racha de retrocesos
+        let _mbMinOffset = NaN;         // Mín. observado de (performance.now() - t_microbit): "cuánto adelanta" el reloj de la PC
+        let _mbRefMapped = 0;           // Timestamp de referencia de la calibración (tolerancia por deriva)
+        let _mbRateRefMapped = 0;       // Referencia para medir a qué ritmo avanza el timestamp vs la PC
+        let _mbRateRefMono = 0;         // performance.now() de esa referencia
+        let _mbForwardCheckOff = false; // true si el timestamp no está en ms (el chequeo no aplica)
+        let _forwardRun = 0;            // Racha de saltos hacia adelante "imposibles" pero coherentes
+        let _forwardPrevRaw = -1;       // Último mt crudo de la racha hacia adelante
         let _lastBrowserPointTime = 0;  // Último tiempo asignado en modo sin timestamp (reloj del navegador)
         let _corruptionMedian = {};     // Running median por variable para detección de digit-loss
         let _corruptionBuffer = {};     // Buffer circular de últimos N valores por variable
@@ -13615,11 +13624,14 @@ bluetooth.startIOPinService()</pre>
         const SERIAL_MAX_BUFFER = 8192;     // Máx bytes en buffer de acumulación (evitar memory leak)
         const SERIAL_MAX_LINE_LEN = 200;    // Máx caracteres por línea (líneas más largas = corrupción)
         const SERIAL_SILENCE_WARN = 15000;  // ms sin datos para advertir al usuario
+        const SERIAL_MAX_CONSECUTIVE_ERRORS = 20; // Errores no fatales seguidos (sin datos) antes de dar el puerto por perdido
         const CORRUPTION_WINDOW = 10;       // Ventana de valores para mediana anti-corrupción
         const CORRUPTION_LOW_RATIO = 0.15;  // Valor < 15% de la mediana = digit-loss
         const CORRUPTION_HIGH_RATIO = 8;    // Valor > 8x mediana = concatenación basura
         const CORRUPTION_MIN_MEDIAN = 10;   // Solo filtrar si la mediana es >= 10 (dígitos múltiples)
         const CORRUPTION_MAX_RANGE_RATIO = 0.5; // Solo filtrar si el rango es < 50% de la mediana (señal estable)
+        const MB_FORWARD_TOL_MS = 1500;     // Tolerancia (ms) para saltos hacia adelante del timestamp vs reloj de la PC
+        const MB_FORWARD_DRIFT = 0.002;     // Tolerancia extra por deriva entre relojes (0.2% del tiempo transcurrido)
         // Regex para detectar caracteres no imprimibles (excepto \r \n , . - y dígitos)
         const SERIAL_INVALID_CHAR = /[^\x20-\x7E]/;
 
@@ -13678,6 +13690,16 @@ bluetooth.startIOPinService()</pre>
         // re-basar T=0 (lo que desplazaba los puntos ya graficados y hacía
         // aparecer los nuevos "hacia atrás"), se desplaza el timestamp con
         // _mbTimeShift para que la línea temporal continúe hacia adelante.
+        function resetMicrobitClockCalibration() {
+            _mbMinOffset = NaN;
+            _mbRefMapped = 0;
+            _mbRateRefMapped = 0;
+            _mbRateRefMono = 0;
+            _mbForwardCheckOff = false;
+            _forwardRun = 0;
+            _forwardPrevRaw = -1;
+        }
+
         function mapMicrobitTimestamp(mt, batchTime) {
             let mapped = mt + _mbTimeShift;
 
@@ -13690,6 +13712,43 @@ bluetooth.startIOPinService()</pre>
             // la lógica de monotonía/reinicio de abajo (si se aplicara siempre,
             // un reinicio real del micro:bit quedaría descartado para siempre).
             if (_lastValidTimestamp < 0 && mapped < state.timeZeroOffset) return null;
+
+            const mono = performance.now();
+            let rebaseOffset = false;   // Recalibrar el mínimo (mono - t)
+            let resetRebase = false;    // Reinicio real del micro:bit confirmado
+
+            if (_lastValidTimestamp >= 0 && mapped > _lastValidTimestamp && !_mbForwardCheckOff && _mbMinOffset === _mbMinOffset) {
+                // Salto hacia adelante: ¿es físicamente posible? El micro:bit
+                // no puede haber medido "en el futuro" respecto al reloj de la
+                // PC. Cuando se pierden bytes, el timestamp de una línea se
+                // pega con dígitos de la siguiente ("1234,5" + "40,570" →
+                // t=123440) y la gráfica saltaba minutos hacia adelante,
+                // arrastrando la línea temporal para siempre.
+                const ahead = mapped - (mono - _mbMinOffset);
+                const tol = MB_FORWARD_TOL_MS + (mapped - _mbRefMapped) * MB_FORWARD_DRIFT;
+                if (ahead > tol) {
+                    // Coherente = crece respecto a la línea anterior de la
+                    // racha y con pasos menores que el salto en sí (las tres
+                    // líneas quedan agrupadas "allá adelante", no dispersas).
+                    if (_forwardRun > 0 && mt > _forwardPrevRaw && mt - _forwardPrevRaw < mapped - _lastValidTimestamp) {
+                        _forwardRun++;
+                    } else {
+                        _forwardRun = 1;
+                    }
+                    _forwardPrevRaw = mt;
+                    // Una o dos líneas aisladas: corrupción, descartar. Tres
+                    // seguidas y coherentes entre sí: es real (el programa
+                    // no manda ms, o el reloj se comporta distinto); aceptar
+                    // y volver a calibrar contra el reloj de la PC.
+                    if (_forwardRun < 3) return null;
+                    rebaseOffset = true;
+                    _forwardRun = 0;
+                    _forwardPrevRaw = -1;
+                } else {
+                    _forwardRun = 0;
+                    _forwardPrevRaw = -1;
+                }
+            }
 
             if (_lastValidTimestamp >= 0 && mapped < _lastValidTimestamp) {
                 // Retroceso: distinguir corrupción (descartar) de reinicio real
@@ -13717,9 +13776,34 @@ bluetooth.startIOPinService()</pre>
                 mapped = mt + _mbTimeShift;
                 _backwardsRun = 0;
                 _backwardsPrevRaw = -1;
+                rebaseOffset = true;
+                resetRebase = true;
             } else {
                 _backwardsRun = 0;
                 _backwardsPrevRaw = -1;
+            }
+
+            // Calibración contra el reloj monotónico de la PC. Se usa el
+            // mínimo de (mono - t) porque los datos llegan siempre con algo
+            // de retraso: el mínimo es la entrega más rápida vista, y ningún
+            // dato legítimo puede llegar "antes" que eso.
+            const firstPoint = _mbMinOffset !== _mbMinOffset || _lastValidTimestamp < 0;
+            if (firstPoint || rebaseOffset) {
+                _mbMinOffset = mono - mapped;
+                _mbRefMapped = mapped;
+            } else if (mono - mapped < _mbMinOffset) {
+                _mbMinOffset = mono - mapped;
+            }
+            // Si el timestamp no avanza a ~1 ms por ms de reloj (p. ej. el
+            // programa manda microsegundos o un contador), el chequeo de
+            // saltos hacia adelante no tiene sentido: desactivarlo. La
+            // referencia solo se renueva al empezar y tras un reinicio real.
+            if (firstPoint || resetRebase) {
+                _mbRateRefMapped = mapped;
+                _mbRateRefMono = mono;
+            } else if (!_mbForwardCheckOff && mono - _mbRateRefMono >= 1000) {
+                const rate = (mapped - _mbRateRefMapped) / (mono - _mbRateRefMono);
+                if (rate > 3 || rate < 1 / 3) _mbForwardCheckOff = true;
             }
 
             _lastValidTimestamp = mapped;
@@ -13731,11 +13815,125 @@ bluetooth.startIOPinService()</pre>
         // Garantiza tiempo estrictamente creciente: Date.now() puede retroceder
         // (ajuste NTP del sistema) y varias líneas del mismo batch BLE/serial
         // llegarían con tiempo idéntico; ambos casos rompen el ploteo.
+        //
+        // Las líneas de un mismo lote no llegaron todas "ahora": estuvieron
+        // en el buffer desde el lote anterior. Si la página se trabó 200 ms y
+        // llegan 20 líneas juntas, ponerles 20 tiempos casi iguales genera un
+        // apelotonamiento en la gráfica (un tramo plano y luego un salto).
+        // beginBrowserTimeBatch() las reparte de forma pareja en el intervalo
+        // real (lote anterior, ahora], que es donde de verdad ocurrieron.
+        let _lastBrowserBatchTime = 0;  // Wall time del lote anterior (también en modo drain)
+        let _bbStart = 0, _bbStep = 0, _bbIndex = 0, _bbActive = false;
+
+        function beginBrowserTimeBatch(batchTime, lineCount) {
+            const n = Math.max(1, lineCount | 0);
+            let start = _lastBrowserBatchTime;
+            // Sin lote anterior (recién conectado / captura recién iniciada
+            // sin drain previo): asumir 1 ms por línea como antes.
+            if (!(start > 0) || start >= batchTime) start = batchTime - n;
+            if (start < _lastBrowserPointTime) start = _lastBrowserPointTime;
+            _bbStart = start;
+            _bbStep = (batchTime - start) / n;
+            _bbIndex = 0;
+            _bbActive = true;
+        }
+
         function nextBrowserPointTime(batchTime) {
-            let t = batchTime;
+            let t;
+            if (_bbActive) {
+                _bbIndex++;
+                t = _bbStart + _bbStep * _bbIndex;
+                if (t > batchTime) t = batchTime;
+            } else {
+                t = batchTime;
+            }
             if (t <= _lastBrowserPointTime) t = _lastBrowserPointTime + 1;
             _lastBrowserPointTime = t;
             return t;
+        }
+
+        // Tamaño del buffer de lectura de Web Serial. El valor por defecto de
+        // Chrome es 255 bytes: a 115200 baud eso son ~20 ms de datos. Si el
+        // hilo principal se demora más que eso (dibujar gráficas con muchos
+        // puntos, abrir un modal, GC...), el buffer del SO se llena y el chip
+        // de interfaz del micro:bit (DAPLink) descarta bytes: llegan líneas
+        // truncadas o pegadas que aparecen como picos. Con 64 KB hay ~5 s de
+        // margen y las lecturas siguen fluyendo aunque la página se trabe.
+        const SERIAL_READ_BUFFER = 65536;
+
+        async function openSerialPort(port) {
+            try {
+                await port.open({ baudRate: 115200, bufferSize: SERIAL_READ_BUFFER });
+            } catch (err) {
+                // Si la implementación rechaza el tamaño de buffer, abrir con el
+                // valor por defecto antes que no conectar.
+                if (err && err.name === 'TypeError') {
+                    await port.open({ baudRate: 115200 });
+                } else {
+                    throw err;
+                }
+            }
+        }
+
+        // Promesa que se resuelve cuando el loop serial terminó y soltó el
+        // lock del stream (necesario para poder cerrar el puerto).
+        let _serialLoopDone = null;
+
+        // Cierre ordenado del puerto USB: cancela la lectura, espera a que el
+        // loop suelte el stream y recién entonces cierra. Cerrar sin esperar
+        // deja el puerto abierto en el navegador y la próxima conexión falla.
+        async function closeSerialPort() {
+            const port = state.port;
+            const reader = state.reader;
+            state.port = null;
+            state.reader = null;
+            if (reader) {
+                try { await reader.cancel(); } catch (e) {}
+            }
+            if (_serialLoopDone) {
+                try { await _serialLoopDone; } catch (e) {}
+            }
+            if (port) {
+                try { await port.close(); } catch (e) {}
+            }
+        }
+
+        // Se perdió el puerto (cable desenchufado, placa reiniciada por USB).
+        // Detener la captura, cerrar lo que quede y devolver la UI al estado
+        // "desconectado" para que se pueda volver a conectar sin recargar.
+        function handleSerialPortLost() {
+            if (!state.isConnected || state.isBluetooth) return;
+            const wasCollecting = state.isCollecting;
+            state.isConnected = false;
+            if (wasCollecting) {
+                try { document.getElementById('stopBtn').click(); } catch (e) {}
+            }
+            closeSerialPort();
+            if (typeof updateGraphLegendPills === 'function') {
+                for (let i = 0; i < state.numGraphs; i++) updateGraphLegendPills(i);
+            }
+            document.getElementById('connectBtn').style.display = 'inline-block';
+            document.getElementById('connectBluetoothBtn').style.display = 'inline-block';
+            document.getElementById('collectBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'none';
+            const msg = {
+                es: 'Se perdió la conexión serial. Verifica el cable USB.',
+                en: 'Serial connection lost. Check the USB cable.',
+                pt: 'Conexão serial perdida. Verifique o cabo USB.'
+            };
+            const statusEl = document.getElementById('statusText');
+            if (statusEl) statusEl.textContent = msg[currentLanguage] || msg.es;
+        }
+
+        // Número estricto para campos CSV del micro:bit. `+str` acepta cosas
+        // que no queremos: "" y "  " valen 0 (un campo vacío por un byte
+        // perdido se convertía en un pico a cero), "0x10" vale 16, "Infinity"
+        // pasa. Solo se aceptan enteros/decimales con signo y exponente.
+        const SERIAL_NUMBER_RE = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
+        function parseSerialNumber(str) {
+            const t = str.trim();
+            if (t.length === 0 || !SERIAL_NUMBER_RE.test(t)) return NaN;
+            return +t;
         }
 
         async function startSerialLoop() {
@@ -13743,20 +13941,53 @@ bluetooth.startIOPinService()</pre>
             serialLoopRunning = true;
             _serialLastDataTime = Date.now();
 
+            let loopDoneResolve;
+            _serialLoopDone = new Promise(resolve => { loopDoneResolve = resolve; });
+
+            const port = state.port;
+            let portLost = false;
+            let consecutiveErrors = 0;
+
             try {
-                const textDecoder = new TextDecoderStream();
-                const readableStreamClosed = state.port.readable.pipeTo(textDecoder.writable);
-                state.reader = textDecoder.readable.getReader();
+              // Web Serial distingue errores no fatales (overrun del buffer,
+              // framing, paridad...) de fatales (dispositivo desconectado).
+              // Ante un error no fatal el stream se cierra pero port.readable
+              // entrega uno nuevo: hay que volver a tomar el reader y seguir
+              // leyendo, en vez de quedar "conectado" sin recibir nada.
+              while (state.isConnected && state.port === port && port.readable) {
+                // Lectura directa de bytes + TextDecoder incremental (en vez de
+                // pipeTo(TextDecoderStream)): cancelar el reader cierra el loop
+                // de forma determinista y el puerto se puede cerrar después.
+                const decoder = new TextDecoder('utf-8');
+                const reader = port.readable.getReader();
+                state.reader = reader;
 
                 let buffer = '';
+                // Hasta encontrar el primer '\n' no sabemos dónde empieza una
+                // línea: lo que ya estaba en el buffer del SO al abrir el
+                // puerto suele arrancar a mitad de línea ("34,567" en vez de
+                // "1234,567"). Se descarta ese fragmento inicial.
+                let synced = false;
 
-                while (state.isConnected) {
-                    const { value, done } = await state.reader.read();
+                try {
+                while (state.isConnected && state.port === port) {
+                    const { value, done } = await reader.read();
                     if (done) break;
 
                     _serialLastDataTime = Date.now();
+                    consecutiveErrors = 0;
 
-                    buffer += value;
+                    buffer += decoder.decode(value, { stream: true });
+
+                    if (!synced) {
+                        const nl = buffer.indexOf('\n');
+                        if (nl < 0) {
+                            if (buffer.length > SERIAL_MAX_BUFFER) buffer = '';
+                            continue;
+                        }
+                        buffer = buffer.slice(nl + 1);
+                        synced = true;
+                    }
 
                     // Protección contra buffer infinito: si no llegan newlines
                     // (cable roto, datos binarios basura), truncar al máximo
@@ -13768,20 +13999,28 @@ bluetooth.startIOPinService()</pre>
                     const lines = buffer.split('\n');
                     buffer = lines.pop();
 
+                    const batchTime = Date.now();
+                    const batchLen = lines.length;
+
                     // MAPEO puede capturar aunque la captura PRINCIPAL esté
                     // apagada. Parseamos las líneas para entregárselas, pero
                     // más abajo NO contaminamos state.rawData ni los buffers
                     // de la gráfica principal cuando solo MAPEO está activo.
                     const _mapeoActive = !!(window.__mapeoCtrl && window.__mapeoCtrl.isCapturing && window.__mapeoCtrl.panel && window.__mapeoCtrl.panel.classList.contains('open'));
                     // Modo drain: si nadie captura, leer y descartar para vaciar buffer serial
-                    if (!state.isCollecting && !_mapeoActive) continue;
+                    if (!state.isCollecting && !_mapeoActive) {
+                        _lastBrowserBatchTime = batchTime;
+                        continue;
+                    }
 
                     // Leer config actual por batch (permite cambios en caliente)
                     const numVars = state.numVariables;
-                    const batchTime = Date.now();
-                    const batchLen = lines.length;
                     const useMbTime = state.microbitTimestamp;
                     const expectedParts = useMbTime ? numVars + 1 : numVars;
+
+                    // Modo sin timestamp: repartir las líneas del lote en el
+                    // intervalo real desde el lote anterior.
+                    if (!useMbTime) beginBrowserTimeBatch(batchTime, batchLen);
 
                     for (let li = 0; li < batchLen; li++) {
                         const line = lines[li].trim();
@@ -13807,7 +14046,7 @@ bluetooth.startIOPinService()</pre>
                         let valueOffset = 0;
 
                         if (hasTimestamp) {
-                            const mt = +parts[0];
+                            const mt = parseSerialNumber(parts[0]);
                             if (mt !== mt || !isFinite(mt)) continue; // NaN / Infinity
                             if (mt < 0) continue; // Timestamp negativo: probable sensor en columna incorrecta
                             valueOffset = 1;
@@ -13823,8 +14062,8 @@ bluetooth.startIOPinService()</pre>
                         const values = new Array(numVars);
                         let valid = true;
                         for (let vi = 0; vi < numVars; vi++) {
-                            const n = +parts[vi + valueOffset];
-                            if (n !== n) { valid = false; break; }
+                            const n = parseSerialNumber(parts[vi + valueOffset]);
+                            if (n !== n || !isFinite(n)) { valid = false; break; }
                             values[vi] = n;
                         }
                         if (!valid) continue;
@@ -13866,29 +14105,38 @@ bluetooth.startIOPinService()</pre>
                         }
                     }
                     _lastBatchWallTime = batchTime;
+                    _lastBrowserBatchTime = batchTime;
+                    _bbActive = false;
                 }
+                // Salida normal: cancelación o desconexión pedida por el usuario
+                break;
+                } catch (err) {
+                    const stillWanted = state.isConnected && state.port === port;
+                    // Fatal (port.readable queda null), cierre pedido, o una
+                    // ráfaga de errores sin datos entre medio: salir.
+                    if (!stillWanted || !port.readable || ++consecutiveErrors > SERIAL_MAX_CONSECUTIVE_ERRORS) {
+                        throw err;
+                    }
+                    console.warn('Error serial no fatal, reabriendo lectura:', err.name, err.message);
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                } finally {
+                    try { reader.releaseLock(); } catch (e) {}
+                    if (state.reader === reader) state.reader = null;
+                }
+              }
             } catch (err) {
                 if (err.name !== 'NetworkError') {
                     console.error('Error en lectura serial:', err);
                 }
-                // Si estábamos capturando datos, informar desconexión inesperada
-                if (state.isConnected && state.isCollecting) {
-                    const msg = {
-                        es: 'Se perdió la conexión serial. Verifica el cable USB.',
-                        en: 'Serial connection lost. Check the USB cable.',
-                        pt: 'Conexão serial perdida. Verifique o cabo USB.'
-                    };
-                    const statusEl = document.getElementById('statusText');
-                    if (statusEl) statusEl.textContent = msg[currentLanguage] || msg.es;
-                }
+                // El stream falló mientras seguíamos "conectados": el puerto
+                // se perdió (cable desenchufado, placa reiniciada por USB).
+                portLost = state.isConnected && !state.isBluetooth && state.port === port;
             } finally {
                 serialLoopRunning = false;
-                if (state.reader) {
-                    try {
-                        state.reader.releaseLock();
-                    } catch (err) {}
-                }
+                loopDoneResolve();
             }
+
+            if (portLost) handleSerialPortLost();
         }
 
         // ========== AJUSTE DE CURVAS - MÍNIMOS CUADRADOS ==========
@@ -18871,7 +19119,9 @@ bluetooth.startIOPinService()</pre>
                 _mbTimeShift = 0;
                 _backwardsRun = 0;
                 _backwardsPrevRaw = -1;
+                resetMicrobitClockCalibration();
                 _lastBrowserPointTime = 0;
+                _bbActive = false;
                 state.sensorPhotos = [];
                 state.videoBlob = null;
                 state.recordedChunks = [];
@@ -20596,13 +20846,7 @@ bluetooth.startIOPinService()</pre>
             }
 
             // Disconnect serial/bluetooth
-            if (state.reader) {
-                try { state.reader.cancel(); } catch(e) {}
-            }
-            if (state.port) {
-                try { state.port.close(); } catch(e) {}
-                state.port = null;
-            }
+            if (state.port || state.reader) closeSerialPort();
             if (state.btDevice && state.btDevice.gatt && state.btDevice.gatt.connected) {
                 try { state.btDevice.gatt.disconnect(); } catch(e) {}
             }
@@ -23311,8 +23555,7 @@ bluetooth.startIOPinService()</pre>
                 const stopBtn = document.getElementById('stopBtn');
                 if (stopBtn) stopBtn.click();
               }
-              if (state.reader) { try { state.reader.cancel(); } catch (_) {} }
-              if (state.port)   { try { state.port.close();   } catch (_) {}; state.port = null; }
+              if (state.port || state.reader) closeSerialPort();
               if (state.btDevice && state.btDevice.gatt && state.btDevice.gatt.connected) {
                 try { state.btDevice.gatt.disconnect(); } catch (_) {}
               }
