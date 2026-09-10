@@ -4740,6 +4740,7 @@
             <div style="position:relative; display:inline-block;">
                 <button id="extrasBtn" class="toolbar-btn" style="background:#5e35b1; color:#fff; border-color:#5e35b1;" onclick="toggleExtrasMenu()">EXTRAS ▾</button>
                 <div id="extrasMenu" class="data-entry-dropdown" style="display:none;" onclick="closeExtrasMenu()">
+                    <button id="btn-makecode" style="border-left:4px solid #b39ddb;" title="Editor oficial de MakeCode con la extensión FisicaBit USB ya cargada">MAKECODE + FISICABIT</button>
                     <button id="btn-piezas3d" style="border-left:4px solid #666;">PIEZAS 3D</button>
                     <button id="btn-tracker" style="border-left:4px solid #00695c;">TRACKER</button>
                     <button id="btn-videomov" style="border-left:4px solid #000;">VIDEO + MOVIMIENTO</button>
@@ -31181,6 +31182,296 @@ bluetooth.startIOPinService()</pre>
     }
     })();
     /* ===== PIEZAS 3D (SCAD) MODULE END ===== */
+    </script>
+
+    <!-- ============================================================
+         MAKECODE + FISICABIT
+         Editor oficial de MakeCode (makecode.microbit.org, siempre la
+         versión vigente: no es una copia) embebido en modo "controller".
+         Por postMessage la página crea el proyecto con la extensión
+         fisicabit-usb ya cargada y guarda los proyectos en localStorage
+         para que el trabajo se retome al volver a entrar.
+         Protocolo: github.com/microsoft/pxt → pxteditor/editorcontroller.ts
+         ============================================================ -->
+    <style id="mk-style">
+    .mk-panel { display:none; position:fixed; inset:0; z-index:9150; background:#1a1d23; color:#e0e0e0; font-family:-apple-system, 'Segoe UI', sans-serif; flex-direction:column; }
+    .mk-panel.open { display:flex; }
+    .mk-topbar { display:flex; align-items:center; gap:8px; background:#0a0a0a; border-bottom:1px solid #2b303b; padding:8px 14px; flex:0 0 auto; flex-wrap:wrap; }
+    .mk-topbar h2 { font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#fff; margin:0; white-space:nowrap; }
+    .mk-badge { font-size:10px; letter-spacing:1px; color:#1a1d23; background:#b39ddb; padding:2px 8px; text-transform:uppercase; font-weight:700; white-space:nowrap; }
+    .mk-spacer { flex:1; }
+    .mk-top-btn { background:none; border:1px solid #444; color:#e0e0e0; font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:6px 10px; cursor:pointer; text-decoration:none; display:inline-block; font-family:inherit; }
+    .mk-top-btn:hover:not(:disabled) { background:#fff; color:#000; border-color:#fff; }
+    .mk-top-btn:disabled { opacity:.35; cursor:default; }
+    .mk-top-btn.warn { border-color:#ffb74d; color:#ffb74d; }
+    .mk-close { background:none; border:1px solid #444; color:#e0e0e0; font-size:15px; line-height:1; padding:5px 11px; cursor:pointer; }
+    .mk-close:hover { background:#fff; color:#000; border-color:#fff; }
+    .mk-stage { flex:1 1 auto; position:relative; min-height:0; background:#101216; }
+    .mk-stage iframe { display:block; width:100%; height:100%; border:none; background:#fff; }
+    .mk-status { position:absolute; left:0; right:0; bottom:0; padding:6px 14px; font-size:11px; color:#aab; background:rgba(10,10,10,.85); pointer-events:none; }
+    .mk-status:empty { display:none; }
+    .mk-helpbox { display:none; position:absolute; inset:0; background:rgba(0,0,0,.6); align-items:flex-start; justify-content:center; overflow:auto; padding:24px; box-sizing:border-box; }
+    .mk-helpbox.open { display:flex; }
+    .mk-help-card { background:#23272e; border:1px solid #2b303b; max-width:720px; width:100%; color:#e0e0e0; font-size:13px; line-height:1.55; }
+    .mk-help-head { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #2b303b; }
+    .mk-help-head h3 { margin:0; font-size:13px; letter-spacing:2px; text-transform:uppercase; }
+    .mk-help-body { padding:12px 18px 18px; }
+    .mk-help-body h4 { margin:14px 0 4px; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#b39ddb; }
+    .mk-help-body code { background:#101216; padding:1px 5px; font-size:12px; }
+    .mk-help-body kbd { background:#101216; border:1px solid #444; padding:0 4px; font-size:11px; }
+    @media (max-width: 600px) { .mk-topbar h2 { font-size:11px; letter-spacing:1px; } .mk-badge { display:none; } }
+    </style>
+
+    <div class="mk-panel" id="mk-panel" aria-hidden="true">
+        <div class="mk-topbar">
+            <h2>MakeCode + FisicaBit</h2>
+            <span class="mk-badge">editor oficial · extensión fisicabit-usb</span>
+            <span class="mk-spacer"></span>
+            <button id="mk-disconnect" class="mk-top-btn warn" style="display:none" title="La micro:bit está conectada por USB a FisicaBit. Si la grabación desde MakeCode falla, desconectala acá primero.">Desconectar USB de FisicaBit</button>
+            <button id="mk-new" class="mk-top-btn" title="Crear un proyecto nuevo con la extensión FisicaBit USB ya cargada" disabled>Nuevo proyecto FisicaBit</button>
+            <button id="mk-help-btn" class="mk-top-btn">Ayuda</button>
+            <a class="mk-top-btn" href="https://makecode.microbit.org/" target="_blank" rel="noopener" title="Abrir MakeCode en una pestaña aparte">Pestaña ↗</a>
+            <button id="mk-close" class="mk-close" title="Volver al sitio (el editor sigue abierto)">✕</button>
+        </div>
+        <div class="mk-stage">
+            <iframe id="mk-iframe" title="MakeCode para micro:bit" allow="usb; serial; hid; clipboard-read; clipboard-write; fullscreen; microphone; camera; autoplay"></iframe>
+            <div class="mk-status" id="mk-status"></div>
+            <div class="mk-helpbox" id="mk-helpbox">
+                <div class="mk-help-card">
+                    <div class="mk-help-head">
+                        <h3>Programar la micro:bit sin salir del sitio</h3>
+                        <button class="mk-close" id="mk-help-close">✕</button>
+                    </div>
+                    <div class="mk-help-body">
+                        <h4>Qué es esto</h4>
+                        <p>Es el <strong>editor oficial de MakeCode</strong> (makecode.microbit.org), no una copia: siempre está en su versión vigente. Al abrirlo desde acá, el sitio le pide que cree el proyecto con la extensión <strong>FisicaBit USB</strong> ya cargada, así los bloques <em>enviar a fisicabit.com</em> aparecen sin buscar nada.</p>
+                        <h4>1 · Armá el programa</h4>
+                        <p>Dentro de <em>para siempre</em> usá <strong>enviar a fisicabit.com tiempo y [valor] cada [100] ms</strong>. Para leer sensores, los bloques <em>leer sensor interno</em> / <em>leer sensor analógico</em> están en la misma categoría.</p>
+                        <h4>2 · Grabá la micro:bit</h4>
+                        <p>Con el botón <strong>Descargar</strong> del editor. Si la micro:bit ya está emparejada por WebUSB se graba directo; si no, se baja el <code>.hex</code> y lo arrastrás al disco <strong>MICROBIT</strong>. Si la grabación directa falla porque FisicaBit tiene el USB abierto, tocá <strong>Desconectar USB de FisicaBit</strong> arriba y reintentá.</p>
+                        <h4>3 · Capturá los datos</h4>
+                        <p>Cerrá este panel (✕), y en el sitio: <strong>USB → Conectar</strong>, número de variables según los valores que enviás, <strong>"Micro:bit envía timestamp" activado</strong>, e <strong>Iniciar</strong>.</p>
+                        <h4>Tus proyectos</h4>
+                        <p>Se guardan en este navegador (no en la nube de MakeCode). Al volver a entrar se abre el último. <strong>Nuevo proyecto FisicaBit</strong> crea otro con la extensión ya cargada. Para llevar un proyecto a otra computadora usá <em>Compartir</em> o <em>Descargar</em> dentro del editor.</p>
+                        <h4>Si algo no aparece</h4>
+                        <p>La extensión se agrega desde <em>Extensiones</em> pegando <code>https://github.com/preparadordelaboratorio/pxt-fisicabit-usb</code>. Si el editor no carga dentro del sitio (red escolar que bloquea iframes), usá <strong>Pestaña ↗</strong> y pegá esa misma URL.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /* ===== MAKECODE + FISICABIT MODULE ===== */
+    (function () {
+    'use strict';
+
+    var ORIGIN = 'https://makecode.microbit.org';
+    var EXT_NAME = 'fisicabit-usb';
+    var EXT_REPO = 'github:preparadordelaboratorio/pxt-fisicabit-usb';
+    var LS_KEY = 'fisicabit_makecode_workspace_v1';
+    var MAX_PROJECTS = 20;
+    var SAMPLE_TS =
+        '// Envía "tiempo,valor" por USB a fisicabit.com cada 100 ms (10 muestras/s).\n' +
+        '// En el sitio: USB → Conectar, 1 variable, "Micro:bit envía timestamp" activado.\n' +
+        'basic.forever(function () {\n' +
+        '    FisicaBitSerial.enviar1(FisicaBitSerial.leerSensorInterno(TipoSensorInterno.AcelerometroX), 100)\n' +
+        '})\n';
+
+    var panel, iframe, opened = false, editorReady = false, initialProjectSent = false;
+    var projects = loadProjects();   // { headerId: { header, text } }
+    var connTimer = null;
+
+    function el(id) { return document.getElementById(id); }
+
+    function setStatus(msg) { var s = el('mk-status'); if (s) s.textContent = msg || ''; }
+
+    /* ---------- Persistencia local de proyectos ---------- */
+    function loadProjects() {
+        try {
+            var raw = localStorage.getItem(LS_KEY);
+            var obj = raw ? JSON.parse(raw) : null;
+            return (obj && typeof obj === 'object') ? obj : {};
+        } catch (_) { return {}; }
+    }
+    function saveProjects() {
+        try {
+            // Conservar solo los más recientes para no agotar localStorage
+            var list = Object.keys(projects).map(function (k) { return projects[k]; })
+                .filter(function (p) { return p && p.header && !p.header.isDeleted; })
+                .sort(function (a, b) { return (b.header.modificationTime || 0) - (a.header.modificationTime || 0); })
+                .slice(0, MAX_PROJECTS);
+            var trimmed = {};
+            list.forEach(function (p) { trimmed[p.header.id] = p; });
+            projects = trimmed;
+            localStorage.setItem(LS_KEY, JSON.stringify(projects));
+        } catch (e) {
+            setStatus('No se pudo guardar el proyecto en este navegador (almacenamiento lleno o bloqueado). Usá Compartir/Descargar dentro del editor.');
+        }
+    }
+    function latestProject() {
+        var best = null;
+        Object.keys(projects).forEach(function (k) {
+            var p = projects[k];
+            if (!p || !p.header || p.header.isDeleted) return;
+            if (!best || (p.header.modificationTime || 0) > (best.header.modificationTime || 0)) best = p;
+        });
+        return best;
+    }
+
+    /* ---------- Mensajería con el editor (modo controller) ---------- */
+    function langParam() {
+        var l = (typeof currentLanguage !== 'undefined' && currentLanguage) || 'es';
+        return l === 'pt' ? 'pt-BR' : l;
+    }
+    function editorUrl() {
+        return ORIGIN + '/?controller=1&lang=' + encodeURIComponent(langParam());
+    }
+    function post(msg) {
+        if (!iframe || !iframe.contentWindow) return;
+        try { iframe.contentWindow.postMessage(msg, ORIGIN); } catch (_) {}
+    }
+    function respond(req, extra) {
+        var r = { type: 'pxthost', action: req.action, id: req.id, response: true, success: true };
+        if (extra) Object.keys(extra).forEach(function (k) { r[k] = extra[k]; });
+        post(r);
+    }
+    function newFisicaBitProject() {
+        var deps = {};
+        deps[EXT_NAME] = EXT_REPO;
+        post({
+            type: 'pxteditor', action: 'newproject', response: false,
+            options: {
+                name: 'FisicaBit',
+                dependencies: deps,
+                filesOverride: { 'main.ts': SAMPLE_TS },
+                preferredEditor: 'blocksprj'
+            }
+        });
+        setStatus('Creando el proyecto con la extensión FisicaBit USB…');
+    }
+    function openInitialProject() {
+        if (initialProjectSent) return;
+        initialProjectSent = true;
+        var last = latestProject();
+        if (last) {
+            post({ type: 'pxteditor', action: 'openheader', response: false, headerId: last.header.id });
+            setStatus('Abriendo tu último proyecto: ' + (last.header.name || 'FisicaBit'));
+        } else {
+            newFisicaBitProject();
+        }
+        setTimeout(function () { setStatus(''); }, 6000);
+    }
+
+    function onMessage(ev) {
+        if (ev.origin !== ORIGIN || !iframe || ev.source !== iframe.contentWindow) return;
+        var msg = ev.data;
+        if (!msg || msg.type !== 'pxthost' || !msg.action) return;
+        switch (msg.action) {
+            case 'workspacesync':
+                // El editor pide la lista de proyectos del host al arrancar
+                respond(msg, { projects: Object.keys(projects).map(function (k) { return projects[k]; }), controllerId: 'fisicabit' });
+                break;
+            case 'workspacesave':
+                if (msg.project && msg.project.header && msg.project.header.id) {
+                    projects[msg.project.header.id] = { header: msg.project.header, text: msg.project.text };
+                    saveProjects();
+                }
+                if (msg.response) respond(msg);
+                break;
+            case 'workspacereset':
+                projects = {};
+                try { localStorage.removeItem(LS_KEY); } catch (_) {}
+                if (msg.response) respond(msg);
+                break;
+            case 'workspaceloaded':
+                editorReady = true;
+                el('mk-new').disabled = false;
+                openInitialProject();
+                if (msg.response) respond(msg);
+                break;
+            default:
+                if (msg.response) respond(msg);
+        }
+    }
+
+    /* ---------- Conexión USB del sitio (posible conflicto al grabar) ---------- */
+    function refreshConn() {
+        var b = el('mk-disconnect');
+        if (!b) return;
+        var usbOpen = (typeof state !== 'undefined') && state.isConnected && !state.isBluetooth;
+        b.style.display = usbOpen ? '' : 'none';
+    }
+    function disconnectSiteUsb() {
+        try {
+            if (state.isCollecting) { var s = el('stopBtn'); if (s) s.click(); }
+            if (state.reader) { try { state.reader.cancel(); } catch (_) {} }
+            if (state.port) { try { state.port.close(); } catch (_) {} state.port = null; }
+            state.isConnected = false;
+            state.isBluetooth = false;
+            var st = el('statusText');
+            if (st) st.textContent = (typeof translations !== 'undefined' && translations[currentLanguage] && translations[currentLanguage].disconnected) || 'DESCONECTADO';
+            if (typeof updateGraphLegendPills === 'function') { for (var i = 0; i < (state.numGraphs || 0); i++) updateGraphLegendPills(i); }
+        } catch (_) {}
+        refreshConn();
+        setStatus('USB desconectado de FisicaBit. Ya podés grabar desde MakeCode.');
+        setTimeout(function () { setStatus(''); }, 5000);
+    }
+
+    /* ---------- Apertura / cierre ---------- */
+    function openPanel() {
+        if (!panel) return;
+        if (typeof track === 'function') { try { track('makecode_fisicabit', 'extras'); } catch (_) {} }
+        panel.classList.add('open');
+        panel.setAttribute('aria-hidden', 'false');
+        opened = true;
+        if (!iframe.getAttribute('src')) {
+            iframe.setAttribute('src', editorUrl());
+            setStatus('Cargando el editor oficial de MakeCode… la primera vez puede demorar. Si no aparece, usá "Pestaña ↗".');
+        }
+        refreshConn();
+        if (!connTimer) connTimer = setInterval(refreshConn, 1500);
+    }
+    function closePanel() {
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden', 'true');
+        opened = false;
+        if (connTimer) { clearInterval(connTimer); connTimer = null; }
+        // El iframe queda vivo: al volver a entrar, el editor sigue donde estaba.
+    }
+
+    function init() {
+        panel = el('mk-panel');
+        iframe = el('mk-iframe');
+        if (!panel || !iframe) return;
+
+        var btn = el('btn-makecode');
+        if (btn) btn.addEventListener('click', openPanel);
+        el('mk-close').addEventListener('click', closePanel);
+        el('mk-new').addEventListener('click', newFisicaBitProject);
+        el('mk-disconnect').addEventListener('click', disconnectSiteUsb);
+        el('mk-help-btn').addEventListener('click', function () { el('mk-helpbox').classList.add('open'); });
+        el('mk-help-close').addEventListener('click', function () { el('mk-helpbox').classList.remove('open'); });
+        el('mk-helpbox').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
+        window.addEventListener('message', onMessage);
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape' || !opened) return;
+            if (el('mk-helpbox').classList.contains('open')) { el('mk-helpbox').classList.remove('open'); return; }
+            var ae = document.activeElement;
+            if (!ae || ae.tagName !== 'IFRAME') closePanel();
+        });
+    }
+
+    window.abrirMakeCode = openPanel;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+    })();
+    /* ===== MAKECODE + FISICABIT MODULE END ===== */
     </script>
 
     <!-- ============================================================
