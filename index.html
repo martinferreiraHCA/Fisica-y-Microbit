@@ -11480,6 +11480,71 @@ bluetooth.startIOPinService()</pre>
             return _supToHtml(fmtNum(v));
         }
 
+        // Formato de TIEMPO (tabla, eje X, tooltip). A diferencia de fmtNum,
+        // NUNCA usa notación científica ni cifras significativas: un tiempo de
+        // 1234.567 s se muestra completo, no como "1235" ni "1.235×10³".
+        // Decimales según la unidad elegida (resolución de 1 ms del micro:bit):
+        // ms → 0, s → 3, min → 5. Si el valor tiene una fracción más fina
+        // (CSV importado), se muestran hasta 3 decimales más.
+        function fmtTime(v, timeUnitValue) {
+            if (v == null) return '';
+            const n = typeof v === 'number' ? v : parseFloat(v);
+            if (!isFinite(n)) return String(v);
+            let unit = timeUnitValue;
+            if (!(unit > 0)) {
+                const sel = document.getElementById('timeUnit');
+                unit = (sel && parseFloat(sel.value)) || 1000;
+            }
+            const base = unit >= 60000 ? 5 : unit >= 1000 ? 3 : 0;
+            let s = n.toFixed(base + 3);
+            // Recortar ceros sobrantes más allá de los decimales base
+            const dot = s.indexOf('.');
+            let end = s.length;
+            while (end > dot + 1 + base && s[end - 1] === '0') end--;
+            if (end === dot + 1) end = dot; // sin fracción → sin punto
+            s = s.slice(0, end);
+            if (/^-0(\.0*)?$/.test(s)) s = s.slice(1); // "-0.000" → "0.000"
+            return s;
+        }
+
+        // Ticks del eje de tiempo: decimales según el paso entre ticks (como
+        // hace Chart.js por defecto) pero sin separador de miles ni exponentes.
+        function _timeTickFmt(value, index, ticks) {
+            let delta = 0;
+            if (ticks && ticks.length > 1) {
+                delta = ticks.length > 2 ? ticks[2].value - ticks[1].value : ticks[1].value - ticks[0].value;
+            }
+            delta = Math.abs(delta);
+            let dec = 0;
+            if (delta > 0 && delta < 1) dec = Math.max(0, Math.min(6, -Math.floor(Math.log10(delta))));
+            let s = (+value).toFixed(dec);
+            if (/^-0(\.0+)?$/.test(s)) s = s.slice(1);
+            return s;
+        }
+
+        // Mínimo y máximo de un array numérico sin Math.min(...arr): el spread
+        // revienta la pila ("Maximum call stack size exceeded") con más de
+        // ~100k puntos, que es justo lo que produce una captura rápida.
+        function _arrMin(arr) {
+            let mn = Infinity;
+            for (let i = 0; i < arr.length; i++) if (arr[i] < mn) mn = arr[i];
+            return mn;
+        }
+        function _arrMax(arr) {
+            let mx = -Infinity;
+            for (let i = 0; i < arr.length; i++) if (arr[i] > mx) mx = arr[i];
+            return mx;
+        }
+        function _arrMinMax(arr) {
+            let mn = Infinity, mx = -Infinity;
+            for (let i = 0; i < arr.length; i++) {
+                const v = arr[i];
+                if (v < mn) mn = v;
+                if (v > mx) mx = v;
+            }
+            return [mn, mx];
+        }
+
         function _hexToRgba(hex, alpha) {
             try {
                 if (!hex) return `rgba(102,102,102,${alpha})`;
@@ -11562,6 +11627,15 @@ bluetooth.startIOPinService()</pre>
                     }
                 }
             } catch (_) {}
+            // Eje de tiempo → formato de tiempo (sin exponentes); otra variable → fmtNum
+            try {
+                const ch = this.chart;
+                const gi = state.charts ? state.charts.indexOf(ch) : -1;
+                const isTime = gi >= 0
+                    ? (state.graphs[gi] && state.graphs[gi].xAxis === 'time')
+                    : (ch === expChart || ch === dlabChart);
+                if (isTime) return _timeTickFmt(value, index, ticks);
+            } catch (_) {}
             return fmtNum(value);
         }
         // Callback genérica para el eje Y: aplica formato numérico configurable.
@@ -11609,7 +11683,8 @@ bluetooth.startIOPinService()</pre>
                             displayColors: true,
                             callbacks: {
                                 label: function(context) {
-                                    const xLabel = fmtNum(context.parsed.x);
+                                    const isTimeX = state.graphs[index] && state.graphs[index].xAxis === 'time';
+                                    const xLabel = isTimeX ? fmtTime(context.parsed.x) : fmtNum(context.parsed.x);
                                     const yLabel = fmtNum(context.parsed.y);
                                     return `${context.dataset.label}: (${xLabel}, ${yLabel})`;
                                 }
@@ -12417,9 +12492,9 @@ bluetooth.startIOPinService()</pre>
 
                 this.log('Esperando datos del micro:bit...');
 
+                const decoder = new TextDecoder();
                 const handler = (event) => {
                     this._lastDataTime = Date.now();
-                    const decoder = new TextDecoder();
                     const chunk = decoder.decode(event.target.value);
                     this.stats.chunks++;
 
@@ -12449,69 +12524,18 @@ bluetooth.startIOPinService()</pre>
                     this.stats.lines += lines.length;
 
                     const useMbTime = state.microbitTimestamp;
-                    const expectedParts = useMbTime ? numVars + 1 : numVars;
 
                     for (let li = 0; li < lines.length; li++) {
-                        const line = lines[li].trim();
-                        if (line.length === 0) continue;
-
-                        // Descartar líneas demasiado largas (corrupción)
-                        if (line.length > SERIAL_MAX_LINE_LEN) continue;
-
-                        // Descartar líneas con caracteres no imprimibles
-                        if (SERIAL_INVALID_CHAR.test(line)) continue;
-
-                        const parts = line.split(',');
-                        const nParts = parts.length;
-
-                        if (nParts !== expectedParts) {
-                            this.warn('Format mismatch:', JSON.stringify(line), '| parts:', nParts, '| expected:', expectedParts);
-                            _formatMismatchCount++;
-                            _lastMismatchParts = nParts;
+                        // Mismo parser/validaciones que el serial USB
+                        const dataPoint = parseIncomingLine(lines[li], numVars, useMbTime, batchTime);
+                        if (dataPoint === null) {
+                            if (_lastRejectReason === 'format') {
+                                this.warn('Format mismatch:', JSON.stringify(lines[li].trim()), '| parts:', _lastMismatchParts, '| expected:', useMbTime ? numVars + 1 : numVars);
+                            }
                             continue;
                         }
-                        const hasTimestamp = useMbTime;
-
-                        let pointTime;
-                        let valueOffset = 0;
-
-                        if (hasTimestamp) {
-                            const mt = +parts[0];
-                            if (mt !== mt || !isFinite(mt)) continue; // NaN / Infinity
-                            if (mt < 0) continue; // Timestamp negativo: probable sensor en columna incorrecta
-                            valueOffset = 1;
-
-                            // Monotonía estricta + manejo de reinicios del micro:bit
-                            const mapped = mapMicrobitTimestamp(mt, batchTime);
-                            if (mapped === null) continue; // Corrupción o dato viejo: descartar
-                            pointTime = mapped;
-                        } else {
-                            pointTime = nextBrowserPointTime(batchTime);
-                        }
-
-                        const values = new Array(numVars);
-                        let valid = true;
-                        for (let vi = 0; vi < numVars; vi++) {
-                            const n = +parts[vi + valueOffset];
-                            if (n !== n) { valid = false; break; }
-                            values[vi] = n;
-                        }
-                        if (!valid) continue;
-
-                        // Detector de corrupción: digit-loss y line-merge (siempre activo)
-                        if (isSerialCorruption(values, numVars)) continue;
-
-                        if (state.spikeFilter && hasSpikeValues(values)) continue;
-
-                        // Punto válido: actualizar buffers de detección de corrupción
-                        updateCorruptionBuffers(values, numVars);
-
-                        const dataPoint = {
-                            time: pointTime,
-                            wallTime: batchTime,
-                            values: values,
-                            id: 'd' + (++_dataPointCounter)
-                        };
+                        const pointTime = dataPoint.time;
+                        const values = dataPoint.values;
 
                         if (typeof onDataPoint === 'function') {
                             onDataPoint(dataPoint);
@@ -13074,6 +13098,9 @@ bluetooth.startIOPinService()</pre>
             _mbTimeShift = 0;
             _backwardsRun = 0;
             _backwardsPrevRaw = -1;
+            _forwardRun = 0;
+            _forwardPrevRaw = -1;
+            _mbDeltas = [];
             _lastBrowserPointTime = 0;
             _corruptionBuffer = {};
             _spikeFilterHistory = {};
@@ -13238,11 +13265,22 @@ bluetooth.startIOPinService()</pre>
                     chart.data.datasets.push(createStreamingDatasetConfig(varIdx));
                 }
 
-                // Si ya hay datos previos, rellenar con datos existentes
-                if (state.rawData.length > 0) {
+                // Si ya hay datos previos, rellenar SOLO con la ventana deslizante
+                // (últimos LIVE_WINDOW_MAX_POINTS). Antes se volcaba todo rawData:
+                // con una captura rápida (decenas de miles de puntos) cualquier
+                // click en la tabla o cambio de T=0 en plena captura congelaba la
+                // página al redibujar todo. Se siembra además el min/max
+                // incremental que usa applySmoothScale.
+                const total = state.rawData.length;
+                if (total > 0) {
+                    const startIdx = Math.max(0, total - LIVE_WINDOW_MAX_POINTS);
+                    if (!datasetYMin[chartIdx]) { datasetYMin[chartIdx] = {}; datasetYMax[chartIdx] = {}; }
                     for (let dsIdx = 0; dsIdx < config.yVars.length; dsIdx++) {
                         const varIdx = config.yVars[dsIdx];
-                        for (const d of state.rawData) {
+                        const dsData = chart.data.datasets[dsIdx].data;
+                        let yMin = Infinity, yMax = -Infinity;
+                        for (let i = startIdx; i < total; i++) {
+                            const d = state.rawData[i];
                             let xVal;
                             if (config.xAxis === 'time') {
                                 xVal = (d.time - state.timeZeroOffset) / timeUnitValue;
@@ -13250,12 +13288,13 @@ bluetooth.startIOPinService()</pre>
                                 const xVarIdx = parseInt(config.xAxis.replace('var', ''));
                                 xVal = d.values[xVarIdx];
                             }
-                            chart.data.datasets[dsIdx].data.push({
-                                x: xVal,
-                                y: d.values[varIdx],
-                                id: d.id
-                            });
+                            const yVal = d.values[varIdx];
+                            dsData.push({ x: xVal, y: yVal, id: d.id });
+                            if (yVal < yMin) yMin = yVal;
+                            if (yVal > yMax) yMax = yVal;
                         }
+                        datasetYMin[chartIdx][dsIdx] = yMin;
+                        datasetYMax[chartIdx][dsIdx] = yMax;
                     }
                 }
 
@@ -13274,8 +13313,10 @@ bluetooth.startIOPinService()</pre>
         const LIVE_WINDOW_MAX_POINTS = 600;  // Máx puntos visibles en chart durante streaming
         const SCALE_SMOOTHING = 0.15;        // Factor de suavizado exponencial para eje Y
         const RENDER_INTERVAL = 33;          // ~30fps en vez de 60fps para menor carga de CPU
+        const EXP_LIVE_INTERVAL = 250;       // ms entre refrescos de la gráfica del modo experimento
         let renderLoopId = null;             // ID del requestAnimationFrame
         let lastRenderTime = 0;              // Timestamp del último render efectivo
+        let lastExpChartUpdate = 0;          // Último refresco de la gráfica del modo experimento
         let currentYMin = {};                // {chartIdx: currentMin} - escala Y suavizada
         let currentYMax = {};                // {chartIdx: currentMax} - escala Y suavizada
         let scaleInitialized = {};           // {chartIdx: bool}
@@ -13422,7 +13463,10 @@ bluetooth.startIOPinService()</pre>
                     chartDirty = false;
 
                     // Actualizar gráfica del modo experimento en tiempo real
-                    if (expChart && document.getElementById('experimentMode').classList.contains('active')) {
+                    // (throttle: reconstruye datasets, no hace falta a 30 fps)
+                    if (expChart && timestamp - lastExpChartUpdate >= EXP_LIVE_INTERVAL &&
+                        document.getElementById('experimentMode').classList.contains('active')) {
+                        lastExpChartUpdate = timestamp;
                         updateExpChartData();
                         updateExpTimeline();
                         // Mover el slider al último punto para que se vea la gráfica construyéndose
@@ -13450,7 +13494,13 @@ bluetooth.startIOPinService()</pre>
                 // 4. Tabla y botones cada 500ms
                 if (now - lastTableUpdate >= 500) {
                     lastTableUpdate = now;
-                    updateDataTable();
+                    // Tabla oculta (panel cerrado / otra vista): no regenerar su DOM
+                    const tbodyEl = document.getElementById('dataTableBody');
+                    if (tbodyEl && tbodyEl.offsetParent !== null) {
+                        updateDataTable();
+                    } else if (typeof updateTimelineScrubber === 'function') {
+                        updateTimelineScrubber();
+                    }
                     document.getElementById('exportBtn').disabled = state.rawData.length === 0;
                     document.getElementById('setZeroBtn').disabled = state.selectedPoints.size !== 1;
 
@@ -13607,6 +13657,9 @@ bluetooth.startIOPinService()</pre>
         let _mbTimeShift = 0;           // Corrimiento aplicado a timestamps del micro:bit tras un reinicio
         let _backwardsRun = 0;          // Racha de timestamps consecutivos que retroceden
         let _backwardsPrevRaw = -1;     // Último mt crudo de la racha de retrocesos
+        let _forwardRun = 0;            // Racha de saltos adelante "imposibles" coherentes entre sí
+        let _forwardPrevRaw = -1;       // Último mt crudo de la racha de saltos adelante
+        let _mbDeltas = [];             // Últimos pasos de mt entre muestras aceptadas (cadencia)
         let _lastBrowserPointTime = 0;  // Último tiempo asignado en modo sin timestamp (reloj del navegador)
         let _corruptionMedian = {};     // Running median por variable para detección de digit-loss
         let _corruptionBuffer = {};     // Buffer circular de últimos N valores por variable
@@ -13622,6 +13675,24 @@ bluetooth.startIOPinService()</pre>
         const CORRUPTION_MAX_RANGE_RATIO = 0.5; // Solo filtrar si el rango es < 50% de la mediana (señal estable)
         // Regex para detectar caracteres no imprimibles (excepto \r \n , . - y dígitos)
         const SERIAL_INVALID_CHAR = /[^\x20-\x7E]/;
+        // Salto ADELANTE imposible del timestamp. Cuando el buffer serial del
+        // micro:bit desborda (muestreo muy rápido) se pierden bytes y un "\n"
+        // perdido fusiona dos líneas: "12345,1023" + "12350,1023" puede llegar
+        // como "1234512350,1023" (2 columnas, formato "válido") con un tiempo
+        // que salta días hacia adelante. Eso comprimía toda la gráfica contra
+        // T=0 y hacía aparecer tiempos con exponentes (1.2×10⁹). Como los datos
+        // llegan en tiempo real, mt no puede avanzar más que el reloj de la PC
+        // (+ tolerancia por buffering) ni más de N veces el paso típico.
+        const FORWARD_JUMP_SLACK = 3000;          // ms de tolerancia sobre el tiempo real
+        const FORWARD_JUMP_CADENCE_FACTOR = 20;   // ...o 20× el paso típico entre muestras
+        const FORWARD_RUN_CONFIRM = 3;            // líneas seguidas para aceptar un origen nuevo
+        const MB_DELTAS_WINDOW = 16;              // muestras para estimar la cadencia
+
+        function _medianOf(arr) {
+            const s = arr.slice().sort((a, b) => a - b);
+            const m = s.length >> 1;
+            return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+        }
 
         // Detector de corrupción serial por pérdida de dígitos ASCII
         // Cuando un byte se pierde en el UART (sin flow control), un valor como "42"
@@ -13720,8 +13791,41 @@ bluetooth.startIOPinService()</pre>
             } else {
                 _backwardsRun = 0;
                 _backwardsPrevRaw = -1;
+
+                if (_lastValidTimestamp >= 0) {
+                    const jump = mapped - _lastValidTimestamp;
+                    const wallGap = Math.max(0, batchTime - _lastBatchWallTime);
+                    const cadence = _mbDeltas.length >= 2 ? _medianOf(_mbDeltas) : 0;
+                    const maxJump = Math.max(wallGap + FORWARD_JUMP_SLACK, cadence * FORWARD_JUMP_CADENCE_FACTOR);
+                    if (jump > maxJump) {
+                        // Salto adelante imposible en tiempo real → línea fusionada
+                        // por bytes perdidos. Se descarta, salvo que varias líneas
+                        // seguidas (crecientes entre sí) confirmen un origen nuevo
+                        // (p. ej. el micro:bit envía el tiempo en otra unidad).
+                        if (_forwardRun > 0 && mt > _forwardPrevRaw) {
+                            _forwardRun++;
+                        } else {
+                            _forwardRun = 1;
+                        }
+                        const prevRaw = _forwardPrevRaw;
+                        _forwardPrevRaw = mt;
+                        if (_forwardRun < FORWARD_RUN_CONFIRM) return null;
+                        // Origen nuevo confirmado: sembrar la cadencia con el paso
+                        // observado para que las próximas líneas no se descarten.
+                        _mbDeltas = [mt - prevRaw, mt - prevRaw];
+                        _forwardRun = 0;
+                        _forwardPrevRaw = -1;
+                    } else {
+                        _forwardRun = 0;
+                        _forwardPrevRaw = -1;
+                    }
+                }
             }
 
+            if (_lastValidTimestamp >= 0) {
+                _mbDeltas.push(mapped - _lastValidTimestamp);
+                if (_mbDeltas.length > MB_DELTAS_WINDOW) _mbDeltas.shift();
+            }
             _lastValidTimestamp = mapped;
             state._lastMicrobitTimestamp = mapped;
             return mapped;
@@ -13736,6 +13840,75 @@ bluetooth.startIOPinService()</pre>
             if (t <= _lastBrowserPointTime) t = _lastBrowserPointTime + 1;
             _lastBrowserPointTime = t;
             return t;
+        }
+
+        // Motivo del último descarte de parseIncomingLine (para el log Bluetooth)
+        let _lastRejectReason = '';
+
+        // Parsea una línea recibida ("t,v1,v2" con timestamp o "v1,v2" sin él)
+        // y devuelve el punto de datos, o null si hay que descartarla.
+        // Compartida por el loop serial USB y el handler Bluetooth: ambos
+        // caminos aplican exactamente las mismas validaciones anticorrupción.
+        function parseIncomingLine(rawLine, numVars, useMbTime, batchTime) {
+            _lastRejectReason = '';
+            const line = rawLine.trim();
+            if (line.length === 0) return null;
+
+            // Líneas demasiado largas o con bytes no imprimibles = corrupción
+            if (line.length > SERIAL_MAX_LINE_LEN) { _lastRejectReason = 'length'; return null; }
+            if (SERIAL_INVALID_CHAR.test(line)) { _lastRejectReason = 'chars'; return null; }
+
+            const parts = line.split(',');
+            const nParts = parts.length;
+            const expectedParts = useMbTime ? numVars + 1 : numVars;
+            if (nParts !== expectedParts) {
+                _formatMismatchCount++;
+                _lastMismatchParts = nParts;
+                _lastRejectReason = 'format';
+                return null;
+            }
+
+            // Valores: se validan ANTES de tocar la línea temporal, así una
+            // línea con un valor roto se descarta entera sin "gastar" su tiempo.
+            const valueOffset = useMbTime ? 1 : 0;
+            const values = new Array(numVars);
+            for (let vi = 0; vi < numVars; vi++) {
+                const tok = parts[vi + valueOffset];
+                // Campo vacío ("12345,"): +'' daría 0 y colaría un valor falso
+                if (tok.trim().length === 0) { _lastRejectReason = 'value'; return null; }
+                const n = +tok;
+                if (n !== n || !isFinite(n)) { _lastRejectReason = 'value'; return null; }
+                values[vi] = n;
+            }
+
+            let pointTime;
+            if (useMbTime) {
+                const tok = parts[0];
+                const mt = tok.trim().length ? +tok : NaN;
+                if (mt !== mt || !isFinite(mt)) { _lastRejectReason = 'time'; return null; }
+                if (mt < 0) { _lastRejectReason = 'time'; return null; } // sensor en columna incorrecta
+                // Monotonía + reinicios + saltos imposibles del micro:bit
+                const mapped = mapMicrobitTimestamp(mt, batchTime);
+                if (mapped === null) { _lastRejectReason = 'time'; return null; }
+                pointTime = mapped;
+            } else {
+                pointTime = nextBrowserPointTime(batchTime);
+            }
+
+            // Detector de corrupción serial: digit-loss y line-merge (siempre activo)
+            if (isSerialCorruption(values, numVars)) { _lastRejectReason = 'corruption'; return null; }
+            // Filtro de picos: descartar valores anómalos (opcional, lo activa el usuario)
+            if (state.spikeFilter && hasSpikeValues(values)) { _lastRejectReason = 'spike'; return null; }
+
+            // Punto válido: actualizar buffers de detección de corrupción
+            updateCorruptionBuffers(values, numVars);
+
+            return {
+                time: pointTime,
+                wallTime: batchTime,
+                values: values,
+                id: 'd' + (++_dataPointCounter)
+            };
         }
 
         async function startSerialLoop() {
@@ -13781,69 +13954,10 @@ bluetooth.startIOPinService()</pre>
                     const batchTime = Date.now();
                     const batchLen = lines.length;
                     const useMbTime = state.microbitTimestamp;
-                    const expectedParts = useMbTime ? numVars + 1 : numVars;
 
                     for (let li = 0; li < batchLen; li++) {
-                        const line = lines[li].trim();
-                        if (line.length === 0) continue;
-
-                        // Descartar líneas demasiado largas (corrupción serial)
-                        if (line.length > SERIAL_MAX_LINE_LEN) continue;
-
-                        // Descartar líneas con caracteres no imprimibles (bytes corruptos)
-                        if (SERIAL_INVALID_CHAR.test(line)) continue;
-
-                        const parts = line.split(',');
-                        const nParts = parts.length;
-
-                        if (nParts !== expectedParts) {
-                            _formatMismatchCount++;
-                            _lastMismatchParts = nParts;
-                            continue;
-                        }
-                        const hasTimestamp = useMbTime;
-
-                        let pointTime;
-                        let valueOffset = 0;
-
-                        if (hasTimestamp) {
-                            const mt = +parts[0];
-                            if (mt !== mt || !isFinite(mt)) continue; // NaN / Infinity
-                            if (mt < 0) continue; // Timestamp negativo: probable sensor en columna incorrecta
-                            valueOffset = 1;
-
-                            // Monotonía estricta + manejo de reinicios del micro:bit
-                            const mapped = mapMicrobitTimestamp(mt, batchTime);
-                            if (mapped === null) continue; // Corrupción o dato viejo: descartar
-                            pointTime = mapped;
-                        } else {
-                            pointTime = nextBrowserPointTime(batchTime);
-                        }
-
-                        const values = new Array(numVars);
-                        let valid = true;
-                        for (let vi = 0; vi < numVars; vi++) {
-                            const n = +parts[vi + valueOffset];
-                            if (n !== n) { valid = false; break; }
-                            values[vi] = n;
-                        }
-                        if (!valid) continue;
-
-                        // Detector de corrupción serial: digit-loss y line-merge (siempre activo)
-                        if (isSerialCorruption(values, numVars)) continue;
-
-                        // Filtro de picos: descartar valores anómalos (opcional, usuario lo activa)
-                        if (state.spikeFilter && hasSpikeValues(values)) continue;
-
-                        // Punto válido: actualizar buffers de detección de corrupción
-                        updateCorruptionBuffers(values, numVars);
-
-                        const dataPoint = {
-                            time: pointTime,
-                            wallTime: batchTime,
-                            values: values,
-                            id: 'd' + (++_dataPointCounter)
-                        };
+                        const dataPoint = parseIncomingLine(lines[li], numVars, useMbTime, batchTime);
+                        if (dataPoint === null) continue;
 
                         // Push a state.rawData / buffers de gráfica solo si la
                         // captura PRINCIPAL está activa. Si solo MAPEO captura
@@ -14241,7 +14355,7 @@ bluetooth.startIOPinService()</pre>
             // y la fórmula de regression-js sufre cancelación catastrófica. Con el
             // anclaje, a = valor al inicio del tramo (finito y con sentido) y b (la
             // tasa) no cambia. Si el tiempo ya está en cero, x₀≈0 y queda y = a·e^(bx).
-            const x0 = Math.min(...xData);
+            const x0 = _arrMin(xData);
             const data = xData.map((x, i) => [x - x0, yData[i]]);
             const result = regression.exponential(data, { precision: 12 });
 
@@ -14390,8 +14504,8 @@ bluetooth.startIOPinService()</pre>
             }
 
             const n = xData.length;
-            const xMin = Math.min(...xData);
-            const xMax = Math.max(...xData);
+            const xMin = _arrMin(xData);
+            const xMax = _arrMax(xData);
             const xRange = xMax - xMin;
 
             // Para ω dado, resuelve por mínimos cuadrados el sistema lineal
@@ -14529,13 +14643,13 @@ bluetooth.startIOPinService()</pre>
             // que el máximo de y para que z sea positivo y exista el logaritmo).
             console.log('=== AJUSTE CRECIMIENTO CON SATURACIÓN ===');
 
-            const yMax = Math.max(...yData);
-            const yMin = Math.min(...yData);
+            const yMax = _arrMax(yData);
+            const yMin = _arrMin(yData);
             const span = (yMax - yMin) || 1;
             // Anclar la x al inicio del tramo (igual que en fitExponential): el
             // truco usa regression.exponential, que es inestable y se desborda con
             // x grande (tiempo no zeroeado). Con el anclaje B queda finito y estable.
-            const x0 = Math.min(...xData);
+            const x0 = _arrMin(xData);
 
             const evalA = (A) => {
                 const z = xData.map((x, i) => [x - x0, A - yData[i]]);
@@ -14714,17 +14828,17 @@ bluetooth.startIOPinService()</pre>
             // Anclar x al inicio del tramo: el modelo se evalúa en (x − x₀). Evita que
             // exp(-x/tau) se desborde con tiempos grandes (timestamps) y hace que los
             // parámetros tipo "tau" sean relativos al inicio, como espera el alumno.
-            const x0 = Math.min(...xData);
+            const x0 = _arrMin(xData);
             const xs = xData.map(x => x - x0);
 
             // MULTI-ARRANQUE: el estudiante no necesita poner valores iniciales.
             // Probamos varias semillas derivadas de la escala de los datos y nos
             // quedamos con el mejor R². (El ajuste no lineal depende del punto de
             // partida; esto lo resuelve automáticamente para los casos comunes.)
-            const yMax = Math.max(...yData), yMin = Math.min(...yData);
+            const yMax = _arrMax(yData), yMin = _arrMin(yData);
             const yRange = (yMax - yMin) || 1;
             const yMean = yData.reduce((a, b) => a + b, 0) / yData.length;
-            const xRange = (Math.max(...xs) - Math.min(...xs)) || 1;
+            const xRange = (_arrMax(xs) - _arrMin(xs)) || 1;
             const yS = Math.max(Math.abs(yMax), Math.abs(yMin), yRange) || 1;
             const pool = [...new Set(
                 [1, yS, yRange, yMean || 1, yMax || 1, xRange, xRange / 3, xRange / 10, 1 / xRange, 0.5]
@@ -14794,7 +14908,7 @@ bluetooth.startIOPinService()</pre>
                 for (let j = Math.max(0, i - win); j <= Math.min(N - 1, i + win); j++) { s += yData[j]; c++; }
                 sm[i] = s / c;
             }
-            const yMax = Math.max(...yData), yMin = Math.min(...yData);
+            const yMax = _arrMax(yData), yMin = _arrMin(yData);
             const range = (yMax - yMin) || 1;
             const minLen = Math.max(6, Math.round(N * 0.05));
             const promThresh = (opts.prominence || 0.10) * range;
@@ -14914,7 +15028,7 @@ bluetooth.startIOPinService()</pre>
         function _sinusoidCycles(fit, xData) {
             const omega = fit && fit.coeffs && fit.coeffs[1];
             if (!isFinite(omega)) return 0;
-            const xr = Math.max(...xData) - Math.min(...xData);
+            const xr = _arrMax(xData) - _arrMin(xData);
             return Math.abs(omega) * xr / (2 * Math.PI);
         }
 
@@ -14960,8 +15074,8 @@ bluetooth.startIOPinService()</pre>
             opts = opts || {};
             const candidates = opts.candidates || _AUTO_FIT_CANDIDATES;
             const n = xData.length;
-            const xMin = Math.min(...xData);
-            const yMin = Math.min(...yData);
+            const xMin = _arrMin(xData);
+            const yMin = _arrMin(yData);
             const tried = [];
 
             // Selección sin varianza (meseta / línea de base): ningún modelo
@@ -15021,7 +15135,7 @@ bluetooth.startIOPinService()</pre>
             const pool = eligible.length ? eligible : tried.filter(e => isFinite(e.aicc));
             let winner;
             if (pool.length) {
-                const minAicc = Math.min(...pool.map(e => e.aicc));
+                const minAicc = _arrMin(pool.map(e => e.aicc));
                 // Modelos estadísticamente indistinguibles del mejor (ΔAICc ≤ 2):
                 // elegir el más simple.
                 const top = pool.filter(e => e.aicc - minAicc <= 2);
@@ -15035,7 +15149,7 @@ bluetooth.startIOPinService()</pre>
                 winner = bySimple.find(e => isFinite(e.r2) && e.r2 >= 0.9) || bySimple[0];
             }
 
-            const allMin = Math.min(...tried.map(e => e.aicc));
+            const allMin = _arrMin(tried.map(e => e.aicc));
             const ranking = tried
                 .slice()
                 .sort((a, b) => a.aicc - b.aicc)
@@ -15089,7 +15203,7 @@ bluetooth.startIOPinService()</pre>
                     type: res.type, requestedType: res.requestedType,
                     coeffs: res.coeffs, errors: res.errors, equation: res.equation, r2: res.r2,
                     xShift: res.xShift || 0, paramNames: res.paramNames, expr: res.expr, degrees: res.degrees,
-                    fitXMin: Math.min(...xSeg), fitXMax: Math.max(...xSeg),
+                    fitXMin: _arrMin(xSeg), fitXMax: _arrMax(xSeg),
                     color: _SEGMENT_PALETTE[i % _SEGMENT_PALETTE.length]
                 });
             });
@@ -15411,19 +15525,27 @@ bluetooth.startIOPinService()</pre>
                     };
                 });
 
-                // Colores y tamaños diferenciados para puntos seleccionados
-                const pointBgColors = data.map(d =>
-                    state.selectedPoints.has(d.id) ? '#ff0000' : color
-                );
-                const pointBorderColors = data.map(d =>
-                    state.selectedPoints.has(d.id) ? '#cc0000' : '#fff'
-                );
-                const pointSizes = data.map(d =>
-                    state.selectedPoints.has(d.id) ? 5 : 2.5
-                );
-                const pointBorderWidths = data.map(d =>
-                    state.selectedPoints.has(d.id) ? 2.5 : 1
-                );
+                // Colores y tamaños diferenciados para puntos seleccionados.
+                // Sin selección se usan valores escalares: Chart.js resuelve los
+                // arrays punto por punto y con muchos puntos eso pesa mucho más.
+                let pointBgColors = color;
+                let pointBorderColors = '#fff';
+                let pointSizes = 2.5;
+                let pointBorderWidths = 1;
+                if (state.selectedPoints.size > 0) {
+                    const n = data.length;
+                    pointBgColors = new Array(n);
+                    pointBorderColors = new Array(n);
+                    pointSizes = new Array(n);
+                    pointBorderWidths = new Array(n);
+                    for (let i = 0; i < n; i++) {
+                        const sel = state.selectedPoints.has(data[i].id);
+                        pointBgColors[i] = sel ? '#ff0000' : color;
+                        pointBorderColors[i] = sel ? '#cc0000' : '#fff';
+                        pointSizes[i] = sel ? 5 : 2.5;
+                        pointBorderWidths[i] = sel ? 2.5 : 1;
+                    }
+                }
 
                 chart.data.datasets.push({
                     label: state.variables[varIdx].name,
@@ -15462,8 +15584,7 @@ bluetooth.startIOPinService()</pre>
                     }
                 });
 
-                const dataXMin = Math.min(...xValues);
-                const dataXMax = Math.max(...xValues);
+                const [dataXMin, dataXMax] = _arrMinMax(xValues);
 
                 // "Proyectar curva teórica": extender la curva más allá del tramo
                 // ajustado para ver la predicción del modelo sobre todo el gráfico
@@ -15487,8 +15608,8 @@ bluetooth.startIOPinService()</pre>
                 const _yVals = state.rawData
                     .map(d => d.values[state.fitResult.varIndex])
                     .filter(v => isFinite(v));
-                const _yLoData = _yVals.length ? Math.min(..._yVals) : 0;
-                const _yHiData = _yVals.length ? Math.max(..._yVals) : 1;
+                const _yLoData = _yVals.length ? _arrMin(_yVals) : 0;
+                const _yHiData = _yVals.length ? _arrMax(_yVals) : 1;
                 const _yR = (_yHiData - _yLoData) || 1;
                 const yBandLo = _yLoData - _yR * 2;
                 const yBandHi = _yHiData + _yR * 2;
@@ -15541,7 +15662,7 @@ bluetooth.startIOPinService()</pre>
                     xHi = sf.fitXMax + span * 0.15;
                     const yv = state.rawData.map(d => d.values[sf.varIndex]).filter(v => isFinite(v));
                     if (yv.length) {
-                        const lo = Math.min(...yv), hi = Math.max(...yv), r = (hi - lo) || 1;
+                        const lo = _arrMin(yv), hi = _arrMax(yv), r = (hi - lo) || 1;
                         yBandLo = lo - 2 * r; yBandHi = hi + 2 * r;
                     }
                 }
@@ -15630,6 +15751,32 @@ bluetooth.startIOPinService()</pre>
             chart.update('none');
         }
 
+        // Paginación de la tabla de datos. Generar TODAS las filas (con un
+        // <input> por celda) con decenas de miles de puntos congelaba la página
+        // ~15 s al detener una captura rápida. En captura se sigue la cola
+        // (últimas filas); después se navega con ◀ ▶ o desde la línea de tiempo.
+        const TABLE_PAGE_SIZE = 200;
+        let _tablePage = 0;
+
+        function tableGoPage(delta) {
+            _tablePage += delta;
+            updateDataTable();
+        }
+
+        // Lleva la tabla a la página que contiene el índice dado (sin filtros).
+        // Con render=false solo fija la página (el render lo hará updateDisplay).
+        function tableShowIndex(idx, render = true) {
+            if (state.isCollecting) return; // en captura la tabla sigue la cola
+            const searchTerm = document.getElementById('tableSearch').value;
+            const filter = document.getElementById('tableFilter').value;
+            if (searchTerm || filter === 'selected') return;
+            const page = Math.floor(idx / TABLE_PAGE_SIZE);
+            if (page !== _tablePage) {
+                _tablePage = page;
+                if (render) updateDataTable();
+            }
+        }
+
         function updateDataTable() {
             const t = translations[currentLanguage];
             const tbody = document.getElementById('dataTableBody');
@@ -15647,38 +15794,62 @@ bluetooth.startIOPinService()</pre>
                 return;
             }
 
-            // Construir índice de posiciones originales para evitar O(n) indexOf por fila
-            let filteredData = [];
-            let filteredOrigIdx = [];
-            for (let idx = 0; idx < state.rawData.length; idx++) {
-                const d = state.rawData[idx];
-                // Filtro de selección
-                if (filter === 'selected' && !state.selectedPoints.has(d.id)) {
-                    continue;
+            const total = state.rawData.length;
+            const noFilter = !searchTerm && filter !== 'selected';
+
+            // Sin búsqueda ni filtro no hace falta recorrer rawData (que crece sin
+            // límite a alta frecuencia): se pagina directamente sobre él.
+            let filteredData;
+            let filteredOrigIdx = null; // null → el índice original es la posición
+            if (noFilter) {
+                filteredData = state.rawData;
+            } else {
+                filteredData = [];
+                filteredOrigIdx = [];
+                for (let idx = 0; idx < total; idx++) {
+                    const d = state.rawData[idx];
+                    // Filtro de selección
+                    if (filter === 'selected' && !state.selectedPoints.has(d.id)) {
+                        continue;
+                    }
+                    // Filtro de búsqueda
+                    if (searchTerm) {
+                        const adjustedTime = fmtTime((d.time - state.timeZeroOffset) / timeUnitValue, timeUnitValue);
+                        const rowText = `${idx + 1} ${adjustedTime} ${d.values.join(' ')}`.toLowerCase();
+                        if (!rowText.includes(searchTerm)) continue;
+                    }
+                    filteredData.push(d);
+                    filteredOrigIdx.push(idx);
                 }
-                // Filtro de búsqueda
-                if (searchTerm) {
-                    const adjustedTime = ((d.time - state.timeZeroOffset) / timeUnitValue).toFixed(3);
-                    const rowText = `${idx + 1} ${adjustedTime} ${d.values.join(' ')}`.toLowerCase();
-                    if (!rowText.includes(searchTerm)) continue;
-                }
-                filteredData.push(d);
-                filteredOrigIdx.push(idx);
             }
 
-            // Durante captura en vivo, limitar a los últimos 100 registros para rendimiento
-            const MAX_VISIBLE_ROWS = 100;
-            let displayData = filteredData;
-            let displayOrigIdx = filteredOrigIdx;
+            // Página a mostrar: en captura, siempre la cola (últimas filas)
+            const count = filteredData.length;
+            const pageCount = Math.max(1, Math.ceil(count / TABLE_PAGE_SIZE));
+            if (state.isCollecting) _tablePage = pageCount - 1;
+            _tablePage = Math.max(0, Math.min(_tablePage, pageCount - 1));
+            const from = _tablePage * TABLE_PAGE_SIZE;
+            const to = Math.min(count, from + TABLE_PAGE_SIZE);
+            const displayData = filteredData.slice(from, to);
+            const displayOrigIdx = filteredOrigIdx ? filteredOrigIdx.slice(from, to) : null;
+
             let truncatedMsg = '';
-            if (state.isCollecting && filteredData.length > MAX_VISIBLE_ROWS) {
-                displayData = filteredData.slice(-MAX_VISIBLE_ROWS);
-                displayOrigIdx = filteredOrigIdx.slice(-MAX_VISIBLE_ROWS);
-                truncatedMsg = `<tr><td colspan="10" style="text-align:center; padding:4px; background:#f5f5f5; font-size:0.8rem;">... ${filteredData.length - MAX_VISIBLE_ROWS} filas anteriores ocultas durante captura ...</td></tr>`;
+            const navStyle = 'text-align:center; padding:4px; background:#f5f5f5; font-size:0.8rem;';
+            if (state.isCollecting) {
+                if (from > 0) {
+                    const hiddenTxt = { es: 'filas anteriores ocultas durante captura', en: 'earlier rows hidden during capture', pt: 'linhas anteriores ocultas durante a captura' };
+                    truncatedMsg = `<tr><td colspan="10" style="${navStyle}">... ${from} ${hiddenTxt[currentLanguage] || hiddenTxt.es} ...</td></tr>`;
+                }
+            } else if (pageCount > 1) {
+                const nav = ({ es: ['◀ Anteriores', 'Siguientes ▶', 'Filas'], en: ['◀ Previous', 'Next ▶', 'Rows'], pt: ['◀ Anteriores', 'Próximas ▶', 'Linhas'] })[currentLanguage]
+                    || ['◀ Anteriores', 'Siguientes ▶', 'Filas'];
+                const btn = (label, delta, disabled) =>
+                    `<button type="button" class="toolbar-btn" style="padding:2px 8px; font-size:0.75rem; border:1px solid #333;"${disabled ? ' disabled' : ''} onclick="tableGoPage(${delta}); event.stopPropagation()">${label}</button>`;
+                truncatedMsg = `<tr><td colspan="10" style="${navStyle}">${btn(nav[0], -1, _tablePage === 0)}<span style="margin:0 10px;">${nav[2]} ${from + 1}–${to} / ${count}</span>${btn(nav[1], 1, _tablePage >= pageCount - 1)}</td></tr>`;
             }
 
             tbody.innerHTML = truncatedMsg + displayData.map((d, displayIdx) => {
-                const originalIdx = displayOrigIdx[displayIdx];
+                const originalIdx = displayOrigIdx ? displayOrigIdx[displayIdx] : from + displayIdx;
                 const adjustedTime = (d.time - state.timeZeroOffset) / timeUnitValue;
 
                 let valuesHtml = '';
@@ -15692,7 +15863,7 @@ bluetooth.startIOPinService()</pre>
                     `;
                 }
 
-                const timeCell = state.microbitTimestamp ? `<td>${fmtNum(adjustedTime)}</td>` : '';
+                const timeCell = state.microbitTimestamp ? `<td>${fmtTime(adjustedTime, timeUnitValue)}</td>` : '';
                 return `
                     <tr class="${state.selectedPoints.has(d.id) ? 'selected' : ''}" data-id="${d.id}" onclick="toggleSelect('${d.id}')">
                         <td>${originalIdx + 1}</td>
@@ -15733,6 +15904,8 @@ bluetooth.startIOPinService()</pre>
             if (state.selectedPoints.size === 1) {
                 const selectedId = Array.from(state.selectedPoints)[0];
                 const selectedIndex = state.rawData.findIndex(d => d.id === selectedId);
+                // La tabla (paginada) muestra la página del punto seleccionado
+                if (selectedIndex >= 0) tableShowIndex(selectedIndex, false);
                 document.getElementById('pointInfo').textContent = `PUNTO #${selectedIndex + 1} SELECCIONADO`;
                 document.getElementById('pointInfo').style.display = 'inline-block';
             } else if (state.selectedPoints.size > 1) {
@@ -17953,8 +18126,8 @@ bluetooth.startIOPinService()</pre>
                     varIndex: varIndex,
                     xAxis: graphConfig.xAxis,
                     dataPoints: dataToFit.length,
-                    fitXMin: Math.min(...xData),
-                    fitXMax: Math.max(...xData)
+                    fitXMin: _arrMin(xData),
+                    fitXMax: _arrMax(xData)
                 };
 
                 // El ajuste único y el ajuste por tramos son mutuamente excluyentes.
@@ -18048,8 +18221,8 @@ bluetooth.startIOPinService()</pre>
             const fmt = v => (typeof fmtNum === 'function' ? fmtNum(v) : v.toFixed(4));
             const statsOf = values => {
                 const mean = values.reduce((a, b) => a + b, 0) / values.length;
-                const min = Math.min(...values);
-                const max = Math.max(...values);
+                const min = _arrMin(values);
+                const max = _arrMax(values);
                 const stdDev = Math.sqrt(values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length);
                 return { mean, min, max, stdDev };
             };
@@ -18871,6 +19044,9 @@ bluetooth.startIOPinService()</pre>
                 _mbTimeShift = 0;
                 _backwardsRun = 0;
                 _backwardsPrevRaw = -1;
+                _forwardRun = 0;
+                _forwardPrevRaw = -1;
+                _mbDeltas = [];
                 _lastBrowserPointTime = 0;
                 state.sensorPhotos = [];
                 state.videoBlob = null;
@@ -19685,7 +19861,12 @@ bluetooth.startIOPinService()</pre>
             const varIdx = expSelectedVar;
             const color = '#1976d2'; // blue per Rule 6
 
-            const data = state.rawData.map(d => ({
+            // En captura: ventana deslizante (como las gráficas principales) para
+            // no re-mapear ni redibujar todo rawData en cada refresco
+            const src = (state.isCollecting && state.rawData.length > LIVE_WINDOW_MAX_POINTS)
+                ? state.rawData.slice(-LIVE_WINDOW_MAX_POINTS)
+                : state.rawData;
+            const data = src.map(d => ({
                 x: (d.time - state.timeZeroOffset) / timeUnitValue,
                 y: d.values[varIdx],
                 id: d.id
@@ -19715,7 +19896,7 @@ bluetooth.startIOPinService()</pre>
             if (state.fitResult && state.fitResult.varIndex === varIdx) {
                 const xValues = data.map(d => d.x);
                 // Curva solo sobre el tramo ajustado (evita extrapolar y dispararse).
-                const [xMin, xMax] = fitCurveXRange(Math.min(...xValues), Math.max(...xValues));
+                const [xMin, xMax] = fitCurveXRange(..._arrMinMax(xValues));
                 const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs, state.fitResult.xShift || 0, state.fitResult);
                 const fitData = [];
                 for (let i = 0; i <= 200; i++) {
@@ -21587,7 +21768,7 @@ bluetooth.startIOPinService()</pre>
             if (state.fitResult && state.fitResult.varIndex === varIdx) {
                 const xValues = data.map(d => d.x);
                 // Curva solo sobre el tramo ajustado (evita extrapolar y dispararse).
-                const [xMin, xMax] = fitCurveXRange(Math.min(...xValues), Math.max(...xValues));
+                const [xMin, xMax] = fitCurveXRange(..._arrMinMax(xValues));
                 const predict = createPredictor(state.fitResult.type, state.fitResult.coeffs, state.fitResult.xShift || 0, state.fitResult);
                 const fitData = [];
                 for (let i = 0; i <= 200; i++) {
@@ -21790,11 +21971,14 @@ bluetooth.startIOPinService()</pre>
 
             let filteredData = [];
             let filteredOrigIdx = [];
-            for (let idx = 0; idx < state.rawData.length; idx++) {
+            const noFilter = !searchTerm && filter !== 'selected';
+            // Sin filtros: solo la cola (evita recorrer y volcar todo rawData)
+            const startIdx = noFilter ? Math.max(0, state.rawData.length - TABLE_PAGE_SIZE) : 0;
+            for (let idx = startIdx; idx < state.rawData.length; idx++) {
                 const d = state.rawData[idx];
                 if (filter === 'selected' && !state.selectedPoints.has(d.id)) continue;
                 if (searchTerm) {
-                    const adjustedTime = ((d.time - state.timeZeroOffset) / timeUnitValue).toFixed(3);
+                    const adjustedTime = fmtTime((d.time - state.timeZeroOffset) / timeUnitValue, timeUnitValue);
                     const rowText = `${idx + 1} ${adjustedTime} ${d.values.join(' ')}`.toLowerCase();
                     if (!rowText.includes(searchTerm)) continue;
                 }
@@ -21802,7 +21986,19 @@ bluetooth.startIOPinService()</pre>
                 filteredOrigIdx.push(idx);
             }
 
-            tbody.innerHTML = filteredData.map((d, displayIdx) => {
+            // Tope de filas en el DOM (ver TABLE_PAGE_SIZE): se muestran las últimas
+            let hiddenMsg = '';
+            const hiddenRows = startIdx + Math.max(0, filteredData.length - TABLE_PAGE_SIZE);
+            if (filteredData.length > TABLE_PAGE_SIZE) {
+                filteredData = filteredData.slice(-TABLE_PAGE_SIZE);
+                filteredOrigIdx = filteredOrigIdx.slice(-TABLE_PAGE_SIZE);
+            }
+            if (hiddenRows > 0) {
+                const txt = { es: 'filas anteriores no mostradas', en: 'earlier rows not shown', pt: 'linhas anteriores não exibidas' };
+                hiddenMsg = `<tr><td colspan="10" style="text-align:center; padding:4px; background:#f5f5f5; font-size:0.8rem;">... ${hiddenRows} ${txt[currentLanguage] || txt.es} ...</td></tr>`;
+            }
+
+            tbody.innerHTML = hiddenMsg + filteredData.map((d, displayIdx) => {
                 const originalIdx = filteredOrigIdx[displayIdx];
                 const adjustedTime = (d.time - state.timeZeroOffset) / timeUnitValue;
 
@@ -21825,7 +22021,7 @@ bluetooth.startIOPinService()</pre>
                 return `
                     <tr class="${rowClass}" data-idx="${originalIdx}" onclick="dlabRowClick(${originalIdx}, event)">
                         <td>${originalIdx + 1}</td>
-                        <td>${fmtNum(adjustedTime)}</td>
+                        <td>${fmtTime(adjustedTime)}</td>
                         ${valuesHtml}
                         ${photoCell}
                         <td><button class="delete-btn" onclick="dlabDeletePoint('${d.id}'); event.stopPropagation()">×</button></td>
@@ -22255,6 +22451,9 @@ bluetooth.startIOPinService()</pre>
 
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
             const adjustedTime = (point.time - state.timeZeroOffset) / timeUnitValue;
+
+            // Fuera de captura, mostrar la página de la tabla que contiene el punto
+            tableShowIndex(idx);
 
             document.getElementById('timelineLabelPt').textContent = '#' + (idx + 1);
             document.getElementById('timelineValue').textContent = adjustedTime.toFixed(3) + ' s';
@@ -23402,7 +23601,7 @@ bluetooth.startIOPinService()</pre>
             try { f = this._buildModelFunction(expr); } catch (e) { this._toast('Expresión inválida'); return; }
             const paramsObj = {};
             params.forEach(p => paramsObj[p.name] = p.value);
-            const sMin = Math.min(...cut.ss), sMax = Math.max(...cut.ss);
+            const sMin = _arrMin(cut.ss), sMax = _arrMax(cut.ss);
             const NM = 200;
             const modelXs = [], modelYs = [];
             for (let i = 0; i < NM; i++) {
@@ -23899,7 +24098,7 @@ bluetooth.startIOPinService()</pre>
             });
             traces.push({
               type: 'scatter', mode: 'lines',
-              x: [Math.min(...cut.ss), Math.max(...cut.ss)], y: [0, 0],
+              x: [_arrMin(cut.ss), _arrMax(cut.ss)], y: [0, 0],
               line: { color: '#666', width: 1, dash: 'dash' },
               xaxis: 'x2', yaxis: 'y2',
               hoverinfo: 'skip', showlegend: false
@@ -23957,7 +24156,7 @@ bluetooth.startIOPinService()</pre>
           }
           if (result.error) { this._toast(result.error); return; }
 
-          const sMin = Math.min(...cut.ss), sMax = Math.max(...cut.ss);
+          const sMin = _arrMin(cut.ss), sMax = _arrMax(cut.ss);
           const NM = 200;
           const modelXs = [], modelYs = [];
           for (let i = 0; i < NM; i++) {
@@ -24837,7 +25036,7 @@ bluetooth.startIOPinService()</pre>
           if (!this.grid) { this._toast('Generá una grilla primero'); return; }
           const vals = this.grid.points.filter(p => p.value !== null).map(p => p.value);
           if (vals.length === 0) { this._toast('No hay puntos medidos'); return; }
-          const min = Math.min(...vals);
+          const min = _arrMin(vals);
           this.grid.points.forEach(p => { if (p.value !== null) p.value -= min; });
           this._updateInfo();
           this._draw();
@@ -24937,8 +25136,8 @@ bluetooth.startIOPinService()</pre>
 
           // Rango para colormap
           const vals = this.grid.points.filter(p => p.value !== null).map(p => p.value);
-          const vmin = vals.length ? Math.min(...vals) : 0;
-          const vmax = vals.length ? Math.max(...vals) : 1;
+          const vmin = vals.length ? _arrMin(vals) : 0;
+          const vmax = vals.length ? _arrMax(vals) : 1;
 
           // ===== Capas de visualización =====
           // Solo si hay datos suficientes y un modo distinto de "Puntos".
