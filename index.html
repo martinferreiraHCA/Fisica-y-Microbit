@@ -31332,9 +31332,12 @@ bluetooth.startIOPinService()</pre>
     }
 
     /* ---------- Mensajería con el editor (modo controller) ---------- */
+    // Códigos de idioma tal como los lista MakeCode en availableLocales:
+    // el español es "es-ES" (con "es" a secas el editor cae a inglés).
+    var EDITOR_LANGS = { es: 'es-ES', pt: 'pt-BR', en: 'en' };
     function langParam() {
         var l = (typeof currentLanguage !== 'undefined' && currentLanguage) || 'es';
-        return l === 'pt' ? 'pt-BR' : l;
+        return EDITOR_LANGS[l] || 'es-ES';
     }
     function editorUrl() {
         return ORIGIN + '/?controller=1&lang=' + encodeURIComponent(langParam());
