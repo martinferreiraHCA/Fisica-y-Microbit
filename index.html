@@ -31190,27 +31190,30 @@ bluetooth.startIOPinService()</pre>
          Protocolo: github.com/microsoft/pxt → pxteditor/editorcontroller.ts
          ============================================================ -->
     <style id="mk-style">
-    .mk-panel { display:none; position:fixed; inset:0; z-index:9150; background:#1a1d23; color:#e0e0e0; font-family:-apple-system, 'Segoe UI', sans-serif; flex-direction:column; }
-    .mk-panel.open { display:flex; }
-    .mk-topbar { display:flex; align-items:center; gap:8px; background:#0a0a0a; border-bottom:1px solid #2b303b; padding:8px 14px; flex:0 0 auto; flex-wrap:wrap; }
-    .mk-topbar h2 { font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#fff; margin:0; white-space:nowrap; }
-    .mk-badge { font-size:10px; letter-spacing:1px; color:#1a1d23; background:#b39ddb; padding:2px 8px; text-transform:uppercase; font-weight:700; white-space:nowrap; }
-    .mk-spacer { flex:1; }
-    .mk-top-btn { background:none; border:1px solid #444; color:#e0e0e0; font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:6px 10px; cursor:pointer; text-decoration:none; display:inline-block; font-family:inherit; }
+    .mk-panel { display:none; position:fixed; inset:0; z-index:9150; background:#1a1d23; color:#e0e0e0; font-family:-apple-system, 'Segoe UI', sans-serif; }
+    .mk-panel.open { display:block; }
+    .mk-stage { position:absolute; inset:0; background:#101216; }
+    .mk-stage iframe { display:block; width:100%; height:100%; border:none; background:#fff; }
+    /* Tira flotante: por defecto en el hueco entre el logo de micro:bit y el
+       selector Bloques/JavaScript del menú de MakeCode; se puede arrastrar. */
+    .mk-float { position:absolute; top:6px; left:150px; z-index:3; }
+    .mk-bar { display:flex; align-items:center; gap:4px; background:#0a0a0a; border:1px solid #444; border-radius:4px; padding:3px 6px 3px 4px; box-shadow:0 2px 8px rgba(0,0,0,.35); white-space:nowrap; }
+    .mk-grip { cursor:grab; color:#8a919e; font-size:14px; line-height:1; padding:0 4px; user-select:none; touch-action:none; }
+    .mk-grip:active { cursor:grabbing; }
+    .mk-bar h2 { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#b39ddb; margin:0 6px 0 0; }
+    .mk-top-btn { background:none; border:1px solid #444; color:#e0e0e0; font-size:10px; letter-spacing:.5px; text-transform:uppercase; padding:4px 7px; cursor:pointer; text-decoration:none; display:inline-block; font-family:inherit; line-height:1.2; }
     .mk-top-btn:hover:not(:disabled) { background:#fff; color:#000; border-color:#fff; }
     .mk-top-btn:disabled { opacity:.35; cursor:default; }
     .mk-top-btn.warn { border-color:#ffb74d; color:#ffb74d; }
-    .mk-close { background:none; border:1px solid #444; color:#e0e0e0; font-size:15px; line-height:1; padding:5px 11px; cursor:pointer; }
+    .mk-close { background:none; border:1px solid #444; color:#e0e0e0; font-size:13px; line-height:1; padding:3px 8px; cursor:pointer; }
     .mk-close:hover { background:#fff; color:#000; border-color:#fff; }
-    .mk-panel.bar-hidden .mk-topbar { display:none; }
-    .mk-showbar { display:none; position:absolute; top:0; left:50%; transform:translateX(-50%); z-index:2; background:#0a0a0a; color:#e0e0e0; border:1px solid #444; border-top:none; font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:3px 12px; cursor:pointer; font-family:inherit; opacity:.85; }
+    .mk-panel.bar-hidden .mk-bar { display:none; }
+    .mk-showbar { display:none; background:#0a0a0a; color:#e0e0e0; border:1px solid #444; border-radius:4px; font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:3px 10px; cursor:pointer; font-family:inherit; opacity:.85; }
     .mk-showbar:hover { background:#fff; color:#000; opacity:1; }
     .mk-panel.bar-hidden .mk-showbar { display:block; }
-    .mk-stage { flex:1 1 auto; position:relative; min-height:0; background:#101216; }
-    .mk-stage iframe { display:block; width:100%; height:100%; border:none; background:#fff; }
     .mk-status { position:absolute; left:0; right:0; bottom:0; padding:6px 14px; font-size:11px; color:#aab; background:rgba(10,10,10,.85); pointer-events:none; }
     .mk-status:empty { display:none; }
-    .mk-helpbox { display:none; position:absolute; inset:0; background:rgba(0,0,0,.6); align-items:flex-start; justify-content:center; overflow:auto; padding:24px; box-sizing:border-box; }
+    .mk-helpbox { display:none; position:absolute; inset:0; background:rgba(0,0,0,.6); align-items:flex-start; justify-content:center; overflow:auto; padding:24px; box-sizing:border-box; z-index:4; }
     .mk-helpbox.open { display:flex; }
     .mk-help-card { background:#23272e; border:1px solid #2b303b; max-width:720px; width:100%; color:#e0e0e0; font-size:13px; line-height:1.55; }
     .mk-help-head { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #2b303b; }
@@ -31219,23 +31222,24 @@ bluetooth.startIOPinService()</pre>
     .mk-help-body h4 { margin:14px 0 4px; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#b39ddb; }
     .mk-help-body code { background:#101216; padding:1px 5px; font-size:12px; }
     .mk-help-body kbd { background:#101216; border:1px solid #444; padding:0 4px; font-size:11px; }
-    @media (max-width: 600px) { .mk-topbar h2 { font-size:11px; letter-spacing:1px; } .mk-badge { display:none; } }
+    @media (max-width: 600px) { .mk-bar h2 { display:none; } }
     </style>
 
     <div class="mk-panel" id="mk-panel" aria-hidden="true">
-        <div class="mk-topbar">
-            <h2>MakeCode + FisicaBit</h2>
-            <span class="mk-badge">editor oficial · extensión fisicabit-usb</span>
-            <span class="mk-spacer"></span>
-            <button id="mk-disconnect" class="mk-top-btn warn" style="display:none" title="La micro:bit está conectada por USB a FisicaBit. Si la grabación desde MakeCode falla, desconectala acá primero.">Desconectar USB de FisicaBit</button>
-            <button id="mk-new" class="mk-top-btn" title="Crear un proyecto nuevo con la extensión FisicaBit USB ya cargada" disabled>Nuevo proyecto FisicaBit</button>
-            <button id="mk-help-btn" class="mk-top-btn">Ayuda</button>
-            <a class="mk-top-btn" href="https://makecode.microbit.org/" target="_blank" rel="noopener" title="Abrir MakeCode en una pestaña aparte">Pestaña ↗</a>
-            <button id="mk-hidebar" class="mk-top-btn" title="Ocultar esta barra para que el editor ocupe toda la pantalla">Ocultar barra ▲</button>
-            <button id="mk-close" class="mk-close" title="Volver al sitio (el editor sigue abierto)">✕</button>
-        </div>
-        <div class="mk-stage">
-            <button id="mk-showbar" class="mk-showbar" title="Volver a mostrar la barra de MakeCode + FisicaBit">▼ MakeCode + FisicaBit</button>
+        <div class="mk-stage" id="mk-stage">
+            <div class="mk-float" id="mk-float">
+                <div class="mk-bar">
+                    <span class="mk-grip" id="mk-grip" title="Arrastrar para ubicar la barra donde no tape nada">⋮⋮</span>
+                    <h2>FisicaBit</h2>
+                    <button id="mk-disconnect" class="mk-top-btn warn" style="display:none" title="La micro:bit está conectada por USB a FisicaBit. Si la grabación desde MakeCode falla, desconectala acá primero.">Soltar USB</button>
+                    <button id="mk-new" class="mk-top-btn" title="Crear un proyecto nuevo con la extensión FisicaBit USB ya cargada" disabled>＋ Nuevo</button>
+                    <button id="mk-help-btn" class="mk-top-btn" title="Cómo usar MakeCode con FisicaBit">Ayuda</button>
+                    <a class="mk-top-btn" href="https://makecode.microbit.org/" target="_blank" rel="noopener" title="Abrir MakeCode en una pestaña aparte">↗</a>
+                    <button id="mk-hidebar" class="mk-top-btn" title="Ocultar la barra (queda una pestañita para volver a mostrarla)">▲</button>
+                    <button id="mk-close" class="mk-close" title="Volver al sitio (el editor sigue abierto)">✕ Volver</button>
+                </div>
+                <button id="mk-showbar" class="mk-showbar" title="Volver a mostrar la barra de FisicaBit">▼ FisicaBit</button>
+            </div>
             <iframe id="mk-iframe" title="MakeCode para micro:bit" allow="usb; serial; hid; clipboard-read; clipboard-write; fullscreen; microphone; camera; autoplay"></iframe>
             <div class="mk-status" id="mk-status"></div>
             <div class="mk-helpbox" id="mk-helpbox">
@@ -31443,10 +31447,56 @@ bluetooth.startIOPinService()</pre>
         // El iframe queda vivo: al volver a entrar, el editor sigue donde estaba.
     }
 
-    /* ---------- Barra superior: ocultar / mostrar ---------- */
+    /* ---------- Barra flotante: ocultar / mostrar / arrastrar ---------- */
+    var LS_POS = 'fisicabit_makecode_barpos';
     function setBarHidden(hidden) {
         panel.classList.toggle('bar-hidden', !!hidden);
         try { localStorage.setItem(LS_BAR, hidden ? '1' : '0'); } catch (_) {}
+    }
+    function clampFloat(x, y) {
+        var fl = el('mk-float'), st = el('mk-stage') || panel;
+        var maxX = Math.max(0, st.clientWidth - fl.offsetWidth - 4);
+        var maxY = Math.max(0, st.clientHeight - fl.offsetHeight - 4);
+        return { x: Math.max(0, Math.min(maxX, x)), y: Math.max(0, Math.min(maxY, y)) };
+    }
+    function placeFloat(x, y, save) {
+        var fl = el('mk-float');
+        var c = clampFloat(x, y);
+        fl.style.left = c.x + 'px';
+        fl.style.top = c.y + 'px';
+        if (save) { try { localStorage.setItem(LS_POS, c.x + ',' + c.y); } catch (_) {} }
+    }
+    function restoreFloat() {
+        try {
+            var v = localStorage.getItem(LS_POS);
+            if (!v) return;
+            var xy = v.split(',').map(Number);
+            if (isFinite(xy[0]) && isFinite(xy[1])) placeFloat(xy[0], xy[1], false);
+        } catch (_) {}
+    }
+    function initDrag() {
+        var grip = el('mk-grip'), fl = el('mk-float');
+        var drag = null;
+        grip.addEventListener('pointerdown', function (e) {
+            drag = { dx: e.clientX - fl.offsetLeft, dy: e.clientY - fl.offsetTop };
+            try { grip.setPointerCapture(e.pointerId); } catch (_) {}   // sigue recibiendo eventos aunque el puntero pase sobre el iframe
+            e.preventDefault();
+        });
+        grip.addEventListener('pointermove', function (e) {
+            if (!drag) return;
+            placeFloat(e.clientX - drag.dx, e.clientY - drag.dy, false);
+        });
+        function end(e) {
+            if (!drag) return;
+            drag = null;
+            try { grip.releasePointerCapture(e.pointerId); } catch (_) {}
+            placeFloat(fl.offsetLeft, fl.offsetTop, true);
+        }
+        grip.addEventListener('pointerup', end);
+        grip.addEventListener('pointercancel', end);
+        // Doble clic en el agarre: volver a la posición por defecto
+        grip.addEventListener('dblclick', function () { fl.style.left = ''; fl.style.top = ''; try { localStorage.removeItem(LS_POS); } catch (_) {} });
+        window.addEventListener('resize', function () { if (opened) placeFloat(fl.offsetLeft, fl.offsetTop, false); });
     }
 
     function init() {
@@ -31457,6 +31507,8 @@ bluetooth.startIOPinService()</pre>
         el('mk-hidebar').addEventListener('click', function () { setBarHidden(true); });
         el('mk-showbar').addEventListener('click', function () { setBarHidden(false); });
         try { if (localStorage.getItem(LS_BAR) === '1') panel.classList.add('bar-hidden'); } catch (_) {}
+        initDrag();
+        restoreFloat();
 
         var btn = el('btn-makecode');
         if (btn) btn.addEventListener('click', openPanel);
