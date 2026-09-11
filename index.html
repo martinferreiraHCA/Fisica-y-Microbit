@@ -8096,9 +8096,6 @@ basic.forever(function () {
                 try { syncChartLabelsAndTitles(); } catch (e) {}
             }
 
-            // Guardar preferencia
-            localStorage.setItem('microbit-language', lang);
-
             console.log(`Idioma cambiado a: ${lang}`);
         }
 
@@ -9921,10 +9918,16 @@ bluetooth.startIOPinService()</pre>
 
         // Cargar idioma guardado o detectar idioma del navegador
         function loadLanguage() {
-            let savedLang = localStorage.getItem('microbit-language');
-
-            // Sin preferencia guardada, el sitio (y con él el editor de MakeCode
-            // embebido) carga en español. El selector ES/EN/PT guarda la elección.
+            // Solo cuenta la elección explícita del usuario en el selector ES/EN/PT.
+            // La clave vieja 'microbit-language' también guardaba el idioma
+            // autodetectado del navegador, así que un "en" quedaba pegado para
+            // siempre; se descarta y el sitio (y con él el editor de MakeCode
+            // embebido) carga en español salvo que el usuario elija otro idioma.
+            let savedLang = null;
+            try {
+                savedLang = localStorage.getItem('fisicabit-language');
+                localStorage.removeItem('microbit-language');
+            } catch (_) {}
             if (!savedLang || !translations[savedLang]) savedLang = 'es';
 
             currentLanguage = savedLang; // Establecer idioma actual
@@ -10057,6 +10060,8 @@ bluetooth.startIOPinService()</pre>
         document.getElementById('languageSelector').addEventListener('change', function() {
             track('cambiar_idioma', 'otros');
             changeLanguage(this.value);
+            // Elección explícita del usuario: se recuerda (ver loadLanguage)
+            try { localStorage.setItem('fisicabit-language', this.value); } catch (_) {}
         });
 
         // ========== CONFIGURACIÓN DE VARIABLES ==========
