@@ -9923,13 +9923,9 @@ bluetooth.startIOPinService()</pre>
         function loadLanguage() {
             let savedLang = localStorage.getItem('microbit-language');
 
-            if (!savedLang) {
-                // Detectar idioma del navegador
-                const browserLang = navigator.language || navigator.userLanguage;
-                if (browserLang.startsWith('es')) savedLang = 'es';
-                else if (browserLang.startsWith('pt')) savedLang = 'pt';
-                else savedLang = 'en';
-            }
+            // Sin preferencia guardada, el sitio (y con él el editor de MakeCode
+            // embebido) carga en español. El selector ES/EN/PT guarda la elección.
+            if (!savedLang || !translations[savedLang]) savedLang = 'es';
 
             currentLanguage = savedLang; // Establecer idioma actual
             document.getElementById('languageSelector').value = savedLang;
@@ -31206,6 +31202,10 @@ bluetooth.startIOPinService()</pre>
     .mk-top-btn.warn { border-color:#ffb74d; color:#ffb74d; }
     .mk-close { background:none; border:1px solid #444; color:#e0e0e0; font-size:15px; line-height:1; padding:5px 11px; cursor:pointer; }
     .mk-close:hover { background:#fff; color:#000; border-color:#fff; }
+    .mk-panel.bar-hidden .mk-topbar { display:none; }
+    .mk-showbar { display:none; position:absolute; top:0; left:50%; transform:translateX(-50%); z-index:2; background:#0a0a0a; color:#e0e0e0; border:1px solid #444; border-top:none; font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:3px 12px; cursor:pointer; font-family:inherit; opacity:.85; }
+    .mk-showbar:hover { background:#fff; color:#000; opacity:1; }
+    .mk-panel.bar-hidden .mk-showbar { display:block; }
     .mk-stage { flex:1 1 auto; position:relative; min-height:0; background:#101216; }
     .mk-stage iframe { display:block; width:100%; height:100%; border:none; background:#fff; }
     .mk-status { position:absolute; left:0; right:0; bottom:0; padding:6px 14px; font-size:11px; color:#aab; background:rgba(10,10,10,.85); pointer-events:none; }
@@ -31231,9 +31231,11 @@ bluetooth.startIOPinService()</pre>
             <button id="mk-new" class="mk-top-btn" title="Crear un proyecto nuevo con la extensión FisicaBit USB ya cargada" disabled>Nuevo proyecto FisicaBit</button>
             <button id="mk-help-btn" class="mk-top-btn">Ayuda</button>
             <a class="mk-top-btn" href="https://makecode.microbit.org/" target="_blank" rel="noopener" title="Abrir MakeCode en una pestaña aparte">Pestaña ↗</a>
+            <button id="mk-hidebar" class="mk-top-btn" title="Ocultar esta barra para que el editor ocupe toda la pantalla">Ocultar barra ▲</button>
             <button id="mk-close" class="mk-close" title="Volver al sitio (el editor sigue abierto)">✕</button>
         </div>
         <div class="mk-stage">
+            <button id="mk-showbar" class="mk-showbar" title="Volver a mostrar la barra de MakeCode + FisicaBit">▼ MakeCode + FisicaBit</button>
             <iframe id="mk-iframe" title="MakeCode para micro:bit" allow="usb; serial; hid; clipboard-read; clipboard-write; fullscreen; microphone; camera; autoplay"></iframe>
             <div class="mk-status" id="mk-status"></div>
             <div class="mk-helpbox" id="mk-helpbox">
@@ -31279,6 +31281,7 @@ bluetooth.startIOPinService()</pre>
         '})\n';
 
     var panel, iframe, opened = false, editorReady = false, initialProjectSent = false;
+    var LS_BAR = 'fisicabit_makecode_barhidden';
     var projects = loadProjects();   // { headerId: { header, text } }
     var connTimer = null;
 
@@ -31440,10 +31443,20 @@ bluetooth.startIOPinService()</pre>
         // El iframe queda vivo: al volver a entrar, el editor sigue donde estaba.
     }
 
+    /* ---------- Barra superior: ocultar / mostrar ---------- */
+    function setBarHidden(hidden) {
+        panel.classList.toggle('bar-hidden', !!hidden);
+        try { localStorage.setItem(LS_BAR, hidden ? '1' : '0'); } catch (_) {}
+    }
+
     function init() {
         panel = el('mk-panel');
         iframe = el('mk-iframe');
         if (!panel || !iframe) return;
+
+        el('mk-hidebar').addEventListener('click', function () { setBarHidden(true); });
+        el('mk-showbar').addEventListener('click', function () { setBarHidden(false); });
+        try { if (localStorage.getItem(LS_BAR) === '1') panel.classList.add('bar-hidden'); } catch (_) {}
 
         var btn = el('btn-makecode');
         if (btn) btn.addEventListener('click', openPanel);
