@@ -26108,9 +26108,16 @@ bluetooth.startIOPinService()</pre>
         if (/<img|<figure|doc-eq/.test(h)) return true;
         return h.replace(/<[^>]*>/g, '').replace(/&nbsp;|​|\s/g, '').length > 0;
       }
+      // Quita ítems de lista vacíos (p. ej. la viñeta inicial de «Materiales» si no se escribió nada).
+      function cleanRichHTML(h) {
+        if (!h) return '';
+        var prev;
+        do { prev = h; h = h.replace(/<li[^>]*>(?:\s|\u200b|&nbsp;|<br\s*\/?>)*<\/li>/gi, '').replace(/<(ul|ol)[^>]*>(?:\s|\u200b)*<\/\1>/gi, ''); } while (h !== prev);
+        return h;
+      }
       function sectionReportHTML(s) {
         normSection(s);
-        var title = (s.title || '').trim(), html = (s.html || '').trim();
+        var title = (s.title || '').trim(), html = cleanRichHTML((s.html || '').trim());
         if (!title && !html) return '';
         return '<div class="rep-block">' + band(title || 'Sección', '') + '<div class="rep-pad"><div class="rep-rich">' + (html || '') + '</div></div></div>';
       }
@@ -26317,6 +26324,13 @@ bluetooth.startIOPinService()</pre>
 
       // ===== SECCIONES + EDITOR DEL DOCUMENTO (WYSIWYG + tarjetas + LaTeX + APA) =====
       var QUICK_SECS = ['Fundamento teórico', 'Objetivo', 'Materiales', 'Marco teórico', 'Procedimiento', 'Resultados', 'Conclusión'];
+      // Contenido inicial de algunas secciones. «Materiales» arranca como lista con viñetas:
+      // se escribe un material por línea (Enter agrega otro; Enter en un ítem vacío sale de la lista).
+      var SEC_TEMPLATES = { 'Materiales': '<ul><li><br></li></ul>' };
+      function secTip(name) {
+        if (name === 'Materiales') return 'Agregar la sección «Materiales» como lista con viñetas: un material por línea (Enter agrega otro)';
+        return 'Agregar la sección «' + name + '» al documento';
+      }
       // Paleta de símbolos agrupada, orientada a física.
       var EQ_GROUPS = [
         ['Estructura', [['a/b', '\\frac{a}{b}'], ['√', '\\sqrt{x}'], ['ⁿ√', '\\sqrt[n]{x}'], ['x²', '^{2}'], ['xₙ', '_{n}'], ['x₀', '_{0}'], ['( )', '\\left( \\right)'], ['|x|', '\\left| x \\right|'], ['⟨⟩', '\\langle x \\rangle']]],
@@ -26361,11 +26375,89 @@ bluetooth.startIOPinService()</pre>
         if (s) { s.html = ed.innerHTML; if (sectionHasContent(s)) I.selected['sec:' + s.id] = true; }
         renderPreviewDebounced(); schedule();
       }
+      // Pone el cursor dentro del primer ítem de lista (secciones que arrancan como lista, p. ej. «Materiales»).
+      function placeCaretInFirstItem(ed) {
+        try {
+          var li = ed.querySelector('li'); if (!li) return;
+          var r = document.createRange(); r.setStart(li, 0); r.collapse(true);
+          var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        } catch (e) {}
+      }
+      // ---- Listas automáticas (como en Word / Google Docs) ----
+      // Escribir "- ", "* ", "• " o "1. " al comienzo de una línea la convierte en viñeta o
+      // numeración; y pegar texto plano con líneas que empiezan con esos marcadores crea la lista.
+      var LIST_BULLET_RE = /^[-*•·–—]$/, LIST_NUM_RE = /^\d{1,2}[.)]$/;
+      var LIST_LINE_RE = /^\s*(?:[-*•·–—]|\d{1,2}[.)])\s+/, LIST_NUM_LINE_RE = /^\s*\d{1,2}[.)]\s+/;
+      function wireListAutoformat(ed) {
+        if (!ed || ed.dataset.listAuto) return; ed.dataset.listAuto = '1';
+        // Un editor vacío arranca con un párrafo real: si el texto queda «suelto» (sin <p>),
+        // el navegador mezcla las líneas al convertirlas en lista.
+        ed.addEventListener('focus', function () {
+          try {
+            if (ed.innerHTML.replace(/[\s\u200b]|<br\s*\/?>/g, '') !== '') return;
+            ed.innerHTML = '<p><br></p>';
+            var r = document.createRange(); r.setStart(ed.firstChild, 0); r.collapse(true);
+            var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+          } catch (e) {}
+        });
+        ed.addEventListener('keydown', function (e) {
+          if (e.key !== ' ' || e.ctrlKey || e.metaKey || e.altKey) return;
+          try {
+            var sel = window.getSelection(); if (!sel || !sel.rangeCount || !sel.isCollapsed) return;
+            var r = sel.getRangeAt(0), node = r.startContainer;
+            if (node.nodeType !== 3) return;
+            var host = node.parentNode;
+            if (!host || !host.closest || host.closest('li, table, figure, .doc-eq, .doc-eq-block')) return;
+            var block = host.closest('p, div, h2, h3, h4, .inf-rich, .inf-page-body'); if (!block || !ed.contains(block)) return;
+            var pre = document.createRange(); pre.selectNodeContents(block); pre.setEnd(node, r.startOffset);
+            var before = pre.toString().replace(/[\u200b\u00a0\s]+/g, '');
+            var bullet = LIST_BULLET_RE.test(before), numbered = LIST_NUM_RE.test(before);
+            if (!bullet && !numbered) return;
+            e.preventDefault();
+            // Se arma la lista a mano (execCommand anida la lista dentro del párrafo o se
+            // va al párrafo anterior): el bloque actual pasa a ser el primer ítem.
+            pre.deleteContents();
+            var list = document.createElement(bullet ? 'ul' : 'ol'), li = document.createElement('li');
+            if (block === ed) { node.parentNode.insertBefore(list, node); li.appendChild(node); }
+            else { while (block.firstChild) li.appendChild(block.firstChild); block.parentNode.replaceChild(list, block); }
+            list.appendChild(li);
+            if (!li.textContent.replace(/[\u200b\u00a0\s]/g, '') && !li.querySelector('img')) { li.innerHTML = '<br>'; }
+            var r2 = document.createRange(); r2.setStart(li, 0); r2.collapse(true);
+            sel.removeAllRanges(); sel.addRange(r2);
+            onEditableInput(ed);
+          } catch (err) {}
+        });
+        ed.addEventListener('paste', function (e) {
+          try {
+            var cd = e.clipboardData; if (!cd) return;
+            if (cd.types && [].slice.call(cd.types).indexOf('text/html') >= 0) return;   // con formato: lo maneja el navegador
+            var txt = cd.getData('text/plain'); if (!txt || txt.indexOf('\n') < 0) return;
+            var lines = txt.split(/\r?\n/).filter(function (l) { return l.trim(); });
+            var marked = lines.filter(function (l) { return LIST_LINE_RE.test(l); });
+            if (marked.length < 2) return;
+            e.preventDefault();
+            var html = '', open = null;
+            lines.forEach(function (l) {
+              if (LIST_LINE_RE.test(l)) {
+                var tagName = LIST_NUM_LINE_RE.test(l) ? 'ol' : 'ul';
+                if (open !== tagName) { if (open) html += '</' + open + '>'; html += '<' + tagName + '>'; open = tagName; }
+                html += '<li>' + esc(l.replace(LIST_LINE_RE, '').trim()) + '</li>';
+              } else {
+                if (open) { html += '</' + open + '>'; open = null; }
+                html += '<p>' + esc(l.trim()) + '</p>';
+              }
+            });
+            if (open) html += '</' + open + '>';
+            document.execCommand('insertHTML', false, html);
+            onEditableInput(ed);
+          } catch (err) {}
+        });
+      }
 
       // ---- Armado: puntero a la pestaña Editor ----
       function renderSecQuick() {
         var q = el('inf-sec-quick'); if (!q) return; q.innerHTML = '';
-        QUICK_SECS.forEach(function (name) { var b = chip('＋ ' + name, 'Agregar la sección «' + name + '» al documento'); b.addEventListener('click', function () { addSection(name); }); q.appendChild(b); });
+        QUICK_SECS.forEach(function (name) { var b = chip('＋ ' + name, secTip(name)); b.addEventListener('click', function () { addSection(name); }); q.appendChild(b); });
         var blank = chip('＋ En blanco', 'Agregar una sección vacía para escribir lo que quieras'); blank.addEventListener('click', function () { addSection(''); }); q.appendChild(blank);
       }
       function buildSectionsUI() {
@@ -26380,12 +26472,12 @@ bluetooth.startIOPinService()</pre>
       function addSection(title) {
         I._secSeq = (I._secSeq || 0) + 1;
         var id = 'sec' + I._secSeq;
-        I.sections.push({ id: id, title: title || '', pos: 'start', html: '' });
+        I.sections.push({ id: id, title: title || '', pos: 'start', html: SEC_TEMPLATES[title] || '' });
         I.selected['sec:' + id] = true;
         resolveOrder();
         switchInfTab('editor');
         buildSectionsUI(); buildChecklist(); buildEditor();
-        setTimeout(function () { var eds = document.querySelectorAll('#inf-doc-canvas .inf-rich'); var last = eds[eds.length - 1]; if (last) { last.focus(); last.scrollIntoView({ block: 'center' }); } }, 30);
+        setTimeout(function () { var eds = document.querySelectorAll('#inf-doc-canvas .inf-rich'); var last = eds[eds.length - 1]; if (last) { last.focus(); placeCaretInFirstItem(last); last.scrollIntoView({ block: 'center' }); } }, 30);
         renderPreviewDebounced(); schedule();
       }
       function delSection(sid) {
@@ -26472,7 +26564,7 @@ bluetooth.startIOPinService()</pre>
         var box = el('inf-editor-opts'); if (!box) return; box.innerHTML = '';
         var add = document.createElement('div'); add.className = 'inf-eo-row';
         add.innerHTML = '<span class="inf-eo-lbl">Agregar sección:</span>';
-        QUICK_SECS.forEach(function (name) { var c = chip('＋ ' + name, 'Agregar la sección «' + name + '» al documento'); c.addEventListener('click', function () { addSection(name); }); add.appendChild(c); });
+        QUICK_SECS.forEach(function (name) { var c = chip('＋ ' + name, secTip(name)); c.addEventListener('click', function () { addSection(name); }); add.appendChild(c); });
         var blank = chip('＋ En blanco', 'Agregar una sección vacía para escribir lo que quieras'); blank.addEventListener('click', function () { addSection(''); }); add.appendChild(blank);
         box.appendChild(add);
         var row = document.createElement('div'); row.className = 'inf-eo-row';
@@ -26547,6 +26639,7 @@ bluetooth.startIOPinService()</pre>
             rich.addEventListener('input', function () { onEditableInput(rich); });
             rich.addEventListener('mouseup', function () { I._focusEd = rich; saveRange(); });
             rich.addEventListener('keyup', function () { saveRange(); });
+            wireListAutoformat(rich);
             rich.addEventListener('click', function (e) {
               if (!e.target || !e.target.closest) return;
               var eq = e.target.closest('.doc-eq, .doc-eq-block'); if (eq) { openEqEditor(rich, eq); return; }
@@ -26954,6 +27047,7 @@ bluetooth.startIOPinService()</pre>
         body.oninput = function () { onEditableInput(body); };
         body.onmouseup = function () { I._focusEd = body; saveRange(); };
         body.onkeyup = function () { saveRange(); };
+        wireListAutoformat(body);
         body.onclick = function (e) {
           if (!e.target || !e.target.closest) return;
           var eq = e.target.closest('.doc-eq, .doc-eq-block'); if (eq) { openEqEditor(body, eq); return; }
@@ -27177,10 +27271,524 @@ bluetooth.startIOPinService()</pre>
           } catch (e) {}
         });
       }
+      // ==================== WORD NATIVO (docx.js) ====================
+      // Genera un .docx real: párrafos, títulos, listas, tablas e imágenes nativas de Word,
+      // construidos a partir del mismo HTML del informe. Antes se incrustaba el HTML dentro
+      // del .docx (altChunk), que solo Word de escritorio sabe mostrar: en LibreOffice,
+      // Google Docs, Word online o en el celular el documento se abría en blanco.
+      async function ensureDocxLib() {
+        if (window.docx && window.docx.Document && window.docx.Packer) return true;
+        var urls = ['https://cdn.jsdelivr.net/npm/docx@9.7.1/dist/index.iife.js',
+                    'https://unpkg.com/docx@9.7.1/dist/index.iife.js'];
+        for (var i = 0; i < urls.length; i++) {
+          try {
+            await new Promise(function (res, rej) {
+              var s = document.createElement('script'); s.src = urls[i];
+              s.onload = res; s.onerror = rej; document.head.appendChild(s);
+            });
+            if (window.docx && window.docx.Document && window.docx.Packer) return true;
+          } catch (e) {}
+        }
+        return !!(window.docx && window.docx.Document && window.docx.Packer);
+      }
+      var DOCX_PAGE_W = 11906, DOCX_PAGE_H = 16838, DOCX_MARGIN = 720;      // A4, márgenes de 0,5" (twips)
+      var DOCX_CONTENT_W = DOCX_PAGE_W - 2 * DOCX_MARGIN;                   // 10466 twips ≈ 697 px
+      function docxFontName() {
+        var f = ((I.doc && I.doc.font) || '').split(',')[0].replace(/['"]/g, '').trim();
+        return f || 'Montserrat';
+      }
+      // px (CSS del informe) -> medios puntos de Word. Se agranda un poco (×1.6 en vez de
+      // ×1.5) para que el documento editable quede en ~10 pt de cuerpo.
+      function hp(px) { return Math.max(12, Math.round(px * 1.6)); }
+      function pxToTwip(px) { return Math.round(px * 15); }
+      function cssHex(c) {
+        c = (c || '').trim(); if (!c) return null;
+        var m = /^#([0-9a-f]{3})$/i.exec(c); if (m) return m[1].split('').map(function (x) { return x + x; }).join('').toUpperCase();
+        m = /^#([0-9a-f]{6})$/i.exec(c); if (m) return m[1].toUpperCase();
+        m = /^rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(c);
+        if (m) return [m[1], m[2], m[3]].map(function (n) { return ('0' + Math.max(0, Math.min(255, +n)).toString(16)).slice(-2); }).join('').toUpperCase();
+        var NAMED = { black: '000000', white: 'FFFFFF', red: 'D32F2F', blue: '1565C0', green: '2E7D32', gray: '808080', grey: '808080', orange: 'EF6C00', purple: '6A1B9A' };
+        return NAMED[c.toLowerCase()] || null;
+      }
+      function dataUrlBytes(u) {
+        var m = /^data:image\/(png|jpe?g|gif|bmp);base64,([\s\S]*)$/i.exec(u || ''); if (!m) return null;
+        try {
+          var bin = atob(m[2].replace(/\s/g, '')), arr = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          var t = m[1].toLowerCase(); if (t === 'jpeg') t = 'jpg';
+          return { type: t, data: arr };
+        } catch (e) { return null; }
+      }
+      // Convierte el DOM del informe (ya renderizado fuera de pantalla y con imágenes
+      // preparadas) en elementos de docx.js. Devuelve { children, foot: [textos del pie] }.
+      function htmlToDocx(root) {
+        var D = window.docx, FONT = docxFontName(), olSeq = 0;
+        var BLOCK = { P: 1, DIV: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, UL: 1, OL: 1, LI: 1, TABLE: 1, FIGURE: 1, FIGCAPTION: 1, BLOCKQUOTE: 1, PRE: 1, HR: 1, SECTION: 1, ARTICLE: 1, HEADER: 1, FOOTER: 1, TR: 1, TD: 1, TH: 1, THEAD: 1, TBODY: 1, TFOOT: 1, CAPTION: 1 };
+        var HEAD = { H1: D.HeadingLevel.HEADING_1, H2: D.HeadingLevel.HEADING_2, H3: D.HeadingLevel.HEADING_3, H4: D.HeadingLevel.HEADING_4, H5: D.HeadingLevel.HEADING_5, H6: D.HeadingLevel.HEADING_6 };
+        var HEAD_PX = { H1: 18, H2: 16, H3: 14, H4: 12.5, H5: 12.5, H6: 12.5 };
+        var FONT_TAG_SIZE = { 1: hp(9), 2: hp(10.5), 3: hp(12.5), 4: hp(14.5), 5: hp(18), 6: hp(24), 7: hp(32) };
+        var ALIGN = { left: D.AlignmentType.LEFT, center: D.AlignmentType.CENTER, right: D.AlignmentType.RIGHT, justify: D.AlignmentType.JUSTIFIED };
+        var foot = [];
+        function St() { this.out = []; this.cur = null; }
+        function flush(st) {
+          if (!st.cur) return; var c = st.cur; st.cur = null;
+          if (!c.runs.length && !c.keep) return;
+          st.out.push(new D.Paragraph(Object.assign({ children: c.runs }, c.props)));
+        }
+        function para(st, props) { if (!st.cur) st.cur = { runs: [], props: Object.assign({}, props || {}) }; return st.cur; }
+        function runOpts(fmt) {
+          var o = { font: fmt.font || FONT };
+          if (fmt.size) o.size = fmt.size;
+          if (fmt.bold) o.bold = true;
+          if (fmt.italics) o.italics = true;
+          if (fmt.underline) o.underline = {};
+          if (fmt.strike) o.strike = true;
+          if (fmt.color) o.color = fmt.color;
+          if (fmt.sup) o.superScript = true;
+          if (fmt.sub) o.subScript = true;
+          if (fmt.caps) o.allCaps = true;
+          if (fmt.spacing) o.characterSpacing = fmt.spacing;
+          return o;
+        }
+        function addText(st, text, fmt, pp) {
+          var p = para(st, pp);
+          if (!p.runs.length) text = text.replace(/^\s+/, '');
+          if (!text) return;
+          p.runs.push(new D.TextRun(Object.assign({ text: text }, runOpts(fmt))));
+        }
+        function textOf(elm) { return (elm ? elm.textContent : '').replace(/[\s​]+/g, ' ').trim(); }
+        function imgSize(img, maxPx) {
+          var w = parseFloat(img.getAttribute('width')) || img.naturalWidth || 0, h = parseFloat(img.getAttribute('height')) || img.naturalHeight || 0;
+          if (!w || !h) return null;
+          if (w > maxPx) { h = h * (maxPx / w); w = maxPx; }
+          return { w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) };
+        }
+        function imageRun(img, maxPx) {
+          var b = dataUrlBytes(img.getAttribute('src')); if (!b) return null;
+          var s = imgSize(img, maxPx); if (!s) return null;
+          try { return new D.ImageRun({ type: b.type, data: b.data, transformation: { width: s.w, height: s.h } }); } catch (e) { return null; }
+        }
+        function alignOf(elm, def) {
+          var a = (elm && elm.style && elm.style.textAlign) || (elm && elm.getAttribute && elm.getAttribute('align')) || '';
+          return ALIGN[a] || def || null;
+        }
+        // Bloque con fondo negro y padding (portada y bandas de sección): sombreado + bordes
+        // del mismo color con separación, que en Word/LibreOffice se dibujan como una caja.
+        function darkBox(extra) {
+          var b = { style: D.BorderStyle.SINGLE, size: 6, color: '0A0A0A', space: 6 };
+          return Object.assign({ shading: { type: D.ShadingType.CLEAR, fill: '0A0A0A', color: 'auto' }, border: { top: b, bottom: b, left: b, right: b } }, extra || {});
+        }
+        function cellPara(children, props) { return new D.Paragraph(Object.assign({ children: children }, props || {})); }
+        function borderSpec(color, size, style) { return { style: style || D.BorderStyle.SINGLE, size: size || 4, color: color || 'CFCFCF' }; }
+        function noBorder() { return { style: D.BorderStyle.NONE, size: 0, color: 'FFFFFF' }; }
+        function allBorders(spec) { return { top: spec, bottom: spec, left: spec, right: spec, insideHorizontal: spec, insideVertical: spec }; }
+        function measureCols(tbl, ncols, maxW) {
+          var widths = null;
+          try {
+            var tr = tbl.querySelector('tr');
+            if (tr) {
+              var cells = [].slice.call(tr.children), tw = [];
+              cells.forEach(function (c) { var r = c.getBoundingClientRect(); var span = c.colSpan || 1; for (var k = 0; k < span; k++) tw.push(pxToTwip(r.width / span)); });
+              if (tw.length === ncols && tw.every(function (x) { return x > 0; })) widths = tw;
+            }
+          } catch (e) {}
+          if (!widths) { widths = []; for (var i = 0; i < ncols; i++) widths.push(Math.floor(maxW / ncols)); }
+          // Holgura: en Word la letra es algo mayor y las celdas tienen márgenes; ancho mínimo para que no se corten los números.
+          widths = widths.map(function (w) { return Math.max(900, Math.round(w * 1.15) + 200); });
+          var total = widths.reduce(function (a, b) { return a + b; }, 0);
+          if (total > maxW) widths = widths.map(function (w) { return Math.floor(w * maxW / total); });
+          return widths;
+        }
+        // ---- Tabla genérica (tabla de datos, estadísticas y tablas del editor) ----
+        function buildTable(tbl, ctx) {
+          var cls = tbl.className || '';
+          var kind = /rep-table/.test(cls) ? 'data' : (/rep-stats/.test(cls) ? 'stats' : (/doc-data-table/.test(cls) ? 'doc' : 'plain'));
+          var cmp = /doc-cmp-table/.test(cls);
+          var trs = [].slice.call(tbl.querySelectorAll('tr')).filter(function (tr) { return tr.closest('table') === tbl; });
+          if (!trs.length) return null;
+          var ncols = 0; trs.forEach(function (tr) { var n = 0; [].slice.call(tr.children).forEach(function (c) { n += (c.colSpan || 1); }); ncols = Math.max(ncols, n); });
+          if (!ncols) return null;
+          var maxW = ctx.maxW || DOCX_CONTENT_W;
+          var widths = measureCols(tbl, ncols, maxW);
+          var rows = trs.map(function (tr, ri) {
+            var cells = [].slice.call(tr.children).filter(function (c) { return c.tagName === 'TD' || c.tagName === 'TH'; });
+            var isHead = cells.length && cells.every(function (c) { return c.tagName === 'TH'; });
+            var ci = 0;
+            var tcells = cells.map(function (c, k) {
+              var th = c.tagName === 'TH', span = c.colSpan || 1;
+              var w = 0; for (var q = 0; q < span; q++) w += (widths[ci + q] || 0); ci += span;
+              var first = (k === 0);
+              var align = alignOf(c, null);
+              if (!align) {
+                if (kind === 'data') align = first ? D.AlignmentType.LEFT : D.AlignmentType.RIGHT;
+                else if (kind === 'stats') align = first ? D.AlignmentType.LEFT : D.AlignmentType.RIGHT;
+                else if (kind === 'doc') align = th ? D.AlignmentType.CENTER : (cmp ? D.AlignmentType.LEFT : D.AlignmentType.RIGHT);
+                else align = D.AlignmentType.LEFT;
+              }
+              var fmt = Object.assign({}, ctx.fmt);
+              var shade = null, borders = null;
+              if (kind === 'data') {
+                if (th) { fmt.bold = true; fmt.color = 'FFFFFF'; fmt.caps = true; fmt.size = hp(9.5); fmt.spacing = 20; shade = '0A0A0A'; }
+                else { fmt.size = hp(11); if (first) fmt.color = '666666'; if (ri % 2 === 0) shade = 'FAFAFA'; }
+                borders = { top: noBorder(), left: noBorder(), right: noBorder(), bottom: borderSpec('EEEEEE', 4) };
+              } else if (kind === 'stats') {
+                if (th) { fmt.bold = true; fmt.color = '555555'; fmt.caps = true; fmt.size = hp(9); fmt.spacing = 20; shade = 'F2F2F2'; }
+                else fmt.size = hp(11.5);
+                borders = { top: noBorder(), left: noBorder(), right: noBorder(), bottom: borderSpec('EEEEEE', 4) };
+              } else if (kind === 'doc') {
+                fmt.size = hp(12);
+                if (th) { fmt.bold = true; shade = 'F0F3F8'; }
+                borders = allBorders(borderSpec('CFCFCF', 4));
+              } else {
+                if (th) { fmt.bold = true; shade = 'F2F2F2'; }
+                borders = allBorders(borderSpec('CFCFCF', 4));
+              }
+              var st2 = new St();
+              var cctx = { st: st2, fmt: fmt, pp: { alignment: align, spacing: { after: 0 } }, maxW: Math.max(600, w - 200) };
+              [].slice.call(c.childNodes).forEach(function (n) { walk(n, cctx); });
+              flush(st2);
+              if (!st2.out.length) st2.out.push(cellPara([], { spacing: { after: 0 } }));
+              var opts = { children: st2.out, width: { size: w, type: D.WidthType.DXA }, borders: borders, margins: { top: 60, bottom: 60, left: 100, right: 100 }, verticalAlign: D.VerticalAlign.CENTER };
+              if (span > 1) opts.columnSpan = span;
+              if (shade) opts.shading = { type: D.ShadingType.CLEAR, fill: shade, color: 'auto' };
+              return new D.TableCell(opts);
+            });
+            return new D.TableRow({ children: tcells, tableHeader: !!isHead, cantSplit: true });
+          });
+          var total = widths.reduce(function (a, b) { return a + b; }, 0);
+          return new D.Table({ rows: rows, width: { size: total, type: D.WidthType.DXA }, columnWidths: widths, borders: allBorders(noBorder()) });
+        }
+        // ---- Portada ----
+        function cover(elm, ctx) {
+          var st = ctx.st; flush(st);
+          var kicker = textOf(elm.querySelector('.rep-cover-kicker')), title = textOf(elm.querySelector('.rep-cover-title')), sub = textOf(elm.querySelector('.rep-cover-sub'));
+          st.out.push(new D.Paragraph(darkBox({ spacing: { before: 0, after: 0 }, children: [new D.TextRun({ text: kicker, font: FONT, size: hp(10.5), color: '9E9E9E', bold: true, allCaps: true, characterSpacing: 80 })] })));
+          st.out.push(new D.Paragraph(darkBox({ heading: D.HeadingLevel.TITLE, spacing: { before: 200, after: 120 }, children: [new D.TextRun({ text: title, font: FONT, size: hp(30), color: 'FFFFFF', bold: true })] })));
+          st.out.push(new D.Paragraph(darkBox({ spacing: { before: 0, after: 0 }, children: [new D.TextRun({ text: sub, font: FONT, size: hp(12.5), color: 'CFCFCF' })] })));
+          var cells = [].slice.call(elm.querySelectorAll('.rep-meta-cell'));
+          if (cells.length) {
+            var rows = [], half = Math.floor(DOCX_CONTENT_W / 2);
+            for (var i = 0; i < cells.length; i += 2) {
+              var pair = cells.slice(i, i + 2);
+              var tcs = pair.map(function (c, k) {
+                var kx = textOf(c.querySelector('.k')), vx = textOf(c.querySelector('.v'));
+                return new D.TableCell({
+                  width: { size: half, type: D.WidthType.DXA },
+                  margins: { top: 140, bottom: 140, left: 180, right: 180 },
+                  borders: { top: (i === 0 ? borderSpec('0A0A0A', 24) : noBorder()), bottom: borderSpec('ECECEC', 4), left: noBorder(), right: (k === 0 && pair.length > 1) ? borderSpec('ECECEC', 4) : noBorder() },
+                  children: [
+                    cellPara([new D.TextRun({ text: kx, font: FONT, size: hp(9), color: '8A8A8A', bold: true, allCaps: true, characterSpacing: 30 })], { spacing: { after: 40 } }),
+                    cellPara([new D.TextRun({ text: vx, font: FONT, size: hp(14), bold: true })], { spacing: { after: 0 } })
+                  ]
+                });
+              });
+              if (tcs.length === 1) tcs.push(new D.TableCell({ width: { size: half, type: D.WidthType.DXA }, borders: allBorders(noBorder()), children: [cellPara([])] }));
+              rows.push(new D.TableRow({ children: tcs, cantSplit: true }));
+            }
+            st.out.push(new D.Table({ rows: rows, width: { size: DOCX_CONTENT_W, type: D.WidthType.DXA }, columnWidths: [half, half], borders: allBorders(noBorder()) }));
+          }
+          st.out.push(new D.Paragraph({ children: [], spacing: { after: 200 } }));
+        }
+        // ---- Banda de sección (título de parte) ----
+        function band(elm, ctx) {
+          var st = ctx.st; flush(st);
+          var n = elm.querySelector('.n'), title = '';
+          [].slice.call(elm.childNodes).forEach(function (c) { if (c !== n) title += (c.textContent || ''); });
+          title = title.replace(/[\s​]+/g, ' ').trim();
+          var runs = [new D.TextRun({ text: title, font: FONT, size: hp(12), color: 'FFFFFF', bold: true, allCaps: true, characterSpacing: 40 })];
+          var nt = textOf(n);
+          if (nt) runs.push(new D.TextRun({ children: [new D.Tab(), nt], font: FONT, size: hp(10.5), color: 'BDBDBD', bold: true }));
+          st.out.push(new D.Paragraph(darkBox({ heading: D.HeadingLevel.HEADING_1, keepNext: true, spacing: { before: 360, after: 200 }, tabStops: [{ type: D.TabStopType.RIGHT, position: DOCX_CONTENT_W - 240 }], children: runs })));
+        }
+        // ---- Caja de ajuste (borde izquierdo grueso) ----
+        function fitBox(elm, ctx) {
+          var st = ctx.st; flush(st);
+          var col = cssHex(elm.style && elm.style.borderLeftColor) || '0A0A0A';
+          var thin = { style: D.BorderStyle.SINGLE, size: 4, color: 'E6E6E6', space: 6 };
+          var border = { left: { style: D.BorderStyle.SINGLE, size: 36, color: col, space: 10 }, top: thin, bottom: thin, right: thin };
+          var bctx = Object.assign({}, ctx, { pp: { border: border, indent: { left: 120, right: 120 }, spacing: { after: 60 } } });
+          [].slice.call(elm.childNodes).forEach(function (c) {
+            if (c.nodeType !== 1) { walk(c, bctx); return; }
+            var cl = c.className || '';
+            if (/\beq\b/.test(cl)) { flush(st); addText(st, textOf(c), { font: 'Courier New', bold: true, size: hp(14) }, bctx.pp); flush(st); }
+            else if (/\brow\b/.test(cl)) {
+              flush(st);
+              var k = c.querySelector('.k'), v = c.querySelector('.v');
+              var vcls = (v && v.className) || '', vcol = /rep-r2-good/.test(vcls) ? '1B7D3F' : (/rep-r2-warn/.test(vcls) ? 'B26A00' : (/rep-r2-bad/.test(vcls) ? 'B3261E' : null));
+              var runs = [new D.TextRun({ text: textOf(k), font: FONT, size: hp(10), color: '777777', allCaps: true })];
+              runs.push(new D.TextRun(Object.assign({ children: [new D.Tab(), textOf(v)], font: FONT, size: hp(12), bold: true }, vcol ? { color: vcol } : {})));
+              st.out.push(new D.Paragraph(Object.assign({}, bctx.pp, { tabStops: [{ type: D.TabStopType.RIGHT, position: DOCX_CONTENT_W - 300 }], children: runs })));
+            }
+            else if (/rep-params/.test(cl)) { flush(st); walk(c, Object.assign({}, bctx, { fmt: Object.assign({}, ctx.fmt, { font: 'Courier New', size: hp(11), color: '444444' }) })); flush(st); }
+            else walk(c, bctx);
+          });
+          flush(st);
+          st.out.push(new D.Paragraph({ children: [], spacing: { after: 60 } }));
+        }
+        // ---- Figura (imagen centrada + pie) ----
+        function figure(elm, ctx, img, capEl, defAlign) {
+          var st = ctx.st; flush(st);
+          var cls = elm.className || '';
+          var align = /fig-left|fig-float-left/.test(cls) ? D.AlignmentType.LEFT : (/fig-right|fig-float-right/.test(cls) ? D.AlignmentType.RIGHT : (defAlign || D.AlignmentType.CENTER));
+          var run = img ? imageRun(img, Math.floor((ctx.maxW || DOCX_CONTENT_W) / 15)) : null;
+          if (run) st.out.push(new D.Paragraph({ alignment: align, keepNext: true, spacing: { before: 120, after: 60 }, children: [run] }));
+          var cap = capEl ? textOf(capEl) : '';
+          if (cap) {
+            var cctx = Object.assign({}, ctx, { fmt: Object.assign({}, ctx.fmt, { size: hp(11), color: '6A6A6A' }), pp: { alignment: align, spacing: { after: 160 } }, capB: true });
+            [].slice.call(capEl.childNodes).forEach(function (n) { walk(n, cctx); });
+            flush(st);
+          }
+        }
+        function photosGrid(elm, ctx) {
+          var st = ctx.st; flush(st);
+          var single = /\bsingle\b/.test(elm.className || '');
+          var photos = [].slice.call(elm.querySelectorAll('.rep-photo'));
+          if (!photos.length) return;
+          var cols = single ? 1 : 2, cw = Math.floor(DOCX_CONTENT_W / cols), rows = [];
+          for (var i = 0; i < photos.length; i += cols) {
+            var group = photos.slice(i, i + cols);
+            var tcs = group.map(function (p) {
+              var img = p.querySelector('img'), cap = textOf(p.querySelector('.cap'));
+              var kids = [];
+              var run = img ? imageRun(img, Math.floor(cw / 15) - 16) : null;
+              if (run) kids.push(new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { after: 40 }, children: [run] }));
+              if (cap) kids.push(new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { after: 80 }, children: [new D.TextRun({ text: cap, font: FONT, size: hp(10.5), color: '777777' })] }));
+              if (!kids.length) kids.push(cellPara([]));
+              return new D.TableCell({ children: kids, width: { size: cw, type: D.WidthType.DXA }, borders: allBorders(noBorder()), margins: { top: 60, bottom: 60, left: 80, right: 80 } });
+            });
+            while (tcs.length < cols) tcs.push(new D.TableCell({ children: [cellPara([])], width: { size: cw, type: D.WidthType.DXA }, borders: allBorders(noBorder()) }));
+            rows.push(new D.TableRow({ children: tcs, cantSplit: true }));
+          }
+          var widths = []; for (var k = 0; k < cols; k++) widths.push(cw);
+          st.out.push(new D.Table({ rows: rows, width: { size: cw * cols, type: D.WidthType.DXA }, columnWidths: widths, borders: allBorders(noBorder()) }));
+        }
+        function eqBlock(elm, ctx) {
+          var st = ctx.st; flush(st);
+          var img = elm.querySelector('img'), num = textOf(elm.querySelector('.doc-eq-num')), cap = textOf(elm.querySelector('.doc-eq-cap'));
+          var run = img ? imageRun(img, Math.floor((ctx.maxW || DOCX_CONTENT_W) / 15) - 40) : null;
+          var runs = [];
+          if (run) runs.push(run); else if (elm.dataset && elm.dataset.latex) runs.push(new D.TextRun({ text: decodeURIComponent(elm.dataset.latex), font: 'Courier New', size: hp(12) }));
+          if (num) runs.push(new D.TextRun({ text: '   ' + num, font: FONT, size: hp(11), color: '888888', bold: true }));
+          if (runs.length) st.out.push(new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { before: 120, after: cap ? 40 : 160 }, keepNext: !!cap, children: runs }));
+          if (cap) st.out.push(new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { after: 160 }, children: [new D.TextRun({ text: cap, font: FONT, size: hp(11), color: '6A6A6A' })] }));
+        }
+        function listBlock(elm, ctx, ordered) {
+          var st = ctx.st; flush(st);
+          var level = Math.min(2, (ctx.listLevel == null) ? 0 : ctx.listLevel + 1);
+          var instance = ordered ? (++olSeq) : 0;
+          var ref = ordered ? 'fb-numbers' : 'fb-bullets';
+          [].slice.call(elm.children).forEach(function (li) {
+            if (li.tagName !== 'LI') { walk(li, Object.assign({}, ctx, { listLevel: level })); return; }
+            flush(st);
+            var pp = Object.assign({}, ctx.pp, { numbering: { reference: ref, level: level, instance: instance }, spacing: { after: 60 } });
+            delete pp.alignment;
+            var lctx = Object.assign({}, ctx, { pp: pp, listLevel: level, listRef: ref, listInstance: instance });
+            [].slice.call(li.childNodes).forEach(function (n) { walk(n, lctx); });
+            flush(st);
+          });
+        }
+        function walk(node, ctx) {
+          var st = ctx.st;
+          if (node.nodeType === 3) {
+            var t = node.nodeValue || '';
+            if (ctx.pre) {
+              var lines = t.replace(/​/g, '').split('\n');
+              lines.forEach(function (ln, i) { if (i > 0) flush(st); if (ln !== '') { para(st, ctx.pp).runs.push(new D.TextRun(Object.assign({ text: ln }, runOpts(ctx.fmt)))); } else if (i > 0) para(st, ctx.pp).keep = true; });
+              return;
+            }
+            t = t.replace(/[\s​]+/g, ' ');
+            if (t === ' ' && (!st.cur || !st.cur.runs.length)) return;
+            if (t) addText(st, t, ctx.fmt, ctx.pp);
+            return;
+          }
+          if (node.nodeType !== 1) return;
+          var elm = node, tag = elm.tagName, cls = elm.className || '';
+          if (typeof cls !== 'string') cls = '';
+          if (elm.style && elm.style.display === 'none') return;
+          // --- Estructura del informe ---
+          if (/\brep-cover\b/.test(cls)) { cover(elm, ctx); return; }
+          if (/\brep-band\b/.test(cls)) { band(elm, ctx); return; }
+          if (/\brep-foot-block\b/.test(cls)) { [].slice.call(elm.querySelectorAll('.rep-foot span')).forEach(function (s) { foot.push(textOf(s)); }); return; }
+          if (/\brep-fit\b/.test(cls)) { fitBox(elm, ctx); return; }
+          if (/\brep-photos-grid\b/.test(cls)) { photosGrid(elm, ctx); return; }
+          if (/\brep-figure\b|\brep-draw\b/.test(cls)) { figure(elm, ctx, elm.querySelector('img'), null); return; }
+          if (/\brep-formula\b/.test(cls) && elm.querySelector('img')) { figure(elm, ctx, elm.querySelector('img'), null); return; }
+          if (/\brep-formula-fallback\b/.test(cls)) { flush(st); addText(st, textOf(elm), Object.assign({}, ctx.fmt, { font: 'Courier New', size: hp(12) }), { alignment: D.AlignmentType.CENTER, spacing: { after: 120 } }); flush(st); return; }
+          if (/\brep-cap\b/.test(cls)) {
+            flush(st);
+            var cctx = Object.assign({}, ctx, { fmt: Object.assign({}, ctx.fmt, { size: hp(11), color: '6A6A6A' }), pp: { alignment: alignOf(elm, D.AlignmentType.LEFT), spacing: { after: 160 } }, capB: true });
+            [].slice.call(elm.childNodes).forEach(function (n) { walk(n, cctx); }); flush(st); return;
+          }
+          if (/\brep-notes\b/.test(cls)) { flush(st); var nctx = Object.assign({}, ctx, { pre: true, pp: { spacing: { after: 80 } } }); [].slice.call(elm.childNodes).forEach(function (n) { walk(n, nctx); }); flush(st); return; }
+          if (/\brep-toc-row\b/.test(cls)) {
+            flush(st);
+            var nEl = elm.querySelector('.rep-toc-n'), nm = ''; [].slice.call(elm.childNodes).forEach(function (c) { if (c !== nEl) nm += c.textContent || ''; });
+            st.out.push(new D.Paragraph({ tabStops: [{ type: D.TabStopType.LEFT, position: 520 }], indent: { left: 520, hanging: 520 }, spacing: { after: 40 }, border: { bottom: { style: D.BorderStyle.DOTTED, size: 4, color: 'CCCCCC', space: 2 } },
+              children: [new D.TextRun({ text: textOf(nEl), font: FONT, bold: true, color: '888888' }), new D.TextRun({ children: [new D.Tab(), nm.replace(/[\s​]+/g, ' ').trim()], font: FONT })] }));
+            return;
+          }
+          if (/\brep-ref\b/.test(cls)) { flush(st); var rctx = Object.assign({}, ctx, { pp: { indent: { left: 440, hanging: 440 }, spacing: { after: 100 } } }); [].slice.call(elm.childNodes).forEach(function (n) { walk(n, rctx); }); flush(st); return; }
+          if (/\bdoc-eq-block\b/.test(cls)) { eqBlock(elm, ctx); return; }
+          if (/\bdoc-eq\b/.test(cls)) {
+            var im = elm.querySelector('img'), r = im ? imageRun(im, 600) : null;
+            if (r) para(st, ctx.pp).runs.push(r);
+            else if (elm.dataset && elm.dataset.latex) addText(st, ' ' + decodeURIComponent(elm.dataset.latex) + ' ', Object.assign({}, ctx.fmt, { font: 'Courier New' }), ctx.pp);
+            return;
+          }
+          if (/\bdoc-eq-cap\b|\bdoc-eq-num\b/.test(cls)) return;  // ya incluidos por el bloque de ecuación
+          // --- HTML genérico ---
+          switch (tag) {
+            case 'SCRIPT': case 'STYLE': case 'TEMPLATE': return;
+            case 'BR': {
+              var pn = elm.parentNode, isBlockParent = pn && BLOCK[pn.tagName], last = isBlockParent && !elm.nextSibling;
+              if (last) { if (!st.cur || !st.cur.runs.length) para(st, ctx.pp).keep = true; }
+              else para(st, ctx.pp).runs.push(new D.TextRun({ break: 1 }));
+              return;
+            }
+            case 'HR': flush(st); st.out.push(new D.Paragraph({ children: [], spacing: { before: 60, after: 120 }, border: { bottom: { style: D.BorderStyle.SINGLE, size: 6, color: 'BBBBBB', space: 1 } } })); return;
+            case 'IMG': {
+              var run = imageRun(elm, Math.floor((ctx.maxW || DOCX_CONTENT_W) / 15));
+              if (!run) return;
+              var inlineImg = elm.parentNode && !BLOCK[elm.parentNode.tagName] && st.cur && st.cur.runs.length;
+              if (inlineImg) { para(st, ctx.pp).runs.push(run); return; }
+              flush(st); st.out.push(new D.Paragraph({ alignment: alignOf(elm.parentNode, D.AlignmentType.CENTER), spacing: { before: 100, after: 100 }, children: [run] })); return;
+            }
+            case 'FIGURE': figure(elm, ctx, elm.querySelector('img'), elm.querySelector('figcaption')); return;
+            case 'FIGCAPTION': return;
+            case 'TABLE': { flush(st); var tb = buildTable(elm, ctx); if (tb) { st.out.push(tb); st.out.push(new D.Paragraph({ children: [], spacing: { after: 60 } })); } return; }
+            case 'UL': listBlock(elm, ctx, false); return;
+            case 'OL': listBlock(elm, ctx, true); return;
+            case 'LI': { flush(st); var lp = Object.assign({}, ctx.pp, { numbering: { reference: 'fb-bullets', level: 0, instance: 0 } }); var lc = Object.assign({}, ctx, { pp: lp }); [].slice.call(elm.childNodes).forEach(function (n) { walk(n, lc); }); flush(st); return; }
+            case 'PRE': { flush(st); var pc = Object.assign({}, ctx, { pre: true, fmt: Object.assign({}, ctx.fmt, { font: 'Courier New', size: hp(11.5) }) }); [].slice.call(elm.childNodes).forEach(function (n) { walk(n, pc); }); flush(st); return; }
+            case 'BLOCKQUOTE': { flush(st); var bq = Object.assign({}, ctx, { pp: Object.assign({}, ctx.pp, { indent: { left: 560 }, border: { left: { style: D.BorderStyle.SINGLE, size: 12, color: 'BBBBBB', space: 8 } } }) }); [].slice.call(elm.childNodes).forEach(function (n) { walk(n, bq); }); flush(st); return; }
+            case 'A': {
+              var href = elm.getAttribute('href') || '';
+              var ac = Object.assign({}, ctx, { fmt: Object.assign({}, ctx.fmt, { color: '1155CC', underline: true }) });
+              [].slice.call(elm.childNodes).forEach(function (n) { walk(n, ac); });
+              if (/^https?:/i.test(href) && st.cur) { /* la URL queda como texto subrayado; suficiente para editar */ }
+              return;
+            }
+          }
+          // Formato en línea heredado
+          var fmt = Object.assign({}, ctx.fmt);
+          if (tag === 'B' || tag === 'STRONG') { fmt.bold = true; if (ctx.capB) fmt.color = '161616'; }
+          if (tag === 'I' || tag === 'EM' || tag === 'CITE') fmt.italics = true;
+          if (tag === 'U') fmt.underline = true;
+          if (tag === 'S' || tag === 'STRIKE' || tag === 'DEL') fmt.strike = true;
+          if (tag === 'SUP') fmt.sup = true;
+          if (tag === 'SUB') fmt.sub = true;
+          if (tag === 'CODE' || tag === 'KBD' || tag === 'TT') fmt.font = 'Courier New';
+          if (tag === 'FONT') {
+            var face = elm.getAttribute('face'), fc = cssHex(elm.getAttribute('color')), fs = elm.getAttribute('size');
+            if (face) fmt.font = face.split(',')[0].replace(/['"]/g, '').trim();
+            if (fc) fmt.color = fc;
+            if (fs && FONT_TAG_SIZE[parseInt(fs, 10)]) fmt.size = FONT_TAG_SIZE[parseInt(fs, 10)];
+          }
+          var s = elm.style;
+          if (s) {
+            if (s.fontWeight && (s.fontWeight === 'bold' || s.fontWeight === 'bolder' || parseInt(s.fontWeight, 10) >= 600)) fmt.bold = true;
+            if (s.fontWeight && (s.fontWeight === 'normal' || parseInt(s.fontWeight, 10) === 400) && tag === 'SPAN') fmt.bold = false;
+            if (s.fontStyle === 'italic') fmt.italics = true;
+            if (/underline/.test(s.textDecoration || s.textDecorationLine || '')) fmt.underline = true;
+            if (/line-through/.test(s.textDecoration || s.textDecorationLine || '')) fmt.strike = true;
+            var sc = cssHex(s.color); if (sc) fmt.color = sc;
+            if (s.fontFamily) fmt.font = s.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
+            var fpx = parseFloat(s.fontSize); if (fpx && /px$/.test(s.fontSize)) fmt.size = hp(fpx); else if (fpx && /pt$/.test(s.fontSize)) fmt.size = Math.round(fpx * 2);
+            if (s.verticalAlign === 'super') fmt.sup = true; if (s.verticalAlign === 'sub') fmt.sub = true;
+          }
+          if (!BLOCK[tag]) { var ic = Object.assign({}, ctx, { fmt: fmt }); [].slice.call(elm.childNodes).forEach(function (n) { walk(n, ic); }); return; }
+          // Bloques: párrafo/encabezado/contenedor
+          flush(st);
+          var pp = Object.assign({}, ctx.pp);
+          var al = alignOf(elm, null); if (al) pp.alignment = al;
+          if (HEAD[tag]) {
+            pp.heading = HEAD[tag]; pp.keepNext = true; pp.spacing = { before: tag === 'H2' ? 240 : 180, after: 80 };
+            fmt.bold = true; fmt.size = hp(HEAD_PX[tag]); if (tag === 'H4') fmt.color = fmt.color || '333333';
+            delete pp.numbering;
+          }
+          if (s && s.marginLeft && /px$/.test(s.marginLeft) && parseFloat(s.marginLeft) > 0 && !pp.numbering) pp.indent = { left: pxToTwip(parseFloat(s.marginLeft)) };
+          var bc = Object.assign({}, ctx, { fmt: fmt, pp: pp });
+          [].slice.call(elm.childNodes).forEach(function (n) { walk(n, bc); });
+          flush(st);
+        }
+        var root_st = new St();
+        [].slice.call(root.childNodes).forEach(function (n) { walk(n, { st: root_st, fmt: {}, pp: {} }); });
+        flush(root_st);
+        return { children: root_st.out, foot: foot };
+      }
+      // Documento Word completo (docx.js) a partir del DOM preparado.
+      function buildNativeDocx(holder) {
+        var D = window.docx, FONT = docxFontName();
+        var conv = htmlToDocx(holder);
+        if (!conv.children.length) return null;
+        function lvls(ordered) {
+          var out = [];
+          for (var l = 0; l < 3; l++) {
+            out.push({
+              level: l, alignment: D.AlignmentType.LEFT,
+              format: ordered ? [D.LevelFormat.DECIMAL, D.LevelFormat.LOWER_LETTER, D.LevelFormat.LOWER_ROMAN][l] : D.LevelFormat.BULLET,
+              text: ordered ? ('%' + (l + 1) + '.') : ['•', '◦', '▪'][l],
+              style: { paragraph: { indent: { left: 720 * (l + 1), hanging: 360 } } }
+            });
+          }
+          return out;
+        }
+        var footRuns = [];
+        var ft = conv.foot.length ? conv.foot : ['fisicabit · micro:bit datalab', I.meta.student || '', I.meta.date || todayStr()];
+        footRuns.push(new D.TextRun({ text: ft[0] || '', font: FONT, size: hp(9.5), color: '9A9A9A', allCaps: true, characterSpacing: 30 }));
+        footRuns.push(new D.TextRun({ children: [new D.Tab(), ft[1] || ''], font: FONT, size: hp(9.5), color: '9A9A9A', allCaps: true, characterSpacing: 30 }));
+        footRuns.push(new D.TextRun({ children: [new D.Tab(), (ft[2] || '') + '   ·   ', D.PageNumber.CURRENT], font: FONT, size: hp(9.5), color: '9A9A9A', allCaps: true, characterSpacing: 30 }));
+        var footer = new D.Footer({ children: [new D.Paragraph({
+          tabStops: [{ type: D.TabStopType.CENTER, position: Math.floor(DOCX_CONTENT_W / 2) }, { type: D.TabStopType.RIGHT, position: DOCX_CONTENT_W }],
+          border: { top: { style: D.BorderStyle.SINGLE, size: 12, color: '0A0A0A', space: 4 } }, spacing: { before: 0, after: 0 }, children: footRuns }) ] });
+        // Los estilos «Título» y «Título 1» llevan el fondo negro en el propio estilo: si el alumno
+        // agrega un título nuevo en Word, sale como banda y no como texto blanco sobre blanco.
+        var bandBorder = { style: D.BorderStyle.SINGLE, size: 6, color: '0A0A0A', space: 6 };
+        var bandPara = { shading: { type: D.ShadingType.CLEAR, fill: '0A0A0A', color: 'auto' }, border: { top: bandBorder, bottom: bandBorder, left: bandBorder, right: bandBorder } };
+        function hstyle(id, name, px, extra) {
+          return Object.assign({ id: id, name: name, basedOn: 'Normal', next: 'Normal', quickFormat: true,
+            run: { font: FONT, size: hp(px), bold: true, color: '161616' }, paragraph: { spacing: { before: 200, after: 80 }, keepNext: true } }, extra || {});
+        }
+        return new D.Document({
+          creator: 'fisicabit', title: I.meta.title || 'Informe de laboratorio',
+          styles: {
+            // Sin interlineado fijo: con w:line sin regla, LibreOffice recorta las imágenes a una línea.
+            default: { document: { run: { font: FONT, size: hp(12.5), color: '161616' }, paragraph: { spacing: { after: 120 } } } },
+            paragraphStyles: [
+              { id: 'Title', name: 'Title', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { font: FONT, size: hp(30), bold: true, color: 'FFFFFF' }, paragraph: Object.assign({ spacing: { before: 200, after: 120 } }, bandPara) },
+              hstyle('Heading1', 'Heading 1', 12, { run: { font: FONT, size: hp(12), bold: true, color: 'FFFFFF', allCaps: true, characterSpacing: 40 }, paragraph: Object.assign({ spacing: { before: 360, after: 200 }, keepNext: true, outlineLevel: 0 }, bandPara) }),
+              hstyle('Heading2', 'Heading 2', 16, { paragraph: { spacing: { before: 240, after: 80 }, keepNext: true, outlineLevel: 1 } }),
+              hstyle('Heading3', 'Heading 3', 14, { paragraph: { spacing: { before: 180, after: 80 }, keepNext: true, outlineLevel: 2 } }),
+              hstyle('Heading4', 'Heading 4', 12.5, { run: { font: FONT, size: hp(12.5), bold: true, color: '333333' }, paragraph: { spacing: { before: 160, after: 60 }, keepNext: true, outlineLevel: 3 } })
+            ]
+          },
+          numbering: { config: [{ reference: 'fb-bullets', levels: lvls(false) }, { reference: 'fb-numbers', levels: lvls(true) }] },
+          sections: [{
+            properties: { page: { size: { width: DOCX_PAGE_W, height: DOCX_PAGE_H }, margin: { top: DOCX_MARGIN, right: DOCX_MARGIN, bottom: DOCX_MARGIN + 200, left: DOCX_MARGIN } } },
+            footers: { default: footer },
+            children: conv.children
+          }]
+        });
+      }
       // Genera el .docx (Blob). Reutilizable por el botón de Word y por el ZIP. null si no hay contenido o falla.
       async function buildDocxBlob() {
         var html = buildReportHTML(collect());
         if (!html) return null;
+        var okNative = await ensureDocxLib();
+        if (okNative) {
+          var holder = buildOffscreen(html), blob = null;
+          try {
+            await prepareImagesForDocx(holder);
+            var doc = buildNativeDocx(holder);
+            if (doc) blob = await window.docx.Packer.toBlob(doc);
+          } catch (e) { console.error('[INFORME] Error generando .docx nativo, se usa el generador HTML:', e); blob = null; }
+          try { document.body.removeChild(holder); } catch (e) {}
+          if (blob) return blob;
+        }
+        return buildDocxBlobLegacy(html);
+      }
+      // Generador anterior (HTML incrustado). Queda solo como respaldo si docx.js no carga.
+      async function buildDocxBlobLegacy(html) {
         var ok = await ensureHtmlDocx();
         if (!ok) return null;
         var holder = buildOffscreen(html), body = html;
@@ -27995,6 +28603,7 @@ bluetooth.startIOPinService()</pre>
         if (I.meta.title) toast('Experimento: «' + I.meta.title + '»');
       }
       I.renameExperiment = renameExperiment;
+      I.buildDocxBlob = buildDocxBlob;
       // Limpia toda la sesión en memoria (opcionalmente con un título nuevo). No toca la conexión de Drive.
       function _clearSession(newTitle) {
         var st = state;
@@ -28565,6 +29174,7 @@ bluetooth.startIOPinService()</pre>
     '＋ Fundamento teórico': { en: '＋ Theoretical background', pt: '＋ Fundamentação teórica' },
     '＋ Marco teórico': { en: '＋ Theoretical framework', pt: '＋ Marco teórico' },
     '＋ Materiales': { en: '＋ Materials', pt: '＋ Materiais' },
+    'Agregar la sección «Materiales» como lista con viñetas: un material por línea (Enter agrega otro)': { en: 'Add the "Materials" section as a bulleted list: one material per line (Enter adds another)', pt: 'Adicionar a seção «Materiais» como lista com marcadores: um material por linha (Enter adiciona outro)' },
     '＋ Procedimiento': { en: '＋ Procedure', pt: '＋ Procedimento' },
     '＋ Resultados': { en: '＋ Results', pt: '＋ Resultados' },
     '＋ Conclusión': { en: '＋ Conclusion', pt: '＋ Conclusão' },
