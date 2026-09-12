@@ -31216,6 +31216,14 @@ bluetooth.startIOPinService()</pre>
     .mk-showbar { display:none; background:#0a0a0a; color:#e0e0e0; border:1px solid #444; border-radius:4px; font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:3px 10px; cursor:pointer; font-family:inherit; opacity:.85; }
     .mk-showbar:hover { background:#fff; color:#000; opacity:1; }
     .mk-panel.bar-hidden .mk-showbar { display:block; }
+    .mk-list { position:absolute; top:100%; left:0; margin-top:4px; min-width:300px; max-width:420px; max-height:60vh; overflow:auto; background:#0a0a0a; border:1px solid #444; border-radius:4px; box-shadow:0 4px 14px rgba(0,0,0,.45); padding:4px; z-index:4; }
+    .mk-list-note { font-size:10px; color:#8a919e; padding:6px 8px; letter-spacing:.5px; }
+    .mk-list-item { display:flex; flex-direction:column; align-items:flex-start; gap:2px; width:100%; text-align:left; background:none; border:none; border-top:1px solid #23272e; color:#e0e0e0; padding:7px 8px; cursor:pointer; font-family:inherit; }
+    .mk-list-item:hover { background:#23272e; }
+    .mk-list-item.current { border-left:3px solid #b39ddb; }
+    .mk-list-name { font-size:12px; font-weight:600; }
+    .mk-list-meta { font-size:10px; color:#8a919e; }
+    .mk-list-action { color:#b39ddb; font-size:11px; letter-spacing:.5px; }
     .mk-status { position:absolute; left:0; right:0; bottom:0; padding:6px 14px; font-size:11px; color:#aab; background:rgba(10,10,10,.85); pointer-events:none; }
     .mk-status:empty { display:none; }
     .mk-helpbox { display:none; position:absolute; inset:0; background:rgba(0,0,0,.6); align-items:flex-start; justify-content:center; overflow:auto; padding:24px; box-sizing:border-box; z-index:4; }
@@ -31237,13 +31245,15 @@ bluetooth.startIOPinService()</pre>
                     <span class="mk-grip" id="mk-grip" title="Arrastrar para ubicar la barra donde no tape nada">⋮⋮</span>
                     <h2>FisicaBit</h2>
                     <button id="mk-disconnect" class="mk-top-btn warn" style="display:none" title="La micro:bit está conectada por USB a FisicaBit. Si la grabación desde MakeCode falla, desconectala acá primero.">Soltar USB</button>
-                    <button id="mk-new" class="mk-top-btn" title="Crear un proyecto nuevo con la extensión FisicaBit USB ya cargada" disabled>＋ Nuevo</button>
+                    <button id="mk-drive-save" class="mk-top-btn" title="Guardar esta práctica en tu Google Drive (fisicabit / prácticas de micro:bit)">Guardar en Drive</button>
+                    <button id="mk-drive-list" class="mk-top-btn" title="Abrir una práctica guardada (en Drive o en este navegador)">Mis prácticas ▾</button>
                     <button id="mk-help-btn" class="mk-top-btn" title="Cómo usar MakeCode con FisicaBit">Ayuda</button>
                     <a class="mk-top-btn" href="https://makecode.microbit.org/" target="_blank" rel="noopener" title="Abrir MakeCode en una pestaña aparte">↗</a>
                     <button id="mk-hidebar" class="mk-top-btn" title="Ocultar la barra (queda una pestañita para volver a mostrarla)">▲</button>
                     <button id="mk-close" class="mk-close" title="Volver al sitio (el editor sigue abierto)">✕ Volver</button>
                 </div>
                 <button id="mk-showbar" class="mk-showbar" title="Volver a mostrar la barra de FisicaBit">▼ FisicaBit</button>
+                <div class="mk-list" id="mk-list" hidden></div>
             </div>
             <iframe id="mk-iframe" title="MakeCode para micro:bit" allow="usb; serial; hid; clipboard-read; clipboard-write; fullscreen; microphone; camera; autoplay"></iframe>
             <div class="mk-status" id="mk-status"></div>
@@ -31262,8 +31272,8 @@ bluetooth.startIOPinService()</pre>
                         <p>Con el botón <strong>Descargar</strong> del editor. Si la micro:bit ya está emparejada por WebUSB se graba directo; si no, se baja el <code>.hex</code> y lo arrastrás al disco <strong>MICROBIT</strong>. Si la grabación directa falla porque FisicaBit tiene el USB abierto, tocá <strong>Desconectar USB de FisicaBit</strong> arriba y reintentá.</p>
                         <h4>3 · Capturá los datos</h4>
                         <p>Cerrá este panel (✕), y en el sitio: <strong>USB → Conectar</strong>, número de variables según los valores que enviás, <strong>"Micro:bit envía timestamp" activado</strong>, e <strong>Iniciar</strong>.</p>
-                        <h4>Tus proyectos</h4>
-                        <p>Se guardan en este navegador (no en la nube de MakeCode). Al volver a entrar se abre el último. <strong>Nuevo proyecto FisicaBit</strong> crea otro con la extensión ya cargada. Para llevar un proyecto a otra computadora usá <em>Compartir</em> o <em>Descargar</em> dentro del editor.</p>
+                        <h4>Tus prácticas</h4>
+                        <p>Al abrir, el editor crea solo una práctica con la extensión cargada, o reabre la última. <strong>Guardar en Drive</strong> la sube a tu Google Drive, en la carpeta <em>fisicabit / prácticas de micro:bit</em> (la misma sesión de Google que usa el resto del sitio); una vez subida, los cambios siguientes se guardan solos. <strong>Mis prácticas ▾</strong> lista las de Drive y las de este navegador para retomarlas, y permite crear otra práctica nueva.</p>
                         <h4>Si algo no aparece</h4>
                         <p>La extensión se agrega desde <em>Extensiones</em> pegando <code>https://github.com/preparadordelaboratorio/pxt-fisicabit-usb</code>. Si el editor no carga dentro del sitio (red escolar que bloquea iframes), usá <strong>Pestaña ↗</strong> y pegá esa misma URL.</p>
                     </div>
@@ -31281,7 +31291,13 @@ bluetooth.startIOPinService()</pre>
     var EXT_NAME = 'fisicabit-usb';
     var EXT_REPO = 'github:preparadordelaboratorio/pxt-fisicabit-usb';
     var LS_KEY = 'fisicabit_makecode_workspace_v1';
+    var LS_BAR = 'fisicabit_makecode_barhidden';
+    var LS_POS = 'fisicabit_makecode_barpos';
+    var LS_DRIVE = 'fisicabit_makecode_drive_v1';     // headerId → { fileId, savedAt, name }
     var MAX_PROJECTS = 20;
+    var DRIVE_SUBFOLDER = 'prácticas de micro:bit';   // dentro de la carpeta «fisicabit» del Drive
+    var FILE_SUFFIX = '.makecode.json';
+    var AUTO_PUSH_MS = 20000;                          // las prácticas ya subidas se re-suben solas (debounce)
     var SAMPLE_TS =
         '// Envía "tiempo,valor" por USB a fisicabit.com cada 100 ms (10 muestras/s).\n' +
         '// En el sitio: USB → Conectar, 1 variable, "Micro:bit envía timestamp" activado.\n' +
@@ -31289,46 +31305,61 @@ bluetooth.startIOPinService()</pre>
         '    FisicaBitSerial.enviar1(FisicaBitSerial.leerSensorInterno(TipoSensorInterno.AcelerometroX), 100)\n' +
         '})\n';
 
-    var panel, iframe, opened = false, editorReady = false, initialProjectSent = false;
-    var LS_BAR = 'fisicabit_makecode_barhidden';
-    var projects = loadProjects();   // { headerId: { header, text } }
+    var panel, iframe, opened = false, editorReady = false, initialDone = false, startTimer = null;
+    var projects = loadJSON(LS_KEY, {});   // { headerId: { header, text } }
+    var driveMap = loadJSON(LS_DRIVE, {}); // { headerId: { fileId, savedAt, name } }
+    var syncedIds = {};                    // proyectos que el editor conoce (entregados en workspacesync)
+    var currentHeaderId = null;            // proyecto que se está editando (último workspacesave / openheader)
+    var pendingOpenId = null;              // proyecto a abrir tras recargar el editor
+    var pushTimers = {};
     var connTimer = null;
+    var _drvFolderId = null;
+    var driveBusy = false;
 
     function el(id) { return document.getElementById(id); }
+    function setStatus(msg, ms) {
+        var s = el('mk-status'); if (!s) return;
+        s.textContent = msg || '';
+        if (msg && ms) setTimeout(function () { if (s.textContent === msg) s.textContent = ''; }, ms);
+    }
+    function loadJSON(key, def) {
+        try { var raw = localStorage.getItem(key); var o = raw ? JSON.parse(raw) : null; return (o && typeof o === 'object') ? o : def; } catch (_) { return def; }
+    }
+    function saveJSON(key, obj) { try { localStorage.setItem(key, JSON.stringify(obj)); return true; } catch (_) { return false; } }
+    function slug(s) {
+        return String(s || 'practica').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'practica';
+    }
+    function fmtWhen(ms) {
+        if (!ms) return '';
+        var d = new Date(ms);
+        try { return d.toLocaleDateString([], { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; }
+    }
 
-    function setStatus(msg) { var s = el('mk-status'); if (s) s.textContent = msg || ''; }
-
-    /* ---------- Persistencia local de proyectos ---------- */
-    function loadProjects() {
+    /* ---------- Proyectos (persistencia local) ---------- */
+    function isFisicaBit(p) {
         try {
-            var raw = localStorage.getItem(LS_KEY);
-            var obj = raw ? JSON.parse(raw) : null;
-            return (obj && typeof obj === 'object') ? obj : {};
-        } catch (_) { return {}; }
+            var cfg = JSON.parse((p.text || {})['pxt.json'] || '{}');
+            var deps = cfg.dependencies || {};
+            if (deps[EXT_NAME]) return true;
+            return Object.keys(deps).some(function (k) { return /pxt-fisicabit/i.test(String(deps[k])); });
+        } catch (_) { return false; }
+    }
+    function modTime(p) { return ((p && p.header && p.header.modificationTime) || 0) * 1000; }
+    function projectList() {
+        return Object.keys(projects).map(function (k) { return projects[k]; })
+            .filter(function (p) { return p && p.header && p.header.id && !p.header.isDeleted; })
+            .sort(function (a, b) { return modTime(b) - modTime(a); });
     }
     function saveProjects() {
-        try {
-            // Conservar solo los más recientes para no agotar localStorage
-            var list = Object.keys(projects).map(function (k) { return projects[k]; })
-                .filter(function (p) { return p && p.header && !p.header.isDeleted; })
-                .sort(function (a, b) { return (b.header.modificationTime || 0) - (a.header.modificationTime || 0); })
-                .slice(0, MAX_PROJECTS);
-            var trimmed = {};
-            list.forEach(function (p) { trimmed[p.header.id] = p; });
-            projects = trimmed;
-            localStorage.setItem(LS_KEY, JSON.stringify(projects));
-        } catch (e) {
-            setStatus('No se pudo guardar el proyecto en este navegador (almacenamiento lleno o bloqueado). Usá Compartir/Descargar dentro del editor.');
-        }
+        var trimmed = {};
+        projectList().slice(0, MAX_PROJECTS).forEach(function (p) { trimmed[p.header.id] = p; });
+        projects = trimmed;
+        if (!saveJSON(LS_KEY, projects)) setStatus('No se pudo guardar el proyecto en este navegador (almacenamiento lleno o bloqueado). Usá «Guardar en Drive».');
     }
-    function latestProject() {
-        var best = null;
-        Object.keys(projects).forEach(function (k) {
-            var p = projects[k];
-            if (!p || !p.header || p.header.isDeleted) return;
-            if (!best || (p.header.modificationTime || 0) > (best.header.modificationTime || 0)) best = p;
-        });
-        return best;
+    function latestFisicaBitProject() {
+        var list = projectList().filter(isFisicaBit);
+        return list.length ? list[0] : null;
     }
 
     /* ---------- Mensajería con el editor (modo controller) ---------- */
@@ -31339,9 +31370,7 @@ bluetooth.startIOPinService()</pre>
         var l = (typeof currentLanguage !== 'undefined' && currentLanguage) || 'es';
         return EDITOR_LANGS[l] || 'es-ES';
     }
-    function editorUrl() {
-        return ORIGIN + '/?controller=1&lang=' + encodeURIComponent(langParam());
-    }
+    function editorUrl() { return ORIGIN + '/?controller=1&lang=' + encodeURIComponent(langParam()); }
     function post(msg) {
         if (!iframe || !iframe.contentWindow) return;
         try { iframe.contentWindow.postMessage(msg, ORIGIN); } catch (_) {}
@@ -31356,41 +31385,69 @@ bluetooth.startIOPinService()</pre>
         deps[EXT_NAME] = EXT_REPO;
         post({
             type: 'pxteditor', action: 'newproject', response: false,
-            options: {
-                name: 'FisicaBit',
-                dependencies: deps,
-                filesOverride: { 'main.ts': SAMPLE_TS },
-                preferredEditor: 'blocksprj'
-            }
+            options: { name: 'Práctica FisicaBit', dependencies: deps, filesOverride: { 'main.ts': SAMPLE_TS }, preferredEditor: 'blocksprj' }
         });
-        setStatus('Creando el proyecto con la extensión FisicaBit USB…');
+        currentHeaderId = null;
+        setStatus('Creando la práctica con la extensión FisicaBit USB…', 6000);
     }
-    function openInitialProject() {
-        if (initialProjectSent) return;
-        initialProjectSent = true;
-        var last = latestProject();
-        if (last) {
-            post({ type: 'pxteditor', action: 'openheader', response: false, headerId: last.header.id });
-            setStatus('Abriendo tu último proyecto: ' + (last.header.name || 'FisicaBit'));
+    function openHeader(id) {
+        post({ type: 'pxteditor', action: 'openheader', response: false, headerId: id });
+        currentHeaderId = id;
+    }
+    // Proyecto inicial. Se decide cuando el editor ya terminó de arrancar
+    // (editorcontentloaded): si se manda antes, el propio arranque del editor
+    // pisa el proyecto y aparece uno en blanco. Si el editor queda en la
+    // pantalla de inicio (sin proyecto) nunca llega ese mensaje: hay un
+    // plazo de respaldo desde workspaceloaded.
+    function ensureInitialProject() {
+        if (initialDone) return;
+        initialDone = true;
+        if (startTimer) { clearTimeout(startTimer); startTimer = null; }
+        var target = pendingOpenId && projects[pendingOpenId] ? projects[pendingOpenId] : latestFisicaBitProject();
+        pendingOpenId = null;
+        if (target && syncedIds[target.header.id]) {
+            openHeader(target.header.id);
+            setStatus('Abriendo «' + (target.header.name || 'Práctica FisicaBit') + '»', 5000);
         } else {
             newFisicaBitProject();
         }
-        setTimeout(function () { setStatus(''); }, 6000);
+    }
+    function reloadEditor(openId) {
+        pendingOpenId = openId || null;
+        initialDone = false; editorReady = false; syncedIds = {};
+        if (startTimer) { clearTimeout(startTimer); startTimer = null; }
+        iframe.setAttribute('src', 'about:blank');
+        setTimeout(function () { iframe.setAttribute('src', editorUrl()); }, 50);
     }
 
-    function onMessage(ev) {
+    async function onMessage(ev) {
         if (ev.origin !== ORIGIN || !iframe || ev.source !== iframe.contentWindow) return;
         var msg = ev.data;
         if (!msg || msg.type !== 'pxthost' || !msg.action) return;
         switch (msg.action) {
-            case 'workspacesync':
-                // El editor pide la lista de proyectos del host al arrancar
-                respond(msg, { projects: Object.keys(projects).map(function (k) { return projects[k]; }), controllerId: 'fisicabit' });
+            case 'workspacesync': {
+                // El editor pide la lista de proyectos al arrancar. Si hay sesión de
+                // Google, primero se bajan las prácticas de Drive (con plazo) para
+                // que el editor las conozca desde el inicio.
+                try { await withTimeout(pullDriveProjects(false), 8000); } catch (_) {}
+                var list = projectList();
+                syncedIds = {};
+                list.forEach(function (p) { syncedIds[p.header.id] = true; });
+                respond(msg, { projects: list, controllerId: 'fisicabit' });
                 break;
+            }
             case 'workspacesave':
                 if (msg.project && msg.project.header && msg.project.header.id) {
-                    projects[msg.project.header.id] = { header: msg.project.header, text: msg.project.text };
-                    saveProjects();
+                    var h = msg.project.header, id = h.id;
+                    var wasFb = projects[id] ? true : false;
+                    // Solo se guardan las prácticas FisicaBit (con la extensión); los
+                    // proyectos en blanco que crea el editor al arrancar no ensucian la lista.
+                    if (wasFb || isFisicaBit(msg.project)) {
+                        projects[id] = { header: h, text: msg.project.text };
+                        saveProjects();
+                        currentHeaderId = id;
+                        if (driveMap[id] && driveMap[id].fileId) scheduleAutoPush(id);
+                    }
                 }
                 if (msg.response) respond(msg);
                 break;
@@ -31401,12 +31458,208 @@ bluetooth.startIOPinService()</pre>
                 break;
             case 'workspaceloaded':
                 editorReady = true;
-                el('mk-new').disabled = false;
-                openInitialProject();
+                if (!initialDone && !startTimer) startTimer = setTimeout(ensureInitialProject, 5000);
+                if (msg.response) respond(msg);
+                break;
+            case 'editorcontentloaded':
+                ensureInitialProject();
                 if (msg.response) respond(msg);
                 break;
             default:
                 if (msg.response) respond(msg);
+        }
+    }
+    function withTimeout(p, ms) {
+        return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, ms); })]);
+    }
+
+    /* ---------- Google Drive: carpeta «fisicabit / prácticas de micro:bit» ---------- */
+    function gB() { return window.FbitGoogle || null; }
+    function gOn() { var g = gB(); return !!(g && g.connected()); }
+    async function driveFolderId() {
+        if (_drvFolderId) return _drvFolderId;
+        var g = gB();
+        var rootId = await g.rootFolderId();
+        var q = "mimeType='application/vnd.google-apps.folder' and name='" + DRIVE_SUBFOLDER.replace(/'/g, "\\'") + "' and '" + rootId + "' in parents and trashed=false";
+        var r = await g.api('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&spaces=drive');
+        var j = await r.json();
+        if (j.files && j.files.length) { _drvFolderId = j.files[0].id; return _drvFolderId; }
+        var cr = await g.api('drive/v3/files?fields=id', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: DRIVE_SUBFOLDER, mimeType: 'application/vnd.google-apps.folder', parents: [rootId] })
+        });
+        var cj = await cr.json();
+        _drvFolderId = cj.id;
+        return _drvFolderId;
+    }
+    function fileNameFor(p) { return slug(p.header.name) + FILE_SUFFIX; }
+    function fileBodyFor(p, savedAt) {
+        return JSON.stringify({ tipo: 'fisicabit-makecode', version: 1, savedAt: savedAt, header: p.header, text: p.text });
+    }
+    function currentProject() {
+        if (currentHeaderId && projects[currentHeaderId]) return projects[currentHeaderId];
+        return latestFisicaBitProject();
+    }
+    // Sube (crea o actualiza) UNA práctica.
+    async function drivePush(id, interactive) {
+        var g = gB();
+        if (!g) { setStatus('Google Drive no está disponible en esta página.', 6000); return false; }
+        var p = projects[id];
+        if (!p) { setStatus('Todavía no hay cambios que guardar: editá el proyecto y volvé a intentar.', 6000); return false; }
+        if (!gOn()) {
+            if (!interactive) return false;
+            setStatus('Iniciando sesión con Google…');
+            var ok = await g.connect(true);
+            if (!ok) { setStatus('No se pudo iniciar sesión con Google.', 6000); return false; }
+            g.refreshUI();
+        }
+        if (!(await g.ensureToken())) { setStatus('La sesión de Google expiró. Volvé a conectarte.', 6000); return false; }
+        if (driveBusy) return false;
+        driveBusy = true;
+        updateDriveBtns();
+        try {
+            if (interactive) setStatus('Guardando «' + (p.header.name || 'práctica') + '» en Drive…');
+            var folderId = await driveFolderId();
+            var savedAt = Date.now();
+            var body = fileBodyFor(p, savedAt);
+            var entry = driveMap[id] || {};
+            if (entry.fileId) {
+                var ur = await g.api('upload/drive/v3/files/' + entry.fileId + '?uploadType=media', {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: body });
+                if (ur.status === 404) entry.fileId = null;   // lo borraron en Drive: recrear
+                else if (entry.name !== fileNameFor(p)) {
+                    try { await g.api('drive/v3/files/' + entry.fileId + '?fields=id', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: fileNameFor(p) }) }); } catch (_) {}
+                }
+            }
+            if (!entry.fileId) {
+                var boundary = 'mk' + Date.now().toString(16);
+                var meta = { name: fileNameFor(p), mimeType: 'application/json', parents: [folderId] };
+                var mbody = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
+                            '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + body + '\r\n--' + boundary + '--';
+                var cr = await g.api('upload/drive/v3/files?uploadType=multipart&fields=id', {
+                    method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: mbody });
+                var cj = await cr.json();
+                if (!cj || !cj.id) throw new Error('sin id');
+                entry.fileId = cj.id;
+            }
+            entry.savedAt = savedAt; entry.name = fileNameFor(p);
+            driveMap[id] = entry; saveJSON(LS_DRIVE, driveMap);
+            setStatus('«' + (p.header.name || 'práctica') + '» guardada en Drive (fisicabit / ' + DRIVE_SUBFOLDER + ') ✓', 6000);
+            return true;
+        } catch (e) {
+            setStatus('No se pudo guardar en Drive. Revisá la conexión y volvé a intentar.', 8000);
+            return false;
+        } finally {
+            driveBusy = false;
+            updateDriveBtns();
+        }
+    }
+    function scheduleAutoPush(id) {
+        if (pushTimers[id]) clearTimeout(pushTimers[id]);
+        pushTimers[id] = setTimeout(function () { pushTimers[id] = null; if (gOn()) drivePush(id, false); }, AUTO_PUSH_MS);
+    }
+    // Baja las prácticas de Drive y las combina con las locales: gana la más nueva.
+    async function pullDriveProjects(interactive) {
+        var g = gB();
+        if (!g) return 0;
+        if (!gOn()) {
+            var remembered = false;
+            try { remembered = localStorage.getItem('fbit_gdrive') === '1'; } catch (_) {}
+            if (!remembered && !interactive) return 0;
+            if (!(await g.ensureToken())) return 0;
+        }
+        var folderId = await driveFolderId();
+        var q = "'" + folderId + "' in parents and trashed=false and name contains '" + FILE_SUFFIX + "'";
+        var r = await g.api('drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name,modifiedTime)&pageSize=100&spaces=drive');
+        var j = await r.json();
+        var files = j.files || [];
+        var n = 0;
+        for (var i = 0; i < files.length; i++) {
+            try {
+                var fr = await g.api('drive/v3/files/' + files[i].id + '?alt=media');
+                var data = await fr.json();
+                if (!data || data.tipo !== 'fisicabit-makecode' || !data.header || !data.header.id || !data.text) continue;
+                var id = data.header.id;
+                var local = projects[id];
+                var known = driveMap[id] || {};
+                var remoteAt = data.savedAt || Date.parse(files[i].modifiedTime) || 0;
+                if (!local || remoteAt > (known.savedAt || 0) && (data.header.modificationTime || 0) >= (local.header.modificationTime || 0)) {
+                    projects[id] = { header: data.header, text: data.text };
+                    n++;
+                }
+                driveMap[id] = { fileId: files[i].id, savedAt: Math.max(remoteAt, known.savedAt || 0), name: files[i].name };
+            } catch (_) {}
+        }
+        saveProjects(); saveJSON(LS_DRIVE, driveMap);
+        return n;
+    }
+
+    /* ---------- Lista «Mis prácticas» ---------- */
+    function updateDriveBtns() {
+        var s = el('mk-drive-save'); if (s) s.disabled = driveBusy;
+        var u = gOn() && gB().user();
+        if (s) s.title = gOn()
+            ? ('Guardar esta práctica en tu Google Drive (fisicabit / ' + DRIVE_SUBFOLDER + ') · ' + ((u && u.emailAddress) || 'conectado'))
+            : 'Guardar esta práctica en tu Google Drive (fisicabit / ' + DRIVE_SUBFOLDER + '). Te pide iniciar sesión con Google.';
+    }
+    function closeList() { var l = el('mk-list'); if (l) l.hidden = true; }
+    async function toggleList() {
+        var l = el('mk-list');
+        if (!l.hidden) { closeList(); return; }
+        l.hidden = false;
+        renderList('Cargando…');
+        if (gOn()) {
+            try { var n = await withTimeout(pullDriveProjects(true), 10000); if (n) setStatus(n + ' práctica' + (n === 1 ? '' : 's') + ' actualizada' + (n === 1 ? '' : 's') + ' desde Drive.', 5000); } catch (_) {}
+        }
+        renderList();
+    }
+    function renderList(loadingMsg) {
+        var l = el('mk-list'); if (!l) return;
+        var g = gB();
+        var html = '';
+        if (loadingMsg) html += '<div class="mk-list-note">' + loadingMsg + '</div>';
+        if (!gOn()) {
+            html += '<button type="button" class="mk-list-item mk-list-action" data-act="connect">' + (g && g.configured() ? '☁ Conectar con Google para ver tus prácticas de Drive' : 'Google Drive no está configurado en esta página') + '</button>';
+        } else {
+            var u = g.user();
+            html += '<div class="mk-list-note">☁ ' + ((u && u.emailAddress) || 'Conectado') + ' · fisicabit / ' + DRIVE_SUBFOLDER + '</div>';
+        }
+        var list = projectList().filter(isFisicaBit);
+        if (!list.length) html += '<div class="mk-list-note">Todavía no hay prácticas guardadas.</div>';
+        list.forEach(function (p) {
+            var d = driveMap[p.header.id];
+            var cur = p.header.id === currentHeaderId;
+            html += '<button type="button" class="mk-list-item' + (cur ? ' current' : '') + '" data-id="' + p.header.id + '">' +
+                '<span class="mk-list-name">' + escapeHtml(p.header.name || 'Práctica FisicaBit') + '</span>' +
+                '<span class="mk-list-meta">' + (d && d.fileId ? '☁ ' + fmtWhen(d.savedAt) : 'solo en este navegador') + (cur ? ' · abierta' : '') + '</span></button>';
+        });
+        html += '<button type="button" class="mk-list-item mk-list-action" data-act="new">＋ Nueva práctica con la extensión</button>';
+        l.innerHTML = html;
+    }
+    function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    async function onListClick(e) {
+        var b = e.target.closest('button'); if (!b) return;
+        var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
+        if (act === 'connect') {
+            var g = gB(); if (!g) return;
+            renderList('Iniciando sesión con Google…');
+            var ok = await g.connect(true);
+            if (!ok) { renderList(); setStatus('No se pudo iniciar sesión con Google.', 6000); return; }
+            g.refreshUI(); updateDriveBtns();
+            renderList('Buscando prácticas en Drive…');
+            var n = 0;
+            try { n = await withTimeout(pullDriveProjects(true), 10000); } catch (_) {}
+            renderList();
+            // El editor solo aprende los proyectos al arrancar: si bajaron prácticas nuevas, se reinicia con ellas.
+            var latest = latestFisicaBitProject();
+            if (latest && !syncedIds[latest.header.id]) { closeList(); setStatus('Cargando tus prácticas de Drive en el editor…', 6000); reloadEditor(latest.header.id); }
+            return;
+        }
+        if (act === 'new') { closeList(); newFisicaBitProject(); return; }
+        if (id && projects[id]) {
+            closeList();
+            if (syncedIds[id]) { openHeader(id); setStatus('Abriendo «' + (projects[id].header.name || 'práctica') + '»', 4000); }
+            else { setStatus('Cargando «' + (projects[id].header.name || 'práctica') + '» en el editor…', 6000); reloadEditor(id); }
         }
     }
 
@@ -31416,6 +31669,7 @@ bluetooth.startIOPinService()</pre>
         if (!b) return;
         var usbOpen = (typeof state !== 'undefined') && state.isConnected && !state.isBluetooth;
         b.style.display = usbOpen ? '' : 'none';
+        updateDriveBtns();
     }
     function disconnectSiteUsb() {
         try {
@@ -31429,8 +31683,7 @@ bluetooth.startIOPinService()</pre>
             if (typeof updateGraphLegendPills === 'function') { for (var i = 0; i < (state.numGraphs || 0); i++) updateGraphLegendPills(i); }
         } catch (_) {}
         refreshConn();
-        setStatus('USB desconectado de FisicaBit. Ya podés grabar desde MakeCode.');
-        setTimeout(function () { setStatus(''); }, 5000);
+        setStatus('USB desconectado de FisicaBit. Ya podés grabar desde MakeCode.', 5000);
     }
 
     /* ---------- Apertura / cierre ---------- */
@@ -31442,7 +31695,7 @@ bluetooth.startIOPinService()</pre>
         opened = true;
         if (!iframe.getAttribute('src')) {
             iframe.setAttribute('src', editorUrl());
-            setStatus('Cargando el editor oficial de MakeCode… la primera vez puede demorar. Si no aparece, usá "Pestaña ↗".');
+            setStatus('Cargando el editor oficial de MakeCode… la primera vez puede demorar. Si no aparece, usá "↗".');
         }
         refreshConn();
         if (!connTimer) connTimer = setInterval(refreshConn, 1500);
@@ -31451,14 +31704,15 @@ bluetooth.startIOPinService()</pre>
         panel.classList.remove('open');
         panel.setAttribute('aria-hidden', 'true');
         opened = false;
+        closeList();
         if (connTimer) { clearInterval(connTimer); connTimer = null; }
         // El iframe queda vivo: al volver a entrar, el editor sigue donde estaba.
     }
 
     /* ---------- Barra flotante: ocultar / mostrar / arrastrar ---------- */
-    var LS_POS = 'fisicabit_makecode_barpos';
     function setBarHidden(hidden) {
         panel.classList.toggle('bar-hidden', !!hidden);
+        closeList();
         try { localStorage.setItem(LS_BAR, hidden ? '1' : '0'); } catch (_) {}
     }
     function clampFloat(x, y) {
@@ -31521,19 +31775,28 @@ bluetooth.startIOPinService()</pre>
         var btn = el('btn-makecode');
         if (btn) btn.addEventListener('click', openPanel);
         el('mk-close').addEventListener('click', closePanel);
-        el('mk-new').addEventListener('click', newFisicaBitProject);
         el('mk-disconnect').addEventListener('click', disconnectSiteUsb);
-        el('mk-help-btn').addEventListener('click', function () { el('mk-helpbox').classList.add('open'); });
+        el('mk-drive-save').addEventListener('click', function () {
+            var p = currentProject();
+            if (!p) { setStatus('Todavía no hay una práctica para guardar: editá el proyecto y volvé a intentar.', 6000); return; }
+            drivePush(p.header.id, true);
+        });
+        el('mk-drive-list').addEventListener('click', toggleList);
+        el('mk-list').addEventListener('click', onListClick);
+        el('mk-help-btn').addEventListener('click', function () { closeList(); el('mk-helpbox').classList.add('open'); });
         el('mk-help-close').addEventListener('click', function () { el('mk-helpbox').classList.remove('open'); });
         el('mk-helpbox').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
-        window.addEventListener('message', onMessage);
+        window.addEventListener('message', function (ev) { onMessage(ev); });
+        document.addEventListener('click', function (e) { var fl = el('mk-float'); if (fl && !fl.contains(e.target)) closeList(); });
 
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape' || !opened) return;
+            if (!el('mk-list').hidden) { closeList(); return; }
             if (el('mk-helpbox').classList.contains('open')) { el('mk-helpbox').classList.remove('open'); return; }
             var ae = document.activeElement;
             if (!ae || ae.tagName !== 'IFRAME') closePanel();
         });
+        updateDriveBtns();
     }
 
     window.abrirMakeCode = openPanel;
