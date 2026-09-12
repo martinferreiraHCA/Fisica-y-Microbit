@@ -4115,231 +4115,222 @@
         /* ===== MAPEO STYLES END ===== */
 
         /* ===== INFORME STYLES START ===== */
-        /* Editor de informes: espacio de trabajo claro tipo procesador de texto (Word / LibreOffice):
-           cinta de herramientas con íconos + rótulos, navegador de partes a la izquierda y una hoja
-           continua en el centro donde se escribe. El listón negro superior conserva la estética fisicabit. */
+        /* Editor de informes con el lenguaje visual de fisicabit: blanco, negro, bordes finos, botones
+           cuadrados en mayúsculas con hover invertido, íconos monocromos (SVG). Barra superior compacta,
+           cinta de herramientas, lista de partes ocultable y una hoja continua donde se escribe. */
         .informe-panel {
           display:none; position:fixed; inset:0; z-index:9100;
-          background:#e3e6eb; color:#1f2937;
-          font-family:'Montserrat', -apple-system, 'Segoe UI', sans-serif;
-          flex-direction:column;
+          background:#ededed; color:#000;
+          font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+          flex-direction:column; font-size:13px;
         }
         .informe-panel.open { display:flex; }
         .informe-panel *, .informe-panel *::before, .informe-panel *::after { box-sizing:border-box; }
         .informe-panel button, .informe-panel input, .informe-panel select { font-family:inherit; }
-        .inf-ic { font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji','Segoe UI Symbol',sans-serif; line-height:1; }
+        .inf-ic { display:inline-flex; align-items:center; justify-content:center; line-height:1; flex-shrink:0; }
+        .inf-ic svg { width:1em; height:1em; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; display:block; }
+        .inf-ic.glyph { font-family:Georgia,'Times New Roman',serif; }
 
-        /* Listón negro superior */
+        /* Botón estándar fisicabit: blanco, borde negro 2px, mayúsculas, hover invertido */
+        .inf-topbtn, .inf-close, .inf-nav-btn, .inf-bigbtn {
+          display:inline-flex; align-items:center; justify-content:center; gap:7px;
+          background:#fff; color:#000; border:2px solid #000; border-radius:0;
+          padding:6px 12px; font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.4px;
+          cursor:pointer; white-space:nowrap; line-height:1.2; transition:background .15s, color .15s;
+        }
+        .inf-topbtn:hover, .inf-close:hover, .inf-nav-btn:hover, .inf-bigbtn:hover { background:#000; color:#fff; }
+        .inf-topbtn.primary, .inf-nav-btn.primary, .inf-bigbtn.primary { background:#000; color:#fff; }
+        .inf-topbtn.primary:hover, .inf-nav-btn.primary:hover, .inf-bigbtn.primary:hover { background:#333; border-color:#333; }
+        .inf-topbtn .inf-ic, .inf-nav-btn .inf-ic, .inf-bigbtn .inf-ic { font-size:15px; }
+        .inf-topbtn.busy { opacity:.5; pointer-events:none; }
+        .inf-topbtn .inf-caret { font-size:9px; }
+        .inf-nav-btn { width:100%; justify-content:flex-start; }
+
+        /* Barra superior */
         .inf-topbar {
-          background:#0a0a0a; color:#fff;
-          display:flex; align-items:center; gap:8px;
-          padding:8px 14px; border-bottom:2px solid #000;
-          flex-wrap:wrap; min-height:54px;
+          background:#fff; color:#000; display:flex; align-items:center; gap:6px;
+          padding:6px 10px; border-bottom:2px solid #000; flex-wrap:wrap; min-height:44px;
         }
-        .inf-topbar .inf-brand { font-weight:800; letter-spacing:2.5px; font-size:13px; text-transform:uppercase; white-space:nowrap; }
-        .inf-topbar .inf-brand small { display:block; font-size:8.5px; letter-spacing:2px; color:#9e9e9e; font-weight:600; margin-top:1px; }
+        .inf-topbar .inf-brand { font-weight:800; letter-spacing:2px; font-size:12px; text-transform:uppercase; white-space:nowrap; margin-right:4px; }
+        .inf-topbar .inf-brand small { display:block; font-size:8px; letter-spacing:1.5px; color:#777; font-weight:600; margin-top:1px; }
         .inf-spacer { flex:1; }
-        .inf-topbtn {
-          position:relative; display:inline-flex; align-items:center; gap:7px;
-          background:#1b1e24; color:#fff; border:1px solid #3a3f48; border-radius:8px;
-          padding:8px 13px; font-size:12.5px; font-weight:700; cursor:pointer; letter-spacing:.2px; white-space:nowrap;
-        }
-        .inf-topbtn:hover { background:#2a2e36; border-color:#6b7280; }
-        .inf-topbtn .inf-ic { font-size:17px; }
-        .inf-topbtn.primary { background:#fff; color:#000; border-color:#fff; }
-        .inf-topbtn.primary:hover { background:#e5e7eb; }
-        .inf-topbtn.accent { background:#1976d2; border-color:#1976d2; }
-        .inf-topbtn.accent:hover { background:#1565c0; }
-        .inf-topbtn.busy { opacity:.6; pointer-events:none; }
-        .inf-topbtn .inf-caret { font-size:10px; opacity:.8; }
-        .inf-close { background:#000; color:#fff; border:1px solid #444; padding:8px 14px; cursor:pointer; font-size:11px; letter-spacing:1px; font-weight:700; text-transform:uppercase; border-radius:8px; }
-        .inf-close:hover { background:#fff; color:#000; }
-        /* Chip de estado del guardado (navegador / Google Drive) */
         .inf-savechip {
-          display:inline-flex; align-items:center; gap:7px; background:#14171c; border:1px solid #3a3f48; border-radius:20px;
-          padding:6px 12px; font-size:11.5px; color:#cfd3da; cursor:pointer; max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+          display:inline-flex; align-items:center; gap:7px; background:#fff; border:1px solid #bbb; border-radius:0;
+          padding:5px 10px; font-size:11px; color:#444; cursor:pointer; max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
         }
-        .inf-savechip:hover { border-color:#9aa0a8; color:#fff; }
-        .inf-savechip .sess-dot { margin:0; flex-shrink:0; }
-        .inf-savechip.drive { border-color:#1f7a5a; }
-        .inf-savechip.drive .sess-dot { background:#42d17a; box-shadow:0 0 7px rgba(66,209,122,.75); }
-        .inf-savechip.manual { border-color:#8a6d1f; }
-        .inf-savechip.manual .sess-dot { background:#e0a92e; box-shadow:0 0 7px rgba(224,169,46,.7); }
+        .inf-savechip:hover { border-color:#000; color:#000; }
+        .inf-savechip .sess-dot { margin:0; flex-shrink:0; background:#bbb; }
+        .inf-savechip.drive .sess-dot { background:#1f9d55; box-shadow:0 0 6px rgba(31,157,85,.6); }
+        .inf-savechip.manual .sess-dot { background:#d99a1e; }
 
-        /* Cinta de herramientas (íconos grandes con rótulo, agrupados como en Word) */
+        /* Cinta de herramientas: íconos monocromos con rótulo chico */
         .inf-ribbon {
-          display:flex; align-items:stretch; flex-wrap:wrap; gap:0; background:#f7f8fa; border-bottom:1px solid #d4d8de;
-          padding:5px 8px 3px; flex-shrink:0;
+          display:flex; align-items:center; flex-wrap:wrap; gap:0; background:#fff; border-bottom:1px solid #ccc;
+          padding:3px 6px; flex-shrink:0;
         }
-        .inf-rb-grp { display:flex; flex-direction:column; align-items:center; padding:2px 6px; border-right:1px solid #dfe3e8; flex-shrink:0; }
+        .inf-rb-grp { display:flex; align-items:center; padding:0 4px; border-right:1px solid #ddd; flex-shrink:0; }
         .inf-rb-grp:last-child { border-right:none; }
-        .inf-rb-row { display:flex; align-items:center; gap:2px; }
-        .inf-rb-col { display:flex; flex-direction:column; gap:3px; }
-        .inf-rb-lbl { font-size:9px; letter-spacing:1px; text-transform:uppercase; color:#8a93a0; font-weight:700; margin-top:3px; white-space:nowrap; }
+        .inf-rb-row { display:flex; align-items:center; gap:1px; }
+        .inf-rb-col { display:flex; flex-direction:column; gap:2px; }
+        .inf-rb-lbl { display:none; }
         .inf-wp-btn {
           position:relative; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-          min-width:42px; height:50px; padding:0 5px; background:transparent; color:#1f2937; border:1px solid transparent; border-radius:7px;
+          min-width:34px; height:40px; padding:0 4px; background:transparent; color:#000; border:1px solid transparent; border-radius:0;
           cursor:pointer; font-size:11px; font-weight:600; line-height:1;
         }
-        .inf-wp-btn .inf-ic { font-size:20px; }
-        .inf-wp-btn .inf-ic.glyph { font-family:Georgia,'Times New Roman',serif; font-size:19px; }
-        .inf-wp-btn .lb { font-size:9.5px; color:#4b5563; white-space:nowrap; font-weight:600; }
-        .inf-wp-btn:hover { background:#e8ecf2; border-color:#cfd5dd; }
-        .inf-wp-btn:active, .inf-wp-btn.on { background:#dbe7f7; border-color:#9dbde6; }
-        .inf-wp-btn.sm { height:32px; min-width:32px; flex-direction:row; padding:0 6px; }
-        .inf-wp-btn.sm .inf-ic { font-size:15px; }
-        .inf-wp-btn.sm .inf-ic.glyph { font-size:15px; }
+        .inf-wp-btn .inf-ic { font-size:17px; height:17px; }
+        .inf-wp-btn .inf-ic.glyph { font-size:16px; }
+        .inf-wp-btn .lb { font-size:8px; color:#555; white-space:nowrap; font-weight:700; text-transform:uppercase; letter-spacing:.2px; }
+        .inf-wp-btn:hover { background:#000; color:#fff; }
+        .inf-wp-btn:hover .lb { color:#fff; }
+        .inf-wp-btn:active, .inf-wp-btn.on { background:#000; color:#fff; }
+        .inf-wp-btn.on .lb { color:#fff; }
         .inf-wp-btn:disabled { opacity:.35; cursor:default; }
-        .inf-wp-sel { height:26px; background:#fff; color:#1f2937; border:1px solid #cfd5dd; border-radius:6px; font-family:inherit; font-size:11.5px; padding:0 4px; max-width:150px; }
-        .inf-wp-color { width:32px; height:32px; padding:3px; border:1px solid #cfd5dd; border-radius:6px; background:#fff; cursor:pointer; }
+        .inf-wp-sel { height:19px; background:#fff; color:#000; border:1px solid #bbb; border-radius:0; font-family:inherit; font-size:10px; padding:0 2px; max-width:104px; }
+        .inf-wp-sel:focus { outline:none; border-color:#000; }
+        .inf-color-bar { display:block; width:16px; height:3px; background:#000; margin-top:1px; }
 
-        /* Cuerpo: navegador de partes + hoja */
-        .inf-body { flex:1; display:flex; min-height:0; }
+        /* Cuerpo: lista de partes + hoja */
+        .inf-body { flex:1; display:flex; min-height:0; position:relative; }
         .inf-nav {
-          width:272px; flex-shrink:0; background:#f3f4f6; border-right:1px solid #d4d8de; overflow-y:auto;
-          padding:12px; display:flex; flex-direction:column; gap:9px;
+          width:236px; flex-shrink:0; background:#fff; border-right:1px solid #ccc; overflow-y:auto;
+          padding:0 0 12px; display:flex; flex-direction:column; gap:8px;
         }
         .informe-panel.nav-hidden .inf-nav { display:none; }
-        .inf-nav-title { font-size:10px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:#6b7280; display:flex; align-items:center; gap:6px; }
+        .inf-nav-title {
+          display:flex; align-items:center; gap:6px; padding:9px 10px 9px 12px; border-bottom:1px solid #ccc;
+          font-size:10.5px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#000;
+        }
         .inf-nav-title .inf-spacer { flex:1; }
-        .inf-nav-close { display:none; background:transparent; border:none; color:#6b7280; font-size:16px; cursor:pointer; padding:0 4px; }
-        .inf-progress { background:#fff; border:1px solid #dfe3e8; border-radius:9px; padding:9px 11px; }
-        .inf-progress-txt { font-size:12px; font-weight:700; color:#1f2937; line-height:1.4; }
-        .inf-progress-bar { height:7px; background:#e5e7eb; border-radius:4px; margin-top:6px; overflow:hidden; }
-        .inf-progress-bar i { display:block; height:100%; background:#f59e0b; width:0; transition:width .3s; border-radius:4px; }
-        .inf-progress.half .inf-progress-bar i { background:#3b82f6; }
-        .inf-progress.done .inf-progress-bar i { background:#16a34a; }
-        .inf-progress.done { border-color:#86efac; background:#f0fdf4; }
-        .inf-outline { display:flex; flex-direction:column; gap:3px; }
+        .inf-nav-close { display:inline-flex; background:transparent; border:none; color:#000; cursor:pointer; padding:2px; font-size:16px; }
+        .inf-nav-close:hover { background:#000; color:#fff; }
+        .inf-nav-inner { display:flex; flex-direction:column; gap:8px; padding:0 10px; }
+        .inf-nav-show {
+          display:none; position:absolute; left:0; top:10px; z-index:5; background:#fff; border:1px solid #000; border-left:none;
+          padding:8px 5px; cursor:pointer; font-size:9.5px; font-weight:800; letter-spacing:1px; text-transform:uppercase;
+          writing-mode:vertical-rl; transform:rotate(180deg);
+        }
+        .inf-nav-show:hover { background:#000; color:#fff; }
+        .informe-panel.nav-hidden .inf-nav-show { display:block; }
+        .inf-progress { border:1px solid #ccc; padding:8px 10px; }
+        .inf-progress-txt { font-size:11.5px; font-weight:700; color:#000; line-height:1.4; }
+        .inf-progress-bar { height:4px; background:#e5e5e5; margin-top:7px; overflow:hidden; }
+        .inf-progress-bar i { display:block; height:100%; background:#000; width:0; transition:width .3s; }
+        .inf-progress.done { border-color:#000; }
+        .inf-outline { display:flex; flex-direction:column; gap:0; border:1px solid #ccc; }
         .inf-oi {
-          display:flex; align-items:center; gap:6px; padding:6px 7px; background:#fff; border:1px solid #dfe3e8; border-radius:8px;
+          display:flex; align-items:center; gap:7px; padding:6px 8px; background:#fff; border-bottom:1px solid #e3e3e3;
           cursor:pointer; font-size:12px; user-select:none;
         }
-        .inf-oi:hover { border-color:#9dbde6; background:#f8fbff; }
-        .inf-oi.active { border-color:#1976d2; box-shadow:0 0 0 2px rgba(25,118,210,.15); }
-        .inf-oi.off { opacity:.55; }
-        .inf-oi.off .inf-oi-name { text-decoration:line-through; }
-        .inf-oi input[type=checkbox] { width:16px; height:16px; accent-color:#1976d2; cursor:pointer; flex-shrink:0; margin:0; }
-        .inf-oi-ic { font-size:15px; width:20px; text-align:center; flex-shrink:0; }
-        .inf-oi-name { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600; color:#1f2937; }
-        .inf-oi-st { font-size:12px; flex-shrink:0; width:16px; text-align:center; }
-        .inf-oi-grip { color:#9ca3af; cursor:grab; font-size:14px; flex-shrink:0; }
+        .inf-oi:last-child { border-bottom:none; }
+        .inf-oi:hover { background:#f3f3f3; }
+        .inf-oi.active { background:#000; color:#fff; }
+        .inf-oi.active .inf-oi-name, .inf-oi.active .inf-oi-st, .inf-oi.active .inf-oi-grip { color:#fff; }
+        .inf-oi.off .inf-oi-name { text-decoration:line-through; color:#999; }
+        .inf-oi input[type=checkbox] { width:14px; height:14px; accent-color:#000; cursor:pointer; flex-shrink:0; margin:0; }
+        .inf-oi-ic { font-size:15px; width:16px; flex-shrink:0; color:#000; }
+        .inf-oi.active .inf-oi-ic { color:#fff; }
+        .inf-oi-name { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600; color:#000; }
+        .inf-oi-st { font-size:10px; flex-shrink:0; width:12px; text-align:center; color:#000; }
+        .inf-oi-grip { color:#aaa; cursor:grab; font-size:13px; flex-shrink:0; }
         .inf-oi-grip:active { cursor:grabbing; }
         .inf-oi.dragging { opacity:.4; }
-        .inf-oi.drop-target { outline:2px dashed #1976d2; outline-offset:1px; }
-        .inf-nav-btn {
-          display:flex; align-items:center; gap:8px; width:100%; padding:9px 11px; background:#fff; color:#1f2937;
-          border:1px solid #cfd5dd; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; text-align:left;
-        }
-        .inf-nav-btn:hover { background:#eef2f7; border-color:#9dbde6; }
-        .inf-nav-btn.primary { background:#1976d2; color:#fff; border-color:#1976d2; }
-        .inf-nav-btn.primary:hover { background:#1565c0; }
-        .inf-nav-btn .inf-ic { font-size:16px; }
-        .inf-nav-btn small { display:block; font-size:10px; font-weight:500; opacity:.75; margin-top:1px; }
-        .inf-nav-sep { height:1px; background:#dfe3e8; margin:2px 0; }
-        .inf-nav-hint { font-size:10.5px; color:#6b7280; line-height:1.5; }
+        .inf-oi.drop-target { outline:2px dashed #000; outline-offset:-2px; }
+        .inf-nav-sep { height:1px; background:#ddd; margin:2px 0; }
+        .inf-nav-hint { font-size:10.5px; color:#777; line-height:1.5; }
 
         /* Hoja del documento */
-        .inf-doc-wrap { flex:1; min-height:0; overflow-y:auto; padding:22px 16px 90px; }
-        .inf-doc-canvas { width:820px; max-width:100%; margin:0 auto; background:#fff; box-shadow:0 4px 30px rgba(0,0,0,.18); border-radius:3px; min-height:80vh; padding:0 0 28px; }
-        .inf-empty { padding:34px 40px 26px; text-align:center; color:#4b5563; border-top:1px dashed #d4d8de; margin-top:6px; }
-        .inf-empty h3 { font-size:19px; margin:0 0 6px; color:#111; }
-        .inf-empty p { font-size:13px; line-height:1.6; margin:0 0 16px; }
-        .inf-empty .row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
-        .inf-bigbtn {
-          display:inline-flex; align-items:center; gap:8px; padding:11px 18px; border-radius:9px; font-size:13px; font-weight:700; cursor:pointer;
-          background:#fff; color:#1f2937; border:1px solid #cfd5dd;
-        }
-        .inf-bigbtn:hover { background:#eef2f7; border-color:#9dbde6; }
-        .inf-bigbtn.primary { background:#1976d2; color:#fff; border-color:#1976d2; }
-        .inf-bigbtn.primary:hover { background:#1565c0; }
-        .inf-bigbtn .inf-ic { font-size:18px; }
+        .inf-doc-wrap { flex:1; min-height:0; overflow-y:auto; padding:18px 14px 80px; }
+        .inf-doc-canvas { width:800px; max-width:100%; margin:0 auto; background:#fff; border:1px solid #bbb; min-height:80vh; padding:0 0 26px; }
+        .inf-empty { padding:30px 30px 22px; text-align:center; color:#444; border-top:1px dashed #ccc; margin-top:4px; }
+        .inf-empty h3 { font-size:15px; margin:0 0 6px; color:#000; text-transform:uppercase; letter-spacing:.5px; }
+        .inf-empty p { font-size:12.5px; line-height:1.6; margin:0 0 14px; }
+        .inf-empty .row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
 
         /* Cada parte del informe dentro de la hoja */
-        .inf-part { position:relative; border-top:1px solid #eef0f3; }
+        .inf-part { position:relative; border-top:1px solid #eee; }
         .inf-part:first-child { border-top:none; }
-        .inf-part.excluded .inf-part-body { opacity:.45; filter:grayscale(.6); }
-        .inf-part.drop-target { outline:3px dashed #1976d2; outline-offset:-3px; }
+        .inf-part.excluded .inf-part-body { opacity:.4; filter:grayscale(1); }
+        .inf-part.drop-target { outline:2px dashed #000; outline-offset:-2px; }
         .inf-part.dragging { opacity:.4; }
         .inf-part-bar {
-          display:flex; align-items:center; gap:6px; padding:4px 10px 4px 12px; background:#f7f8fa; border-bottom:1px solid #eef0f3;
-          border-left:3px solid #9ca3af; font-size:10.5px; color:#6b7280; opacity:.8; transition:opacity .15s, background .15s;
+          display:flex; align-items:center; gap:6px; padding:3px 8px 3px 10px; background:#fafafa; border-bottom:1px solid #eee;
+          border-left:3px solid #bbb; font-size:9.5px; color:#777; min-height:26px;
         }
-        .inf-part:hover .inf-part-bar, .inf-part:focus-within .inf-part-bar, .inf-part.active .inf-part-bar { opacity:1; background:#eef2f7; }
-        .inf-part-sec .inf-part-bar { border-left-color:#1976d2; }
-        .inf-part-cover .inf-part-bar { border-left-color:#0a0a0a; }
-        .inf-part-grip { cursor:grab; font-size:15px; color:#9ca3af; user-select:none; }
+        .inf-part:hover .inf-part-bar, .inf-part:focus-within .inf-part-bar, .inf-part.active .inf-part-bar { background:#f1f1f1; color:#000; }
+        .inf-part-sec .inf-part-bar, .inf-part-cover .inf-part-bar { border-left-color:#000; }
+        .inf-part-grip { cursor:grab; font-size:13px; color:#999; user-select:none; }
         .inf-part-grip:active { cursor:grabbing; }
-        .inf-part-name { font-weight:700; letter-spacing:1px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .inf-part-tag { font-size:9.5px; color:#9ca3af; letter-spacing:.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .inf-part-acts { display:flex; gap:2px; margin-left:auto; flex-shrink:0; }
-        .inf-card-btn { position:relative; background:transparent; color:#4b5563; border:1px solid transparent; min-width:26px; height:24px; padding:0 5px; cursor:pointer; font-size:12px; border-radius:5px; line-height:1; }
-        .inf-card-btn:hover { background:#fff; border-color:#cfd5dd; color:#111; }
-        .inf-card-btn.del:hover { background:#fee2e2; color:#b91c1c; border-color:#fca5a5; }
-        .inf-card-btn.on { color:#1976d2; }
-        .inf-part-opts { display:flex; align-items:center; gap:7px; flex-wrap:wrap; padding:7px 14px 0 46px; font-size:11px; color:#6b7280; }
-        .inf-seg { display:inline-flex; border:1px solid #cfd5dd; border-radius:6px; overflow:hidden; }
-        .inf-seg button { background:#fff; border:none; border-right:1px solid #e5e7eb; padding:4px 9px; font-size:11px; cursor:pointer; color:#374151; }
+        .inf-part-name { font-weight:800; letter-spacing:1px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .inf-part-tag { font-size:9px; color:#999; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .inf-part-acts { display:flex; gap:1px; margin-left:auto; flex-shrink:0; }
+        .inf-card-btn { position:relative; display:inline-flex; align-items:center; justify-content:center; background:transparent; color:#333; border:1px solid transparent; min-width:22px; height:20px; padding:0 4px; cursor:pointer; font-size:11px; border-radius:0; line-height:1; }
+        .inf-card-btn .inf-ic { font-size:13px; }
+        .inf-card-btn:hover { background:#000; color:#fff; }
+        .inf-card-btn.del:hover { background:#c62828; }
+        .inf-part-opts { display:flex; align-items:center; gap:7px; flex-wrap:wrap; padding:6px 12px 0 44px; font-size:10.5px; color:#555; }
+        .inf-seg { display:inline-flex; border:1px solid #000; }
+        .inf-seg button { background:#fff; border:none; border-right:1px solid #000; padding:3px 8px; font-size:10.5px; cursor:pointer; color:#000; font-weight:600; }
         .inf-seg button:last-child { border-right:none; }
-        .inf-seg button.on { background:#1976d2; color:#fff; }
-        .inf-part-cap { flex:1; min-width:160px; background:#fff; border:1px solid #cfd5dd; border-radius:6px; padding:5px 8px; font-family:inherit; font-size:11.5px; color:#1f2937; }
-        .inf-part-cap:focus { outline:none; border-color:#1976d2; }
+        .inf-seg button.on { background:#000; color:#fff; }
+        .inf-part-cap { flex:1; min-width:160px; background:#fff; border:1px solid #bbb; border-radius:0; padding:4px 7px; font-family:inherit; font-size:11px; color:#000; }
+        .inf-part-cap:focus { outline:none; border-color:#000; }
         .inf-part-collapsed .inf-part-body, .inf-part-collapsed .inf-part-opts { display:none; }
-        .inf-card-auto { padding:8px 0 12px; }
+        .inf-card-auto { padding:6px 0 10px; }
         .inf-card-cover .inf-card-auto { padding:0; }
-        .inf-card-empty { color:#999; font-size:12px; padding:18px 40px; text-align:center; font-style:italic; }
-        .inf-mini { display:inline-flex; align-items:center; gap:5px; background:#fff; color:#1f2937; border:1px solid #cfd5dd; border-radius:6px; padding:4px 9px; font-size:11px; font-weight:600; cursor:pointer; }
-        .inf-mini:hover { background:#eef2f7; border-color:#9dbde6; }
+        .inf-card-empty { color:#999; font-size:12px; padding:16px 40px; text-align:center; font-style:italic; }
+        .inf-mini { display:inline-flex; align-items:center; gap:5px; background:#fff; color:#000; border:1px solid #000; padding:3px 9px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; cursor:pointer; }
+        .inf-mini:hover { background:#000; color:#fff; }
 
         /* Portada editable (se completa como un formulario, se ve como en el PDF) */
-        .inf-cover-top { background:#0a0a0a; color:#fff; padding:34px 46px 26px; }
+        .inf-cover-top { background:#0a0a0a; color:#fff; padding:30px 44px 24px; font-family:'Montserrat',Arial,sans-serif; }
         .inf-cover-kicker { font-size:10px; letter-spacing:4px; color:#9e9e9e; text-transform:uppercase; font-weight:600; }
         .inf-cover-title {
           display:block; width:100%; background:transparent; color:#fff; border:none; border-bottom:1px dashed #555;
-          font-family:inherit; font-size:27px; font-weight:800; line-height:1.15; margin:10px 0 8px; padding:4px 0; outline:none;
+          font-family:'Montserrat',Arial,sans-serif; font-size:26px; font-weight:800; line-height:1.15; margin:10px 0 8px; padding:4px 0; outline:none;
         }
         .inf-cover-title::placeholder { color:#6b7280; font-weight:700; }
         .inf-cover-title:focus { border-bottom-color:#fff; }
         .inf-cover-sub { font-size:12px; color:#cfcfcf; letter-spacing:.6px; }
-        .inf-cover-meta { display:grid; grid-template-columns:1fr 1fr; border-top:3px solid #0a0a0a; }
-        .inf-cover-cell { padding:10px 46px; border-bottom:1px solid #ececec; }
+        .inf-cover-meta { display:grid; grid-template-columns:1fr 1fr; border-top:3px solid #0a0a0a; font-family:'Montserrat',Arial,sans-serif; }
+        .inf-cover-cell { padding:9px 44px; border-bottom:1px solid #ececec; }
         .inf-cover-cell:nth-child(odd) { border-right:1px solid #ececec; }
         .inf-cover-cell label { display:block; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:#8a8a8a; font-weight:700; }
         .inf-cover-cell input {
           display:block; width:100%; border:none; border-bottom:1px dashed #d1d5db; background:transparent;
-          font-family:inherit; font-size:14px; font-weight:600; color:#111; padding:5px 0 3px; outline:none;
+          font-family:inherit; font-size:13.5px; font-weight:600; color:#111; padding:4px 0 3px; outline:none;
         }
         .inf-cover-cell input::placeholder { color:#c4c8cf; font-weight:500; }
-        .inf-cover-cell input:focus { border-bottom:1px solid #1976d2; }
+        .inf-cover-cell input:focus { border-bottom:1px solid #000; }
 
         /* Sección de texto: título + cuerpo enriquecido */
         .inf-card-sectitle {
-          display:block; width:calc(100% - 80px); margin:14px 40px 4px; border:none; border-left:6px solid #0a0a0a; background:#f7f8fa;
-          padding:7px 14px; font-family:'Montserrat',sans-serif; font-size:18px; font-weight:800; color:#111; outline:none;
+          display:block; width:calc(100% - 80px); margin:12px 40px 2px; border:none; border-left:5px solid #0a0a0a; background:#f6f6f6;
+          padding:6px 12px; font-family:'Montserrat',Arial,sans-serif; font-size:16px; font-weight:800; color:#111; outline:none;
           text-transform:uppercase; letter-spacing:1px;
         }
-        .inf-card-sectitle::placeholder { color:#b9bec7; font-weight:700; text-transform:none; letter-spacing:0; }
-        .inf-card-sectitle:focus { background:#eef2f7; }
-        .inf-rich { min-height:70px; padding:6px 46px 20px; font-family:inherit; font-size:13.5px; line-height:1.7; color:#161616; outline:none; }
+        .inf-card-sectitle::placeholder { color:#bbb; font-weight:700; text-transform:none; letter-spacing:0; }
+        .inf-card-sectitle:focus { background:#ececec; }
+        .inf-rich { min-height:64px; padding:6px 44px 18px; font-family:'Montserrat',Arial,sans-serif; font-size:13px; line-height:1.7; color:#161616; outline:none; }
         .inf-rich:focus { background:#fffdf3; }
-        .inf-rich:empty:before { content:attr(data-hint); color:#a3a8b1; font-style:italic; white-space:pre-line; }
+        .inf-rich:empty:before { content:attr(data-hint); color:#a3a3a3; font-style:italic; white-space:pre-line; }
         .inf-rich h2 { font-size:17px; margin:8px 0 5px; }
         .inf-rich h3 { font-size:15px; margin:7px 0 4px; }
         .inf-rich h4 { font-size:13px; font-weight:700; margin:7px 0 4px; color:#333; }
         .inf-rich ul, .inf-rich ol { margin:0 0 8px 22px; }
-        .inf-rich .doc-eq { display:inline-block; vertical-align:middle; background:#eef4ff; border:1px solid #cfe0ff; border-radius:3px; padding:0 3px; cursor:pointer; }
+        .inf-rich .doc-eq { display:inline-block; vertical-align:middle; background:#f3f3f3; border:1px solid #ddd; padding:0 3px; cursor:pointer; }
         .inf-rich .doc-eq img { height:auto; max-height:2.1em; vertical-align:middle; }
-        .inf-rich .doc-eq-block { display:block; text-align:center; margin:14px auto; background:#f4f8ff; border:1px solid #dbe7fb; border-radius:4px; padding:8px; cursor:pointer; max-width:96%; }
+        .inf-rich .doc-eq-block { display:block; text-align:center; margin:14px auto; background:#f6f6f6; border:1px solid #ddd; padding:8px; cursor:pointer; max-width:96%; }
         .inf-rich .doc-eq-block img { max-width:100%; height:auto; }
         .inf-rich .doc-eq-cap { display:block; font-size:11px; color:#777; margin-top:5px; text-align:center; }
         .inf-rich .doc-eq-num { color:#999; font-weight:600; margin-left:6px; }
         .inf-rich table.doc-data-table { border-collapse:collapse; max-width:100%; margin:10px 0; font-size:12px; }
         .inf-rich table.doc-data-table th, .inf-rich table.doc-data-table td { border:1px solid #d3d3d3; padding:3px 8px; text-align:right; }
-        .inf-rich table.doc-data-table th { background:#f0f3f8; font-weight:700; text-align:center; }
+        .inf-rich table.doc-data-table th { background:#f0f0f0; font-weight:700; text-align:center; }
         .inf-rich table.doc-cmp-table td { text-align:left; min-width:70px; }
         .inf-rich figure.doc-fig { width:60%; margin:12px auto; text-align:center; cursor:grab; }
         .inf-rich figure.doc-fig:active { cursor:grabbing; }
-        .inf-rich figure.doc-fig.dragging { opacity:0.45; outline:2px dashed #1976d2; }
+        .inf-rich figure.doc-fig.dragging { opacity:0.45; outline:2px dashed #000; }
         .inf-rich figure.doc-fig img { pointer-events:none; width:100%; height:auto; border:1px solid #e6e6e6; display:block; }
         .inf-rich figure.doc-fig.fig-left { margin:12px auto 12px 0; text-align:left; }
         .inf-rich figure.doc-fig.fig-right { margin:12px 0 12px auto; text-align:right; }
@@ -4350,81 +4341,81 @@
         .inf-rich:after { content:''; display:table; clear:both; }
 
         /* Vista previa a pantalla completa (así queda el informe) */
-        .inf-preview-modal { display:none; position:fixed; inset:0; z-index:9200; background:#4a4d52; flex-direction:column; font-family:'Montserrat',-apple-system,sans-serif; }
+        .inf-preview-modal { display:none; position:fixed; inset:0; z-index:9200; background:#e6e6e6; flex-direction:column; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
         .inf-preview-modal.open { display:flex; }
-        .inf-preview-top { display:flex; align-items:center; gap:8px; padding:9px 14px; background:#0a0a0a; color:#fff; flex-wrap:wrap; }
-        .inf-preview-top .ttl { font-weight:800; letter-spacing:2px; text-transform:uppercase; font-size:12px; }
-        .inf-preview-top .sub { font-size:11px; color:#9e9e9e; display:block; letter-spacing:.3px; font-weight:500; text-transform:none; margin-top:2px; }
-        .inf-preview { flex:1; overflow-y:auto; padding:26px 14px 60px; display:flex; justify-content:center; align-items:flex-start; }
-        .inf-preview-inner { width:794px; max-width:100%; box-shadow:0 6px 34px rgba(0,0,0,.5); }
-        .inf-preview-empty { color:#e5e7eb; font-size:13px; text-align:center; margin-top:60px; line-height:1.7; }
+        .inf-preview-top { display:flex; align-items:center; gap:6px; padding:6px 10px; background:#fff; color:#000; border-bottom:2px solid #000; flex-wrap:wrap; min-height:44px; }
+        .inf-preview-top .ttl { font-weight:800; letter-spacing:1.5px; text-transform:uppercase; font-size:11.5px; }
+        .inf-preview-top .sub { font-size:10.5px; color:#666; display:block; margin-top:1px; }
+        .inf-preview { flex:1; overflow-y:auto; padding:22px 14px 60px; display:flex; justify-content:center; align-items:flex-start; }
+        .inf-preview-inner { width:794px; max-width:100%; border:1px solid #aaa; }
+        .inf-preview-empty { color:#444; font-size:13px; text-align:center; margin-top:60px; line-height:1.7; }
 
-        /* Cajón «Material del experimento» (apuntes, dibujo y fotos) */
-        .inf-material { display:none; position:fixed; inset:0; z-index:9160; background:rgba(0,0,0,.45); justify-content:flex-end; font-family:'Montserrat',-apple-system,sans-serif; }
+        /* Cajón «Apuntes, dibujo y fotos» */
+        .inf-material { display:none; position:fixed; inset:0; z-index:9160; background:rgba(0,0,0,.35); justify-content:flex-end; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
         .inf-material.open { display:flex; }
-        .inf-material-box { width:580px; max-width:100%; height:100%; background:#f3f4f6; display:flex; flex-direction:column; box-shadow:-8px 0 30px rgba(0,0,0,.3); color:#1f2937; }
-        .inf-material-head { display:flex; align-items:center; gap:10px; padding:11px 16px; background:#0a0a0a; color:#fff; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; font-size:12px; }
-        .inf-material-scroll { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px; }
-        .inf-ap-card { background:#fff; border:1px solid #dfe3e8; border-radius:9px; padding:14px; }
-        .inf-ap-card .inf-section-title { font-size:12px; font-weight:800; color:#111; display:flex; align-items:center; gap:7px; margin-bottom:4px; }
-        .inf-ap-card .inf-hint { color:#6b7280; }
-        .inf-ap-card textarea { width:100%; min-height:150px; }
-        .inf-field { margin-bottom:9px; }
-        .inf-field textarea { display:block; width:100%; padding:8px 10px; background:#fff; color:#111; border:1px solid #cfd5dd; border-radius:7px; font-family:inherit; font-size:12.5px; resize:vertical; min-height:80px; line-height:1.5; }
-        .inf-field textarea:focus { outline:none; border-color:#1976d2; }
-        .inf-hint { font-size:10.5px; color:#6b7280; line-height:1.5; margin:4px 0 8px; }
+        .inf-material-box { width:540px; max-width:100%; height:100%; background:#fff; border-left:2px solid #000; display:flex; flex-direction:column; color:#000; }
+        .inf-material-head { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#fff; color:#000; border-bottom:2px solid #000; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:11.5px; }
+        .inf-material-scroll { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px; background:#f5f5f5; }
+        .inf-ap-card { background:#fff; border:1px solid #ccc; padding:12px; }
+        .inf-ap-card .inf-section-title { font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#000; display:flex; align-items:center; gap:7px; margin-bottom:4px; }
+        .inf-ap-card .inf-section-title .inf-ic { font-size:15px; }
+        .inf-ap-card textarea { width:100%; min-height:140px; }
+        .inf-field { margin-bottom:8px; }
+        .inf-field textarea { display:block; width:100%; padding:8px 10px; background:#fff; color:#000; border:1px solid #bbb; border-radius:0; font-family:inherit; font-size:12.5px; resize:vertical; min-height:80px; line-height:1.5; }
+        .inf-field textarea:focus { outline:none; border-color:#000; }
+        .inf-hint { font-size:10.5px; color:#777; line-height:1.5; margin:4px 0 8px; }
 
-        /* Botones genéricos (modales oscuros, diálogos, cajón) */
+        /* Botones de modales oscuros y diálogos (estilo anterior, mantenido) */
         .inf-btn {
-          display:block; width:100%; padding:10px 12px; margin-top:7px;
-          background:#000; color:#fff; border:1px solid #444; border-radius:7px;
-          font-size:11px; font-weight:700; letter-spacing:1px;
+          display:block; width:100%; padding:9px 12px; margin-top:7px;
+          background:#000; color:#fff; border:2px solid #000; border-radius:0;
+          font-size:11px; font-weight:700; letter-spacing:.6px;
           text-transform:uppercase; cursor:pointer; font-family:inherit; text-align:center;
         }
-        .inf-btn:hover { background:#1a1d23; border-color:#fff; }
-        .inf-btn.primary { background:#fff; color:#000; border-color:#fff; }
-        .inf-btn.primary:hover { background:#e0e0e0; }
+        .inf-btn:hover { background:#fff; color:#000; }
+        .inf-btn.primary { background:#fff; color:#000; }
+        .inf-btn.primary:hover { background:#000; color:#fff; }
         .inf-btn.danger { color:#ef5350; border-color:#ef5350; }
         .inf-btn.danger:hover { background:#ef5350; color:#000; }
         .inf-btn:disabled { opacity:0.4; cursor:not-allowed; }
         .inf-btn-row { display:flex; gap:7px; }
         .inf-btn-row .inf-btn { flex:1; }
         .inf-chip {
-          display:inline-block; background:#000; color:#fff; border:1px solid #444;
-          padding:6px 10px; margin:0 5px 5px 0; font-size:11px; cursor:pointer;
-          font-family:inherit; letter-spacing:0.3px; border-radius:6px;
+          display:inline-block; background:#fff; color:#000; border:1px solid #000;
+          padding:5px 9px; margin:0 5px 5px 0; font-size:10.5px; cursor:pointer;
+          font-family:inherit; letter-spacing:0.3px; border-radius:0; font-weight:600;
         }
-        .inf-chip:hover { border-color:#fff; background:#20242b; }
-        .inf-chip.del { color:#ef5350; border-color:#ef5350; }
-        .inf-chip.del:hover { background:#ef5350; color:#000; }
+        .inf-chip:hover { background:#000; color:#fff; }
+        .inf-chip.del { color:#c62828; border-color:#c62828; }
+        .inf-chip.del:hover { background:#c62828; color:#fff; }
 
         /* Miniaturas de fotos del experimento (cajón) */
         .inf-photos { margin-top:8px; }
-        .inf-photo-item { display:flex; gap:10px; padding:8px; border:1px solid #dfe3e8; background:#f9fafb; border-radius:8px; margin-bottom:7px; }
-        .inf-photo-thumb { position:relative; width:76px; height:76px; border:1px solid #cfd5dd; overflow:hidden; background:#000; flex-shrink:0; border-radius:6px; }
+        .inf-photo-item { display:flex; gap:10px; padding:8px; border:1px solid #ddd; background:#fafafa; margin-bottom:7px; }
+        .inf-photo-thumb { position:relative; width:72px; height:72px; border:1px solid #bbb; overflow:hidden; background:#000; flex-shrink:0; }
         .inf-photo-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
-        .inf-photo-thumb .inf-photo-del { position:absolute; top:2px; right:2px; background:rgba(0,0,0,.75); color:#fff; border:none; width:20px; height:20px; font-size:12px; line-height:1; cursor:pointer; border-radius:4px; }
+        .inf-photo-thumb .inf-photo-del { position:absolute; top:2px; right:2px; background:rgba(0,0,0,.75); color:#fff; border:none; width:20px; height:20px; font-size:12px; line-height:1; cursor:pointer; }
         .inf-photo-fields { flex:1; min-width:0; }
         .inf-photo-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-        .inf-photo-row span { font-size:10px; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px; }
-        .inf-photo-size, .inf-photo-cap { background:#fff; color:#111; border:1px solid #cfd5dd; border-radius:6px; font-family:inherit; font-size:11px; padding:5px 7px; box-sizing:border-box; }
+        .inf-photo-row span { font-size:10px; color:#777; text-transform:uppercase; letter-spacing:0.5px; }
+        .inf-photo-size, .inf-photo-cap { background:#fff; color:#000; border:1px solid #bbb; border-radius:0; font-family:inherit; font-size:11px; padding:5px 7px; box-sizing:border-box; }
         .inf-photo-size { flex:1; }
         .inf-photo-cap { display:block; width:100%; }
-        .inf-photo-size:focus, .inf-photo-cap:focus { outline:none; border-color:#1976d2; }
+        .inf-photo-size:focus, .inf-photo-cap:focus { outline:none; border-color:#000; }
         .inf-draw-preview {
-          border:1px dashed #9ca3af; background:#fff; color:#6b7280; border-radius:8px;
-          min-height:96px; display:flex; align-items:center; justify-content:center;
+          border:1px dashed #999; background:#fff; color:#777;
+          min-height:90px; display:flex; align-items:center; justify-content:center;
           text-align:center; font-size:11.5px; padding:12px; cursor:pointer; line-height:1.5;
         }
-        .inf-draw-preview.has { border-style:solid; border-color:#cfd5dd; padding:0; background:#fff; overflow:hidden; }
+        .inf-draw-preview.has { border-style:solid; border-color:#bbb; padding:0; background:#fff; overflow:hidden; }
         .inf-draw-preview img { width:100%; display:block; }
 
         .inf-toast {
-          position:fixed; bottom:26px; left:50%; transform:translateX(-50%);
-          background:#000; color:#fff; padding:12px 22px; border:1px solid #fff; border-radius:8px;
-          font-size:12.5px; letter-spacing:0.5px; z-index:9950;
+          position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+          background:#000; color:#fff; padding:10px 18px; border:1px solid #fff; border-radius:0;
+          font-size:12.5px; letter-spacing:0.3px; z-index:9950;
           opacity:0; transition:opacity .25s; pointer-events:none; text-align:center;
-          font-family:'Montserrat', sans-serif; max-width:90vw;
+          font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; max-width:90vw;
         }
         .inf-toast.show { opacity:1; }
 
@@ -4444,211 +4435,225 @@
         }
         .inf-restore button.ghost { background:transparent; color:#fff; border:1px solid #555; }
 
-        /* Menú desplegable «Descargar» (topbar) */
+        /* Menú desplegable «Descargar» (topbar) y menú «Guardar / Retomar»: blancos con borde negro */
         .inf-dropdown { position:relative; display:inline-block; }
         .inf-dropdown-menu {
-          display:none; position:absolute; top:calc(100% + 6px); right:0; min-width:270px;
-          background:#0f1115; border:1px solid #3a3f48; border-radius:9px;
-          box-shadow:0 12px 34px rgba(0,0,0,.6); padding:6px; z-index:9700; text-align:left;
+          display:none; position:absolute; top:calc(100% + 4px); right:0; min-width:280px;
+          background:#fff; color:#000; border:2px solid #000; border-radius:0;
+          box-shadow:0 6px 20px rgba(0,0,0,.18); padding:4px 0; z-index:9700; text-align:left;
         }
         .inf-dropdown-menu.open { display:block; animation:infDDin .12s ease-out; }
-        @keyframes infDDin { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
-        .inf-dd-group { font-size:9.5px; letter-spacing:1.5px; text-transform:uppercase; color:#8a93a0; font-weight:700; padding:7px 10px 3px; }
+        @keyframes infDDin { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }
+        .inf-dd-group { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:#777; font-weight:800; padding:8px 12px 3px; }
         .inf-dd-item {
-          display:block; width:100%; text-align:left; background:transparent; color:#e8eaed;
-          border:none; border-radius:6px; padding:9px 11px; font-size:12.5px; font-family:inherit;
-          letter-spacing:.2px; cursor:pointer; white-space:normal;
+          display:flex; align-items:center; gap:9px; width:100%; text-align:left; background:transparent; color:#000;
+          border:none; border-radius:0; padding:7px 12px; font-size:12.5px; font-family:inherit; cursor:pointer; white-space:normal; line-height:1.3;
         }
-        .inf-dd-item:hover { background:#262b33; }
-        .inf-dd-item.danger { color:#ef5350; }
-        .inf-dd-item.danger:hover { background:#ef5350; color:#fff; }
-        .inf-dd-sep { height:1px; background:#2b303b; margin:5px 6px; }
-        .inf-dd-status { padding:7px 10px 3px; font-size:10px; opacity:.65; margin:0; color:#cfd3da; }
+        .inf-dd-item .inf-ic { font-size:15px; color:#000; }
+        .inf-dd-item:hover { background:#000; color:#fff; }
+        .inf-dd-item:hover .inf-ic { color:#fff; }
+        .inf-dd-item.danger { color:#c62828; }
+        .inf-dd-item.danger .inf-ic { color:#c62828; }
+        .inf-dd-item.danger:hover { background:#c62828; color:#fff; }
+        .inf-dd-item.danger:hover .inf-ic { color:#fff; }
+        .inf-dd-sep { height:1px; background:#ddd; margin:4px 0; }
+        .inf-dd-status { padding:6px 12px 4px; font-size:10px; color:#777; margin:0; line-height:1.4; }
 
         /* Google Drive: modal de proyectos guardados */
-        .inf-drive-modal { display:none; position:fixed; inset:0; z-index:9720; background:rgba(0,0,0,.6); align-items:center; justify-content:center; padding:20px; font-family:'Montserrat',-apple-system,sans-serif; }
+        .inf-drive-modal { display:none; position:fixed; inset:0; z-index:9720; background:rgba(0,0,0,.45); align-items:center; justify-content:center; padding:20px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
         .inf-drive-modal.open { display:flex; }
-        .inf-drive-box { background:#23272e; border:1px solid #444; border-radius:9px; width:520px; max-width:100%; max-height:80vh; display:flex; flex-direction:column; overflow:hidden; }
-        .inf-drive-head { display:flex; align-items:center; gap:10px; padding:14px 16px; background:#0f1115; color:#fff; font-weight:700; letter-spacing:.5px; border-bottom:1px solid #2b303b; }
-        .inf-drive-x { background:transparent; border:none; color:#cfd3da; font-size:16px; cursor:pointer; line-height:1; }
-        .inf-drive-x:hover { color:#fff; }
-        .inf-drive-list { overflow-y:auto; padding:8px; }
-        .inf-drive-row { display:flex; align-items:center; gap:12px; padding:10px; border-bottom:1px solid #2b303b; }
+        .inf-drive-box { background:#fff; color:#000; border:2px solid #000; width:520px; max-width:100%; max-height:80vh; display:flex; flex-direction:column; overflow:hidden; }
+        .inf-drive-head { display:flex; align-items:center; gap:10px; padding:10px 14px; background:#fff; color:#000; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:11.5px; border-bottom:2px solid #000; }
+        .inf-drive-x { background:transparent; border:none; color:#000; font-size:16px; cursor:pointer; line-height:1; }
+        .inf-drive-x:hover { background:#000; color:#fff; }
+        .inf-drive-list { overflow-y:auto; padding:6px; }
+        .inf-drive-row { display:flex; align-items:center; gap:12px; padding:10px; border-bottom:1px solid #e3e3e3; }
         .inf-drive-row:last-child { border-bottom:none; }
         .inf-drive-info { flex:1; min-width:0; }
-        .inf-drive-name { color:#e8eaed; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .inf-drive-date { color:#8a93a0; font-size:10.5px; margin-top:2px; }
-        .inf-drive-empty { color:#9aa0a8; text-align:center; padding:26px 12px; font-size:12.5px; }
-        .inf-drive-cur { color:#57c98a; font-weight:700; font-size:11px; }
+        .inf-drive-name { color:#000; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .inf-drive-date { color:#777; font-size:10.5px; margin-top:2px; }
+        .inf-drive-empty { color:#777; text-align:center; padding:26px 12px; font-size:12.5px; }
+        .inf-drive-cur { color:#1f9d55; font-weight:700; font-size:11px; }
+        .inf-drive-row .inf-btn { display:inline-block; width:auto; margin:0; padding:6px 12px; background:#fff; color:#000; }
+        .inf-drive-row .inf-btn:hover { background:#000; color:#fff; }
         /* Botón «Guardar / Retomar» (barra principal): puntito de estado */
         .sess-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#9aa0a8; margin-right:7px; vertical-align:middle; transition:background .2s, box-shadow .2s; }
         #sessionTopBtn.gdrive-connected, #sessionTopBtn2.gdrive-connected { border-color:#1f7a5a; }
         #sessionTopBtn.gdrive-connected .sess-dot, #sessionTopBtn2.gdrive-connected .sess-dot { background:#42d17a; box-shadow:0 0 7px rgba(66,209,122,.75); }
         #sessionTopBtn.gdrive-manual, #sessionTopBtn2.gdrive-manual { border-color:#8a6d1f; }
         #sessionTopBtn.gdrive-manual .sess-dot, #sessionTopBtn2.gdrive-manual .sess-dot { background:#e0a92e; box-shadow:0 0 7px rgba(224,169,46,.7); }
-        /* Popover de opciones de Google Drive / menú «Guardar / Retomar» */
+        /* Menú «Guardar / Retomar» (popover blanco con borde negro, como el resto del sitio) */
         .gdrive-pop { display:none; position:fixed; top:58px; right:12px; z-index:9800; width:300px; max-width:calc(100vw - 20px);
-          background:#0f1115; border:1px solid #3a3f48; border-radius:9px; box-shadow:0 14px 40px rgba(0,0,0,.6); padding:14px; font-family:'Montserrat',-apple-system,sans-serif; }
+          background:#fff; color:#000; border:2px solid #000; border-radius:0; box-shadow:0 8px 24px rgba(0,0,0,.2); padding:12px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
         .gdrive-pop.open { display:block; animation:infDDin .12s ease-out; }
-        .gdrive-pop-head { color:#e8eaed; font-size:12px; font-weight:600; line-height:1.45; margin-bottom:12px; }
-        .gdrive-pop-lbl { display:block; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#8a93a0; font-weight:700; margin-bottom:4px; }
-        .gdrive-pop-input { width:100%; box-sizing:border-box; background:#1b1e24; border:1px solid #3a3f48; border-radius:5px; color:#fff; font-size:13px; font-family:inherit; padding:8px 10px; margin-bottom:12px; }
-        .gdrive-pop-input:focus { outline:none; border-color:#6ea8fe; }
-        .gdrive-pop-check { display:flex; align-items:center; gap:8px; color:#cfd3da; font-size:12px; margin-bottom:12px; cursor:pointer; }
-        .gdrive-pop-check input { width:15px; height:15px; flex-shrink:0; }
+        .gdrive-pop-head { color:#000; font-size:12px; font-weight:600; line-height:1.45; margin-bottom:12px; }
+        .gdrive-pop-lbl { display:block; font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:#777; font-weight:800; margin-bottom:4px; }
+        .gdrive-pop-input { width:100%; box-sizing:border-box; background:#fff; border:1px solid #bbb; border-radius:0; color:#000; font-size:13px; font-family:inherit; padding:7px 9px; margin-bottom:12px; }
+        .gdrive-pop-input:focus { outline:none; border-color:#000; }
+        .gdrive-pop-check { display:flex; align-items:center; gap:8px; color:#000; font-size:12px; margin-bottom:12px; cursor:pointer; }
+        .gdrive-pop-check input { width:14px; height:14px; flex-shrink:0; accent-color:#000; }
         .gdrive-pop-actions { display:flex; flex-direction:column; gap:7px; }
         .gdrive-pop-actions .inf-btn { margin:0; }
-        #session-menu { padding:6px; width:310px; }
-        #session-menu .gdrive-pop-lbl { padding:6px 11px 2px; margin:0; }
-        #session-menu .gdrive-pop-input { width:calc(100% - 22px); margin:2px 11px 9px; }
-        #session-menu .gdrive-pop-check { padding:2px 11px 9px; margin:0; }
+        #session-menu { padding:4px 0; width:310px; }
+        #session-menu .gdrive-pop-lbl { padding:6px 12px 2px; margin:0; }
+        #session-menu .gdrive-pop-input { width:calc(100% - 24px); margin:2px 12px 8px; }
+        #session-menu .gdrive-pop-check { padding:2px 12px 8px; margin:0; }
         #session-menu .inf-dd-status { margin:0; }
 
         /* Barra flotante de edición de imagen */
-        .inf-fig-tools { display:none; position:fixed; z-index:9550; background:#0f1115; border:1px solid #555; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,.5); padding:4px; font-family:'Montserrat',-apple-system,sans-serif; }
+        .inf-fig-tools { display:none; position:fixed; z-index:9550; background:#fff; border:2px solid #000; border-radius:0; box-shadow:0 6px 20px rgba(0,0,0,.2); padding:3px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
         .inf-fig-tools.open { display:flex; align-items:center; flex-wrap:wrap; gap:2px; }
-        .inf-fig-btn { position:relative; background:#2a2e36; color:#fff; border:1px solid #444; min-width:28px; height:28px; padding:0 7px; cursor:pointer; font-size:13px; font-family:inherit; border-radius:5px; }
-        .inf-fig-btn:hover { background:#fff; color:#000; }
-        .inf-fig-btn.on { background:#fff; color:#000; }
+        .inf-fig-btn { position:relative; background:#fff; color:#000; border:1px solid transparent; min-width:26px; height:26px; padding:0 7px; cursor:pointer; font-size:13px; font-family:inherit; border-radius:0; }
+        .inf-fig-btn:hover { background:#000; color:#fff; }
+        .inf-fig-btn.on { background:#000; color:#fff; }
         .inf-fig-btn[data-tip]:hover::after {
           content:attr(data-tip); position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);
           background:#000; color:#fff; border:1px solid #666; padding:4px 8px; font-size:11px; font-weight:400;
-          white-space:nowrap; border-radius:4px; z-index:9600; pointer-events:none;
-          font-family:'Montserrat',-apple-system,sans-serif; letter-spacing:0.2px; box-shadow:0 3px 10px rgba(0,0,0,.5);
+          white-space:nowrap; z-index:9600; pointer-events:none;
+          font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; letter-spacing:0.2px; box-shadow:0 3px 10px rgba(0,0,0,.5);
         }
         .inf-fig-btn[data-tip]:hover::before {
           content:''; position:absolute; bottom:calc(100% + 2px); left:50%; transform:translateX(-50%);
           border:5px solid transparent; border-top-color:#000; z-index:9600; pointer-events:none;
         }
-        .inf-fig-sep { width:1px; height:20px; background:#3a3f48; margin:0 3px; }
-        .inf-fig-w { font-size:11px; color:#cfd3da; min-width:36px; text-align:center; }
+        .inf-fig-sep { width:1px; height:18px; background:#ccc; margin:0 3px; }
+        .inf-fig-w { font-size:11px; color:#000; min-width:36px; text-align:center; }
 
         /* Tooltip de ayuda reutilizable: descripción breve al pasar el cursor por cualquier botón. */
         .inf-tip { position:relative; }
         .inf-tip[data-tip]:hover::after {
-          content:attr(data-tip); position:absolute; top:calc(100% + 7px); bottom:auto; left:50%; right:auto; transform:translateX(-50%);
+          content:attr(data-tip); position:absolute; top:calc(100% + 6px); bottom:auto; left:50%; right:auto; transform:translateX(-50%);
           width:max-content; max-width:240px; white-space:normal; text-align:center; line-height:1.35;
-          background:#000; color:#fff; border:1px solid #666; padding:5px 9px; font-size:11px; font-weight:400;
-          border-radius:4px; z-index:9600; pointer-events:none; visibility:visible; opacity:1;
-          font-family:'Montserrat',-apple-system,sans-serif; letter-spacing:0.2px; text-transform:none; box-shadow:0 3px 12px rgba(0,0,0,.55);
+          background:#000; color:#fff; border:none; padding:5px 9px; font-size:11px; font-weight:400;
+          border-radius:0; z-index:9600; pointer-events:none; visibility:visible; opacity:1;
+          font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; letter-spacing:0.2px; text-transform:none; box-shadow:0 3px 12px rgba(0,0,0,.35);
         }
         .inf-tip[data-tip]:hover::before {
-          content:''; position:absolute; top:calc(100% + 2px); bottom:auto; left:50%; right:auto; transform:translateX(-50%);
+          content:''; position:absolute; top:calc(100% + 1px); bottom:auto; left:50%; right:auto; transform:translateX(-50%);
           border:5px solid transparent; border-bottom-color:#000; border-top-color:transparent; z-index:9601; pointer-events:none; visibility:visible; opacity:1;
         }
         .inf-tip.inf-tip-left[data-tip]:hover::after { left:auto; right:0; transform:none; }
         .inf-tip.inf-tip-left[data-tip]:hover::before { left:auto; right:11px; transform:none; }
-        .inf-tip.inf-tip-up[data-tip]:hover::after { top:auto; bottom:calc(100% + 7px); }
-        .inf-tip.inf-tip-up[data-tip]:hover::before { top:auto; bottom:calc(100% + 2px); border-bottom-color:transparent; border-top-color:#000; }
+        .inf-tip.inf-tip-up[data-tip]:hover::after { top:auto; bottom:calc(100% + 6px); }
+        .inf-tip.inf-tip-up[data-tip]:hover::before { top:auto; bottom:calc(100% + 1px); border-bottom-color:transparent; border-top-color:#000; }
         @media (hover:none) { .inf-tip[data-tip]:hover::after, .inf-tip[data-tip]:hover::before { display:none; } }
-        .informe-panel:has(.inf-menu.open) .inf-tip[data-tip]:hover::after, .informe-panel:has(.inf-menu.open) .inf-tip[data-tip]:hover::before { display:none; }
+        .informe-panel:has(.inf-menu.open) .inf-tip[data-tip]:hover::after, .informe-panel:has(.inf-menu.open) .inf-tip[data-tip]:hover::before,
+        .informe-panel:has(.inf-dropdown-menu.open) .inf-tip[data-tip]:hover::after, .informe-panel:has(.inf-dropdown-menu.open) .inf-tip[data-tip]:hover::before { display:none; }
         .inf-rb-grp:first-child .inf-tip[data-tip]:hover::after { left:0; transform:none; }
         .inf-rb-grp:first-child .inf-tip[data-tip]:hover::before { left:14px; transform:none; }
 
         /* Menús flotantes (insertar imagen / datos / cita / agregar parte / opciones) */
-        .inf-menu { display:none; position:fixed; z-index:9500; background:#fff; color:#1f2937; border:1px solid #cfd5dd; border-radius:9px; width:max-content; max-width:min(340px, calc(100vw - 16px)); max-height:60vh; overflow-y:auto; box-shadow:0 10px 34px rgba(0,0,0,.25); padding:4px; font-family:'Montserrat',-apple-system,sans-serif; }
-        .inf-menu.open { display:block; }
-        .inf-menu-item { display:flex; align-items:center; gap:9px; width:100%; text-align:left; background:transparent; color:#1f2937; border:none; border-radius:6px; padding:8px 10px; font-size:12.5px; cursor:pointer; font-family:inherit; }
-        .inf-menu-item:hover { background:#eef2f7; }
+        .inf-menu { display:none; position:fixed; z-index:9500; background:#fff; color:#000; border:2px solid #000; border-radius:0; width:max-content; min-width:200px; max-width:min(330px, calc(100vw - 16px)); max-height:60vh; overflow-y:auto; box-shadow:0 8px 24px rgba(0,0,0,.2); padding:4px 0; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+        .inf-menu.open { display:block; animation:infDDin .12s ease-out; }
+        .inf-menu-item { display:flex; align-items:center; gap:9px; width:100%; text-align:left; background:transparent; color:#000; border:none; border-radius:0; padding:7px 12px; font-size:12.5px; cursor:pointer; font-family:inherit; line-height:1.3; }
+        .inf-menu-item:hover { background:#000; color:#fff; }
+        .inf-menu-item:hover .tx small, .inf-menu-item:hover .inf-ic { color:#fff; }
         .inf-menu-item:disabled { opacity:.4; cursor:default; }
-        .inf-menu-item .inf-ic { font-size:17px; width:22px; text-align:center; flex-shrink:0; }
+        .inf-menu-item:disabled:hover { background:transparent; color:#000; }
+        .inf-menu-item .inf-ic { font-size:15px; width:18px; color:#000; }
         .inf-menu-item .tx { flex:1; min-width:0; font-weight:600; }
-        .inf-menu-item .tx small { display:block; font-size:10.5px; color:#6b7280; font-weight:400; margin-top:1px; white-space:normal; line-height:1.35; }
-        .inf-menu-item.inf-menu-upload { font-weight:700; background:#f3f4f6; }
-        .inf-menu-item.inf-menu-upload:hover { background:#e8ecf2; }
-        .inf-menu-item.primary { background:#1976d2; color:#fff; }
-        .inf-menu-item.primary:hover { background:#1565c0; }
-        .inf-menu-item.primary .tx small { color:#dbeafe; }
-        .inf-menu-head { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:#6b7280; padding:7px 10px 4px; font-weight:700; }
-        .inf-menu-sep { height:1px; background:#e5e7eb; margin:4px 6px; }
-        .inf-menu-check { display:flex; align-items:center; gap:9px; padding:7px 10px; font-size:12.5px; cursor:pointer; border-radius:6px; }
-        .inf-menu-check:hover { background:#eef2f7; }
-        .inf-menu-check input { width:16px; height:16px; accent-color:#1976d2; margin:0; }
-        .inf-menu-row { display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:12px; }
-        .inf-menu-row .inf-wp-sel { flex:1; }
+        .inf-menu-item .tx small { display:block; font-size:10.5px; color:#777; font-weight:400; margin-top:1px; white-space:normal; line-height:1.35; }
+        .inf-menu-item.inf-menu-upload { font-weight:700; border-bottom:1px solid #ddd; margin-bottom:3px; }
+        .inf-menu-item.primary { font-weight:800; text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid #ddd; margin-bottom:3px; }
+        .inf-menu-head { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:#777; padding:8px 12px 3px; font-weight:800; }
+        .inf-menu-sep { height:1px; background:#ddd; margin:4px 0; }
+        .inf-menu-check { display:flex; align-items:center; gap:9px; padding:7px 12px; font-size:12.5px; cursor:pointer; }
+        .inf-menu-check:hover { background:#f3f3f3; }
+        .inf-menu-check input { width:14px; height:14px; accent-color:#000; margin:0; }
+        .inf-menu-row { display:flex; align-items:center; gap:8px; padding:6px 12px; font-size:12px; }
+        .inf-menu-row .inf-wp-sel { flex:1; height:26px; font-size:12px; max-width:none; }
 
         /* Modal de ecuaciones (LaTeX) */
-        .inf-eq-modal { display:none; position:fixed; inset:0; z-index:9300; background:rgba(0,0,0,.6); align-items:center; justify-content:center; padding:20px; font-family:'Montserrat',-apple-system,sans-serif; }
+        .inf-eq-modal { display:none; position:fixed; inset:0; z-index:9300; background:rgba(0,0,0,.45); align-items:center; justify-content:center; padding:20px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
         .inf-eq-modal.open { display:flex; }
-        .inf-eq-box { background:#23272e; border:1px solid #444; border-radius:10px; width:640px; max-width:100%; max-height:92vh; overflow-y:auto; padding:16px; color:#e0e0e0; }
-        .inf-eq-head { font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:#fff; margin-bottom:10px; }
+        .inf-eq-box { background:#fff; border:2px solid #000; border-radius:0; width:640px; max-width:100%; max-height:92vh; overflow-y:auto; padding:14px; color:#000; }
+        .inf-eq-head { font-size:11.5px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#000; margin-bottom:6px; }
         .inf-eq-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; align-items:center; }
         .inf-latex-tools { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:6px; }
-        .inf-latex-sym { background:#000; color:#fff; border:1px solid #444; min-width:28px; height:26px; padding:0 6px; cursor:pointer; font-size:13px; font-family:'Cambria Math','Latin Modern Math',Georgia,serif; border-radius:4px; }
-        .inf-latex-sym:hover { background:#fff; color:#000; }
-        .inf-blk-latex { display:block; width:100%; box-sizing:border-box; min-height:48px; resize:vertical; background:#0f1115; color:#8fe388; border:1px solid #444; padding:7px 8px; font-family:'Courier New',monospace; font-size:12.5px; line-height:1.5; }
-        .inf-blk-latex:focus { outline:none; border-color:#fff; }
-        .inf-latex-preview { background:#fff; color:#111; padding:12px 10px; margin-top:6px; text-align:center; min-height:52px; overflow-x:auto; font-size:22px; border-radius:6px; }
-        .inf-latex-preview .inf-math-empty { color:#9e9e9e; font-family:'Montserrat',sans-serif; font-size:11px; }
+        .inf-latex-sym { background:#fff; color:#000; border:1px solid #000; min-width:28px; height:26px; padding:0 6px; cursor:pointer; font-size:13px; font-family:'Cambria Math','Latin Modern Math',Georgia,serif; border-radius:0; }
+        .inf-latex-sym:hover { background:#000; color:#fff; }
+        .inf-blk-latex { display:block; width:100%; box-sizing:border-box; min-height:48px; resize:vertical; background:#fff; color:#000; border:1px solid #bbb; padding:7px 8px; font-family:'Courier New',monospace; font-size:12.5px; line-height:1.5; }
+        .inf-blk-latex:focus { outline:none; border-color:#000; }
+        .inf-latex-preview { background:#f6f6f6; color:#111; padding:12px 10px; margin-top:6px; text-align:center; min-height:52px; overflow-x:auto; font-size:22px; border:1px solid #ddd; }
+        .inf-latex-preview .inf-math-empty { color:#999; font-family:inherit; font-size:11px; }
         #inf-eq-syms { display:block; }
-        .inf-eq-grp { font-size:9.5px; letter-spacing:1px; text-transform:uppercase; color:#8a93a0; margin:8px 0 4px; }
+        .inf-eq-grp { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:#777; margin:8px 0 4px; font-weight:800; }
         .inf-eq-symrow { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:2px; }
-        .inf-eq-mode { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#e0e0e0; cursor:pointer; }
-        .inf-eq-mode input { accent-color:#fff; cursor:pointer; }
+        .inf-eq-mode { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#000; cursor:pointer; }
+        .inf-eq-mode input { accent-color:#000; cursor:pointer; }
         .inf-eq-caprow { display:flex; align-items:center; gap:8px; margin-top:10px; }
-        .inf-eq-caplbl { font-size:11px; color:#9aa0a8; white-space:nowrap; }
-        .inf-eq-capinput { flex:1; min-width:0; background:#0f1115; color:#e8e8e8; border:1px solid #444; padding:6px 8px; font-size:12.5px; font-family:inherit; }
-        .inf-eq-capinput:focus { outline:none; border-color:#fff; }
+        .inf-eq-caplbl { font-size:11px; color:#777; white-space:nowrap; }
+        .inf-eq-capinput { flex:1; min-width:0; background:#fff; color:#000; border:1px solid #bbb; padding:6px 8px; font-size:12.5px; font-family:inherit; }
+        .inf-eq-capinput:focus { outline:none; border-color:#000; }
+        .inf-eq-box .inf-btn { background:#fff; color:#000; }
+        .inf-eq-box .inf-btn:hover, .inf-eq-box .inf-btn.primary { background:#000; color:#fff; }
+        .inf-eq-box .inf-btn.primary:hover { background:#333; }
 
         /* Diálogo propio (alert/confirm/prompt traducibles) */
-        .inf-dialog { display:none; position:fixed; inset:0; z-index:9900; background:rgba(0,0,0,.55); align-items:center; justify-content:center; padding:20px; font-family:'Montserrat',-apple-system,sans-serif; }
+        .inf-dialog { display:none; position:fixed; inset:0; z-index:9900; background:rgba(0,0,0,.45); align-items:center; justify-content:center; padding:20px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
         .inf-dialog.open { display:flex; }
-        .inf-dialog-box { background:#fff; color:#161616; width:440px; max-width:100%; border-radius:10px; box-shadow:0 12px 40px rgba(0,0,0,.4); padding:20px 20px 16px; }
-        .inf-dialog-msg { font-size:14px; line-height:1.5; white-space:pre-line; color:#222; }
-        .inf-dialog-input { display:block; width:100%; box-sizing:border-box; margin-top:12px; padding:9px 10px; font-size:14px; font-family:inherit; border:1px solid #cfcfcf; border-radius:6px; }
-        .inf-dialog-input:focus { outline:none; border-color:#1976d2; }
+        .inf-dialog-box { background:#fff; color:#000; width:440px; max-width:100%; border:2px solid #000; border-radius:0; box-shadow:0 12px 40px rgba(0,0,0,.3); padding:18px 18px 14px; }
+        .inf-dialog-msg { font-size:14px; line-height:1.5; white-space:pre-line; color:#000; }
+        .inf-dialog-input { display:block; width:100%; box-sizing:border-box; margin-top:12px; padding:8px 10px; font-size:14px; font-family:inherit; border:1px solid #bbb; border-radius:0; }
+        .inf-dialog-input:focus { outline:none; border-color:#000; }
         .inf-dialog-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
-        .inf-dialog .inf-btn { width:auto; }
+        .inf-dialog .inf-btn { width:auto; background:#fff; color:#000; }
+        .inf-dialog .inf-btn:hover { background:#000; color:#fff; }
+        .inf-dialog .inf-btn.primary { background:#000; color:#fff; }
+        .inf-dialog .inf-btn.primary:hover { background:#333; }
 
         /* Modal del lienzo de dibujo */
-        .inf-draw-modal { display:none; position:fixed; inset:0; z-index:9250; background:#14161b; flex-direction:column; font-family:'Montserrat',-apple-system,sans-serif; }
+        .inf-draw-modal { display:none; position:fixed; inset:0; z-index:9250; background:#e6e6e6; flex-direction:column; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
         .inf-draw-modal.open { display:flex; }
-        .inf-draw-modal-bar { background:#0a0a0a; color:#fff; display:flex; align-items:center; gap:10px; padding:10px 14px; flex-wrap:wrap; border-bottom:1px solid #000; }
-        .inf-draw-modal-title { font-weight:800; letter-spacing:2px; text-transform:uppercase; font-size:12px; }
-        .inf-draw-tools { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-        .inf-draw-tools button { background:#000; color:#fff; border:1px solid #444; padding:7px 10px; font-size:12px; cursor:pointer; font-family:inherit; letter-spacing:0.3px; border-radius:6px; }
-        .inf-draw-tools button.active { background:#fff; color:#000; }
-        .inf-draw-tools input[type=color] { width:32px; height:32px; padding:2px; border:1px solid #444; cursor:pointer; background:#000; border-radius:6px; }
-        .inf-draw-tools select { background:#0f1115; color:#fff; border:1px solid #444; border-radius:6px; padding:6px; font-family:inherit; font-size:12px; }
+        .inf-draw-modal-bar { background:#fff; color:#000; display:flex; align-items:center; gap:8px; padding:6px 10px; flex-wrap:wrap; border-bottom:2px solid #000; min-height:44px; }
+        .inf-draw-modal-title { font-weight:800; letter-spacing:1.5px; text-transform:uppercase; font-size:11.5px; }
+        .inf-draw-tools { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+        .inf-draw-tools button { background:#fff; color:#000; border:2px solid #000; padding:5px 10px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; cursor:pointer; font-family:inherit; border-radius:0; }
+        .inf-draw-tools button:hover, .inf-draw-tools button.active { background:#000; color:#fff; }
+        .inf-draw-tools input[type=color] { width:30px; height:30px; padding:2px; border:2px solid #000; cursor:pointer; background:#fff; border-radius:0; }
+        .inf-draw-tools select { background:#fff; color:#000; border:2px solid #000; border-radius:0; padding:5px; font-family:inherit; font-size:11px; font-weight:700; }
+        .inf-draw-modal .inf-btn { background:#fff; color:#000; }
+        .inf-draw-modal .inf-btn:hover, .inf-draw-modal .inf-btn.primary { background:#000; color:#fff; }
         .inf-draw-stage { flex:1; display:flex; align-items:center; justify-content:center; padding:16px; overflow:auto; min-height:0; }
-        #inf-draw-big { background:#fff; border:1px solid #333; touch-action:none; cursor:crosshair; max-width:100%; max-height:100%; width:auto; height:auto; box-shadow:0 6px 30px rgba(0,0,0,.5); }
+        #inf-draw-big { background:#fff; border:1px solid #999; touch-action:none; cursor:crosshair; max-width:100%; max-height:100%; width:auto; height:auto; }
 
         /* Bibliografía (APA) al pie de la hoja */
-        .inf-biblio-mgr { width:820px; max-width:100%; margin:14px auto 0; background:#fff; border:1px solid #d4d8de; border-radius:9px; padding:14px; color:#1f2937; }
-        .inf-bib-title { font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#111; margin-bottom:9px; display:flex; align-items:center; gap:8px; }
-        .inf-bib-form input { display:block; width:100%; box-sizing:border-box; background:#fff; color:#111; border:1px solid #cfd5dd; border-radius:6px; padding:7px 9px; font-family:inherit; font-size:12px; margin-bottom:6px; }
-        .inf-bib-form input:focus { outline:none; border-color:#1976d2; }
+        .inf-biblio-mgr { width:800px; max-width:100%; margin:12px auto 0; background:#fff; border:1px solid #bbb; padding:12px; color:#000; }
+        .inf-bib-title { font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#000; margin-bottom:9px; display:flex; align-items:center; gap:8px; }
+        .inf-bib-form input { display:block; width:100%; box-sizing:border-box; background:#fff; color:#000; border:1px solid #bbb; border-radius:0; padding:6px 8px; font-family:inherit; font-size:12px; margin-bottom:6px; }
+        .inf-bib-form input:focus { outline:none; border-color:#000; }
         .inf-bib-row2 { display:flex; gap:6px; }
         .inf-bib-row2 .inf-bib-year { width:90px; flex:none; }
         .inf-bib-list { margin-top:8px; }
-        .inf-bib-item { display:flex; align-items:flex-start; gap:8px; padding:8px 0; border-top:1px solid #e5e7eb; }
-        .inf-bib-apa { flex:1; font-size:12px; color:#374151; line-height:1.5; }
-        .inf-bib-apa i { color:#111; }
+        .inf-bib-item { display:flex; align-items:flex-start; gap:8px; padding:8px 0; border-top:1px solid #e3e3e3; }
+        .inf-bib-apa { flex:1; font-size:12px; color:#333; line-height:1.5; }
+        .inf-bib-apa i { color:#000; }
         .inf-bib-acts { display:flex; gap:5px; flex-shrink:0; }
-        .inf-biblio-mgr .inf-btn { width:auto; display:inline-block; }
+        .inf-biblio-mgr .inf-btn { width:auto; display:inline-block; background:#fff; color:#000; }
+        .inf-biblio-mgr .inf-btn:hover { background:#000; color:#fff; }
 
         @media (max-width: 900px) {
-          .inf-topbar { padding:7px 10px; gap:6px; }
+          .inf-topbar { padding:5px 8px; gap:5px; }
           .inf-topbar .inf-brand small { display:none; }
           .inf-topbtn .lb-long { display:none; }
-          .inf-savechip { max-width:170px; }
+          .inf-savechip { max-width:150px; }
           .inf-ribbon { flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; }
-          .inf-nav { display:none; position:fixed; top:0; left:0; bottom:0; width:300px; max-width:86vw; z-index:9180; box-shadow:8px 0 30px rgba(0,0,0,.35); }
+          .inf-nav { display:none; position:fixed; top:0; left:0; bottom:0; width:280px; max-width:86vw; z-index:9180; border-right:2px solid #000; box-shadow:6px 0 24px rgba(0,0,0,.25); }
           .inf-nav.open { display:flex; }
           .informe-panel.nav-hidden .inf-nav.open { display:flex; }
-          .inf-nav-close { display:inline-flex; }
-          .inf-doc-wrap { padding:12px 8px 80px; }
-          .inf-rich { padding:6px 18px 18px; }
-          .inf-card-sectitle { margin-left:14px; margin-right:14px; width:calc(100% - 28px); font-size:16px; }
-          .inf-cover-top { padding:24px 18px 18px; }
+          .inf-nav-show { display:none !important; }
+          .inf-doc-wrap { padding:10px 6px 80px; }
+          .inf-rich { padding:6px 16px 16px; }
+          .inf-card-sectitle { margin-left:12px; margin-right:12px; width:calc(100% - 24px); font-size:15px; }
+          .inf-cover-top { padding:22px 16px 16px; }
           .inf-cover-title { font-size:22px; }
           .inf-cover-meta { grid-template-columns:1fr; }
-          .inf-cover-cell { padding:8px 18px; }
+          .inf-cover-cell { padding:8px 16px; }
           .inf-cover-cell:nth-child(odd) { border-right:none; }
-          .inf-part-opts { padding-left:14px; }
-          .inf-card-empty { padding:14px 18px; }
+          .inf-part-opts { padding-left:12px; }
+          .inf-card-empty { padding:14px 16px; }
           .inf-material-box { width:100%; }
-          .inf-preview { padding:14px 6px 60px; }
+          .inf-preview { padding:12px 6px 60px; }
         }
         /* ===== INFORME STYLES END ===== */
     </style>
@@ -25348,53 +25353,55 @@ bluetooth.startIOPinService()</pre>
     </div>
 
     <div id="informe-panel" class="informe-panel">
-        <!-- Listón negro: nombre, estado de guardado y acciones grandes -->
+        <!-- Barra superior: nombre, estado de guardado y acciones -->
         <div class="inf-topbar">
             <div class="inf-brand">Informe<small>fisicabit · micro:bit datalab</small></div>
             <button class="inf-savechip inf-tip" id="inf-save-chip" data-tip="Estado del guardado. Clic para ver las opciones: Google Drive, archivo, retomar…"><span class="sess-dot"></span><span id="inf-save-chip-txt">Se guarda solo en este navegador</span></button>
             <div class="inf-spacer"></div>
-            <button class="inf-topbtn inf-tip" id="inf-preview-open" data-tip="Ver cómo queda el informe terminado (así se descarga en PDF y Word)"><span class="inf-ic">👁</span> Vista previa</button>
+            <button class="inf-topbtn inf-tip" id="inf-preview-open" data-tip="Ver cómo queda el informe terminado (así se descarga en PDF y Word)"><span class="inf-ic" data-ic="eye"></span> Vista previa</button>
             <div class="inf-dropdown" id="inf-export-dd">
-                <button class="inf-topbtn primary inf-tip" id="inf-export-btn" data-tip="Descargar el informe en PDF o Word, o todo el proyecto"><span class="inf-ic">⬇</span> Descargar <span class="inf-caret">▾</span></button>
+                <button class="inf-topbtn inf-tip" id="inf-export-btn" data-tip="Descargar el informe en PDF o Word, o todo el proyecto"><span class="inf-ic" data-ic="download"></span> Descargar <span class="inf-caret">▾</span></button>
                 <div class="inf-dropdown-menu" id="inf-export-menu">
                     <div class="inf-dd-group">Informe</div>
-                    <button class="inf-dd-item" id="inf-pdf">📄 Descargar informe en PDF</button>
-                    <button class="inf-dd-item" id="inf-docx">📝 Descargar informe en Word (.docx)</button>
-                    <button class="inf-dd-item" id="inf-drive-report">☁ Guardar informe en Google Drive (PDF + Word)</button>
+                    <button class="inf-dd-item" id="inf-pdf"><span class="inf-ic" data-ic="file"></span>Descargar informe en PDF</button>
+                    <button class="inf-dd-item" id="inf-docx"><span class="inf-ic" data-ic="file-text"></span>Descargar informe en Word (.docx)</button>
+                    <button class="inf-dd-item" id="inf-drive-report"><span class="inf-ic" data-ic="cloud"></span>Guardar informe en Google Drive (PDF + Word)</button>
                     <div class="inf-dd-sep"></div>
                     <div class="inf-dd-group">Datos y gráficas</div>
-                    <button class="inf-dd-item" id="inf-graphs">📈 Gráficas en PNG</button>
-                    <button class="inf-dd-item" id="inf-csv">🔢 Datos en CSV</button>
-                    <button class="inf-dd-item" id="inf-zip">📦 Descargar todo en ZIP (informe + datos)</button>
+                    <button class="inf-dd-item" id="inf-graphs"><span class="inf-ic" data-ic="chart"></span>Gráficas en PNG</button>
+                    <button class="inf-dd-item" id="inf-csv"><span class="inf-ic" data-ic="table"></span>Datos en CSV</button>
+                    <button class="inf-dd-item" id="inf-zip"><span class="inf-ic" data-ic="archive"></span>Descargar todo en ZIP (informe + datos)</button>
                     <div class="inf-dd-sep"></div>
                     <div class="inf-dd-group">Proyecto (para seguir editando después)</div>
-                    <button class="inf-dd-item" id="inf-save">💾 Guardar proyecto en un archivo</button>
-                    <button class="inf-dd-item" id="inf-open">📂 Abrir un proyecto guardado</button>
-                    <button class="inf-dd-item danger" id="inf-reset">🗑 Reiniciar todo</button>
+                    <button class="inf-dd-item" id="inf-save"><span class="inf-ic" data-ic="save"></span>Guardar proyecto en un archivo</button>
+                    <button class="inf-dd-item" id="inf-open"><span class="inf-ic" data-ic="folder"></span>Abrir un proyecto guardado</button>
+                    <button class="inf-dd-item danger" id="inf-reset"><span class="inf-ic" data-ic="trash"></span>Reiniciar todo</button>
                     <div class="inf-dd-sep"></div>
                     <div class="inf-dd-status" id="inf-autosave-status">Autoguardado en el navegador activado.</div>
                 </div>
                 <input type="file" id="inf-open-input" accept=".json,.zip,application/json,application/zip" style="display:none;">
             </div>
-            <button class="inf-topbtn accent inf-tip inf-tip-left" id="inf-drive-btn" data-tip="Guarda el proyecto y el informe (PDF + Word) en tu Google Drive, en la carpeta fisicabit / Informes"><span class="inf-ic">☁</span> <span class="lb-long">Guardar en </span>Drive</button>
+            <button class="inf-topbtn primary inf-tip inf-tip-left" id="inf-drive-btn" data-tip="Guarda el proyecto y el informe (PDF + Word) en tu Google Drive, en la carpeta fisicabit / Informes"><span class="inf-ic" data-ic="cloud"></span> <span class="lb-long">Guardar en </span>Drive</button>
             <button class="inf-close inf-tip inf-tip-left" data-tip="Cerrar el informe (lo que escribiste queda guardado)" id="informe-close">✕ Cerrar</button>
         </div>
 
-        <!-- Cinta de herramientas (se arma desde JS: íconos grandes con rótulo) -->
+        <!-- Cinta de herramientas (se arma desde JS) -->
         <div class="inf-ribbon" id="inf-wp-toolbar"></div>
 
         <div class="inf-body">
-            <!-- Navegador de partes -->
+            <!-- Lista de partes (ocultable) -->
             <aside class="inf-nav" id="inf-nav">
-                <div class="inf-nav-title"><span class="inf-ic">📋</span> Partes del informe <span class="inf-spacer"></span><button class="inf-nav-close" id="inf-nav-close" title="Cerrar">✕</button></div>
-                <div class="inf-progress" id="inf-progress"><div class="inf-progress-txt" id="inf-progress-txt"></div><div class="inf-progress-bar"><i id="inf-progress-fill"></i></div></div>
-                <div class="inf-outline" id="inf-outline"></div>
-                <button class="inf-nav-btn primary inf-tip" id="inf-add-part" data-tip="Agregar una parte al informe: objetivo, materiales, procedimiento, conclusión…"><span class="inf-ic">＋</span> Agregar parte</button>
-                <button class="inf-nav-btn inf-tip" id="inf-template" data-tip="Agrega de una vez todas las partes de un informe de laboratorio, en orden, con pistas de qué escribir en cada una"><span class="inf-ic">✨</span> Usar plantilla completa</button>
-                <div class="inf-nav-sep"></div>
-                <button class="inf-nav-btn inf-tip" id="inf-material-open" data-tip="Apuntes escritos, dibujo a mano y fotos del experimento"><span class="inf-ic">🗒</span> Apuntes, dibujo y fotos</button>
-                <div class="inf-nav-hint">Tildá qué partes van en el informe. Arrastrá ⠿ para cambiar el orden. Tocá una parte para ir a ella.</div>
+                <div class="inf-nav-title"><span class="inf-ic" data-ic="list"></span> Partes del informe <span class="inf-spacer"></span><button class="inf-nav-close inf-tip" id="inf-nav-close" data-tip="Ocultar la lista de partes"><span class="inf-ic" data-ic="chevron-left"></span></button></div>
+                <div class="inf-nav-inner">
+                    <div class="inf-progress" id="inf-progress"><div class="inf-progress-txt" id="inf-progress-txt"></div><div class="inf-progress-bar"><i id="inf-progress-fill"></i></div></div>
+                    <div class="inf-outline" id="inf-outline"></div>
+                    <button class="inf-nav-btn primary inf-tip" id="inf-add-part" data-tip="Agregar una parte al informe: objetivo, materiales, procedimiento, conclusión…"><span class="inf-ic" data-ic="plus"></span> Agregar parte</button>
+                    <button class="inf-nav-btn inf-tip" id="inf-template" data-tip="Agrega de una vez todas las partes de un informe de laboratorio, en orden, con pistas de qué escribir en cada una"><span class="inf-ic" data-ic="layout"></span> Plantilla completa</button>
+                    <button class="inf-nav-btn inf-tip" id="inf-material-open" data-tip="Apuntes escritos, dibujo a mano y fotos del experimento"><span class="inf-ic" data-ic="notes"></span> Apuntes y fotos</button>
+                    <div class="inf-nav-hint">Tildá qué partes van en el informe. Arrastrá ⠿ para cambiar el orden. Tocá una parte para ir a ella.</div>
+                </div>
             </aside>
+            <button class="inf-nav-show" id="inf-nav-show" title="Mostrar la lista de partes">Partes ▸</button>
 
             <!-- Hoja del documento -->
             <div class="inf-doc-wrap" id="inf-doc-wrap">
@@ -25415,12 +25422,12 @@ bluetooth.startIOPinService()</pre>
         <!-- Vista previa: así queda el informe -->
         <div class="inf-preview-modal" id="inf-preview-modal">
             <div class="inf-preview-top">
-                <div><span class="ttl">👁 Así queda tu informe</span><span class="sub">Lo que ves acá es lo que se descarga en PDF y Word.</span><span class="sub" id="inf-preview-note" style="color:#fbbf24;display:none;"></span></div>
+                <div><span class="ttl">Así queda tu informe</span><span class="sub">Lo que ves acá es lo que se descarga en PDF y Word.</span><span class="sub" id="inf-preview-note" style="color:#b45309;display:none;"></span></div>
                 <div class="inf-spacer"></div>
-                <button class="inf-topbtn primary inf-tip" id="inf-prev-pdf" data-tip="Descargar el informe en PDF"><span class="inf-ic">📄</span> PDF</button>
-                <button class="inf-topbtn primary inf-tip" id="inf-prev-docx" data-tip="Descargar el informe en Word (.docx)"><span class="inf-ic">📝</span> Word</button>
-                <button class="inf-topbtn accent inf-tip" id="inf-prev-drive" data-tip="Guardar el informe (PDF + Word) en Google Drive, carpeta fisicabit / Informes"><span class="inf-ic">☁</span> Drive</button>
-                <button class="inf-close inf-tip inf-tip-left" id="inf-preview-close" data-tip="Volver a editar">✎ Volver a editar</button>
+                <button class="inf-topbtn inf-tip" id="inf-prev-pdf" data-tip="Descargar el informe en PDF"><span class="inf-ic" data-ic="download"></span> PDF</button>
+                <button class="inf-topbtn inf-tip" id="inf-prev-docx" data-tip="Descargar el informe en Word (.docx)"><span class="inf-ic" data-ic="download"></span> Word</button>
+                <button class="inf-topbtn primary inf-tip" id="inf-prev-drive" data-tip="Guardar el informe (PDF + Word) en Google Drive, carpeta fisicabit / Informes"><span class="inf-ic" data-ic="cloud"></span> Drive</button>
+                <button class="inf-close inf-tip inf-tip-left" id="inf-preview-close" data-tip="Volver a editar">✕ Volver a editar</button>
             </div>
             <section class="inf-preview" id="inf-preview">
                 <div class="inf-preview-inner" id="inf-preview-inner"></div>
@@ -25430,26 +25437,26 @@ bluetooth.startIOPinService()</pre>
         <!-- Cajón: apuntes escritos, dibujo a mano y fotos del experimento -->
         <div class="inf-material" id="inf-material">
             <div class="inf-material-box">
-                <div class="inf-material-head"><span class="inf-ic">🗒</span> Apuntes, dibujo y fotos <span class="inf-spacer"></span><button class="inf-close" id="inf-material-close">✓ Listo</button></div>
+                <div class="inf-material-head"><span class="inf-ic" data-ic="notes"></span> Apuntes, dibujo y fotos <span class="inf-spacer"></span><button class="inf-close" id="inf-material-close">✓ Listo</button></div>
                 <div class="inf-material-scroll">
                     <div class="inf-hint">Todo lo que cargues acá se agrega al informe como una parte más (la podés mover, ocultar o quitar desde la lista de partes).</div>
                     <div class="inf-ap-card">
-                        <div class="inf-section-title"><span class="inf-ic">🗒</span> Apuntes escritos</div>
+                        <div class="inf-section-title"><span class="inf-ic" data-ic="notes"></span> Apuntes escritos</div>
                         <div class="inf-hint">Datos importantes, observaciones, cosas que pasaron durante el experimento.</div>
                         <div class="inf-field"><textarea id="inf-notes" placeholder="Datos importantes, observaciones, procedimiento, análisis y conclusiones…"></textarea></div>
                     </div>
                     <div class="inf-ap-card">
-                        <div class="inf-section-title"><span class="inf-ic">✏️</span> Dibujo a mano</div>
+                        <div class="inf-section-title"><span class="inf-ic" data-ic="pencil"></span> Dibujo a mano</div>
                         <div class="inf-hint">Esquemas del montaje, diagramas de fuerzas, croquis… Se abre un lienzo grande para dibujar a mano.</div>
                         <div class="inf-draw-preview" id="inf-draw-preview">Tocá acá para abrir el lienzo y dibujar tu esquema a mano</div>
-                        <button class="inf-btn inf-tip" data-tip="Abrir un lienzo grande para dibujar a mano un esquema o diagrama" id="inf-draw-open">✏ Abrir lienzo para dibujar</button>
+                        <button class="inf-btn inf-tip" data-tip="Abrir un lienzo grande para dibujar a mano un esquema o diagrama" id="inf-draw-open">Abrir lienzo para dibujar</button>
                         <button class="inf-btn inf-tip" data-tip="Borrar el dibujo hecho a mano" id="inf-draw-clear2" style="display:none;">Borrar dibujo</button>
                     </div>
                     <div class="inf-ap-card">
-                        <div class="inf-section-title"><span class="inf-ic">📷</span> Fotos del experimento</div>
+                        <div class="inf-section-title"><span class="inf-ic" data-ic="camera"></span> Fotos del experimento</div>
                         <div class="inf-hint">Sacá o subí fotos del montaje y, en el pie de cada una, indicá sus partes. Podés ajustar el tamaño y se agregan al informe.</div>
                         <input type="file" id="inf-photo-input" accept="image/*" multiple style="display:none;">
-                        <button class="inf-btn inf-tip" data-tip="Subir o sacar una o varias fotos del experimento" id="inf-photo-btn">📷 Subir / sacar foto</button>
+                        <button class="inf-btn inf-tip" data-tip="Subir o sacar una o varias fotos del experimento" id="inf-photo-btn">Subir / sacar foto</button>
                         <div class="inf-photos" id="inf-photos"></div>
                     </div>
                 </div>
@@ -25464,7 +25471,7 @@ bluetooth.startIOPinService()</pre>
     <div class="inf-eq-modal" id="inf-eq-modal">
         <div class="inf-eq-box">
             <div class="inf-eq-head">∑ Insertar / editar ecuación</div>
-            <div class="inf-hint" style="color:#9aa0a8;">Tocá los botones para armar la fórmula (o escribí LaTeX). Abajo ves cómo queda.</div>
+            <div class="inf-hint">Tocá los botones para armar la fórmula (o escribí LaTeX). Abajo ves cómo queda.</div>
             <div class="inf-latex-tools" id="inf-eq-syms"></div>
             <textarea class="inf-blk-latex" id="inf-eq-latex" placeholder="Ej:  E_c = \frac{1}{2} m v^{2}"></textarea>
             <div class="inf-latex-preview" id="inf-eq-preview"></div>
@@ -25484,10 +25491,10 @@ bluetooth.startIOPinService()</pre>
     <!-- Modal del lienzo de dibujo (zona grande para dibujar a mano) -->
     <div class="inf-draw-modal" id="inf-draw-modal">
         <div class="inf-draw-modal-bar">
-            <span class="inf-draw-modal-title">✏️ Lienzo de dibujo</span>
+            <span class="inf-draw-modal-title">Lienzo de dibujo</span>
             <div class="inf-draw-tools" id="inf-draw-tools-big">
-                <button data-tool="pen" class="active inf-tip" data-tip="Lápiz para dibujar" id="inf-pen-big">✏ Lápiz</button>
-                <button data-tool="eraser" class="inf-tip" data-tip="Goma para borrar parte del dibujo" id="inf-eraser-big">🧽 Goma</button>
+                <button data-tool="pen" class="active inf-tip" data-tip="Lápiz para dibujar" id="inf-pen-big">Lápiz</button>
+                <button data-tool="eraser" class="inf-tip" data-tip="Goma para borrar parte del dibujo" id="inf-eraser-big">Goma</button>
                 <input type="color" id="inf-draw-color-big" value="#111111" title="Color">
                 <select id="inf-draw-size-big" title="Grosor" style="width:auto;">
                     <option value="2">Fino</option>
@@ -25495,7 +25502,7 @@ bluetooth.startIOPinService()</pre>
                     <option value="9">Grueso</option>
                     <option value="16">Muy grueso</option>
                 </select>
-                <button class="inf-tip" data-tip="Borrar todo el lienzo" id="inf-draw-clear-big">🗑 Borrar todo</button>
+                <button class="inf-tip" data-tip="Borrar todo el lienzo" id="inf-draw-clear-big">Borrar todo</button>
             </div>
             <span class="inf-spacer"></span>
             <button class="inf-btn inf-tip" data-tip="Cerrar el lienzo sin guardar el dibujo" id="inf-draw-cancel" style="width:auto;margin:0;">Cancelar</button>
@@ -25515,17 +25522,17 @@ bluetooth.startIOPinService()</pre>
     <!-- Menú «Guardar / Retomar» (se abre desde el botón de arriba, al lado de AYUDA, y desde el chip de estado del informe) -->
     <div class="gdrive-pop session-menu" id="session-menu">
         <div class="inf-dd-group">Guardar / descargar</div>
-        <button class="inf-dd-item" id="sess-zip">📦 Descargar todo (informe + datos)</button>
-        <button class="inf-dd-item" id="sess-csv">📈 Exportar datos a CSV</button>
-        <button class="inf-dd-item" id="sess-savefile">💾 Guardar mi trabajo en un archivo</button>
+        <button class="inf-dd-item" id="sess-zip"><span class="inf-ic" data-ic="archive"></span>Descargar todo (informe + datos)</button>
+        <button class="inf-dd-item" id="sess-csv"><span class="inf-ic" data-ic="table"></span>Exportar datos a CSV</button>
+        <button class="inf-dd-item" id="sess-savefile"><span class="inf-ic" data-ic="save"></span>Guardar mi trabajo en un archivo</button>
         <div class="inf-dd-sep"></div>
         <div class="inf-dd-group">Retomar trabajo</div>
-        <button class="inf-dd-item" id="sess-cache" style="display:none;">↺ Retomar mi último trabajo</button>
-        <button class="inf-dd-item" id="sess-openfile">📂 Abrir un trabajo guardado…</button>
+        <button class="inf-dd-item" id="sess-cache" style="display:none;"><span class="inf-ic" data-ic="undo"></span><span id="sess-cache-txt">Retomar mi último trabajo</span></button>
+        <button class="inf-dd-item" id="sess-openfile"><span class="inf-ic" data-ic="folder"></span>Abrir un trabajo guardado…</button>
         <div class="inf-dd-sep"></div>
         <div class="inf-dd-group">Google Drive · en la nube (opcional)</div>
         <div id="sess-gdrive-disc">
-            <button class="inf-dd-item" id="sess-google-connect">☁ Conectar con Google</button>
+            <button class="inf-dd-item" id="sess-google-connect"><span class="inf-ic" data-ic="cloud"></span>Conectar con Google</button>
             <div class="inf-dd-status inf-hint">Guardá y retomá tus experimentos desde cualquier navegador.</div>
         </div>
         <div id="sess-gdrive-conn" style="display:none;">
@@ -25533,11 +25540,11 @@ bluetooth.startIOPinService()</pre>
             <label class="gdrive-pop-lbl gdrive-in-lbl" for="gdrive-proj-name">Nombre del experimento</label>
             <input type="text" class="gdrive-pop-input gdrive-in-input" id="gdrive-proj-name" placeholder="Ej: Caída libre 5ºB" autocomplete="off">
             <label class="gdrive-pop-check gdrive-in-check"><input type="checkbox" id="gdrive-autosync" checked> Guardar automáticamente en Drive</label>
-            <button class="inf-dd-item" id="inf-gdrive-save">☁ Guardar ahora en Drive</button>
-            <button class="inf-dd-item" id="sess-report-drive">📄 Guardar el informe (PDF + Word) en Drive</button>
-            <button class="inf-dd-item" id="inf-gdrive-open">📂 Abrir / cambiar de experimento…</button>
-            <button class="inf-dd-item" id="inf-gdrive-new">＋ Nuevo experimento</button>
-            <button class="inf-dd-item danger" id="inf-gdrive-signout">Cerrar sesión de Google</button>
+            <button class="inf-dd-item" id="inf-gdrive-save"><span class="inf-ic" data-ic="cloud"></span>Guardar ahora en Drive</button>
+            <button class="inf-dd-item" id="sess-report-drive"><span class="inf-ic" data-ic="file-text"></span>Guardar el informe (PDF + Word) en Drive</button>
+            <button class="inf-dd-item" id="inf-gdrive-open"><span class="inf-ic" data-ic="folder"></span>Abrir / cambiar de experimento…</button>
+            <button class="inf-dd-item" id="inf-gdrive-new"><span class="inf-ic" data-ic="plus"></span>Nuevo experimento</button>
+            <button class="inf-dd-item danger" id="inf-gdrive-signout"><span class="inf-ic" data-ic="x"></span>Cerrar sesión de Google</button>
         </div>
     </div>
     <input type="file" id="sess-open-input" accept=".json,.zip,application/json,application/zip" style="display:none;">
@@ -26172,7 +26179,7 @@ bluetooth.startIOPinService()</pre>
         var note = el('inf-preview-note');
         if (note) {
           var empty = (I.sections || []).filter(function (sc) { return I.selected['sec:' + sc.id] !== false && !secFilled(sc); }).length;
-          note.textContent = empty ? ('✍️ ' + empty + (empty > 1 ? ' partes vacías no se incluyen' : ' parte vacía no se incluye') + ' hasta que escribas algo en ellas.') : '';
+          note.textContent = empty ? (empty + (empty > 1 ? ' partes vacías no se incluyen' : ' parte vacía no se incluye') + ' hasta que escribas algo en ellas.') : '';
           note.style.display = empty ? '' : 'none';
         }
         if (html) { inner.className = 'inf-preview-inner rep-doc'; inner.innerHTML = html; }
@@ -26183,22 +26190,70 @@ bluetooth.startIOPinService()</pre>
       }
       function renderPreviewDebounced() { if (_prevTimer) clearTimeout(_prevTimer); _prevTimer = setTimeout(renderPreview, 250); }
 
+      // ===== ÍCONOS (SVG monocromo, trazo simple) =====
+      var ICONS = {
+        'undo': '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/>',
+        'redo': '<path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 15-6.7L21 13"/>',
+        'plus': '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+        'x': '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+        'check': '<polyline points="20 6 9 17 4 12"/>',
+        'list': '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
+        'list-ordered': '<line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>',
+        'notes': '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>',
+        'pencil': '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
+        'image': '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+        'chart': '<path d="M3 3v18h18"/><polyline points="7 14 11 9 15 12 20 6"/>',
+        'curve': '<path d="M3 3v18h18"/><path d="M5 17c4 0 4-10 8-10s4 6 7 6"/>',
+        'stats': '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+        'table': '<rect x="3" y="3" width="18" height="18" rx="1"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/>',
+        'book': '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+        'book-open': '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+        'sliders': '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+        'eye': '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+        'eye-off': '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
+        'download': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+        'upload': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+        'cloud': '<polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>',
+        'save': '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+        'folder': '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+        'archive': '<polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>',
+        'trash': '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+        'file': '<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>',
+        'file-text': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+        'camera': '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+        'target': '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+        'flask': '<path d="M9 3h6"/><path d="M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2.2h12.4a1.5 1.5 0 0 0 1.3-2.2L14 9V3"/>',
+        'search': '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+        'check-circle': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+        'layout': '<rect x="3" y="3" width="18" height="18" rx="1"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>',
+        'chevron-left': '<polyline points="15 18 9 12 15 6"/>',
+        'chevron-right': '<polyline points="9 18 15 12 9 6"/>',
+        'align-left': '<line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/>',
+        'align-center': '<line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/>',
+        'align-justify': '<line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/>',
+        'bullets': '<line x1="9" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="12" r="1.2" fill="currentColor"/><circle cx="4" cy="18" r="1.2" fill="currentColor"/>',
+        'compare': '<line x1="12" y1="3" x2="12" y2="21"/><path d="M3 7h6l-3 7z"/><path d="M15 7h6l-3 7z"/><line x1="3" y1="14" x2="9" y2="14"/><line x1="15" y1="14" x2="21" y2="14"/>',
+        'segments': '<path d="M3 17l5-8 4 5 4-9 5 12"/>'
+      };
+      function ico(name) { var d = ICONS[name]; return d ? ('<svg viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>') : ''; }
+      function fillIcons(root) { (root || document).querySelectorAll('[data-ic]').forEach(function (e) { if (!e.dataset.icDone) { e.innerHTML = ico(e.dataset.ic); e.dataset.icDone = '1'; } }); }
+
       // ===== NAVEGADOR DE PARTES (columna izquierda) + progreso + deshacer/rehacer + chip de guardado =====
       // Ícono reconocible para cada parte del informe.
       function partIcon(id) {
-        if (id === 'cover') return '📋';
-        if (id === 'toc') return '🗂';
-        if (id === 'data') return '🔢';
-        if (/^graph\d+$/.test(id)) return '📈';
-        if (id === 'fit' || id === 'segfit') return '📐';
-        if (id === 'stats') return '🧮';
-        if (id === 'photos') return '📷';
-        if (id === 'dataphotos') return '🖼';
-        if (id === 'notes') return '🗒';
-        if (id === 'drawing') return '✏️';
-        if (id === 'biblio') return '📚';
-        if (id.indexOf('sec:') === 0) { var s = findSec(id.slice(4)); var k = sectionKind(s ? s.title : ''); return k ? k.ic : '📄'; }
-        return '📄';
+        if (id === 'cover') return 'file-text';
+        if (id === 'toc') return 'list-ordered';
+        if (id === 'data') return 'table';
+        if (/^graph\d+$/.test(id)) return 'chart';
+        if (id === 'fit' || id === 'segfit') return 'curve';
+        if (id === 'stats') return 'stats';
+        if (id === 'photos') return 'camera';
+        if (id === 'dataphotos') return 'image';
+        if (id === 'notes') return 'notes';
+        if (id === 'drawing') return 'pencil';
+        if (id === 'biblio') return 'book';
+        if (id.indexOf('sec:') === 0) { var s = findSec(id.slice(4)); var k = sectionKind(s ? s.title : ''); return k ? k.ic : 'file'; }
+        return 'file';
       }
       // ¿La parte ya tiene contenido? (las automáticas siempre; las de texto si se escribió algo)
       function secFilled(s) { if (!s) return false; var h = s.html || ''; if (/<img|<figure|doc-eq|<table/.test(h)) return true; return h.replace(/<[^>]*>/g, '').replace(/&nbsp;|\u200b|\s/g, '').length > 0; }
@@ -26223,9 +26278,9 @@ bluetooth.startIOPinService()</pre>
           if (id === 'cover') { cb.disabled = true; cb.title = 'La portada siempre va'; }
           cb.addEventListener('click', function (e) { e.stopPropagation(); });
           cb.addEventListener('change', function () { setPartIncluded(id, cb.checked); });
-          var ic = document.createElement('span'); ic.className = 'inf-oi-ic inf-ic'; ic.textContent = partIcon(id);
+          var ic = document.createElement('span'); ic.className = 'inf-oi-ic inf-ic'; ic.innerHTML = ico(partIcon(id));
           var nm = document.createElement('span'); nm.className = 'inf-oi-name'; nm.textContent = partName(id);
-          var st = document.createElement('span'); st.className = 'inf-oi-st'; st.textContent = !on ? '' : (filled ? '✅' : '✍️'); st.title = filled ? 'Tiene contenido' : 'Todavía está vacía: ¡escribí algo!';
+          var st = document.createElement('span'); st.className = 'inf-oi-st'; st.textContent = !on ? '' : (filled ? '●' : '○'); st.title = filled ? 'Tiene contenido' : 'Todavía está vacía: escribí algo';
           row.appendChild(cb); row.appendChild(ic); row.appendChild(nm); row.appendChild(st);
           if (id !== 'cover') {
             var grip = document.createElement('span'); grip.className = 'inf-oi-grip'; grip.textContent = '⠿'; grip.title = 'Arrastrá para cambiar el orden'; grip.setAttribute('draggable', 'true');
@@ -26245,8 +26300,8 @@ bluetooth.startIOPinService()</pre>
           var pct = total ? Math.round(done * 100 / total) : 0;
           pf.style.width = pct + '%';
           pb.classList.toggle('done', total > 0 && done === total); pb.classList.toggle('half', pct >= 50 && done !== total);
-          if (!(I.sections || []).length) pt.textContent = 'Empezá agregando las partes del informe 👇';
-          else if (done === total) pt.textContent = '¡Informe completo! 🎉 Ya podés descargarlo o guardarlo en Drive.';
+          if (!(I.sections || []).length) pt.textContent = 'Empezá agregando las partes del informe';
+          else if (done === total) pt.textContent = 'Informe completo. Ya podés descargarlo o guardarlo en Drive.';
           else pt.textContent = done + ' de ' + total + ' partes listas · faltan ' + (total - done);
         }
       }
@@ -26263,7 +26318,7 @@ bluetooth.startIOPinService()</pre>
         if (part) {
           part.classList.toggle('excluded', !on);
           var b = part.querySelector('.inf-part-inc');
-          if (b) { b.innerHTML = on ? '✅' : '⬜'; b.setAttribute('data-tip', on ? 'Está en el informe (clic para ocultarla)' : 'Oculta: no sale en el informe (clic para incluirla)'); }
+          if (b) { b.innerHTML = '<span class="inf-ic">' + ico(on ? 'eye' : 'eye-off') + '</span>'; b.setAttribute('data-tip', on ? 'Está en el informe (clic para ocultarla)' : 'Oculta: no sale en el informe (clic para incluirla)'); }
         }
         buildOutline(); renderPreviewDebounced(); schedule();
       }
@@ -26324,10 +26379,10 @@ bluetooth.startIOPinService()</pre>
       function updateSaveChip() {
         var chip = el('inf-save-chip'), txt = el('inf-save-chip-txt'); if (!chip || !txt) return;
         chip.classList.remove('drive', 'manual');
-        if (gConnected() && _gSyncOn && _gAutoSync) { chip.classList.add('drive'); txt.textContent = '☁ Google Drive · guardado automático' + (_gLastPush ? (' · ' + timeAgoStr(_gLastPush)) : ''); }
-        else if (gConnected()) { chip.classList.add('manual'); txt.textContent = '☁ Google Drive conectado · guardado manual'; }
-        else if (_chipState.browserAt) txt.textContent = '💾 Guardado en este navegador · ' + timeAgoStr(_chipState.browserAt);
-        else txt.textContent = '💾 Se guarda solo en este navegador';
+        if (gConnected() && _gSyncOn && _gAutoSync) { chip.classList.add('drive'); txt.textContent = 'Google Drive · guardado automático' + (_gLastPush ? (' · ' + timeAgoStr(_gLastPush)) : ''); }
+        else if (gConnected()) { chip.classList.add('manual'); txt.textContent = 'Google Drive conectado · guardado manual'; }
+        else if (_chipState.browserAt) txt.textContent = 'Guardado en este navegador · ' + timeAgoStr(_chipState.browserAt);
+        else txt.textContent = 'Se guarda solo en este navegador';
       }
 
       function refresh() { if (panelOpen()) buildEditor(); renderDrawPreview(); renderPreview(); updateSaveChip(); }
@@ -26336,13 +26391,13 @@ bluetooth.startIOPinService()</pre>
       // Partes de texto típicas de un informe de laboratorio: ícono, descripción corta y una pista
       // de qué escribir (se muestra en gris dentro de la parte mientras está vacía).
       var SECTION_KINDS = [
-        { name: 'Objetivo', ic: '🎯', desc: '¿Qué querías averiguar o medir?', hint: '¿Qué querías averiguar o medir con este experimento? Escribilo en una o dos oraciones.\nEjemplo: «Medir la aceleración de la gravedad con la caída de una pelota.»' },
-        { name: 'Fundamento teórico', ic: '📚', desc: 'La física detrás del experimento', hint: 'Explicá con tus palabras la física del experimento: qué leyes o fórmulas se usan.\nPodés insertar fórmulas con el botón ∑ Ecuación de la barra.' },
-        { name: 'Materiales', ic: '🧪', desc: 'Lista de lo que usaron', hint: 'Escribí un material por línea (Enter agrega otro).' },
-        { name: 'Procedimiento', ic: '📝', desc: 'Paso a paso qué hicieron', hint: 'Contá paso a paso qué hicieron, como una receta.\nTip: escribí «1. » al inicio de una línea para armar una lista numerada. Con 🖼 Imagen podés poner fotos del montaje.' },
-        { name: 'Resultados', ic: '📊', desc: 'Datos, gráficas y qué muestran', hint: 'Insertá la gráfica y la tabla con los botones 📈 Gráfica y 🔢 Datos de la barra, y describí qué se ve: ¿cómo cambia una variable cuando cambia la otra?' },
-        { name: 'Análisis', ic: '🔍', desc: 'Comparar con la teoría', hint: 'Compará lo que midieron con lo que dice la teoría. ¿Coincide? ¿Qué errores pudo haber?\nCon 🔢 Datos → «Comparación» se inserta una tabla lista para completar.' },
-        { name: 'Conclusión', ic: '✅', desc: '¿Se cumplió el objetivo?', hint: '¿Se cumplió el objetivo? ¿Qué aprendiste? ¿Qué mejorarías si lo repitieras?' }
+        { name: 'Objetivo', ic: 'target', desc: '¿Qué querías averiguar o medir?', hint: '¿Qué querías averiguar o medir con este experimento? Escribilo en una o dos oraciones.\nEjemplo: «Medir la aceleración de la gravedad con la caída de una pelota.»' },
+        { name: 'Fundamento teórico', ic: 'book-open', desc: 'La física detrás del experimento', hint: 'Explicá con tus palabras la física del experimento: qué leyes o fórmulas se usan.\nPodés insertar fórmulas con el botón ∑ Ecuación de la barra.' },
+        { name: 'Materiales', ic: 'flask', desc: 'Lista de lo que usaron', hint: 'Escribí un material por línea (Enter agrega otro).' },
+        { name: 'Procedimiento', ic: 'list-ordered', desc: 'Paso a paso qué hicieron', hint: 'Contá paso a paso qué hicieron, como una receta.\nTip: escribí «1. » al inicio de una línea para armar una lista numerada. Con «Imagen» podés poner fotos del montaje.' },
+        { name: 'Resultados', ic: 'chart', desc: 'Datos, gráficas y qué muestran', hint: 'Insertá la gráfica y la tabla con los botones «Gráfica» y «Datos» de la barra, y describí qué se ve: ¿cómo cambia una variable cuando cambia la otra?' },
+        { name: 'Análisis', ic: 'search', desc: 'Comparar con la teoría', hint: 'Compará lo que midieron con lo que dice la teoría. ¿Coincide? ¿Qué errores pudo haber?\nCon «Datos» → «Comparación» se inserta una tabla lista para completar.' },
+        { name: 'Conclusión', ic: 'check-circle', desc: '¿Se cumplió el objetivo?', hint: '¿Se cumplió el objetivo? ¿Qué aprendiste? ¿Qué mejorarías si lo repitieras?' }
       ];
       var TEMPLATE_ORDER = ['Objetivo', 'Fundamento teórico', 'Materiales', 'Procedimiento', 'Resultados', 'Conclusión'];
       var SEC_ALIASES = { 'marco teórico': 'Fundamento teórico', 'introducción': 'Fundamento teórico', 'conclusiones': 'Conclusión', 'objetivos': 'Objetivo', 'discusión': 'Análisis', 'método': 'Procedimiento', 'metodología': 'Procedimiento', 'resultado': 'Resultados' };
@@ -26570,12 +26625,11 @@ bluetooth.startIOPinService()</pre>
         }
         bar.innerHTML = '';
         var g0 = grp('Deshacer');
-        g0.appendChild(rbBtn('↶', 'Deshacer', 'Deshacer el último cambio (Ctrl+Z)', doUndo, { glyph: true }));
-        g0.appendChild(rbBtn('↷', 'Rehacer', 'Rehacer lo que deshiciste (Ctrl+Y)', doRedo, { glyph: true }));
+        g0.appendChild(rbBtn(ico('undo'), 'Deshacer', 'Deshacer el último cambio (Ctrl+Z)', doUndo));
+        g0.appendChild(rbBtn(ico('redo'), 'Rehacer', 'Rehacer lo que deshiciste (Ctrl+Y)', doRedo));
         var gp = grp('Partes');
-        gp.appendChild(rbBtn('＋', 'Parte', 'Agregar una parte al informe (objetivo, materiales, procedimiento…)', function (e) { toggleAddMenu(e); }, { glyph: true }));
-        gp.appendChild(rbBtn('📋', 'Lista', 'Mostrar u ocultar la lista de partes del informe', toggleNav));
-        gp.appendChild(rbBtn('🗒', 'Apuntes', 'Apuntes escritos, dibujo a mano y fotos del experimento', openMaterial));
+        gp.appendChild(rbBtn(ico('plus'), 'Parte', 'Agregar una parte al informe (objetivo, materiales, procedimiento…)', function (e) { toggleAddMenu(e); }));
+        gp.appendChild(rbBtn(ico('list'), 'Lista', 'Mostrar u ocultar la lista de partes del informe', toggleNav));
         var g1 = grp('Letra');
         var col = document.createElement('div'); col.className = 'inf-rb-col';
         var fsel = document.createElement('select'); fsel.className = 'inf-wp-sel inf-tip'; fsel.setAttribute('data-tip', 'Tipo de letra del texto seleccionado');
@@ -26592,37 +26646,40 @@ bluetooth.startIOPinService()</pre>
         g2.appendChild(rbBtn('<i>C</i>', 'Cursiva', 'Cursiva: inclina el texto seleccionado (Ctrl+I)', function () { exec('italic'); }, { glyph: true }));
         g2.appendChild(rbBtn('<u>S</u>', 'Subrayar', 'Subrayado (Ctrl+U)', function () { exec('underline'); }, { glyph: true }));
         var colorWrap = document.createElement('label'); colorWrap.className = 'inf-wp-btn inf-tip'; colorWrap.setAttribute('data-tip', 'Color del texto seleccionado');
-        colorWrap.innerHTML = '<span class="inf-ic">🎨</span><span class="lb">Color</span>';
+        colorWrap.innerHTML = '<span class="inf-ic glyph" style="flex-direction:column;gap:0;"><b>A</b><i class="inf-color-bar"></i></span><span class="lb">Color</span>';
         var color = document.createElement('input'); color.type = 'color'; color.value = '#111111';
         color.style.cssText = 'position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;';
         color.addEventListener('mousedown', function () { saveRange(); });
-        color.addEventListener('input', function () { exec('foreColor', color.value); });
+        color.addEventListener('input', function () { var bar = colorWrap.querySelector('.inf-color-bar'); if (bar) bar.style.background = color.value; exec('foreColor', color.value); });
         colorWrap.appendChild(color); g2.appendChild(colorWrap);
         g2.appendChild(rbBtn('T<sub>✕</sub>', 'Limpiar', 'Quitar el formato del texto seleccionado', function () { exec('removeFormat'); }, { glyph: true }));
         var g3 = grp('Párrafo');
         g3.appendChild(rbBtn('<b>T</b>', 'Título', 'Convertir la línea en un título grande', function () { exec('formatBlock', 'H2'); }, { glyph: true }));
         g3.appendChild(rbBtn('<b style="font-size:14px">T</b>', 'Subtítulo', 'Convertir la línea en un subtítulo', function () { exec('formatBlock', 'H3'); }, { glyph: true }));
         g3.appendChild(rbBtn('¶', 'Normal', 'Texto normal (párrafo)', function () { exec('formatBlock', 'P'); }, { glyph: true }));
-        g3.appendChild(rbBtn('•≡', 'Viñetas', 'Lista con viñetas', function () { exec('insertUnorderedList'); }, { glyph: true }));
-        g3.appendChild(rbBtn('1≡', 'Numerar', 'Lista numerada', function () { exec('insertOrderedList'); }, { glyph: true }));
-        g3.appendChild(rbBtn('⯇', 'Izquierda', 'Alinear a la izquierda', function () { exec('justifyLeft'); }, { glyph: true }));
-        g3.appendChild(rbBtn('≡', 'Centrar', 'Centrar el texto', function () { exec('justifyCenter'); }, { glyph: true }));
-        g3.appendChild(rbBtn('☰', 'Justificar', 'Justificar: bordes parejos a ambos lados', function () { exec('justifyFull'); }, { glyph: true }));
+        g3.appendChild(rbBtn(ico('bullets'), 'Viñetas', 'Lista con viñetas', function () { exec('insertUnorderedList'); }));
+        g3.appendChild(rbBtn(ico('list-ordered'), 'Numerar', 'Lista numerada', function () { exec('insertOrderedList'); }));
+        g3.appendChild(rbBtn(ico('align-left'), 'Izquierda', 'Alinear a la izquierda', function () { exec('justifyLeft'); }));
+        g3.appendChild(rbBtn(ico('align-center'), 'Centrar', 'Centrar el texto', function () { exec('justifyCenter'); }));
+        g3.appendChild(rbBtn(ico('align-justify'), 'Justificar', 'Justificar: bordes parejos a ambos lados', function () { exec('justifyFull'); }));
         var g4 = grp('Insertar');
-        g4.appendChild(rbBtn('🖼', 'Imagen', 'Subir una foto o insertar una imagen del experimento', function (e) { toggleImgMenu(e); }));
-        g4.appendChild(rbBtn('📈', 'Gráfica', 'Insertar una gráfica de los datos capturados', function (e) { toggleGraphMenu(e); }));
-        g4.appendChild(rbBtn('🔢', 'Datos', 'Insertar la tabla de datos, las estadísticas o el resultado del ajuste (se pueden editar)', function (e) { ensureFocusEd(); toggleDataMenu(e); }));
+        g4.appendChild(rbBtn(ico('image'), 'Imagen', 'Subir una foto o insertar una imagen del experimento', function (e) { toggleImgMenu(e); }));
+        g4.appendChild(rbBtn(ico('chart'), 'Gráfica', 'Insertar una gráfica de los datos capturados', function (e) { toggleGraphMenu(e); }));
+        g4.appendChild(rbBtn(ico('table'), 'Datos', 'Insertar la tabla de datos, las estadísticas o el resultado del ajuste (se pueden editar)', function (e) { ensureFocusEd(); toggleDataMenu(e); }));
         g4.appendChild(rbBtn('∑', 'Ecuación', 'Insertar una fórmula (se arma con botones)', function () { openEqEditor(ensureFocusEd(), null); }, { glyph: true }));
-        g4.appendChild(rbBtn('✏️', 'Dibujo', 'Dibujar a mano un esquema e insertarlo acá', drawAndInsert));
-        g4.appendChild(rbBtn('📚', 'Cita', 'Insertar una cita bibliográfica (formato APA)', function (e) { ensureFocusEd(); toggleCiteMenu(e); }));
+        g4.appendChild(rbBtn(ico('pencil'), 'Dibujo', 'Dibujar a mano un esquema e insertarlo acá', drawAndInsert));
+        g4.appendChild(rbBtn(ico('book'), 'Cita', 'Insertar una cita bibliográfica (formato APA)', function (e) { ensureFocusEd(); toggleCiteMenu(e); }));
         var g5 = grp('Documento');
-        g5.appendChild(rbBtn('⚙', 'Opciones', 'Índice, bibliografía, tipo de letra y vista', function (e) { toggleDocOptsMenu(e); }, { glyph: true }));
+        g5.appendChild(rbBtn(ico('sliders'), 'Opciones', 'Índice, bibliografía, tipo de letra y vista', function (e) { toggleDocOptsMenu(e); }));
       }
-      function toggleNav() {
+      function toggleNav(force) {
         var p = el('informe-panel'), nav = el('inf-nav'); if (!p || !nav) return;
-        if (window.innerWidth <= 900) nav.classList.toggle('open');
-        else p.classList.toggle('nav-hidden');
+        if (window.innerWidth <= 900) { nav.classList.toggle('open', typeof force === 'boolean' ? force : undefined); return; }
+        var hide = (typeof force === 'boolean') ? !force : !p.classList.contains('nav-hidden');
+        p.classList.toggle('nav-hidden', hide);
+        try { localStorage.setItem('fbit_inf_nav', hide ? '0' : '1'); } catch (e) {}
       }
+      function restoreNavState() { try { if (localStorage.getItem('fbit_inf_nav') === '0' && window.innerWidth > 900) el('informe-panel').classList.add('nav-hidden'); } catch (e) {} }
       // Dibujar a mano desde la cinta: al terminar, el dibujo se inserta como imagen donde está el cursor.
       var _drawInsertEd = null;
       function drawAndInsert() {
@@ -26634,7 +26691,7 @@ bluetooth.startIOPinService()</pre>
       // ---- Menús: agregar parte / gráfica / opciones del documento ----
       function menuItem(m, ic, label, desc, fn, cls) {
         var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item' + (cls ? ' ' + cls : '');
-        b.innerHTML = '<span class="inf-ic">' + ic + '</span><span class="tx">' + esc(label) + (desc ? '<small>' + esc(desc) + '</small>' : '') + '</span>';
+        b.innerHTML = '<span class="inf-ic">' + (ICONS[ic] ? ico(ic) : ic) + '</span><span class="tx">' + esc(label) + (desc ? '<small>' + esc(desc) + '</small>' : '') + '</span>';
         b.addEventListener('mousedown', function (e) { e.preventDefault(); });
         b.addEventListener('click', function () { m.classList.remove('open'); fn(); });
         m.appendChild(b); return b;
@@ -26645,14 +26702,14 @@ bluetooth.startIOPinService()</pre>
         var m = el('inf-add-menu'); if (!m) return;
         if (m.classList.contains('open')) { m.classList.remove('open'); return; }
         closeMenus(); m.innerHTML = '';
-        menuItem(m, '✨', 'Plantilla completa', 'Todas las partes de un informe, en orden y con pistas', applyTemplate, 'primary');
+        menuItem(m, 'layout', 'Plantilla completa', 'Todas las partes de un informe, en orden y con pistas', applyTemplate, 'primary');
         menuHead(m, 'Partes de texto');
         SECTION_KINDS.forEach(function (k) { menuItem(m, k.ic, k.name, k.desc, function () { addSection(k.name, { after: afterId }); }); });
-        menuItem(m, '📄', 'Parte en blanco', 'Con el título que vos quieras', function () { addSection('', { after: afterId }); });
+        menuItem(m, 'file', 'Parte en blanco', 'Con el título que vos quieras', function () { addSection('', { after: afterId }); });
         menuHead(m, 'Otras partes');
-        if (!I.doc.toc) menuItem(m, '🗂', 'Índice', 'Lista automática de las partes del informe', function () { setToc(true); });
-        if (!I.doc.biblioOn) menuItem(m, '📚', 'Bibliografía', 'Referencias consultadas (formato APA)', function () { setBiblio(true); });
-        menuItem(m, '🗒', 'Apuntes, dibujo y fotos', 'Se agregan como partes del informe', openMaterial);
+        if (!I.doc.toc) menuItem(m, 'list-ordered', 'Índice', 'Lista automática de las partes del informe', function () { setToc(true); });
+        if (!I.doc.biblioOn) menuItem(m, 'book', 'Bibliografía', 'Referencias consultadas (formato APA)', function () { setBiblio(true); });
+        menuItem(m, 'notes', 'Apuntes, dibujo y fotos', 'Se agregan como partes del informe', openMaterial);
         positionMenu(m, evt.currentTarget || evt.target); m.classList.add('open');
       }
       function toggleGraphMenu(evt) {
@@ -26665,11 +26722,11 @@ bluetooth.startIOPinService()</pre>
             any = true;
             (function (idx) {
               var t = fn('computeGraphTitle') ? computeGraphTitle(idx) : ('Gráfica ' + (idx + 1));
-              menuItem(m, '📈', 'Gráfica ' + (idx + 1), t, function () { insertImageIntoDoc(chartToDataURL(idx), t); });
+              menuItem(m, 'chart', 'Gráfica ' + (idx + 1), t, function () { insertImageIntoDoc(chartToDataURL(idx), t); });
             })(i);
           }
         }
-        mapeoPlots().forEach(function (mp) { any = true; menuItem(m, '📐', mp.label, '', function () { insertMapeoImage(mp.el, mp.caption); }); });
+        mapeoPlots().forEach(function (mp) { any = true; menuItem(m, 'curve', mp.label, '', function () { insertMapeoImage(mp.el, mp.caption); }); });
         if (!any) { var d = document.createElement('div'); d.className = 'inf-menu-head'; d.style.whiteSpace = 'normal'; d.style.textTransform = 'none'; d.style.letterSpacing = '0'; d.textContent = 'Todavía no hay gráficas: capturá o importá datos primero.'; m.appendChild(d); }
         positionMenu(m, evt.currentTarget || evt.target); m.classList.add('open');
       }
@@ -26684,9 +26741,9 @@ bluetooth.startIOPinService()</pre>
           c.addEventListener('change', function () { m.classList.remove('open'); fnc(c.checked); });
           l.appendChild(c); l.appendChild(document.createTextNode(label)); m.appendChild(l);
         }
-        check('🗂 Índice al inicio', I.doc.toc, function (v) { setToc(v); });
-        check('📚 Bibliografía al final', I.doc.biblioOn, function (v) { setBiblio(v); });
-        var row = document.createElement('div'); row.className = 'inf-menu-row'; row.innerHTML = '<span>🔤 Letra:</span>';
+        check('Índice al inicio', I.doc.toc, function (v) { setToc(v); });
+        check('Bibliografía al final', I.doc.biblioOn, function (v) { setBiblio(v); });
+        var row = document.createElement('div'); row.className = 'inf-menu-row'; row.innerHTML = '<span>Letra:</span>';
         var fsel = document.createElement('select'); fsel.className = 'inf-wp-sel';
         DOC_FONTS.forEach(function (f) { var o = document.createElement('option'); o.value = f[0]; o.textContent = f[1]; if ((I.doc.font || '') === f[0]) o.selected = true; fsel.appendChild(o); });
         fsel.addEventListener('change', function () { I.doc.font = fsel.value; applyDocFont(); renderPreviewDebounced(); schedule(); });
@@ -26794,8 +26851,8 @@ bluetooth.startIOPinService()</pre>
           var e = document.createElement('div'); e.className = 'inf-empty';
           e.innerHTML = '<h3>Tu informe todavía no tiene texto</h3><p>Agregá las partes (objetivo, materiales, procedimiento, resultados, conclusión…) y escribí en cada una. Las gráficas y tablas de tus datos ya están listas para usar.</p><div class="row"></div>';
           var row = e.querySelector('.row');
-          var b1 = document.createElement('button'); b1.type = 'button'; b1.className = 'inf-bigbtn primary'; b1.innerHTML = '<span class="inf-ic">✨</span> Usar plantilla completa'; b1.addEventListener('click', applyTemplate);
-          var b2 = document.createElement('button'); b2.type = 'button'; b2.className = 'inf-bigbtn'; b2.innerHTML = '<span class="inf-ic">＋</span> Agregar una parte'; b2.addEventListener('click', function (ev) { toggleAddMenu(ev); });
+          var b1 = document.createElement('button'); b1.type = 'button'; b1.className = 'inf-bigbtn primary'; b1.innerHTML = '<span class="inf-ic">' + ico('layout') + '</span> Usar plantilla completa'; b1.addEventListener('click', applyTemplate);
+          var b2 = document.createElement('button'); b2.type = 'button'; b2.className = 'inf-bigbtn'; b2.innerHTML = '<span class="inf-ic">' + ico('plus') + '</span> Agregar una parte'; b2.addEventListener('click', function (ev) { toggleAddMenu(ev); });
           row.appendChild(b1); row.appendChild(b2); canvas.appendChild(e);
         }
         buildOutline();
@@ -26807,7 +26864,7 @@ bluetooth.startIOPinService()</pre>
         card.className = 'inf-part ' + (isSec ? 'inf-part-sec' : (isCover ? 'inf-part-cover' : 'inf-part-auto')) + (included ? '' : ' excluded') + (isCollapsed ? ' inf-part-collapsed' : '') + (id === _activePart ? ' active' : '');
         card.dataset.id = id;
         var bar = document.createElement('div'); bar.className = 'inf-part-bar';
-        var grip = document.createElement('span'); grip.className = 'inf-part-grip inf-ic'; grip.textContent = isCover ? '📋' : '⠿';
+        var grip = document.createElement('span'); grip.className = 'inf-part-grip inf-ic'; if (isCover) grip.innerHTML = ico('file-text'); else grip.textContent = '⠿';
         if (!isCover) { grip.setAttribute('draggable', 'true'); grip.title = 'Arrastrá para mover esta parte'; }
         var name = document.createElement('span'); name.className = 'inf-part-name'; name.textContent = isSec ? 'Parte de texto' : friendlyItemName(id);
         var tag = document.createElement('span'); tag.className = 'inf-part-tag'; tag.textContent = isSec ? '' : (isCover ? 'completá los datos' : autoTag(id));
@@ -26818,12 +26875,12 @@ bluetooth.startIOPinService()</pre>
           var up = cbtn('▲', 'Mover más arriba'), dn = cbtn('▼', 'Mover más abajo');
           up.addEventListener('click', function () { moveDocItem(id, -1); }); dn.addEventListener('click', function () { moveDocItem(id, 1); });
           acts.appendChild(up); acts.appendChild(dn);
-          var inc = cbtn(included ? '✅' : '⬜', included ? 'Está en el informe (clic para ocultarla)' : 'Oculta: no sale en el informe (clic para incluirla)', 'inf-part-inc');
+          var inc = cbtn('<span class="inf-ic">' + ico(included ? 'eye' : 'eye-off') + '</span>', included ? 'Está en el informe (clic para ocultarla)' : 'Oculta: no sale en el informe (clic para incluirla)', 'inf-part-inc');
           inc.addEventListener('click', function () { setPartIncluded(id, I.selected[id] === false); }); acts.appendChild(inc);
-          if (isSec) { var del = cbtn('🗑', 'Quitar esta parte', 'del'); del.addEventListener('click', function () { uiConfirm('¿Quitar esta parte del informe?').then(function (ok) { if (ok) delSection(id.slice(4)); }); }); acts.appendChild(del); }
-          if (id === 'toc') { var tdel = cbtn('🗑', 'Quitar el índice', 'del'); tdel.addEventListener('click', function () { setToc(false); }); acts.appendChild(tdel); }
-          if (id === 'biblio') { var bdel = cbtn('🗑', 'Quitar la bibliografía', 'del'); bdel.addEventListener('click', function () { setBiblio(false); }); acts.appendChild(bdel); }
-          if (id === 'photos' || id === 'notes' || id === 'drawing') { var ed2 = cbtn('✎', 'Editar en «Apuntes, dibujo y fotos»'); ed2.addEventListener('click', openMaterial); acts.appendChild(ed2); }
+          if (isSec) { var del = cbtn('<span class="inf-ic">' + ico('trash') + '</span>', 'Quitar esta parte', 'del'); del.addEventListener('click', function () { uiConfirm('¿Quitar esta parte del informe?').then(function (ok) { if (ok) delSection(id.slice(4)); }); }); acts.appendChild(del); }
+          if (id === 'toc') { var tdel = cbtn('<span class="inf-ic">' + ico('trash') + '</span>', 'Quitar el índice', 'del'); tdel.addEventListener('click', function () { setToc(false); }); acts.appendChild(tdel); }
+          if (id === 'biblio') { var bdel = cbtn('<span class="inf-ic">' + ico('trash') + '</span>', 'Quitar la bibliografía', 'del'); bdel.addEventListener('click', function () { setBiblio(false); }); acts.appendChild(bdel); }
+          if (id === 'photos' || id === 'notes' || id === 'drawing') { var ed2 = cbtn('<span class="inf-ic">' + ico('pencil') + '</span>', 'Editar en «Apuntes, dibujo y fotos»'); ed2.addEventListener('click', openMaterial); acts.appendChild(ed2); }
           var addAfter = cbtn('＋', 'Agregar una parte debajo de esta'); addAfter.addEventListener('click', function (e) { toggleAddMenu(e, id); }); acts.appendChild(addAfter);
         }
         bar.appendChild(grip); bar.appendChild(name); bar.appendChild(tag); bar.appendChild(acts); card.appendChild(bar);
@@ -26870,7 +26927,7 @@ bluetooth.startIOPinService()</pre>
           if (id === 'notes' || id === 'photos') {
             var nb = document.createElement('div'); nb.style.padding = '0 46px 12px';
             var mb = document.createElement('button'); mb.type = 'button'; mb.className = 'inf-mini';
-            mb.innerHTML = id === 'notes' ? '<span class="inf-ic">✎</span> Editar apuntes' : '<span class="inf-ic">📷</span> Agregar o editar fotos';
+            mb.innerHTML = id === 'notes' ? '<span class="inf-ic">' + ico('pencil') + '</span> Editar apuntes' : '<span class="inf-ic">' + ico('camera') + '</span> Agregar o editar fotos';
             mb.addEventListener('click', openMaterial); nb.appendChild(mb); content.appendChild(nb);
           }
           content.addEventListener('click', function () { setActivePart(id); });
@@ -26942,7 +26999,16 @@ bluetooth.startIOPinService()</pre>
       }
 
       // ---- Menús (cita / imagen) ----
-      function positionMenu(m, anchor) { try { var r = anchor.getBoundingClientRect(); m.style.left = Math.max(6, Math.min(r.left, window.innerWidth - 240)) + 'px'; m.style.top = (r.bottom + 4) + 'px'; } catch (e) {} }
+      // Ubica el menú bajo el botón sin que se salga de la pantalla (se mide ya abierto).
+      function positionMenu(m, anchor) {
+        try {
+          var r = anchor.getBoundingClientRect(); m.classList.add('open');
+          var w = m.offsetWidth || 240, h = m.offsetHeight || 0;
+          var left = Math.max(6, Math.min(r.left, window.innerWidth - w - 8));
+          var top = r.bottom + 4; if (top + h > window.innerHeight - 8) top = Math.max(8, Math.min(r.top - h - 4, window.innerHeight - h - 8));
+          m.style.left = left + 'px'; m.style.top = top + 'px';
+        } catch (e) {}
+      }
       function closeMenus() { document.querySelectorAll('.inf-menu.open').forEach(function (m) { m.classList.remove('open'); }); }
       // Asegura que haya un bloque de texto enfocado donde insertar (fallback al primero).
       function ensureFocusEd() {
@@ -26965,7 +27031,8 @@ bluetooth.startIOPinService()</pre>
         var m = el('inf-cite-menu'); if (!m) return;
         if (m.classList.contains('open')) { m.classList.remove('open'); return; }
         closeMenus(); m.innerHTML = '';
-        (I.doc.biblio || []).forEach(function (r) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = citeInText(r) + ' — ' + ((r.title || r.authors || '').slice(0, 38)); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertCite(r); m.classList.remove('open'); }); m.appendChild(b); });
+        menuHead(m, 'Insertar cita');
+        (I.doc.biblio || []).forEach(function (r) { menuItem(m, 'book', citeInText(r), (r.title || r.authors || '').slice(0, 60), function () { insertCite(r); }); });
         positionMenu(m, evt.currentTarget); m.classList.add('open');
       }
       function toggleImgMenu(evt) {
@@ -26974,27 +27041,19 @@ bluetooth.startIOPinService()</pre>
         ensureFocusEd();
         m.innerHTML = ''; var st = state, n = (st.rawData || []).length, ng = st.numGraphs || 1;
         // Siempre: subir una imagen nueva desde el editor
-        var up = document.createElement('button'); up.type = 'button'; up.className = 'inf-menu-item inf-menu-upload'; up.textContent = '⬆  Subir imagen nueva…';
-        up.addEventListener('mousedown', function (e) { e.preventDefault(); });
-        up.addEventListener('click', function () { m.classList.remove('open'); triggerDocImageUpload(); });
-        m.appendChild(up);
-        for (var i = 0; i < ng; i++) { if (st.charts && st.charts[i] && n > 0) { (function (idx) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '📈 Gráfica ' + (idx + 1); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(chartToDataURL(idx), (fn('computeGraphTitle') ? computeGraphTitle(idx) : ('Gráfica ' + (idx + 1)))); m.classList.remove('open'); }); m.appendChild(b); })(i); } }
-        (I.devicePhotos || []).forEach(function (p, k) { var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = '🖼 Imagen ' + (k + 1) + ((p.caption || '').trim() ? (' · ' + p.caption.slice(0, 26)) : ''); b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', function () { insertImageIntoDoc(p.dataUrl, (p.caption || '').trim()); m.classList.remove('open'); }); m.appendChild(b); });
+        menuItem(m, 'upload', 'Subir imagen nueva…', 'Una foto de tu celular o computadora', triggerDocImageUpload, 'inf-menu-upload');
+        for (var i = 0; i < ng; i++) { if (st.charts && st.charts[i] && n > 0) { (function (idx) { var t = fn('computeGraphTitle') ? computeGraphTitle(idx) : ('Gráfica ' + (idx + 1)); menuItem(m, 'chart', 'Gráfica ' + (idx + 1), t, function () { insertImageIntoDoc(chartToDataURL(idx), t); }); })(i); } }
+        (I.devicePhotos || []).forEach(function (p, k) { menuItem(m, 'camera', 'Foto ' + (k + 1), (p.caption || '').trim().slice(0, 40), function () { insertImageIntoDoc(p.dataUrl, (p.caption || '').trim()); }); });
         // Gráficas del panel MAPEO (Plotly) que estén renderizadas: se capturan como imagen.
-        mapeoPlots().forEach(function (mp) {
-          var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = mp.label;
-          b.addEventListener('mousedown', function (e) { e.preventDefault(); });
-          b.addEventListener('click', function () { m.classList.remove('open'); insertMapeoImage(mp.el, mp.caption); });
-          m.appendChild(b);
-        });
+        mapeoPlots().forEach(function (mp) { menuItem(m, 'curve', mp.label, '', function () { insertMapeoImage(mp.el, mp.caption); }); });
         closeMenus(); positionMenu(m, evt.currentTarget); m.classList.add('open');
       }
       // Devuelve las gráficas de MAPEO (Plotly) actualmente renderizadas en el DOM.
       function mapeoPlots() {
         if (!window.Plotly) return [];
         var out = [];
-        var defs = [['mapeo-pro-plot', '📐 Mapeo · mapa del campo (actual)', 'Mapa del campo — Mapeo'],
-                    ['mapeo-1d-plot', '📐 Mapeo · corte 1D y ajuste (actual)', 'Corte 1D y ajuste — Mapeo']];
+        var defs = [['mapeo-pro-plot', 'Mapeo · mapa del campo (actual)', 'Mapa del campo — Mapeo'],
+                    ['mapeo-1d-plot', 'Mapeo · corte 1D y ajuste (actual)', 'Corte 1D y ajuste — Mapeo']];
         defs.forEach(function (d) {
           var pe = document.getElementById(d[0]);
           if (pe && pe.classList.contains('js-plotly-plot') && pe.data && pe.data.length) out.push({ el: pe, label: d[1], caption: d[2] });
@@ -27108,20 +27167,13 @@ bluetooth.startIOPinService()</pre>
         if (m.classList.contains('open')) { m.classList.remove('open'); return; }
         ensureFocusEd();
         m.innerHTML = ''; var st = state, n = (st.rawData || []).length;
-        function addItem(label, enabled, act) {
-          var b = document.createElement('button'); b.type = 'button'; b.className = 'inf-menu-item'; b.textContent = label;
-          b.addEventListener('mousedown', function (e) { e.preventDefault(); });
-          if (enabled) b.addEventListener('click', function () { act(); m.classList.remove('open'); });
-          else { b.disabled = true; b.style.opacity = '0.4'; b.style.cursor = 'default'; }
-          m.appendChild(b);
-        }
-        var head = document.createElement('div'); head.className = 'inf-menu-item inf-menu-upload'; head.textContent = 'Insertar como texto/tabla editable';
-        m.appendChild(head);
-        addItem('🧮  Ajuste de curva', !!st.fitResult, function () { insertHTMLIntoDoc(fitEditableHTML()); });
-        addItem('🧩  Ajuste por tramos', (st.segmentFits || []).length > 0, function () { insertHTMLIntoDoc(segfitEditableHTML()); });
-        addItem('🔢  Tabla de datos', n > 0, function () { insertDataTableIntoDoc(); });
-        addItem('📊  Estadísticas', n > 0, function () { insertHTMLIntoDoc(statsEditableHTML()); });
-        addItem('⚖️  Comparación modelo · ajuste · datos', n > 0 || !!st.fitResult, function () { insertHTMLIntoDoc(comparisonTableEditableHTML()); });
+        function addItem(icon, label, desc, enabled, act) { var b = menuItem(m, icon, label, desc, act); if (!enabled) b.disabled = true; }
+        menuHead(m, 'Insertar como texto o tabla (se puede editar)');
+        addItem('curve', 'Ajuste de curva', 'Ecuación, R² y parámetros', !!st.fitResult, function () { insertHTMLIntoDoc(fitEditableHTML()); });
+        addItem('segments', 'Ajuste por tramos', '', (st.segmentFits || []).length > 0, function () { insertHTMLIntoDoc(segfitEditableHTML()); });
+        addItem('table', 'Tabla de datos', 'Todos los puntos capturados', n > 0, function () { insertDataTableIntoDoc(); });
+        addItem('stats', 'Estadísticas', 'Media, mínimo, máximo y desviación', n > 0, function () { insertHTMLIntoDoc(statsEditableHTML()); });
+        addItem('compare', 'Comparación modelo · ajuste · datos', 'Tabla para contrastar con la teoría', n > 0 || !!st.fitResult, function () { insertHTMLIntoDoc(comparisonTableEditableHTML()); });
         closeMenus(); positionMenu(m, evt.currentTarget); m.classList.add('open');
       }
 
@@ -27210,8 +27262,8 @@ bluetooth.startIOPinService()</pre>
         tb.appendChild(mk('↑', 'Mover arriba', function () { figMove(-1); }));
         tb.appendChild(mk('↓', 'Mover abajo', function () { figMove(1); }));
         tb.appendChild(sep());
-        tb.appendChild(mk('✎ Pie', 'Editar el pie de imagen', function () { figEditCaption(); }));
-        tb.appendChild(mk('🗑', 'Quitar imagen', function () { figDelete(); }));
+        tb.appendChild(mk('Pie', 'Editar el pie de imagen', function () { figEditCaption(); }));
+        tb.appendChild(mk('<span class="inf-ic">' + ico('trash') + '</span>', 'Quitar imagen', function () { figDelete(); }));
       }
 
       // ---- Bibliografía (APA) ----
@@ -28177,7 +28229,7 @@ bluetooth.startIOPinService()</pre>
         }
         if (m) m.classList.remove('open');
         if (save && _drawInsertEd && I.drawingData) {
-          // Abierto desde la cinta «✏️ Dibujo»: el dibujo va como imagen dentro del texto, no como parte aparte.
+          // Abierto desde la cinta «Dibujo»: el dibujo va como imagen dentro del texto, no como parte aparte.
           var target = _drawInsertEd; I._focusEd = target;
           insertImageIntoDoc(I.drawingData, 'Esquema del montaje');
           I.selected['drawing'] = false;
@@ -28760,6 +28812,7 @@ bluetooth.startIOPinService()</pre>
         var disc = el('sess-gdrive-disc'), conn = el('sess-gdrive-conn');
         if (disc) disc.style.display = connected ? 'none' : 'block';
         if (conn) conn.style.display = connected ? 'block' : 'none';
+        fillIcons(el('session-menu'));
         // Puntito de estado en el botón de arriba: verde = conectado y guardando, ámbar = conectado sin auto-guardado, gris = sin conectar
         var cls = connected ? (_gAutoSync ? 'gdrive-connected' : 'gdrive-manual') : '';
         var ttl = !connected ? 'Guardá o retomá tu trabajo (no conectado a Google Drive)'
@@ -28800,7 +28853,7 @@ bluetooth.startIOPinService()</pre>
       function toggleSessionMenu() { var pop = el('session-menu'); if (pop && pop.classList.contains('open')) closeSessionMenu(); else openSessionMenu(); }
       function updateSessionMenu() {
         var c = el('sess-cache'); if (!c) return;
-        if (_cachedBlob) { c.style.display = 'block'; c.textContent = '↺ Retomar mi último trabajo' + (_cachedAt ? (' · ' + timeAgoStr(_cachedAt) + (_cachedPts ? (' (' + _cachedPts + ' puntos)') : '')) : ''); }
+        if (_cachedBlob) { c.style.display = 'flex'; var ct = el('sess-cache-txt') || c; ct.textContent = 'Retomar mi último trabajo' + (_cachedAt ? (' · ' + timeAgoStr(_cachedAt) + (_cachedPts ? (' (' + _cachedPts + ' puntos)') : '')) : ''); }
         else c.style.display = 'none';
       }
       I.sessionMenuClick = sessionMenuClick;
@@ -28863,7 +28916,7 @@ bluetooth.startIOPinService()</pre>
       function updateProjectBadge() {
         var t = (I.meta && I.meta.title || '').trim();
         var b = el('inf-project-badge');
-        if (b) { if (t) { b.textContent = '📄 ' + t; b.style.display = ''; } else { b.textContent = ''; b.style.display = 'none'; } }
+        if (b) { if (t) { b.textContent = t; b.style.display = ''; } else { b.textContent = ''; b.style.display = 'none'; } }
         var tn = el('tbExperimentName'), tc = el('tbExperiment');
         if (tn) tn.textContent = t || 'Experimento sin nombre';
         if (tc) { tc.classList.toggle('tb-experiment-empty', !t); tc.title = t ? ('Experimento: ' + t + ' — clic para renombrar') : 'Ponele un nombre a tu experimento — clic para escribirlo'; }
@@ -29055,6 +29108,9 @@ bluetooth.startIOPinService()</pre>
 
       function init() {
         injectStyles();
+        fillIcons(document);
+        restoreNavState();
+        var ns = el('inf-nav-show'); if (ns) ns.addEventListener('click', function () { toggleNav(true); });
         if (!I.doc) I.doc = defaultDoc();
         I.meta.date = I.meta.date || todayStr();
         wire();
@@ -29326,25 +29382,42 @@ bluetooth.startIOPinService()</pre>
     'Armado': { en: 'Assembly', pt: 'Montagem' },
     'Apuntes': { en: 'Notes', pt: 'Anotações' },
     'Editor del documento': { en: 'Document editor', pt: 'Editor do documento' },
+    'Apuntes y fotos': { en: 'Notes and photos', pt: 'Anotações e fotos' },
+    'Ocultar la lista de partes': { en: 'Hide the parts list', pt: 'Ocultar a lista de partes' },
+    'Mostrar la lista de partes': { en: 'Show the parts list', pt: 'Mostrar a lista de partes' },
+    'Partes ▸': { en: 'Parts ▸', pt: 'Partes ▸' },
+    'Subir imagen nueva…': { en: 'Upload new image…', pt: 'Enviar imagem nova…' },
+    'Una foto de tu celular o computadora': { en: 'A photo from your phone or computer', pt: 'Uma foto do seu celular ou computador' },
+    'Insertar como texto o tabla (se puede editar)': { en: 'Insert as text or table (editable)', pt: 'Inserir como texto ou tabela (editável)' },
+    'Ecuación, R² y parámetros': { en: 'Equation, R² and parameters', pt: 'Equação, R² e parâmetros' },
+    'Todos los puntos capturados': { en: 'All captured points', pt: 'Todos os pontos capturados' },
+    'Media, mínimo, máximo y desviación': { en: 'Mean, minimum, maximum and deviation', pt: 'Média, mínimo, máximo e desvio' },
+    'Tabla para contrastar con la teoría': { en: 'Table to compare with theory', pt: 'Tabela para comparar com a teoria' },
+    'Insertar cita': { en: 'Insert citation', pt: 'Inserir citação' },
+    'Empezá agregando las partes del informe': { en: 'Start by adding the parts of the report', pt: 'Comece adicionando as partes do relatório' },
+    'Informe completo. Ya podés descargarlo o guardarlo en Drive.': { en: 'Report complete. You can download it or save it to Drive.', pt: 'Relatório completo. Você já pode baixá-lo ou salvá-lo no Drive.' },
+    'Todavía está vacía: escribí algo': { en: 'Still empty: write something', pt: 'Ainda está vazia: escreva algo' },
+    'Google Drive · guardado automático': { en: 'Google Drive · auto-save', pt: 'Google Drive · salvamento automático' },
+    'Foto': { en: 'Photo', pt: 'Foto' },
+    '✕ Volver a editar': { en: '✕ Back to editing', pt: '✕ Voltar a editar' },
     // ---------- INFORME · editor tipo Word (listón, cinta, navegador de partes, hoja) ----------
     'Informe': { en: 'Report', pt: 'Relatório' },
     'Estado del guardado. Clic para ver las opciones: Google Drive, archivo, retomar…': { en: 'Save status. Click for options: Google Drive, file, resume…', pt: 'Estado do salvamento. Clique para ver as opções: Google Drive, arquivo, retomar…' },
     'Se guarda solo en este navegador': { en: 'Saved only in this browser', pt: 'Salvo só neste navegador' },
-    '💾 Se guarda solo en este navegador': { en: '💾 Saved only in this browser', pt: '💾 Salvo só neste navegador' },
-    '☁ Google Drive conectado · guardado manual': { en: '☁ Google Drive connected · manual save', pt: '☁ Google Drive conectado · salvamento manual' },
+    'Google Drive conectado · guardado manual': { en: 'Google Drive connected · manual save', pt: 'Google Drive conectado · salvamento manual' },
     'Ver cómo queda el informe terminado (así se descarga en PDF y Word)': { en: 'See the finished report (this is how it downloads as PDF and Word)', pt: 'Ver como fica o relatório pronto (assim é baixado em PDF e Word)' },
     'Descargar': { en: 'Download', pt: 'Baixar' },
     'Descargar el informe en PDF o Word, o todo el proyecto': { en: 'Download the report as PDF or Word, or the whole project', pt: 'Baixar o relatório em PDF ou Word, ou o projeto inteiro' },
-    '📄 Descargar informe en PDF': { en: '📄 Download report as PDF', pt: '📄 Baixar relatório em PDF' },
-    '📝 Descargar informe en Word (.docx)': { en: '📝 Download report as Word (.docx)', pt: '📝 Baixar relatório em Word (.docx)' },
-    '☁ Guardar informe en Google Drive (PDF + Word)': { en: '☁ Save report to Google Drive (PDF + Word)', pt: '☁ Salvar relatório no Google Drive (PDF + Word)' },
+    'Descargar informe en PDF': { en: 'Download report as PDF', pt: 'Baixar relatório em PDF' },
+    'Descargar informe en Word (.docx)': { en: 'Download report as Word (.docx)', pt: 'Baixar relatório em Word (.docx)' },
+    'Guardar informe en Google Drive (PDF + Word)': { en: 'Save report to Google Drive (PDF + Word)', pt: 'Salvar relatório no Google Drive (PDF + Word)' },
     'Datos y gráficas': { en: 'Data and charts', pt: 'Dados e gráficos' },
-    '📈 Gráficas en PNG': { en: '📈 Charts as PNG', pt: '📈 Gráficos em PNG' },
-    '🔢 Datos en CSV': { en: '🔢 Data as CSV', pt: '🔢 Dados em CSV' },
-    '📦 Descargar todo en ZIP (informe + datos)': { en: '📦 Download everything as ZIP (report + data)', pt: '📦 Baixar tudo em ZIP (relatório + dados)' },
+    'Gráficas en PNG': { en: 'Charts as PNG', pt: 'Gráficos em PNG' },
+    'Datos en CSV': { en: 'Data as CSV', pt: 'Dados em CSV' },
+    'Descargar todo en ZIP (informe + datos)': { en: 'Download everything as ZIP (report + data)', pt: 'Baixar tudo em ZIP (relatório + dados)' },
     'Proyecto (para seguir editando después)': { en: 'Project (to keep editing later)', pt: 'Projeto (para continuar editando depois)' },
-    '💾 Guardar proyecto en un archivo': { en: '💾 Save project to a file', pt: '💾 Salvar projeto em um arquivo' },
-    '📂 Abrir un proyecto guardado': { en: '📂 Open a saved project', pt: '📂 Abrir um projeto salvo' },
+    'Guardar proyecto en un archivo': { en: 'Save project to a file', pt: 'Salvar projeto em um arquivo' },
+    'Abrir un proyecto guardado': { en: 'Open a saved project', pt: 'Abrir um projeto salvo' },
     'Guardar en ': { en: 'Save to ', pt: 'Salvar no ' },
     'Guarda el proyecto y el informe (PDF + Word) en tu Google Drive, en la carpeta fisicabit / Informes': { en: 'Saves the project and the report (PDF + Word) to your Google Drive, in the fisicabit / Informes folder', pt: 'Salva o projeto e o relatório (PDF + Word) no seu Google Drive, na pasta fisicabit / Informes' },
     'Cerrar el informe (lo que escribiste queda guardado)': { en: 'Close the report (what you wrote stays saved)', pt: 'Fechar o relatório (o que você escreveu fica salvo)' },
@@ -29416,9 +29489,9 @@ bluetooth.startIOPinService()</pre>
     'Lista automática de las partes del informe': { en: 'Automatic list of the report parts', pt: 'Lista automática das partes do relatório' },
     'Referencias consultadas (formato APA)': { en: 'References consulted (APA format)', pt: 'Referências consultadas (formato APA)' },
     'Se agregan como partes del informe': { en: 'They are added as parts of the report', pt: 'São adicionadas como partes do relatório' },
-    '🗂 Índice al inicio': { en: '🗂 Table of contents at the start', pt: '🗂 Índice no início' },
-    '📚 Bibliografía al final': { en: '📚 Bibliography at the end', pt: '📚 Bibliografia no final' },
-    '🔤 Letra:': { en: '🔤 Font:', pt: '🔤 Letra:' },
+    'Índice al inicio': { en: 'Table of contents at the start', pt: 'Índice no início' },
+    'Bibliografía al final': { en: 'Bibliography at the end', pt: 'Bibliografia no final' },
+    'Letra:': { en: 'Font:', pt: 'Letra:' },
     'Vista': { en: 'View', pt: 'Exibição' },
     'Plegar todas las partes': { en: 'Collapse all parts', pt: 'Recolher todas as partes' },
     'Se ve solo el nombre de cada una: ideal para ordenar': { en: 'Only the name of each one is shown: ideal for reordering', pt: 'Mostra só o nome de cada uma: ideal para ordenar' },
@@ -29439,9 +29512,9 @@ bluetooth.startIOPinService()</pre>
     '¿Qué querías averiguar o medir con este experimento? Escribilo en una o dos oraciones.\nEjemplo: «Medir la aceleración de la gravedad con la caída de una pelota.»': { en: 'What did you want to find out or measure with this experiment? Write it in one or two sentences.\nExample: “Measure the acceleration of gravity with a falling ball.”', pt: 'O que você queria descobrir ou medir com este experimento? Escreva em uma ou duas frases.\nExemplo: «Medir a aceleração da gravidade com a queda de uma bola.»' },
     'Explicá con tus palabras la física del experimento: qué leyes o fórmulas se usan.\nPodés insertar fórmulas con el botón ∑ Ecuación de la barra.': { en: 'Explain in your own words the physics of the experiment: which laws or formulas are used.\nYou can insert formulas with the ∑ Equation button on the toolbar.', pt: 'Explique com suas palavras a física do experimento: quais leis ou fórmulas são usadas.\nVocê pode inserir fórmulas com o botão ∑ Equação da barra.' },
     'Escribí un material por línea (Enter agrega otro).': { en: 'Write one material per line (Enter adds another).', pt: 'Escreva um material por linha (Enter adiciona outro).' },
-    'Contá paso a paso qué hicieron, como una receta.\nTip: escribí «1. » al inicio de una línea para armar una lista numerada. Con 🖼 Imagen podés poner fotos del montaje.': { en: 'Tell step by step what you did, like a recipe.\nTip: type “1. ” at the start of a line to make a numbered list. With 🖼 Image you can add photos of the setup.', pt: 'Conte passo a passo o que fizeram, como uma receita.\nDica: escreva «1. » no início de uma linha para criar uma lista numerada. Com 🖼 Imagem você pode colocar fotos da montagem.' },
-    'Insertá la gráfica y la tabla con los botones 📈 Gráfica y 🔢 Datos de la barra, y describí qué se ve: ¿cómo cambia una variable cuando cambia la otra?': { en: 'Insert the chart and the table with the 📈 Chart and 🔢 Data buttons on the toolbar, and describe what you see: how does one variable change when the other changes?', pt: 'Insira o gráfico e a tabela com os botões 📈 Gráfico e 🔢 Dados da barra, e descreva o que se vê: como uma variável muda quando a outra muda?' },
-    'Compará lo que midieron con lo que dice la teoría. ¿Coincide? ¿Qué errores pudo haber?\nCon 🔢 Datos → «Comparación» se inserta una tabla lista para completar.': { en: 'Compare what you measured with what theory says. Does it match? What errors could there be?\nWith 🔢 Data → “Comparison” a ready-to-fill table is inserted.', pt: 'Compare o que mediram com o que diz a teoria. Coincide? Que erros pode ter havido?\nCom 🔢 Dados → «Comparação» insere-se uma tabela pronta para completar.' },
+    'Contá paso a paso qué hicieron, como una receta.\nTip: escribí «1. » al inicio de una línea para armar una lista numerada. Con «Imagen» podés poner fotos del montaje.': { en: 'Tell step by step what you did, like a recipe.\nTip: type “1. ” at the start of a line to make a numbered list. With “Image” you can add photos of the setup.', pt: 'Conte passo a passo o que fizeram, como uma receita.\nDica: escreva «1. » no início de uma linha para criar uma lista numerada. Com «Imagem» você pode colocar fotos da montagem.' },
+    'Insertá la gráfica y la tabla con los botones «Gráfica» y «Datos» de la barra, y describí qué se ve: ¿cómo cambia una variable cuando cambia la otra?': { en: 'Insert the chart and the table with the “Chart” and “Data” buttons on the toolbar, and describe what you see: how does one variable change when the other changes?', pt: 'Insira o gráfico e a tabela com os botões «Gráfico» e «Dados» da barra, e descreva o que se vê: como uma variável muda quando a outra muda?' },
+    'Compará lo que midieron con lo que dice la teoría. ¿Coincide? ¿Qué errores pudo haber?\nCon «Datos» → «Comparación» se inserta una tabla lista para completar.': { en: 'Compare what you measured with what theory says. Does it match? What errors could there be?\nWith “Data” → “Comparison” a ready-to-fill table is inserted.', pt: 'Compare o que mediram com o que diz a teoria. Coincide? Que erros pode ter havido?\nCom «Dados» → «Comparação» insere-se uma tabela pronta para completar.' },
     '¿Se cumplió el objetivo? ¿Qué aprendiste? ¿Qué mejorarías si lo repitieras?': { en: 'Was the objective met? What did you learn? What would you improve if you repeated it?', pt: 'O objetivo foi cumprido? O que você aprendeu? O que melhoraria se repetisse?' },
     'Escribí acá… Con la barra de arriba das formato e insertás imágenes, gráficas, tablas y ecuaciones.': { en: 'Write here… Use the toolbar above to format and insert images, charts, tables and equations.', pt: 'Escreva aqui… Com a barra de cima você formata e insere imagens, gráficos, tabelas e equações.' },
     // Barra de cada parte
@@ -29473,7 +29546,7 @@ bluetooth.startIOPinService()</pre>
     'Agregar o editar fotos': { en: 'Add or edit photos', pt: 'Adicionar ou editar fotos' },
     '(se genera automáticamente con los datos)': { en: '(generated automatically from the data)', pt: '(gerado automaticamente com os dados)' },
     // Vista previa y cajón
-    '👁 Así queda tu informe': { en: '👁 This is how your report looks', pt: '👁 Assim fica o seu relatório' },
+    'Así queda tu informe': { en: 'This is how your report looks', pt: 'Assim fica o seu relatório' },
     'Lo que ves acá es lo que se descarga en PDF y Word.': { en: 'What you see here is what gets downloaded as PDF and Word.', pt: 'O que você vê aqui é o que é baixado em PDF e Word.' },
     'Volver a editar': { en: 'Back to editing', pt: 'Voltar a editar' },
     '✎ Volver a editar': { en: '✎ Back to editing', pt: '✎ Voltar a editar' },
@@ -29486,12 +29559,10 @@ bluetooth.startIOPinService()</pre>
     'Datos importantes, observaciones, cosas que pasaron durante el experimento.': { en: 'Key data, observations, things that happened during the experiment.', pt: 'Dados importantes, observações, coisas que aconteceram durante o experimento.' },
     'Dibujo a mano': { en: 'Hand drawing', pt: 'Desenho à mão' },
     'Fotos del experimento': { en: 'Experiment photos', pt: 'Fotos do experimento' },
-    '📷 Subir / sacar foto': { en: '📷 Upload / take photo', pt: '📷 Enviar / tirar foto' },
-    '📄 Guardar el informe (PDF + Word) en Drive': { en: '📄 Save the report (PDF + Word) to Drive', pt: '📄 Salvar o relatório (PDF + Word) no Drive' },
+    'Subir / sacar foto': { en: 'Upload / take photo', pt: 'Enviar / tirar foto' },
+    'Guardar el informe (PDF + Word) en Drive': { en: 'Save the report (PDF + Word) to Drive', pt: 'Salvar o relatório (PDF + Word) no Drive' },
     'Tocá los botones para armar la fórmula (o escribí LaTeX). Abajo ves cómo queda.': { en: 'Tap the buttons to build the formula (or type LaTeX). Below you see how it looks.', pt: 'Toque nos botões para montar a fórmula (ou escreva LaTeX). Abaixo você vê como fica.' },
     '∑ Insertar / editar ecuación': { en: '∑ Insert / edit equation', pt: '∑ Inserir / editar equação' },
-    '🧽 Goma': { en: '🧽 Eraser', pt: '🧽 Borracha' },
-    '🗑 Borrar todo': { en: '🗑 Clear all', pt: '🗑 Apagar tudo' },
     // Avisos
     'No hay nada para deshacer.': { en: 'Nothing to undo.', pt: 'Nada para desfazer.' },
     'No hay nada para rehacer.': { en: 'Nothing to redo.', pt: 'Nada para refazer.' },
@@ -29564,16 +29635,16 @@ bluetooth.startIOPinService()</pre>
     'Esquemas del montaje, diagramas de fuerzas, croquis… Se abre un lienzo grande para dibujar a mano.': { en: 'Setup schematics, force diagrams, sketches… A large canvas opens to draw by hand.', pt: 'Esquemas da montagem, diagramas de forças, croquis… Abre-se uma tela grande para desenhar à mão.' },
     'Sacá o subí fotos del montaje y, en el pie de cada una, indicá sus partes. Podés ajustar el tamaño y se agregan al informe.': { en: 'Take or upload photos of the setup and, in each caption, label their parts. You can adjust the size and they are added to the report.', pt: 'Tire ou envie fotos da montagem e, na legenda de cada uma, indique suas partes. Você pode ajustar o tamanho e elas são adicionadas ao relatório.' },
     'Tocá acá para abrir el lienzo y dibujar tu esquema a mano': { en: 'Tap here to open the canvas and draw your schematic by hand', pt: 'Toque aqui para abrir a tela e desenhar seu esquema à mão' },
-    '✏ Abrir lienzo para dibujar': { en: '✏ Open canvas to draw', pt: '✏ Abrir tela para desenhar' },
+    'Abrir lienzo para dibujar': { en: 'Open canvas to draw', pt: 'Abrir tela para desenhar' },
     'Borrar dibujo': { en: 'Clear drawing', pt: 'Apagar desenho' },
-    '＋ Subir / sacar imagen': { en: '＋ Upload / take photo', pt: '＋ Enviar / tirar imagem' },
+    'Subir / sacar imagen': { en: 'Upload / take photo', pt: 'Enviar / tirar imagem' },
     'Subir o sacar una o varias fotos del experimento': { en: 'Upload or take one or more photos of the experiment', pt: 'Enviar ou tirar uma ou várias fotos do experimento' },
     'Abrir un lienzo grande para dibujar a mano un esquema o diagrama': { en: 'Open a large canvas to hand-draw a schematic or diagram', pt: 'Abrir uma tela grande para desenhar à mão um esquema ou diagrama' },
     'Borrar el dibujo hecho a mano': { en: 'Erase the hand-made drawing', pt: 'Apagar o desenho feito à mão' },
 
     // ---------- INFORME · lienzo de dibujo ----------
     'Lienzo de dibujo': { en: 'Drawing canvas', pt: 'Tela de desenho' },
-    '✏ Lápiz': { en: '✏ Pencil', pt: '✏ Lápis' },
+    'Lápiz': { en: 'Pencil', pt: 'Lápis' },
     'Lápiz para dibujar': { en: 'Pencil to draw', pt: 'Lápis para desenhar' },
     'Goma para borrar parte del dibujo': { en: 'Eraser to remove part of the drawing', pt: 'Borracha para apagar parte do desenho' },
     'Borrar todo el lienzo': { en: 'Clear the whole canvas', pt: 'Apagar toda a tela' },
@@ -29634,15 +29705,9 @@ bluetooth.startIOPinService()</pre>
     'Vista del editor:': { en: 'Editor view:', pt: 'Vista do editor:' },
     '▸ Colapsar todo': { en: '▸ Collapse all', pt: '▸ Recolher tudo' },
     '▾ Expandir todo': { en: '▾ Expand all', pt: '▾ Expandir tudo' },
-    '＋ En blanco': { en: '＋ Blank', pt: '＋ Em branco' },
-    '＋ Objetivo': { en: '＋ Objective', pt: '＋ Objetivo' },
-    '＋ Fundamento teórico': { en: '＋ Theoretical background', pt: '＋ Fundamentação teórica' },
-    '＋ Marco teórico': { en: '＋ Theoretical framework', pt: '＋ Marco teórico' },
-    '＋ Materiales': { en: '＋ Materials', pt: '＋ Materiais' },
+    'En blanco': { en: 'Blank', pt: 'Em branco' },
+    'Marco teórico': { en: 'Theoretical framework', pt: 'Marco teórico' },
     'Agregar la sección «Materiales» como lista con viñetas: un material por línea (Enter agrega otro)': { en: 'Add the "Materials" section as a bulleted list: one material per line (Enter adds another)', pt: 'Adicionar a seção «Materiais» como lista com marcadores: um material por linha (Enter adiciona outro)' },
-    '＋ Procedimiento': { en: '＋ Procedure', pt: '＋ Procedimento' },
-    '＋ Resultados': { en: '＋ Results', pt: '＋ Resultados' },
-    '＋ Conclusión': { en: '＋ Conclusion', pt: '＋ Conclusão' },
     'Fundamento teórico': { en: 'Theoretical background', pt: 'Fundamentação teórica' },
     'Georgia (serif)': { en: 'Georgia (serif)', pt: 'Georgia (serif)' },
     'Montserrat (predet.)': { en: 'Montserrat (default)', pt: 'Montserrat (padrão)' },
@@ -29696,15 +29761,11 @@ bluetooth.startIOPinService()</pre>
 
     // ---------- INFORME · menú de imagen / datos ----------
     '⬆ Subir imagen nueva…': { en: '⬆ Upload new image…', pt: '⬆ Enviar nova imagem…' },
-    '📈 Gráfica 1': { en: '📈 Graph 1', pt: '📈 Gráfico 1' },
-    '📈 Gráfica 2': { en: '📈 Graph 2', pt: '📈 Gráfico 2' },
-    '📈 Gráfica 3': { en: '📈 Graph 3', pt: '📈 Gráfico 3' },
-    '📐 Mapeo · mapa del campo (actual)': { en: '📐 Mapping · field map (current)', pt: '📐 Mapeamento · mapa do campo (atual)' },
-    '📐 Mapeo · corte 1D y ajuste (actual)': { en: '📐 Mapping · 1D cut and fit (current)', pt: '📐 Mapeamento · corte 1D e ajuste (atual)' },
+    'Mapeo · mapa del campo (actual)': { en: 'Mapping · field map (current)', pt: 'Mapeamento · mapa do campo (atual)' },
+    'Mapeo · corte 1D y ajuste (actual)': { en: 'Mapping · 1D cut and fit (current)', pt: 'Mapeamento · corte 1D e ajuste (atual)' },
     'Insertar como texto/tabla editable': { en: 'Insert as editable text/table', pt: 'Inserir como texto/tabela editável' },
     '🧮 Ajuste de curva': { en: '🧮 Curve fit', pt: '🧮 Ajuste de curva' },
     '🧩 Ajuste por tramos': { en: '🧩 Piecewise fit', pt: '🧩 Ajuste por trechos' },
-    '🔢 Tabla de datos': { en: '🔢 Data table', pt: '🔢 Tabela de dados' },
     '📊 Estadísticas': { en: '📊 Statistics', pt: '📊 Estatísticas' },
     '⚖️ Comparación modelo · ajuste · datos': { en: '⚖️ Model · fit · data comparison', pt: '⚖️ Comparação modelo · ajuste · dados' },
 
@@ -29730,7 +29791,7 @@ bluetooth.startIOPinService()</pre>
     'Guardar los cambios y volver al editor': { en: 'Save changes and return to the editor', pt: 'Salvar as alterações e voltar ao editor' },
 
     // ---------- INFORME · bibliografía ----------
-    '＋ Agregar referencia': { en: '＋ Add reference', pt: '＋ Adicionar referência' },
+    'Agregar referencia': { en: 'Add reference', pt: 'Adicionar referência' },
     'Agregar una nueva referencia a la bibliografía': { en: 'Add a new reference to the bibliography', pt: 'Adicionar uma nova referência à bibliografia' },
     'Autor(es) — Apellido, N.; Apellido, N.': { en: 'Author(s) — Last name, N.; Last name, N.', pt: 'Autor(es) — Sobrenome, N.; Sobrenome, N.' },
     'Año': { en: 'Year', pt: 'Ano' },
@@ -29738,33 +29799,32 @@ bluetooth.startIOPinService()</pre>
     'URL (opcional)': { en: 'URL (optional)', pt: 'URL (opcional)' },
 
     // ---------- INFORME · menú superior Exportar / Guardar ----------
-    '⬇ Exportar / Guardar': { en: '⬇ Export / Save', pt: '⬇ Exportar / Salvar' },
-    '⬇ Descargar informe (PDF)': { en: '⬇ Download report (PDF)', pt: '⬇ Baixar relatório (PDF)' },
-    '⬇ Descargar informe (Word .docx)': { en: '⬇ Download report (Word .docx)', pt: '⬇ Baixar relatório (Word .docx)' },
-    '📦 Descargar todo (ZIP)': { en: '📦 Download everything (ZIP)', pt: '📦 Baixar tudo (ZIP)' },
-    '📦 Descargar todo (informe + datos)': { en: '📦 Download everything (report + data)', pt: '📦 Baixar tudo (relatório + dados)' },
-    '📈 Gráficos PNG': { en: '📈 PNG charts', pt: '📈 Gráficos PNG' },
-    '📄 Datos CSV': { en: '📄 CSV data', pt: '📄 Dados CSV' },
-    '💾 Guardar proyecto': { en: '💾 Save project', pt: '💾 Salvar projeto' },
-    '💾 Guardar mi trabajo en un archivo': { en: '💾 Save my work to a file', pt: '💾 Salvar meu trabalho em um arquivo' },
-    '📂 Abrir proyecto': { en: '📂 Open project', pt: '📂 Abrir projeto' },
-    '📂 Abrir un trabajo guardado…': { en: '📂 Open a saved work…', pt: '📂 Abrir um trabalho salvo…' },
-    '📂 Abrir / cambiar de experimento…': { en: '📂 Open / switch experiment…', pt: '📂 Abrir / trocar de experimento…' },
-    '＋ Nuevo experimento': { en: '＋ New experiment', pt: '＋ Novo experimento' },
-    '🗑 Reiniciar todo': { en: '🗑 Reset everything', pt: '🗑 Reiniciar tudo' },
+    'Exportar / Guardar': { en: 'Export / Save', pt: 'Exportar / Salvar' },
+    'Descargar informe (PDF)': { en: 'Download report (PDF)', pt: 'Baixar relatório (PDF)' },
+    'Descargar informe (Word .docx)': { en: 'Download report (Word .docx)', pt: 'Baixar relatório (Word .docx)' },
+    'Descargar todo (ZIP)': { en: 'Download everything (ZIP)', pt: 'Baixar tudo (ZIP)' },
+    'Descargar todo (informe + datos)': { en: 'Download everything (report + data)', pt: 'Baixar tudo (relatório + dados)' },
+    'Gráficos PNG': { en: 'PNG charts', pt: 'Gráficos PNG' },
+    'Datos CSV': { en: 'CSV data', pt: 'Dados CSV' },
+    'Guardar proyecto': { en: 'Save project', pt: 'Salvar projeto' },
+    'Guardar mi trabajo en un archivo': { en: 'Save my work to a file', pt: 'Salvar meu trabalho em um arquivo' },
+    'Abrir un trabajo guardado…': { en: 'Open a saved work…', pt: 'Abrir um trabalho salvo…' },
+    'Abrir / cambiar de experimento…': { en: 'Open / switch experiment…', pt: 'Abrir / trocar de experimento…' },
+    'Nuevo experimento': { en: 'New experiment', pt: 'Novo experimento' },
+    'Reiniciar todo': { en: 'Reset everything', pt: 'Reiniciar tudo' },
     'Guardar / Proyecto (archivo)': { en: 'Save / Project (file)', pt: 'Salvar / Projeto (arquivo)' },
     'Guardar / descargar': { en: 'Save / download', pt: 'Salvar / baixar' },
     'Retomar trabajo': { en: 'Resume work', pt: 'Retomar trabalho' },
-    '↺ Retomar mi último trabajo': { en: '↺ Resume my last work', pt: '↺ Retomar meu último trabalho' },
+    'Retomar mi último trabajo': { en: 'Resume my last work', pt: 'Retomar meu último trabalho' },
     'Nombre del experimento': { en: 'Experiment name', pt: 'Nome do experimento' },
     'Exportar': { en: 'Export', pt: 'Exportar' },
     'Controles': { en: 'Controls', pt: 'Controles' },
 
     // ---------- INFORME · Google Drive ----------
     'Google Drive · en la nube (opcional)': { en: 'Google Drive · in the cloud (optional)', pt: 'Google Drive · na nuvem (opcional)' },
-    '☁ Conectar con Google': { en: '☁ Connect with Google', pt: '☁ Conectar com o Google' },
-    '☁ Guardar ahora en Drive': { en: '☁ Save to Drive now', pt: '☁ Salvar agora no Drive' },
-    '☁ Google Drive (opcional): usá el botón «Conectar con Google» de arriba, al lado de AYUDA.': { en: '☁ Google Drive (optional): use the “Connect with Google” button above, next to HELP.', pt: '☁ Google Drive (opcional): use o botão «Conectar com o Google» acima, ao lado de AJUDA.' },
+    'Conectar con Google': { en: 'Connect with Google', pt: 'Conectar com o Google' },
+    'Guardar ahora en Drive': { en: 'Save to Drive now', pt: 'Salvar agora no Drive' },
+    'Google Drive (opcional): usá el botón «Conectar con Google» de arriba, al lado de AYUDA.': { en: 'Google Drive (optional): use the “Connect with Google” button above, next to HELP.', pt: 'Google Drive (opcional): use o botão «Conectar com o Google» acima, ao lado de AJUDA.' },
     'Guardar automáticamente en Drive': { en: 'Save automatically to Drive', pt: 'Salvar automaticamente no Drive' },
     'Guardá y retomá tus experimentos desde cualquier navegador.': { en: 'Save and resume your experiments from any browser.', pt: 'Salve e retome seus experimentos de qualquer navegador.' },
     'Cerrar sesión de Google': { en: 'Sign out of Google', pt: 'Sair da conta Google' },
@@ -30022,8 +30082,8 @@ bluetooth.startIOPinService()</pre>
   function fillTmpl(tmpl, groups) { var i = 0; return tmpl.replace(/%[ns]%/g, function () { var v = groups[i++]; return v === undefined ? '' : v; }); }
   var RULE_DEFS = [
     { es: '%n% de %n% partes listas · faltan %n%', en: '%n% of %n% parts done · %n% to go', pt: '%n% de %n% partes prontas · faltam %n%' },
-    { es: '✍️ %n% partes vacías no se incluyen hasta que escribas algo en ellas.', en: '✍️ %n% empty parts are not included until you write something in them.', pt: '✍️ %n% partes vazias não são incluídas até você escrever algo nelas.' },
-    { es: '✍️ %n% parte vacía no se incluye hasta que escribas algo en ellas.', en: '✍️ %n% empty part is not included until you write something in it.', pt: '✍️ %n% parte vazia não é incluída até você escrever algo nela.' },
+    { es: '%n% partes vacías no se incluyen hasta que escribas algo en ellas.', en: '%n% empty parts are not included until you write something in them.', pt: '%n% partes vazias não são incluídas até você escrever algo nelas.' },
+    { es: '%n% parte vacía no se incluye hasta que escribas algo en ellas.', en: '%n% empty part is not included until you write something in it.', pt: '%n% parte vazia não é incluída até você escrever algo nela.' },
     { es: 'Gráfica %n%', en: 'Graph %n%', pt: 'Gráfico %n%' },
     { es: 'Gráfica: %s%', en: 'Graph: %s%', pt: 'Gráfico: %s%' },
     { es: 'Sección: %s%', en: 'Section: %s%', pt: 'Seção: %s%' },
