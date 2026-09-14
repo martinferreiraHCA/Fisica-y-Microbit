@@ -30318,7 +30318,9 @@ bluetooth.startIOPinService()</pre>
     .s3d-check { display:flex; align-items:center; gap:7px; font-size:11px; color:#aab; margin:8px 0 0; cursor:pointer; user-select:none; }
     .s3d-check input { accent-color:#fff; }
     .s3d-param-group-title { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#cfd4dd; background:#1a1d23; border:1px solid #2b303b; padding:4px 8px; margin:12px 0 8px; }
-    .s3d-param { margin-bottom:10px; }
+    .s3d-param { margin-bottom:10px; padding-left:8px; margin-left:-8px; border-left:2px solid transparent; transition:border-color .15s, background .15s; }
+    .s3d-param.s3d-dim-active { border-left-color:#ffca28; background:rgba(255,202,40,.07); }
+    .s3d-param.s3d-dim-active .s3d-param-name { color:#ffca28; }
     .s3d-param-label { font-size:11px; color:#aab; margin-bottom:3px; display:block; }
     .s3d-param-name { font-family:'SF Mono', Consolas, monospace; font-size:10px; color:#6f7887; }
     .s3d-param-row { display:flex; gap:7px; align-items:center; }
@@ -30407,7 +30409,7 @@ bluetooth.startIOPinService()</pre>
                 </div>
                 <div class="s3d-section">
                     <div class="s3d-section-title">Ayuda</div>
-                    <div class="s3d-empty-params">Al pasar por un parámetro o moverlo, la medida se marca en amarillo sobre la pieza. Con <b>CORTE</b> ves el interior por la mitad. <b>VER CÓDIGO</b> despliega el código OpenSCAD: las variables del inicio aparecen como parámetros, un comentario <b>// [mín:máx]</b> crea un deslizador y <b>/* [Grupo] */</b> agrupa. Con el <b>ASISTENTE CON IA</b> podés crear una pieza nueva describiéndola: el sistema arma el prompt, lo pegás en tu IA favorita y traés la respuesta.</div>
+                    <div class="s3d-empty-params">Al pasar por un parámetro o moverlo, su medida se acota en amarillo sobre la pieza (flechas, líneas de referencia y valor). Con <b>COTAS</b> ves todas las medidas a la vez, como en un plano. Con <b>CORTE</b> ves el interior por la mitad. <b>VER CÓDIGO</b> despliega el código OpenSCAD: las variables del inicio aparecen como parámetros, un comentario <b>// [mín:máx]</b> crea un deslizador y <b>/* [Grupo] */</b> agrupa. Con el <b>ASISTENTE CON IA</b> podés crear una pieza nueva describiéndola: el sistema arma el prompt, lo pegás en tu IA favorita y traés la respuesta.</div>
                 </div>
             </div>
             <div class="s3d-main">
@@ -30417,6 +30419,7 @@ bluetooth.startIOPinService()</pre>
                 </div>
                 <div class="s3d-viewport-wrap" id="s3d-viewport">
                     <div class="s3d-view-tools">
+                        <button id="s3d-cotas" title="Mostrar todas las medidas (cotas) de la pieza a la vez">Cotas: no</button>
                         <button id="s3d-corte" title="Ver la pieza cortada por la mitad para mirar su interior">Corte: no</button>
                         <button id="s3d-fit" title="Encuadrar la pieza">Encuadrar</button>
                     </div>
@@ -30514,13 +30517,16 @@ bluetooth.startIOPinService()</pre>
     /* ---------- Biblioteca de piezas ---------- */
     // Cotas precisas para las piezas del catálogo original, indexadas por
     // el nombre del archivo .scad (sin extensión) en la carpeta. Las piezas
-    // sin entrada acá usan el acotado genérico (recuadro + etiqueta).
+    // sin entrada acá usan el acotado genérico (largo, ancho y alto totales).
+    // Tipos: lin (a→b; 'off' = desplazamiento desde la pieza hasta la línea
+    // de cota, para dibujar las líneas de referencia), dia/circle (c, r,
+    // axis), arc (c, r, from, to en grados, en el plano XZ).
     var DIM_SPECS = {
     'polea': function (v) {
         var r = v.diametro_exterior / 2, h = v.altura;
         return {
             diametro_exterior: { t: 'dia', c: [0, 0, h / 2], r: r, axis: 'z' },
-            altura: { t: 'lin', a: [r + 7, 0, -h / 2], b: [r + 7, 0, h / 2] },
+            altura: { t: 'lin', a: [r + 7, 0, -h / 2], b: [r + 7, 0, h / 2], off: [7, 0, 0] },
             diametro_eje: { t: 'dia', c: [0, 0, h / 2], r: v.diametro_eje / 2, axis: 'z' },
             garganta: { t: 'lin', a: [r - v.garganta, 0, 0], b: [r, 0, 0] },
             agujeros: { t: 'circle', c: [0, 0, h / 2], r: (r - v.garganta + v.diametro_eje / 2) / 2, axis: 'z', label: 'agujeros = ' + v.agujeros }
@@ -30531,13 +30537,13 @@ bluetooth.startIOPinService()</pre>
         var zt = v.base_espesor + v.altura_abrazadera;
         return {
             diametro_varilla: { t: 'dia', c: [0, 0, zt], r: v.diametro_varilla / 2, axis: 'z' },
-            altura_abrazadera: { t: 'lin', a: [dext / 2 + 7, 0, v.base_espesor], b: [dext / 2 + 7, 0, zt] },
+            altura_abrazadera: { t: 'lin', a: [dext / 2 + 7, 0, v.base_espesor], b: [dext / 2 + 7, 0, zt], off: [7, 0, 0] },
             pared: { t: 'lin', a: [v.diametro_varilla / 2, 0, zt], b: [dext / 2, 0, zt] },
             ranura: { t: 'lin', a: [-v.ranura / 2, (v.diametro_varilla / 2 + dext / 2) / 2, zt], b: [v.ranura / 2, (v.diametro_varilla / 2 + dext / 2) / 2, zt] },
             tornillo_apriete: { t: 'dia', c: [dext / 2, v.diametro_varilla / 2 + v.pared / 2, v.base_espesor + v.altura_abrazadera / 2], r: v.tornillo_apriete / 2, axis: 'x' },
-            base_largo: { t: 'lin', a: [-v.base_largo / 2, -v.base_ancho / 2 - 7, 0], b: [v.base_largo / 2, -v.base_ancho / 2 - 7, 0] },
-            base_ancho: { t: 'lin', a: [v.base_largo / 2 + 7, -v.base_ancho / 2, 0], b: [v.base_largo / 2 + 7, v.base_ancho / 2, 0] },
-            base_espesor: { t: 'lin', a: [v.base_largo / 2 + 7, 0, 0], b: [v.base_largo / 2 + 7, 0, v.base_espesor] },
+            base_largo: { t: 'lin', a: [-v.base_largo / 2, -v.base_ancho / 2 - 7, 0], b: [v.base_largo / 2, -v.base_ancho / 2 - 7, 0], off: [0, -7, 0] },
+            base_ancho: { t: 'lin', a: [v.base_largo / 2 + 7, -v.base_ancho / 2, 0], b: [v.base_largo / 2 + 7, v.base_ancho / 2, 0], off: [7, 0, 0] },
+            base_espesor: { t: 'lin', a: [v.base_largo / 2 + 7, 0, 0], b: [v.base_largo / 2 + 7, 0, v.base_espesor], off: [7, 0, 0] },
             tornillo_base: { t: 'dia', c: [v.base_largo / 2 - v.tornillo_base * 1.6, 0, v.base_espesor], r: v.tornillo_base / 2, axis: 'z' }
         };
     },
@@ -30546,7 +30552,7 @@ bluetooth.startIOPinService()</pre>
         return {
             diametro_gancho: { t: 'dia', c: [0, 0, 0], r: rg, axis: 'y' },
             grosor: { t: 'lin', a: [0, 0, -(rg - g / 2)], b: [0, 0, -(rg + g / 2)] },
-            vastago: { t: 'lin', a: [g / 2 + 6, 0, rg], b: [g / 2 + 6, 0, rg + v.vastago] },
+            vastago: { t: 'lin', a: [g / 2 + 6, 0, rg], b: [g / 2 + 6, 0, rg + v.vastago], off: [6, 0, 0] },
             ojal: { t: 'dia', c: [0, 0, rg + v.vastago + v.ojal / 2], r: v.ojal / 2, axis: 'y' },
             apertura: { t: 'arc', c: [0, 0, 0], r: rg + g / 2 + 5, from: 90, to: 90 + v.apertura, label: 'apertura = ' + fmtNum(v.apertura) + '\u00b0' }
         };
@@ -30556,9 +30562,9 @@ bluetooth.startIOPinService()</pre>
         var zt = v.altura_base + v.altura_cubo;
         return {
             diametro_base: { t: 'dia', c: [0, 0, 0], r: v.diametro_base / 2, axis: 'z' },
-            altura_base: { t: 'lin', a: [v.diametro_base / 2 + 7, 0, 0], b: [v.diametro_base / 2 + 7, 0, v.altura_base] },
+            altura_base: { t: 'lin', a: [v.diametro_base / 2 + 7, 0, 0], b: [v.diametro_base / 2 + 7, 0, v.altura_base], off: [7, 0, 0] },
             diametro_varilla: { t: 'dia', c: [0, 0, zt], r: v.diametro_varilla / 2, axis: 'z' },
-            altura_cubo: { t: 'lin', a: [dc / 2 + 7, 0, v.altura_base], b: [dc / 2 + 7, 0, zt] },
+            altura_cubo: { t: 'lin', a: [dc / 2 + 7, 0, v.altura_base], b: [dc / 2 + 7, 0, zt], off: [7, 0, 0] },
             pared: { t: 'lin', a: [v.diametro_varilla / 2, 0, zt], b: [dc / 2, 0, zt] },
             prisionero: { t: 'dia', c: [dc / 2, 0, v.altura_base + v.altura_cubo / 2], r: v.prisionero / 2, axis: 'x' }
         };
@@ -30566,7 +30572,7 @@ bluetooth.startIOPinService()</pre>
     'plantilla-en-blanco': function (v) {
         var l = v.lado;
         return {
-            lado: { t: 'lin', a: [-l / 2, -l / 2 - 7, -l / 2], b: [l / 2, -l / 2 - 7, -l / 2] },
+            lado: { t: 'lin', a: [-l / 2, -l / 2 - 7, -l / 2], b: [l / 2, -l / 2 - 7, -l / 2], off: [0, -7, 0] },
             agujero: { t: 'dia', c: [0, 0, l / 2], r: v.agujero / 2, axis: 'z' }
         };
     }
@@ -30815,9 +30821,11 @@ bluetooth.startIOPinService()</pre>
             }
             wrap.appendChild(row);
             // Acotado dinámico: al pasar por el parámetro o cambiarlo se
-            // marca la medida correspondiente sobre la pieza.
-            wrap.addEventListener('pointerenter', function () { showParamDim(p); });
-            wrap.addEventListener('input', function () { showParamDim(p); });
+            // marca la medida correspondiente sobre la pieza; se mantiene
+            // mientras el puntero esté sobre la fila.
+            wrap.addEventListener('pointerenter', function (e) { setDimParam(p, wrap, e.pointerType === 'touch'); });
+            wrap.addEventListener('input', function () { setDimParam(p, wrap, null); });
+            wrap.addEventListener('pointerleave', function () { releaseDimParam(p, 700); });
             box.appendChild(wrap);
         });
     }
@@ -31161,7 +31169,17 @@ bluetooth.startIOPinService()</pre>
     }
 
     /* ---------- Acotado dinámico sobre la pieza ---------- */
+    // Las cotas se dibujan como en un plano técnico: línea de cota con
+    // flechas, líneas de referencia hasta la pieza y etiqueta con el valor.
+    // Se usan geometrías sólidas (cilindros, conos y toros) en lugar de
+    // líneas de 1 px, así se ven bien a cualquier tamaño y resolución, y
+    // siempre por encima de la pieza (sin prueba de profundidad).
     var dimGroup = null, dimHideTimer = null;
+    var dimsPinned = false;        // botón COTAS: todas las medidas a la vez
+    var dimActiveParam = null;     // parámetro señalado con el puntero
+    var dimActiveRow = null, dimTouch = false;
+    var DIM_COLOR = 0xffca28, DIM_COLOR_CSS = '#ffca28';
+    var DIM_MUTED = 0x6f82ad, DIM_MUTED_CSS = '#b9c4dc';
 
     function valuesMap() {
         var v = {};
@@ -31169,8 +31187,13 @@ bluetooth.startIOPinService()</pre>
         return v;
     }
 
+    function specsForCurrent() {
+        var specFn = currentPiece && currentPiece.specKey ? DIM_SPECS[currentPiece.specKey] : null;
+        if (!specFn) return null;
+        try { return specFn(valuesMap()) || null; } catch (e) { return null; }
+    }
+
     function clearDims() {
-        clearTimeout(dimHideTimer);
         if (!dimGroup || !viewer) return;
         viewer.scene.remove(dimGroup);
         dimGroup.traverse(function (o) {
@@ -31184,43 +31207,117 @@ bluetooth.startIOPinService()</pre>
         viewer.needsFrame = true;
     }
 
-    function makeLabelSprite(THREE, text, height) {
-        var fs = 46, pad = 14;
+    function roundRectPath(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    }
+
+    // Etiqueta como sprite (siempre mira a la cámara), dibujada a alta
+    // resolución para que el texto quede nítido.
+    function makeLabelSprite(THREE, text, height, color, muted) {
+        var fs = 64, pad = 24, border = 6, radius = 16;
         var cv = document.createElement('canvas');
         var ctx = cv.getContext('2d');
-        var font = '600 ' + fs + 'px Consolas, Menlo, monospace';
+        var font = '700 ' + fs + 'px "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
         ctx.font = font;
-        cv.width = Math.ceil(ctx.measureText(text).width) + pad * 2;
-        cv.height = fs + pad * 2;
+        var w = Math.ceil(ctx.measureText(text).width) + pad * 2;
+        var h = Math.round(fs + pad * 1.5);
+        cv.width = w; cv.height = h;
         ctx = cv.getContext('2d');
         ctx.font = font;
-        ctx.fillStyle = 'rgba(8,8,10,0.85)';
-        ctx.fillRect(0, 0, cv.width, cv.height);
-        ctx.strokeStyle = '#ffca28';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(2, 2, cv.width - 4, cv.height - 4);
-        ctx.fillStyle = '#ffca28';
+        roundRectPath(ctx, border / 2, border / 2, w - border, h - border, radius);
+        ctx.fillStyle = muted ? 'rgba(18,20,26,0.80)' : 'rgba(10,11,15,0.94)';
+        ctx.fill();
+        ctx.lineWidth = border;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+        ctx.fillStyle = color;
         ctx.textBaseline = 'middle';
-        ctx.fillText(text, pad, cv.height / 2 + 2);
+        ctx.textAlign = 'center';
+        ctx.fillText(text, w / 2, h / 2 + 3);
+        var tex = new THREE.CanvasTexture(cv);
+        tex.anisotropy = viewer.renderer.capabilities.getMaxAnisotropy();
         var sprite = new THREE.Sprite(new THREE.SpriteMaterial({
-            map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true
+            map: tex, depthTest: false, depthWrite: false, transparent: true
         }));
-        sprite.scale.set(height * cv.width / cv.height, height, 1);
-        sprite.renderOrder = 1001;
+        sprite.scale.set(height * w / h, height, 1);
+        sprite.renderOrder = muted ? 1001 : 1002;
         return sprite;
     }
 
-    function circlePoints(THREE, c, r, axis, from, to) {
-        var pts = [], n = 72;
-        var a0 = (from === undefined ? 0 : from) * Math.PI / 180;
-        var a1 = (to === undefined ? 360 : to) * Math.PI / 180;
-        for (var i = 0; i <= n; i++) {
-            var t = a0 + (a1 - a0) * i / n, co = Math.cos(t), si = Math.sin(t);
-            if (axis === 'x') pts.push(new THREE.Vector3(c[0], c[1] + r * co, c[2] + r * si));
-            else if (axis === 'y') pts.push(new THREE.Vector3(c[0] + r * co, c[1], c[2] + r * si));
-            else pts.push(new THREE.Vector3(c[0] + r * co, c[1] + r * si, c[2]));
+    // "Lápiz" que agrega geometría sólida de cota a un grupo.
+    function dimPen(THREE, g, thick, color, opacity) {
+        var mat = new THREE.MeshBasicMaterial({
+            color: color, depthTest: false, depthWrite: false, transparent: true, opacity: opacity
+        });
+        var Y = new THREE.Vector3(0, 1, 0);
+        var arrowLen = thick * 8, arrowRad = thick * 2.4;
+        function add(mesh) { mesh.renderOrder = 1000; g.add(mesh); }
+        function seg(a, b) {
+            var d = b.clone().sub(a), len = d.length();
+            if (len < 1e-6) return;
+            var m = new THREE.Mesh(new THREE.CylinderGeometry(thick, thick, len, 8, 1), mat);
+            m.position.copy(a).add(b).multiplyScalar(0.5);
+            m.quaternion.setFromUnitVectors(Y, d.normalize());
+            add(m);
         }
-        return pts;
+        // Flecha con la punta en `tip`, apuntando hacia `dir`.
+        function arrow(tip, dir) {
+            var d = dir.clone().normalize();
+            var m = new THREE.Mesh(new THREE.ConeGeometry(arrowRad, arrowLen, 14), mat);
+            m.position.copy(tip).addScaledVector(d, -arrowLen / 2);
+            m.quaternion.setFromUnitVectors(Y, d);
+            add(m);
+        }
+        // Línea de cota entre a y b con flechas. Si la medida es corta, las
+        // flechas van por fuera apuntando hacia adentro, como en un plano.
+        function dimLine(a, b) {
+            var d = b.clone().sub(a), len = d.length();
+            if (len < 1e-6) return;
+            d.normalize();
+            if (len > arrowLen * 2.6) {
+                seg(a, b);
+                arrow(a, d.clone().negate());
+                arrow(b, d);
+            } else {
+                seg(a.clone().addScaledVector(d, -arrowLen * 2.2), b.clone().addScaledVector(d, arrowLen * 2.2));
+                arrow(a, d);
+                arrow(b, d.clone().negate());
+            }
+        }
+        // Líneas de referencia: desde la pieza (a - off) hasta un poco más
+        // allá de la línea de cota, dejando un pequeño espacio junto a la pieza.
+        function extLines(a, b, off) {
+            if (!off) return;
+            var o = new THREE.Vector3().fromArray(off), ol = o.length();
+            if (ol < 1e-6) return;
+            var u = o.clone().normalize();
+            var gap = Math.min(ol * 0.25, thick * 4), over = thick * 5;
+            [a, b].forEach(function (p) {
+                seg(p.clone().sub(o).addScaledVector(u, gap), p.clone().addScaledVector(u, over));
+            });
+        }
+        // Circunferencia o arco (toro). Ángulos en grados; 'z': plano XY
+        // desde +X hacia +Y; 'y': plano XZ desde +X hacia +Z; 'x': plano YZ.
+        function ring(c, r, axis, from, to) {
+            var a0 = (from === undefined ? 0 : from) * Math.PI / 180;
+            var a1 = (to === undefined ? 360 : to) * Math.PI / 180;
+            if (a1 < a0) { var tmp = a0; a0 = a1; a1 = tmp; }
+            var arc = Math.min(a1 - a0, Math.PI * 2);
+            var segs = Math.max(24, Math.round(120 * arc / (Math.PI * 2)));
+            var m = new THREE.Mesh(new THREE.TorusGeometry(r, thick, 8, segs, arc), mat);
+            m.position.fromArray(c);
+            if (axis === 'y') m.rotation.set(Math.PI / 2, 0, a0);
+            else if (axis === 'x') m.rotation.set(0, Math.PI / 2, a0);
+            else m.rotation.set(0, 0, a0);
+            add(m);
+        }
+        return { thick: thick, arrowLen: arrowLen, seg: seg, arrow: arrow, dimLine: dimLine, extLines: extLines, ring: ring };
     }
 
     // Etiqueta de un parámetro con la unidad adecuada (mm, grados o valor pelado)
@@ -31230,88 +31327,248 @@ bluetooth.startIOPinService()</pre>
         var unit = /angul|apertura|grad|giro|rot/i.test(p.name) ? '°' : ' mm';
         return p.name + ' = ' + fmtNum(p.value) + unit;
     }
+    function fmtMm(v) { return (Math.round(v * 100) / 100).toString() + ' mm'; }
 
-    function showParamDim(p) {
-        if (!viewer || !viewer.mesh) return;
-        clearDims();
-        // Cota precisa si la pieza tiene una definición registrada; si no,
-        // acotado genérico (recuadro de la pieza + etiqueta) para cualquier
-        // pieza: de la carpeta, subida o generada por IA.
-        var spec = null;
-        var specFn = currentPiece && currentPiece.specKey ? DIM_SPECS[currentPiece.specKey] : null;
-        if (specFn) { try { spec = specFn(valuesMap())[p.name] || null; } catch (e) { spec = null; } }
+    // Dirección para correr la etiqueta al costado de una línea: perpendicular
+    // a la línea tal como se ve en pantalla (así nunca la tapa), del lado que
+    // más se parece a `prefer` (normalmente, alejándose de la pieza).
+    function labelSideDir(THREE, anchor, lineDir, prefer) {
+        var camDir = anchor.clone().sub(viewer.camera.position).normalize();
+        var side = new THREE.Vector3().crossVectors(camDir, lineDir);
+        if (side.lengthSq() < 0.05) return prefer.clone().normalize();
+        side.normalize();
+        if (side.dot(prefer) < 0) side.negate();
+        return side;
+    }
 
-        var THREE = viewer.THREE;
-        var g = new THREE.Group();
-        var mat = new THREE.LineBasicMaterial({ color: 0xffca28, depthTest: false, transparent: true });
-        var ls = Math.max(3, (viewer.modelSize || 60) * 0.085); // alto de la etiqueta
-        function addLine(pts) {
-            var line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
-            line.renderOrder = 1000;
-            g.add(line);
-        }
-        var labelText = (spec && spec.label) ||
-            ((spec && spec.t === 'dia' ? '⌀ ' : '') + paramLabelText(p));
+    // Dibuja una cota (spec) con su etiqueta. `strong`: resaltada en amarillo;
+    // si no, atenuada (para las demás cotas cuando se señala un parámetro).
+    function drawSpec(THREE, g, pen, spec, text, ls, strong) {
+        var label = makeLabelSprite(THREE, text, ls, strong ? DIM_COLOR_CSS : DIM_MUTED_CSS, !strong);
         var labelPos;
-
-        if (!spec) {
-            // Genérico: recuadro amarillo alrededor de la pieza y etiqueta arriba
-            var bb = viewer.mesh.geometry.boundingBox;
-            var size = bb.getSize(new THREE.Vector3());
-            var ctr = bb.getCenter(new THREE.Vector3());
-            var boxGeo = new THREE.BoxGeometry(size.x || 1, size.y || 1, size.z || 1);
-            var edges = new THREE.LineSegments(new THREE.EdgesGeometry(boxGeo), mat);
-            edges.position.copy(ctr);
-            edges.renderOrder = 1000;
-            g.add(edges);
-            boxGeo.dispose();
-            labelPos = new THREE.Vector3(ctr.x, ctr.y, bb.max.z + ls * 0.9);
-        } else if (spec.t === 'lin') {
-            var a = new THREE.Vector3().fromArray(spec.a);
-            var b = new THREE.Vector3().fromArray(spec.b);
-            addLine([a, b]);
-            // Tics perpendiculares en los extremos, como en un plano técnico
+        if (spec.t === 'lin') {
+            var a = new THREE.Vector3().fromArray(spec.a), b = new THREE.Vector3().fromArray(spec.b);
+            pen.dimLine(a, b);
+            pen.extLines(a, b, spec.off);
             var dir = b.clone().sub(a).normalize();
-            var upRef = Math.abs(dir.z) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
-            var perp = dir.clone().cross(upRef).normalize();
-            if (perp.lengthSq() < 0.5) perp = new THREE.Vector3(0, 1, 0);
-            var tick = perp.clone().multiplyScalar(ls * 0.28);
-            addLine([a.clone().sub(tick), a.clone().add(tick)]);
-            addLine([b.clone().sub(tick), b.clone().add(tick)]);
-            labelPos = a.clone().add(b).multiplyScalar(0.5)
-                        .add(Math.abs(dir.z) > 0.7 ? new THREE.Vector3(ls * 1.2, 0, 0)
-                                                    : new THREE.Vector3(0, 0, ls * 0.9));
+            var away;
+            if (spec.off) away = new THREE.Vector3().fromArray(spec.off).normalize();
+            else away = Math.abs(dir.z) > 0.7 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
+            var mid = a.clone().add(b).multiplyScalar(0.5);
+            var side = labelSideDir(THREE, mid, dir, away);
+            // Correr la etiqueta lo que ocupa en esa dirección (según cómo se ve
+            // en pantalla) más un pequeño margen, para que no tape la línea.
+            var camR = new THREE.Vector3().setFromMatrixColumn(viewer.camera.matrix, 0);
+            var camU = new THREE.Vector3().setFromMatrixColumn(viewer.camera.matrix, 1);
+            var ext = Math.abs(side.dot(camR)) * label.scale.x / 2 + Math.abs(side.dot(camU)) * label.scale.y / 2;
+            labelPos = mid.addScaledVector(side, ext + ls * 0.3);
         } else if (spec.t === 'dia' || spec.t === 'circle') {
-            addLine(circlePoints(THREE, spec.c, spec.r, spec.axis));
+            pen.ring(spec.c, spec.r, spec.axis);
             var c = new THREE.Vector3().fromArray(spec.c);
-            if (spec.t === 'dia') {
-                var d = spec.axis === 'x' ? new THREE.Vector3(0, spec.r, 0) : new THREE.Vector3(spec.r, 0, 0);
-                addLine([c.clone().sub(d), c.clone().add(d)]);
-            }
-            labelPos = c.clone().add(spec.axis === 'z' ? new THREE.Vector3(0, 0, ls * 0.9)
-                                                       : new THREE.Vector3(0, 0, spec.r + ls * 0.9));
+            // Dirección del diámetro dentro de su plano (spec.ang en grados)
+            var an = (spec.ang || 0) * Math.PI / 180, ca = Math.cos(an) * spec.r, sa = Math.sin(an) * spec.r;
+            var d = spec.axis === 'x' ? new THREE.Vector3(0, ca, sa)
+                  : spec.axis === 'y' ? new THREE.Vector3(ca, 0, sa) : new THREE.Vector3(ca, sa, 0);
+            if (spec.t === 'dia') pen.dimLine(c.clone().sub(d), c.clone().add(d));
+            // La etiqueta va junto al borde, en el extremo del diámetro más
+            // cercano a la cámara, para que círculos concéntricos no se pisen.
+            var e1 = c.clone().sub(d), e2 = c.clone().add(d);
+            var camPos = viewer.camera.position;
+            var e = e1.distanceTo(camPos) < e2.distanceTo(camPos) ? e1 : e2;
+            var out = e.clone().sub(c).normalize();
+            labelPos = e.clone().addScaledVector(out, ls * 0.35 + label.scale.x * 0.5);
         } else if (spec.t === 'arc') {
             // Arco en el plano vertical XZ (piezas "de pie" como el gancho)
-            addLine(circlePoints(THREE, spec.c, spec.r, 'y', spec.from, spec.to));
+            pen.ring(spec.c, spec.r, 'y', spec.from, spec.to);
             var cc = new THREE.Vector3().fromArray(spec.c);
-            [spec.from, spec.to].forEach(function (ang) {
+            var ends = [spec.from, spec.to].map(function (ang) {
                 var t = ang * Math.PI / 180;
-                addLine([cc, cc.clone().add(new THREE.Vector3(spec.r * Math.cos(t), 0, spec.r * Math.sin(t)))]);
+                return cc.clone().add(new THREE.Vector3(spec.r * Math.cos(t), 0, spec.r * Math.sin(t)));
             });
+            ends.forEach(function (e) {
+                pen.seg(cc, e.clone().addScaledVector(e.clone().sub(cc).normalize(), pen.thick * 5));
+            });
+            var tangent = function (ang, sign) {
+                var t = ang * Math.PI / 180;
+                return new THREE.Vector3(-Math.sin(t), 0, Math.cos(t)).multiplyScalar(sign);
+            };
+            if (Math.abs(spec.to - spec.from) > 1) {
+                pen.arrow(ends[0], tangent(spec.from, spec.to > spec.from ? -1 : 1));
+                pen.arrow(ends[1], tangent(spec.to, spec.to > spec.from ? 1 : -1));
+            }
             var tm = (spec.from + spec.to) / 2 * Math.PI / 180;
-            labelPos = cc.clone().add(new THREE.Vector3((spec.r + ls) * Math.cos(tm), 0, (spec.r + ls) * Math.sin(tm)));
+            labelPos = cc.clone().add(new THREE.Vector3((spec.r + ls * 0.9) * Math.cos(tm), 0, (spec.r + ls * 0.9) * Math.sin(tm)));
         } else {
+            label.material.map.dispose();
+            label.material.dispose();
             return;
         }
-
-        var label = makeLabelSprite(THREE, labelText, ls);
         label.position.copy(labelPos);
         g.add(label);
+    }
+
+    // Acotado genérico para cualquier pieza (de la carpeta, subida, generada
+    // por IA o STL): largo, ancho y alto totales alrededor de la pieza. Si el
+    // parámetro señalado coincide con una de esas medidas (o con el diámetro
+    // de una pieza redonda), esa cota se resalta con el nombre del parámetro.
+    function drawGenericDims(THREE, g, strongPen, mutedPen, ls, p) {
+        var bb = viewer.mesh.geometry.boundingBox;
+        var size = bb.getSize(new THREE.Vector3());
+        var ctr = bb.getCenter(new THREE.Vector3());
+        var mn = bb.min, mx = bb.max;
+        var o = Math.max(ls * 0.9, strongPen.thick * 12);
+        var near = function (v, s) { return isFinite(v) && s > 0 && Math.abs(v - s) <= Math.max(s * 0.02, 0.05); };
+        var val = p && p.type !== 'bool' ? parseFloat(p.value) : NaN;
+        var round = Math.abs(size.x - size.y) <= Math.max(size.x * 0.02, 0.05);
+        var matched = null;
+        if (round && near(val, size.x)) matched = 'd';
+        else if (near(val, size.x)) matched = 'x';
+        else if (near(val, size.y)) matched = 'y';
+        else if (near(val, size.z)) matched = 'z';
+
+        // Contorno tenue del recuadro que envuelve la pieza
+        var boxGeo = new THREE.BoxGeometry(size.x || 1, size.y || 1, size.z || 1);
+        var edges = new THREE.LineSegments(new THREE.EdgesGeometry(boxGeo),
+            new THREE.LineBasicMaterial({ color: 0x6f7887, depthTest: false, transparent: true, opacity: 0.55 }));
+        edges.position.copy(ctr);
+        edges.renderOrder = 999;
+        g.add(edges);
+        boxGeo.dispose();
+
+        var dims = [
+            { k: 'x', t: 'lin', a: [mn.x, mn.y - o, mn.z], b: [mx.x, mn.y - o, mn.z], off: [0, -o, 0], name: 'largo (X)', v: size.x },
+            { k: 'y', t: 'lin', a: [mx.x + o, mn.y, mn.z], b: [mx.x + o, mx.y, mn.z], off: [o, 0, 0], name: 'ancho (Y)', v: size.y },
+            { k: 'z', t: 'lin', a: [mx.x + o, mx.y + o, mn.z], b: [mx.x + o, mx.y + o, mx.z], off: [o, o, 0], name: 'alto (Z)', v: size.z }
+        ];
+        // Sin parámetro señalado (modo COTAS), las tres medidas van resaltadas.
+        // La resaltada se dibuja primero para que conserve su lugar.
+        var allStrong = !p;
+        dims.sort(function (x, y) { return (y.k === matched ? 1 : 0) - (x.k === matched ? 1 : 0); });
+        dims.forEach(function (d) {
+            if (d.v < 1e-6) return;
+            var strong = allStrong || matched === d.k;
+            var text = strong && p ? paramLabelText(p) : d.name + ' = ' + fmtMm(d.v);
+            drawSpec(THREE, g, strong ? strongPen : mutedPen, d, text, ls, strong);
+        });
+        if (matched === 'd') {
+            drawSpec(THREE, g, strongPen, { t: 'dia', c: [ctr.x, ctr.y, mx.z], r: size.x / 2, axis: 'z' },
+                     '⌀ ' + paramLabelText(p), ls, true);
+        } else if (p && !matched) {
+            // El parámetro no es una medida total: solo su etiqueta sobre la pieza
+            var label = makeLabelSprite(THREE, paramLabelText(p), ls, DIM_COLOR_CSS, false);
+            label.position.set(ctr.x, ctr.y, mx.z + ls * 1.1);
+            g.add(label);
+        }
+    }
+
+    // Separa etiquetas que se superponen en pantalla corriéndolas hacia
+    // arriba o abajo (según la vista actual), en el orden en que se dibujaron.
+    function separateLabels(THREE, labels) {
+        if (labels.length < 2) return;
+        var cam = viewer.camera, rc = viewer.wrap.getBoundingClientRect();
+        var W = rc.width || 800, H = rc.height || 600;
+        var tanF = Math.tan(cam.fov * Math.PI / 360);
+        var up = new THREE.Vector3().setFromMatrixColumn(cam.matrix, 1);
+        var placed = [];
+        function rectOf(sp) {
+            var dist = Math.max(1e-3, sp.position.distanceTo(cam.position));
+            var ppu = (H / 2) / (dist * tanF); // píxeles por unidad de mundo
+            var ndc = sp.position.clone().project(cam);
+            return { cx: (ndc.x + 1) / 2 * W, cy: (1 - ndc.y) / 2 * H, w: sp.scale.x * ppu, h: sp.scale.y * ppu, ppu: ppu };
+        }
+        labels.forEach(function (sp) {
+            var r = rectOf(sp);
+            for (var iter = 0; iter < 10; iter++) {
+                var moved = false;
+                for (var j = 0; j < placed.length; j++) {
+                    var o = placed[j];
+                    var ox = (r.w + o.w) / 2 + 6 - Math.abs(r.cx - o.cx);
+                    var oy = (r.h + o.h) / 2 + 6 - Math.abs(r.cy - o.cy);
+                    if (ox <= 0 || oy <= 0) continue;
+                    var dirUp = r.cy <= o.cy ? 1 : -1; // seguir alejándose del mismo lado
+                    sp.position.addScaledVector(up, dirUp * oy / r.ppu);
+                    r = rectOf(sp);
+                    moved = true;
+                }
+                if (!moved) break;
+            }
+            placed.push(r);
+        });
+    }
+
+    // Redibuja las cotas según el estado: parámetro señalado y/o modo COTAS.
+    function drawDims() {
+        clearDims();
+        if (!viewer || !viewer.mesh) return;
+        var p = dimActiveParam;
+        if (!dimsPinned && !p) return;
+        var THREE = viewer.THREE;
+        var g = new THREE.Group();
+        // Tamaños relativos a la distancia de la cámara (legibles al mostrarse)
+        // con un mínimo relativo al tamaño de la pieza.
+        var ls = Math.max((viewer.modelSize || 60) * 0.035, viewer.sph.r * 0.028);
+        var thick = Math.max((viewer.modelSize || 60) * 0.0015, viewer.sph.r * 0.0016);
+        var strongPen = dimPen(THREE, g, thick, DIM_COLOR, 1);
+        var mutedPen = dimPen(THREE, g, thick * 0.75, DIM_MUTED, 0.9);
+        var specs = specsForCurrent();
+
+        if (specs) {
+            var list = dimsPinned ? params.slice() : (p ? [p] : []);
+            // Círculos concéntricos (mismo centro y eje): repartir el ángulo de
+            // la línea de diámetro para que las etiquetas no caigan en el mismo lugar.
+            var seen = {};
+            list.forEach(function (q) {
+                var spec = specs[q.name];
+                if (!spec || (spec.t !== 'dia' && spec.t !== 'circle') || spec.ang !== undefined) return;
+                var key = spec.axis + ':' + spec.c.join(',');
+                seen[key] = (seen[key] || 0) + 1;
+                spec.ang = (seen[key] - 1) * 40;
+            });
+            // La cota resaltada se dibuja primero: conserva su lugar y las
+            // demás se corren si se superponen.
+            list.sort(function (x, y) { return (y === p ? 1 : 0) - (x === p ? 1 : 0); });
+            list.forEach(function (q) {
+                var spec = specs[q.name];
+                if (!spec) return;
+                var strong = !p || q === p;
+                var text = spec.label || ((spec.t === 'dia' ? '⌀ ' : '') + paramLabelText(q));
+                drawSpec(THREE, g, strong ? strongPen : mutedPen, spec, text, ls, strong);
+            });
+            if (p && !specs[p.name]) drawGenericDims(THREE, g, strongPen, mutedPen, ls, p);
+        } else {
+            drawGenericDims(THREE, g, strongPen, mutedPen, ls, p);
+        }
+        separateLabels(THREE, g.children.filter(function (o) { return o.isSprite; }));
 
         dimGroup = g;
         viewer.scene.add(g);
         viewer.needsFrame = true;
-        dimHideTimer = setTimeout(clearDims, 3500);
+    }
+
+    // touch: true/false según el tipo de puntero; null = mantener el anterior.
+    function setDimParam(p, row, touch) {
+        clearTimeout(dimHideTimer);
+        if (touch !== null) dimTouch = touch;
+        if (dimActiveRow && dimActiveRow !== row) dimActiveRow.classList.remove('s3d-dim-active');
+        dimActiveRow = row;
+        row.classList.add('s3d-dim-active');
+        dimActiveParam = p;
+        if (!viewer || !viewer.mesh) return;
+        drawDims();
+        // En pantallas táctiles no hay "salir con el puntero": se oculta sola.
+        if (dimTouch) dimHideTimer = setTimeout(function () { releaseDimParam(p, 0); }, 6000);
+    }
+
+    function releaseDimParam(p, delay) {
+        if (dimActiveParam !== p) return;
+        clearTimeout(dimHideTimer);
+        dimHideTimer = setTimeout(function () {
+            if (dimActiveParam !== p) return;
+            dimActiveParam = null;
+            if (dimActiveRow) dimActiveRow.classList.remove('s3d-dim-active');
+            dimActiveRow = null;
+            drawDims();
+        }, delay);
     }
 
     /* ---------- Modo corte (sección por la mitad) ---------- */
@@ -31355,6 +31612,7 @@ bluetooth.startIOPinService()</pre>
             v.modelSize = Math.max(s.x, s.y, s.z, 1);
             v.material.transparent = false;
             v.material.opacity = 1;
+            drawDims(); // las cotas siguen a la geometría nueva
             el('s3d-mesh-info').textContent = tris + ' triángulos · ' +
                 s.x.toFixed(1) + ' × ' + s.y.toFixed(1) + ' × ' + s.z.toFixed(1) + ' mm';
             setStatus(statusMsg, '');
@@ -31564,6 +31822,8 @@ bluetooth.startIOPinService()</pre>
 
     function loadScadIntoEditor(code, presetId) {
         stlMode = false;
+        dimActiveParam = null;
+        clearDims();
         codeEl.readOnly = false;
         el('s3d-render').disabled = rendering;
         el('s3d-auto').disabled = false;
@@ -31580,6 +31840,8 @@ bluetooth.startIOPinService()</pre>
 
     function loadStlPiece(piece, buf) {
         stlMode = true;
+        dimActiveParam = null;
+        clearDims();
         clearTimeout(renderTimer);
         lastStl = { buffer: buf };
         window.__s3dLoadedPreset = '';
@@ -32235,6 +32497,12 @@ bluetooth.startIOPinService()</pre>
 
         el('s3d-render').addEventListener('click', render);
         el('s3d-fit').addEventListener('click', fitView);
+        el('s3d-cotas').addEventListener('click', function () {
+            dimsPinned = !dimsPinned;
+            this.textContent = 'Cotas: ' + (dimsPinned ? 'sí' : 'no');
+            this.classList.toggle('active', dimsPinned);
+            drawDims();
+        });
         el('s3d-corte').addEventListener('click', function () {
             corteIdx = (corteIdx + 1) % corteModes.length;
             if (!viewer) { initViewer().then(applyCorte); return; }
