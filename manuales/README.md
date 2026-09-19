@@ -8,7 +8,7 @@ con la misma estética minimalista de la plataforma (blanco y negro, tipografía
 | # | Archivo | Tipo | Contenido |
 |---|---------|------|-----------|
 | 0 | `Guia-rapida-Captura-de-datos.docx` | Guía rápida (3 págs.) | Capturar datos en 10 pasos con imágenes, para el usuario que solo quiere seguir instrucciones. |
-| 1 | `Manual-1-Captura-1-variable-timestamp.docx` | Documentación completa | Captura de datos con timestamp para 1 variable, en dos caminos (Serial recomendado / Bluetooth) con latencias explicadas, código comentado, procesamiento básico (T=0, depuración, CSV), notas al pie y glosario. |
+| 1 | `Manual-1-Captura-1-variable-timestamp.docx` | Documentación completa | Captura de datos con timestamp para 1 variable, en dos caminos: Serial recomendado con la extensión **FisicaBit USB** (EXTRAS → MAKECODE + FISICABIT, un solo bloque) y Bluetooth clásico. Latencias explicadas, código comentado, procesamiento básico (T=0, depuración, CSV), notas al pie y glosario. |
 
 ## Estructura
 
