@@ -285,7 +285,7 @@ const content = [
   ]),
   infoBox([
     b('¿Preferís MakeCode en una pestaña aparte? '),
-    t('Andá a makecode.microbit.org, abrí '), b('Extensiones'), t(' y pegá '), code('https://github.com/preparadordelaboratorio/pxt-fisicabit-usb'), t('. Es la misma extensión; útil si la red de la escuela bloquea el editor embebido.'),
+    t('Andá a makecode.microbit.org, abrí '), b('Extensiones'), t(' y pegá '), code('https://github.com/martinferreiraHCA/pxt-fisicabit-usb'), t('. Es la misma extensión; útil si la red de la escuela bloquea el editor embebido.'),
   ]),
 
   h2('4.2 · El programa: un solo bloque'),
@@ -477,7 +477,7 @@ const content = [
   bullet([b('No aparece el puerto: '), t('verificá que el cable USB sea de datos (no solo de carga), probá otro puerto USB y reiniciá el navegador.')]),
   bullet([b('No llegan datos por USB: '), t('el programa debe tener el bloque '), b('enviar a fisicabit.com'), t(' dentro de “para siempre” (o del bucle rápido). Presioná CAPTURAR después de conectar y verificá que el número de variables coincida con la variante del bloque (1 a 4 valores).')]),
   bullet([b('“Descargar” no graba desde el editor: '), t('la plataforma tiene el puerto abierto. Presioná '), b('Soltar USB'), t(' en la barra flotante de FisicaBit y reintentá.')]),
-  bullet([b('No aparecen los bloques FisicaBit USB: '), t('agregá la extensión a mano desde Extensiones pegando '), code('github.com/preparadordelaboratorio/pxt-fisicabit-usb'), t('. Si ves textos viejos, quitala y volvé a agregarla (MakeCode guarda caché).')]),
+  bullet([b('No aparecen los bloques FisicaBit USB: '), t('agregá la extensión a mano desde Extensiones pegando '), code('github.com/martinferreiraHCA/pxt-fisicabit-usb'), t('. Si ves textos viejos, quitala y volvé a agregarla (MakeCode guarda caché).')]),
   h2('Camino B · Bluetooth'),
   bullet([b('No aparece en el selector: '), t('el programa debe tener '), code('bluetooth.startUartService()'), t('. Reiniciá la micro:bit (botón RESET) y verificá que no esté conectada a otro dispositivo o celular.')]),
   bullet([b('Aparece pero se queda en “Conectando…”: '), t('falta '), b('“No Pairing Required”'), t(' en la configuración del proyecto de MakeCode (en '), code('pxt.json'), t(' debe estar '), code('"pairing_mode": 0'), t('). Corregí, volvé a descargar el .hex y reintentá.')]),
@@ -505,7 +505,7 @@ const content = [
       ['enviar a fisicabit.com (bloque)', 'Bloque principal de la extensión FisicaBit USB: toma el tiempo del micro:bit, envía la línea tiempo,valor(es) por USB y espera hasta la próxima muestra. Variantes de 1 a 4 valores y una versión "sin tiempo".'],
       ['everyInterval', 'Bloque de MakeCode que ejecuta código cada N milisegundos exactos, sin el sobrecosto de forever. Es la vía para llegar a ~100 Hz.'],
       ['Extensión (MakeCode)', 'Paquete de bloques adicionales que se agrega a un proyecto (menú Extensiones). La extensión bluetooth agrega los bloques BLE y reemplaza a radio.'],
-      ['FisicaBit USB (extensión)', 'Extensión de MakeCode propia de la plataforma (github.com/preparadordelaboratorio/pxt-fisicabit-usb). Agrega la categoría FisicaBit USB con los bloques de envío y de sensores internos y externos. Solo para conexión por cable.'],
+      ['FisicaBit USB (extensión)', 'Extensión de MakeCode propia de la plataforma (github.com/martinferreiraHCA/pxt-fisicabit-usb). Agrega la categoría FisicaBit USB con los bloques de envío y de sensores internos y externos. Solo para conexión por cable.'],
       ['forever', 'Bloque de MakeCode que repite su contenido indefinidamente. Cada vuelta agrega ~20 ms ocultos, lo que limita la frecuencia real de muestreo.'],
       ['.hex (archivo)', 'Imagen compilada del programa que se graba en la memoria de la micro:bit. Contiene el código y su sistema de ejecución; la placa lo corre sola al encender.'],
       ['Hz (hertz)', 'Mediciones por segundo. 10 Hz = un dato cada 100 ms. En esta guía siempre refiere a la frecuencia de muestreo del sensor.'],
