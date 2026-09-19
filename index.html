@@ -4656,6 +4656,90 @@
           .inf-preview { padding:12px 6px 60px; }
         }
         /* ===== INFORME STYLES END ===== */
+
+        /* ===== Comunicador de conexión Bluetooth (hoja de estado) ===== */
+        .btc-backdrop { display:none; position:fixed; inset:0; z-index:9500; background:rgba(0,0,0,.35); }
+        .btc-backdrop.open { display:block; }
+        .btc-sheet { display:none; position:fixed; z-index:9501; left:50%; top:50%; transform:translate(-50%,-50%);
+            width:min(460px, calc(100vw - 32px)); max-height:90vh; overflow-y:auto; background:#fff; border:3px solid #000;
+            box-shadow:0 16px 48px rgba(0,0,0,.35); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+        .btc-sheet.open { display:block; }
+        .btc-head { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:2px solid #000; }
+        .btc-icon { width:32px; height:32px; border-radius:50%; background:#1565c0; color:#fff; display:flex; align-items:center;
+            justify-content:center; font-weight:800; font-size:1rem; flex-shrink:0; }
+        .btc-sheet.is-connected .btc-icon, .btc-sheet.is-info .btc-icon { background:#2e7d32; }
+        .btc-sheet.is-error .btc-icon { background:#c62828; }
+        .btc-sheet.is-reconnecting .btc-icon { background:#ef6c00; }
+        .btc-titles { flex:1; min-width:0; }
+        .btc-title { font-weight:800; font-size:.92rem; letter-spacing:.6px; text-transform:uppercase; }
+        .btc-device { font-size:.76rem; color:#555; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .btc-close { border:2px solid #000; background:#fff; width:40px; height:40px; font-weight:700; font-size:1rem; cursor:pointer; flex-shrink:0; }
+        .btc-body { padding:12px 14px 4px; }
+        .btc-steps { list-style:none; margin:0; padding:0; }
+        .btc-step { display:flex; align-items:flex-start; gap:10px; padding:6px 0; font-size:.86rem; color:#8a8a8a; }
+        .btc-dot { width:26px; height:26px; border-radius:50%; border:2px solid #bdbdbd; display:flex; align-items:center; justify-content:center;
+            font-size:.72rem; font-weight:700; flex-shrink:0; position:relative; box-sizing:border-box; }
+        .btc-step.active { color:#000; font-weight:600; }
+        .btc-step.active .btc-dot { border-color:#90caf9; color:#1565c0; }
+        .btc-step.active .btc-dot::after { content:''; position:absolute; inset:-2px; border-radius:50%; border:2px solid #1565c0;
+            border-top-color:transparent; border-right-color:transparent; animation:btcSpin .9s linear infinite; }
+        .btc-step.done { color:#2e7d32; }
+        .btc-step.done .btc-dot { background:#2e7d32; border-color:#2e7d32; color:#fff; }
+        .btc-step.error { color:#c62828; font-weight:600; }
+        .btc-step.error .btc-dot { background:#c62828; border-color:#c62828; color:#fff; }
+        .btc-step-label { display:block; }
+        .btc-step-hint { display:block; font-size:.78rem; font-weight:400; color:#444; margin-top:2px; line-height:1.4; }
+        @keyframes btcSpin { to { transform:rotate(360deg); } }
+        .btc-msg { margin-top:10px; padding:10px 12px; font-size:.86rem; line-height:1.45; border-left:4px solid #1565c0; background:#eef4ff; white-space:pre-line; }
+        .btc-msg:empty { display:none; }
+        .btc-sheet.is-error .btc-msg { border-color:#c62828; background:#fdecea; }
+        .btc-sheet.is-connected .btc-msg, .btc-sheet.is-info .btc-msg { border-color:#2e7d32; background:#e8f5e9; }
+        .btc-sheet.is-reconnecting .btc-msg { border-color:#ef6c00; background:#fff3e0; }
+        .btc-hints { margin:8px 0 0; padding-left:20px; font-size:.8rem; line-height:1.5; color:#333; }
+        .btc-hints:empty { display:none; }
+        .btc-progress { height:4px; background:#e0e0e0; margin-top:12px; overflow:hidden; }
+        .btc-progress > i { display:block; height:100%; width:40%; background:#1565c0; animation:btcSlide 1.2s ease-in-out infinite; }
+        .btc-sheet.is-reconnecting .btc-progress > i { background:#ef6c00; }
+        .btc-sheet.is-error .btc-progress, .btc-sheet.is-connected .btc-progress, .btc-sheet.is-info .btc-progress { display:none; }
+        @keyframes btcSlide { 0% { transform:translateX(-100%); } 100% { transform:translateX(260%); } }
+        .btc-meta { display:flex; justify-content:space-between; font-size:.74rem; color:#666; margin-top:6px; }
+        .btc-actions { display:flex; gap:8px; padding:10px 14px 14px; flex-wrap:wrap; }
+        .btc-actions:empty { display:none; }
+        .btc-btn { flex:1; min-width:120px; min-height:44px; border:2px solid #000; background:#fff; color:#000; font-weight:700;
+            font-size:.82rem; cursor:pointer; letter-spacing:.3px; font-family:inherit; }
+        .btc-btn.primary { background:#1565c0; color:#fff; border-color:#1565c0; }
+        .btc-btn.danger { color:#c62828; border-color:#c62828; }
+        .btc-info { font-size:.86rem; line-height:1.75; }
+        .btc-info b { display:inline-block; min-width:118px; font-weight:700; }
+        @media (max-width:600px), (max-height:500px) {
+            .btc-sheet { left:0; right:0; top:auto; bottom:0; transform:none; width:100%; max-height:88vh;
+                border-width:3px 0 0 0; padding-bottom:env(safe-area-inset-bottom); }
+        }
+        @media (max-height:500px) and (orientation:landscape) {
+            .btc-step { padding:3px 0; }
+            .btc-step-hint { display:none; }
+        }
+        /* Franja de estado para celulares y tablets: en pantallas chicas el texto de estado
+           de la barra superior queda fuera de la vista (la barra se desplaza de costado). */
+        .btc-strip { display:none; position:fixed; left:0; right:0; bottom:0; z-index:9400; background:#111; color:#fff;
+            padding:9px 12px calc(9px + env(safe-area-inset-bottom)); font-size:.8rem; font-weight:600; align-items:center; gap:10px;
+            cursor:pointer; border-top:2px solid #000; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+        .btc-strip .btc-led { width:10px; height:10px; border-radius:50%; background:#9e9e9e; flex-shrink:0; }
+        .btc-strip.st-ok .btc-led { background:#66bb6a; }
+        .btc-strip.st-live .btc-led { background:#66bb6a; animation:btcBlink 1s infinite; }
+        .btc-strip.st-busy .btc-led { background:#42a5f5; animation:btcBlink 1s infinite; }
+        .btc-strip.st-warn .btc-led { background:#ffa726; animation:btcBlink 1s infinite; }
+        .btc-strip.st-err .btc-led { background:#ef5350; }
+        .btc-strip.st-warn { background:#e65100; }
+        .btc-strip.st-err { background:#b71c1c; }
+        .btc-strip-text { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .btc-strip-right { font-weight:500; opacity:.85; flex-shrink:0; }
+        @keyframes btcBlink { 50% { opacity:.25; } }
+        @media (max-width:600px), (pointer:coarse) and (max-width:1024px) {
+            .btc-strip.avail { display:flex; }
+            body.btc-strip-pad { padding-bottom:46px; }
+            .inf-toast { bottom:66px; }
+        }
     </style>
 </head>
 <body>
@@ -4742,6 +4826,33 @@
         <span class="status-text" id="pointInfo" style="display: none; background: #ffebee; border-color: #ff0000; color: #d32f2f;"></span>
         <span class="status-text" id="formatWarning" style="display: none; background: #fff3e0; border-color: #ff9800; color: #e65100; font-size: 0.85em; cursor: pointer;" title="Click para más info"></span>
         <span class="status-text" id="statusText">DESCONECTADO</span>
+    </div>
+
+    <!-- Comunicador de conexión Bluetooth: hoja de estado + franja móvil -->
+    <div class="btc-backdrop" id="btcBackdrop"></div>
+    <div class="btc-sheet" id="btcSheet" role="dialog" aria-live="polite">
+        <div class="btc-head">
+            <div class="btc-icon" id="btcIcon">ᛒ</div>
+            <div class="btc-titles">
+                <div class="btc-title" id="btcTitle">Bluetooth</div>
+                <div class="btc-device" id="btcDevice"></div>
+            </div>
+            <button class="btc-close" id="btcClose" aria-label="Cerrar">✕</button>
+        </div>
+        <div class="btc-body">
+            <ul class="btc-steps" id="btcSteps"></ul>
+            <div class="btc-info" id="btcInfo" style="display:none;"></div>
+            <div class="btc-msg" id="btcMsg"></div>
+            <ul class="btc-hints" id="btcHints"></ul>
+            <div class="btc-progress" id="btcProgress"><i></i></div>
+            <div class="btc-meta"><span id="btcMetaLeft"></span><span id="btcMetaRight"></span></div>
+        </div>
+        <div class="btc-actions" id="btcActions"></div>
+    </div>
+    <div class="btc-strip avail" id="btcStrip">
+        <span class="btc-led"></span>
+        <span class="btc-strip-text" id="btcStripText">—</span>
+        <span class="btc-strip-right" id="btcStripRight"></span>
     </div>
 
     <!-- Mobile menu overlay -->
@@ -6261,6 +6372,9 @@ basic.forever(function () {
                 formatWarn: '⚠ Datos llegan ({got} cols) pero se esperan {exp}.',
                 formatHintEnable: ' Activa "Micro:bit envía timestamp"',
                 formatHintDisable: ' Desactiva "Micro:bit envía timestamp"',
+                formatHintVars: ' Elegí {n} variable(s)',
+                formatHintTooMany: ' Llegan demasiadas columnas: revisá el bloque de envío',
+                formatFixTap: 'Tocá para corregir',
                 // Panel lateral
                 varConfig: 'CONFIGURACIÓN DE VARIABLES',
                 numVars: 'Número de Variables',
@@ -6650,6 +6764,9 @@ basic.forever(function () {
                 formatWarn: '⚠ Data arriving ({got} cols) but {exp} expected.',
                 formatHintEnable: ' Enable "Micro:bit sends timestamp"',
                 formatHintDisable: ' Disable "Micro:bit sends timestamp"',
+                formatHintVars: ' Choose {n} variable(s)',
+                formatHintTooMany: ' Too many columns arriving: check the send block',
+                formatFixTap: 'Tap to fix',
                 // Side panel
                 varConfig: 'VARIABLE CONFIGURATION',
                 numVars: 'Number of Variables',
@@ -7039,6 +7156,9 @@ basic.forever(function () {
                 formatWarn: '⚠ Dados chegam ({got} cols) mas {exp} esperadas.',
                 formatHintEnable: ' Ative "Micro:bit envia timestamp"',
                 formatHintDisable: ' Desative "Micro:bit envia timestamp"',
+                formatHintVars: ' Escolha {n} variável(is)',
+                formatHintTooMany: ' Chegam colunas demais: verifique o bloco de envio',
+                formatFixTap: 'Toque para corrigir',
                 // Painel lateral
                 varConfig: 'CONFIGURAÇÃO DE VARIÁVEIS',
                 numVars: 'Número de Variáveis',
@@ -10041,21 +10161,40 @@ bluetooth.startIOPinService()</pre>
         });
 
         // Click en la advertencia de formato → intentar corregir número de variables
-        document.getElementById('formatWarning').addEventListener('click', function() {
-            // Con auto-detección, el problema es el número de variables.
-            // Si los datos llegan con 1 col → 1 var sin timestamp
-            // Si llegan con 2 col → 1 var con timestamp o 2 vars sin timestamp
-            // Si llegan con 3 col → 2 vars con timestamp o 3 vars sin timestamp
+        // Sugerencia y corrección del formato según lo que realmente llega.
+        // Devuelve { hint, apply } — apply es null cuando no hay corrección automática.
+        function computeFormatFix() {
             const got = _lastMismatchParts;
-            if (got >= 1 && got <= 4) {
-                // Intentar ajustar: asumir que si got > 3, son 3 vars + timestamp
-                const newNumVars = Math.min(got, 3);
-                document.getElementById('numVariables').value = newNumVars;
-                state.numVariables = newNumVars;
-            }
+            const n = state.numVariables;
+            const ts = !!state.microbitTimestamp;
+            const tr = translations[currentLanguage];
+            if (got === n + 1 && !ts) return { hint: tr.formatHintEnable, apply: () => setMicrobitTimestamp(true) };
+            if (got === n && ts) return { hint: tr.formatHintDisable, apply: () => setMicrobitTimestamp(false) };
+            const vars = ts ? got - 1 : got;
+            if (vars >= 1 && vars <= 3) return { hint: (tr.formatHintVars || ' Elegí {n} variable(s)').replace('{n}', vars), apply: () => setNumVariablesFromData(vars) };
+            if (got > 4) return { hint: tr.formatHintTooMany || '', apply: null };
+            return { hint: '', apply: null };
+        }
+        function setMicrobitTimestamp(on) {
+            const cb = document.getElementById('microbitTimestamp');
+            if (cb) { cb.checked = !!on; if (typeof onTimestampToggle === 'function') onTimestampToggle(); else state.microbitTimestamp = !!on; }
+        }
+        function setNumVariablesFromData(n) {
+            const sel = document.getElementById('numVariables');
+            sel.value = String(n);
+            sel.dispatchEvent(new Event('change'));
+            state.numVariables = n;
+            if (typeof updateGraphConfiguration === 'function') updateGraphConfiguration();
+            if (typeof updateGraphLegendPills === 'function') { for (let i = 0; i < state.numGraphs; i++) updateGraphLegendPills(i); }
+        }
+        function applyFormatFix() {
+            const fix = computeFormatFix();
+            if (fix.apply) fix.apply();
             _formatMismatchCount = 0;
-            this.style.display = 'none';
-        });
+            document.getElementById('formatWarning').style.display = 'none';
+            if (typeof btConnUI !== 'undefined') btConnUI.syncStrip();
+        }
+        document.getElementById('formatWarning').addEventListener('click', applyFormatFix);
 
         // Color previews y borde de tarjeta + propagación en vivo del color al chart
         ['var1', 'var2', 'var3'].forEach((varId, idx) => {
@@ -11905,6 +12044,473 @@ bluetooth.startIOPinService()</pre>
             await connectBluetooth();
         }
 
+        // ========== COMUNICADOR DE CONEXIÓN BLUETOOTH ==========
+        // Hoja de estado paso a paso (pensada para celulares y tablets) + franja
+        // de estado fija abajo, porque en pantallas chicas el texto de estado de
+        // la barra superior queda fuera de la vista. La clase MicrobitBluetooth
+        // emite eventos con _emit(); acá se traducen a lo que ve el usuario.
+        const btConnUI = (function () {
+            const S = {
+                es: {
+                    connecting: 'Conectando por Bluetooth', connected: 'Bluetooth conectado', error: 'No se pudo conectar',
+                    reconnecting: 'Se cortó la conexión', info: 'Bluetooth', cancelled: 'Conexión cancelada',
+                    steps: ['Elegir la micro:bit', 'Conectar con la placa', 'Buscar el canal de datos', 'Activar la recepción', 'Listo'],
+                    hintSelect: 'En la ventana del navegador tocá "BBC micro:bit [xxxxx]" y después Vincular / Conectar.',
+                    hintSelectAgain: 'Se limpió la caché Bluetooth. Elegí la micro:bit otra vez en la ventana.',
+                    hintGatt: 'Mantené la micro:bit cerca y la pantalla encendida.',
+                    hintDiscover: 'Leyendo los servicios de la placa…',
+                    hintNotify: 'Pidiendo a la micro:bit que empiece a enviar…',
+                    retry: 'Falló el intento {a}. Reintentando ({a}/{m}) en {s} s…',
+                    pressCapture: 'Tocá CAPTURAR para empezar a recibir datos.',
+                    lost: 'Se perdió la conexión con {name}.',
+                    reconnectTry: 'Reconectando… intento {a} de {m}',
+                    reconnectWait: 'Próximo intento en {s} s. Verificá que la micro:bit siga encendida y cerca.',
+                    reconnected: 'Conexión recuperada. Si estabas capturando, los datos siguen llegando.',
+                    reconnectFailed: 'No se pudo recuperar la conexión.',
+                    reconnectAborted: 'Dejaste de intentar. La micro:bit quedó desconectada.',
+                    elapsed: '{s} s', attempt: 'intento {a}/{m}',
+                    btnCancel: 'Cancelar', btnRetry: 'Reintentar', btnHelp: 'Ver ayuda', btnClose: 'Cerrar',
+                    btnStopTrying: 'Dejar de intentar', btnDisconnect: 'Desconectar',
+                    infoDevice: 'Placa', infoState: 'Estado', infoRate: 'Datos', infoReconnects: 'Reconexiones',
+                    infoCapturing: 'Capturando · {hz} por segundo · {n} puntos', infoIdle: 'Conectada, sin captura. Tocá CAPTURAR.',
+                    infoNoData: 'Capturando, pero no llegan datos. ¿La micro:bit está enviando?',
+                    stripNone: 'Sin conexión · tocá BLUETOOTH o CONECTAR', stripHz: '{hz}/s · {n} pts',
+                    stripUsb: 'USB conectado', stripBt: 'Bluetooth conectado',
+                    errNotFound: 'No se pudo abrir el selector Bluetooth.',
+                    errTimeout: 'La micro:bit no respondió a tiempo.',
+                    errNoUart: 'La micro:bit se conectó pero no tiene el canal de datos (UART).',
+                    errGeneric: 'Falló la conexión Bluetooth.',
+                    errNotify: 'No se pudo activar la recepción de datos.',
+                    hintsAndroid: ['Bluetooth y Ubicación activados (Ubicación solo en Android 11 o anterior)', 'Ajustes → Aplicaciones → Chrome → Permisos → "Dispositivos cercanos" permitido', 'Si la micro:bit aparece vinculada en Ajustes → Bluetooth, tocá "Olvidar"', 'Reseteá la micro:bit (botón de atrás) y volvé a intentar'],
+                    hintsMac: ['Configuración del Sistema → Bluetooth → (i) junto a "BBC micro:bit" → Olvidar', 'Reseteá la micro:bit y volvé a intentar'],
+                    hintsGeneric: ['Verificá que la micro:bit esté encendida, cerca y con el programa Bluetooth cargado', 'Desvinculala de la configuración Bluetooth del sistema si aparece vinculada', 'Reseteá la micro:bit y volvé a intentar'],
+                    hintsUart: ['El programa MakeCode necesita el bloque "iniciar Bluetooth para fisicabit.com" (extensión FisicaBit) o "bluetooth uart service"', 'Volvé a grabar la micro:bit y reseteala'],
+                },
+                en: {
+                    connecting: 'Connecting via Bluetooth', connected: 'Bluetooth connected', error: 'Could not connect',
+                    reconnecting: 'Connection lost', info: 'Bluetooth', cancelled: 'Connection cancelled',
+                    steps: ['Choose the micro:bit', 'Connect to the board', 'Find the data channel', 'Enable reception', 'Ready'],
+                    hintSelect: 'In the browser window tap "BBC micro:bit [xxxxx]" and then Pair / Connect.',
+                    hintSelectAgain: 'Bluetooth cache cleared. Choose the micro:bit again in the window.',
+                    hintGatt: 'Keep the micro:bit close and the screen on.',
+                    hintDiscover: 'Reading the board services…',
+                    hintNotify: 'Asking the micro:bit to start sending…',
+                    retry: 'Attempt {a} failed. Retrying ({a}/{m}) in {s} s…',
+                    pressCapture: 'Tap CAPTURE to start receiving data.',
+                    lost: 'Lost the connection with {name}.',
+                    reconnectTry: 'Reconnecting… attempt {a} of {m}',
+                    reconnectWait: 'Next attempt in {s} s. Check the micro:bit is still on and close by.',
+                    reconnected: 'Connection recovered. If you were capturing, data keeps arriving.',
+                    reconnectFailed: 'Could not recover the connection.',
+                    reconnectAborted: 'You stopped trying. The micro:bit is disconnected.',
+                    elapsed: '{s} s', attempt: 'attempt {a}/{m}',
+                    btnCancel: 'Cancel', btnRetry: 'Retry', btnHelp: 'Help', btnClose: 'Close',
+                    btnStopTrying: 'Stop trying', btnDisconnect: 'Disconnect',
+                    infoDevice: 'Board', infoState: 'State', infoRate: 'Data', infoReconnects: 'Reconnections',
+                    infoCapturing: 'Capturing · {hz} per second · {n} points', infoIdle: 'Connected, not capturing. Tap CAPTURE.',
+                    infoNoData: 'Capturing, but no data arrives. Is the micro:bit sending?',
+                    stripNone: 'Not connected · tap BLUETOOTH or CONNECT', stripHz: '{hz}/s · {n} pts',
+                    stripUsb: 'USB connected', stripBt: 'Bluetooth connected',
+                    errNotFound: 'Could not open the Bluetooth chooser.',
+                    errTimeout: 'The micro:bit did not respond in time.',
+                    errNoUart: 'The micro:bit connected but has no data channel (UART).',
+                    errGeneric: 'Bluetooth connection failed.',
+                    errNotify: 'Could not enable data reception.',
+                    hintsAndroid: ['Bluetooth and Location on (Location only on Android 11 or older)', 'Settings → Apps → Chrome → Permissions → "Nearby devices" allowed', 'If the micro:bit shows as paired in Settings → Bluetooth, tap "Forget"', 'Reset the micro:bit (back button) and try again'],
+                    hintsMac: ['System Settings → Bluetooth → (i) next to "BBC micro:bit" → Forget', 'Reset the micro:bit and try again'],
+                    hintsGeneric: ['Check the micro:bit is on, close by and running the Bluetooth program', 'Unpair it from the system Bluetooth settings if it shows as paired', 'Reset the micro:bit and try again'],
+                    hintsUart: ['The MakeCode program needs the block "start Bluetooth for fisicabit.com" (FisicaBit extension) or "bluetooth uart service"', 'Flash the micro:bit again and reset it'],
+                },
+                pt: {
+                    connecting: 'Conectando por Bluetooth', connected: 'Bluetooth conectado', error: 'Não foi possível conectar',
+                    reconnecting: 'A conexão caiu', info: 'Bluetooth', cancelled: 'Conexão cancelada',
+                    steps: ['Escolher a micro:bit', 'Conectar com a placa', 'Buscar o canal de dados', 'Ativar a recepção', 'Pronto'],
+                    hintSelect: 'Na janela do navegador toque em "BBC micro:bit [xxxxx]" e depois em Parear / Conectar.',
+                    hintSelectAgain: 'Cache Bluetooth limpo. Escolha a micro:bit de novo na janela.',
+                    hintGatt: 'Mantenha a micro:bit perto e a tela ligada.',
+                    hintDiscover: 'Lendo os serviços da placa…',
+                    hintNotify: 'Pedindo à micro:bit que comece a enviar…',
+                    retry: 'A tentativa {a} falhou. Tentando de novo ({a}/{m}) em {s} s…',
+                    pressCapture: 'Toque em CAPTURAR para começar a receber dados.',
+                    lost: 'A conexão com {name} foi perdida.',
+                    reconnectTry: 'Reconectando… tentativa {a} de {m}',
+                    reconnectWait: 'Próxima tentativa em {s} s. Verifique se a micro:bit continua ligada e perto.',
+                    reconnected: 'Conexão recuperada. Se estava capturando, os dados continuam chegando.',
+                    reconnectFailed: 'Não foi possível recuperar a conexão.',
+                    reconnectAborted: 'Você parou de tentar. A micro:bit ficou desconectada.',
+                    elapsed: '{s} s', attempt: 'tentativa {a}/{m}',
+                    btnCancel: 'Cancelar', btnRetry: 'Tentar de novo', btnHelp: 'Ver ajuda', btnClose: 'Fechar',
+                    btnStopTrying: 'Parar de tentar', btnDisconnect: 'Desconectar',
+                    infoDevice: 'Placa', infoState: 'Estado', infoRate: 'Dados', infoReconnects: 'Reconexões',
+                    infoCapturing: 'Capturando · {hz} por segundo · {n} pontos', infoIdle: 'Conectada, sem captura. Toque em CAPTURAR.',
+                    infoNoData: 'Capturando, mas não chegam dados. A micro:bit está enviando?',
+                    stripNone: 'Sem conexão · toque em BLUETOOTH ou CONECTAR', stripHz: '{hz}/s · {n} pts',
+                    stripUsb: 'USB conectado', stripBt: 'Bluetooth conectado',
+                    errNotFound: 'Não foi possível abrir o seletor Bluetooth.',
+                    errTimeout: 'A micro:bit não respondeu a tempo.',
+                    errNoUart: 'A micro:bit conectou mas não tem o canal de dados (UART).',
+                    errGeneric: 'A conexão Bluetooth falhou.',
+                    errNotify: 'Não foi possível ativar a recepção de dados.',
+                    hintsAndroid: ['Bluetooth e Localização ativados (Localização só no Android 11 ou anterior)', 'Configurações → Apps → Chrome → Permissões → "Dispositivos próximos" permitido', 'Se a micro:bit aparece pareada em Configurações → Bluetooth, toque em "Esquecer"', 'Reinicie a micro:bit (botão de trás) e tente de novo'],
+                    hintsMac: ['Ajustes do Sistema → Bluetooth → (i) ao lado de "BBC micro:bit" → Esquecer', 'Reinicie a micro:bit e tente de novo'],
+                    hintsGeneric: ['Verifique se a micro:bit está ligada, perto e com o programa Bluetooth gravado', 'Desemparelhe-a das configurações Bluetooth do sistema se aparecer pareada', 'Reinicie a micro:bit e tente de novo'],
+                    hintsUart: ['O programa MakeCode precisa do bloco "iniciar Bluetooth para fisicabit.com" (extensão FisicaBit) ou "bluetooth uart service"', 'Grave a micro:bit de novo e reinicie-a'],
+                },
+            };
+            const STEP_KEYS = ['select', 'gatt', 'discover', 'notify', 'ready'];
+            const $ = (id) => document.getElementById(id);
+            const t = () => S[currentLanguage] || S.es;
+            const fmt = (s, o) => String(s || '').replace(/\{(\w+)\}/g, (m, k) => (o && o[k] !== undefined) ? o[k] : m);
+
+            let mode = 'hidden';          // hidden | connecting | connected | error | reconnecting | info
+            let stepState = {};           // key → pending | active | done | error
+            let stepHint = {};            // key → texto de ayuda
+            let deviceName = '';
+            let startedAt = 0;
+            let tickTimer = null;
+            let hideTimer = null;
+            let waitUntil = 0;            // reconexión: fin de la espera
+            let lastReconnect = null;     // { attempt, max }
+            let lastError = null;
+
+            function setMode(m) {
+                mode = m;
+                const sh = $('btcSheet');
+                if (!sh) return;
+                sh.classList.remove('is-connecting', 'is-connected', 'is-error', 'is-reconnecting', 'is-info');
+                if (m !== 'hidden') sh.classList.add('is-' + m);
+                const open = m !== 'hidden';
+                sh.classList.toggle('open', open);
+                $('btcBackdrop').classList.toggle('open', open);
+                if (open) startTick(); else stopTick();
+                syncStrip();
+            }
+            function startTick() {
+                if (tickTimer) return;
+                tickTimer = setInterval(renderMeta, 500);
+            }
+            function stopTick() {
+                if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+            }
+            function resetSteps() {
+                stepState = {}; stepHint = {};
+                STEP_KEYS.forEach(k => stepState[k] = 'pending');
+            }
+            function setStep(key, st, hint) {
+                const idx = STEP_KEYS.indexOf(key);
+                // Todo lo anterior queda hecho; lo posterior, pendiente
+                STEP_KEYS.forEach((k, i) => {
+                    if (i < idx && stepState[k] !== 'done') stepState[k] = 'done';
+                    if (i > idx) stepState[k] = 'pending';
+                });
+                stepState[key] = st;
+                stepHint[key] = hint || '';
+                renderSteps();
+            }
+            function renderSteps() {
+                const ul = $('btcSteps');
+                if (!ul) return;
+                const L = t();
+                ul.innerHTML = '';
+                STEP_KEYS.forEach((k, i) => {
+                    const li = document.createElement('li');
+                    li.className = 'btc-step ' + (stepState[k] || 'pending');
+                    const dot = document.createElement('span');
+                    dot.className = 'btc-dot';
+                    dot.textContent = stepState[k] === 'done' ? '✓' : stepState[k] === 'error' ? '✕' : String(i + 1);
+                    const box = document.createElement('span');
+                    const lab = document.createElement('span');
+                    lab.className = 'btc-step-label';
+                    lab.textContent = L.steps[i];
+                    box.appendChild(lab);
+                    if (stepHint[k] && (stepState[k] === 'active' || stepState[k] === 'error')) {
+                        const h = document.createElement('span');
+                        h.className = 'btc-step-hint';
+                        h.textContent = stepHint[k];
+                        box.appendChild(h);
+                    }
+                    li.appendChild(dot); li.appendChild(box);
+                    ul.appendChild(li);
+                });
+            }
+            function setText(id, txt) { const e = $(id); if (e) e.textContent = txt || ''; }
+            function setHints(list) {
+                const ul = $('btcHints'); if (!ul) return;
+                ul.innerHTML = '';
+                (list || []).forEach(h => { const li = document.createElement('li'); li.textContent = h; ul.appendChild(li); });
+            }
+            function setActions(list) {
+                const box = $('btcActions'); if (!box) return;
+                box.innerHTML = '';
+                (list || []).forEach(a => {
+                    const b = document.createElement('button');
+                    b.className = 'btc-btn' + (a.cls ? ' ' + a.cls : '');
+                    b.textContent = a.label;
+                    b.addEventListener('click', a.onClick);
+                    box.appendChild(b);
+                });
+            }
+            function renderMeta() {
+                const L = t();
+                let left = '', right = '';
+                if (mode === 'connecting' && startedAt) left = fmt(L.elapsed, { s: Math.round((Date.now() - startedAt) / 1000) });
+                if (mode === 'reconnecting' && lastReconnect) {
+                    left = fmt(L.attempt, { a: lastReconnect.attempt, m: lastReconnect.max });
+                    const rem = Math.max(0, Math.ceil((waitUntil - Date.now()) / 1000));
+                    if (waitUntil > Date.now()) setText('btcMsg', fmt(L.lost, { name: deviceName || 'micro:bit' }) + '\n' + fmt(L.reconnectTry, { a: lastReconnect.attempt, m: lastReconnect.max }) + '\n' + fmt(L.reconnectWait, { s: rem }));
+                }
+                if (mode === 'info') renderInfo();
+                setText('btcMetaLeft', left); setText('btcMetaRight', right);
+                syncStrip();
+            }
+            function currentHz() {
+                if (typeof sampleTimestamps === 'undefined') return 0;
+                const cutoff = Date.now() - 2000;
+                let n = 0;
+                for (let i = sampleTimestamps.length - 1; i >= 0 && sampleTimestamps[i] > cutoff; i--) n++;
+                return n / 2;
+            }
+            function renderInfo() {
+                const L = t();
+                const bt = (typeof microbitBT !== 'undefined') ? microbitBT : null;
+                const box = $('btcInfo'); if (!box) return;
+                box.innerHTML = '';
+                const row = (k, v) => { const d = document.createElement('div'); const b = document.createElement('b'); b.textContent = k; d.appendChild(b); d.appendChild(document.createTextNode(v)); box.appendChild(d); };
+                row(L.infoDevice, deviceName || (bt && bt.device && bt.device.name) || '—');
+                let st;
+                if (state.isCollecting) {
+                    const hz = currentHz();
+                    st = hz > 0 ? fmt(L.infoCapturing, { hz: hz.toFixed(1), n: state.rawData.length }) : L.infoNoData;
+                } else st = L.infoIdle;
+                row(L.infoState, st);
+                row(L.infoReconnects, String(bt && bt.stats ? bt.stats.reconnects : 0));
+            }
+            function hide() {
+                if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+                setMode('hidden');
+            }
+            function openInfo() {
+                setMode('info');
+                const L = t();
+                setText('btcTitle', L.info);
+                setText('btcDevice', deviceName || '');
+                $('btcSteps').style.display = 'none';
+                $('btcInfo').style.display = '';
+                setText('btcMsg', ''); setHints([]);
+                renderInfo();
+                setActions([
+                    { label: L.btnDisconnect, cls: 'danger', onClick: () => { hide(); if (typeof disconnectBluetooth === 'function') disconnectBluetooth(); } },
+                    { label: L.btnClose, onClick: hide },
+                ]);
+            }
+            function errorInfo(err) {
+                // Traduce el error de la clase a título + lista de pasos
+                const L = t();
+                const code = err && err.code;
+                let title = L.errGeneric, hints = L.hintsGeneric;
+                if (code === 'GATT_CONNECT_TIMEOUT' || code === 'CONNECT_TIMEOUT') title = L.errTimeout;
+                else if (code === 'UART_SERVICE_NOT_FOUND' || code === 'NO_UART') { title = L.errNoUart; hints = L.hintsUart; }
+                else if (code === 'NOTIFY') { title = L.errNotify; hints = L.hintsUart; }
+                else if (code === 'NotFoundError' || code === 'NotAllowedError' || code === 'SecurityError') title = L.errNotFound;
+                if (hints === L.hintsGeneric) {
+                    if (typeof _isAndroid !== 'undefined' && _isAndroid) hints = L.hintsAndroid;
+                    else if (typeof _isMac !== 'undefined' && _isMac) hints = L.hintsMac;
+                }
+                return { title, hints, detail: err && err.message ? String(err.message) : '' };
+            }
+            function showError(err) {
+                const L = t();
+                lastError = err;
+                const info = errorInfo(err);
+                setMode('error');
+                setText('btcTitle', L.error);
+                setText('btcDevice', deviceName || '');
+                $('btcSteps').style.display = '';
+                $('btcInfo').style.display = 'none';
+                // Marcar en rojo el paso que estaba activo
+                const active = STEP_KEYS.find(k => stepState[k] === 'active') || 'select';
+                setStep(active, 'error', '');
+                setText('btcMsg', info.title + (info.detail && info.detail !== info.title ? '\n' + info.detail : ''));
+                setHints(info.hints);
+                const acts = [{ label: L.btnRetry, cls: 'primary', onClick: () => { hide(); if (typeof connectBluetooth === 'function') connectBluetooth(); } }];
+                if (typeof renderBtPairingModal === 'function') acts.push({ label: L.btnHelp, onClick: () => { hide(); renderBtPairingModal(); } });
+                acts.push({ label: L.btnClose, onClick: hide });
+                setActions(acts);
+                renderMeta();
+            }
+
+            function onEvent(name, d, bt) {
+                const L = t();
+                d = d || {};
+                switch (name) {
+                    case 'start':
+                        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+                        deviceName = ''; startedAt = Date.now(); lastError = null;
+                        resetSteps();
+                        setMode('connecting');
+                        setText('btcTitle', L.connecting); setText('btcDevice', '');
+                        $('btcSteps').style.display = ''; $('btcInfo').style.display = 'none';
+                        setText('btcMsg', ''); setHints([]);
+                        setActions([{ label: L.btnCancel, onClick: () => { if (bt && typeof bt.cancel === 'function') bt.cancel(); else hide(); } }]);
+                        setStep('select', 'active', L.hintSelect);
+                        break;
+                    case 'select':
+                        setMode('connecting');
+                        setStep('select', 'active', d.again ? L.hintSelectAgain : L.hintSelect);
+                        break;
+                    case 'selected':
+                        deviceName = d.name || 'micro:bit';
+                        setText('btcDevice', deviceName);
+                        setStep('select', 'done', '');
+                        break;
+                    case 'gatt':
+                        if (mode !== 'connecting' && mode !== 'reconnecting') break;
+                        if (mode === 'connecting') { setStep('gatt', 'active', L.hintGatt); setText('btcMsg', ''); }
+                        break;
+                    case 'discover':
+                        if (mode === 'connecting') setStep('discover', 'active', L.hintDiscover);
+                        break;
+                    case 'uart':
+                        if (mode === 'connecting') setStep('discover', 'done', '');
+                        break;
+                    case 'notify':
+                        if (mode === 'connecting') setStep('notify', 'active', L.hintNotify);
+                        break;
+                    case 'retry':
+                        if (mode === 'connecting') setText('btcMsg', fmt(L.retry, { a: d.attempt, m: d.max, s: Math.round((d.delayMs || 0) / 1000) }));
+                        break;
+                    case 'connected':
+                    case 'reconnected':
+                        deviceName = d.name || deviceName;
+                        resetSteps(); STEP_KEYS.forEach(k => stepState[k] = 'done'); renderSteps();
+                        setMode('connected');
+                        setText('btcTitle', L.connected); setText('btcDevice', deviceName);
+                        $('btcSteps').style.display = name === 'connected' ? '' : 'none'; $('btcInfo').style.display = 'none';
+                        setText('btcMsg', name === 'connected' ? L.pressCapture : L.reconnected); setHints([]);
+                        setActions([{ label: L.btnClose, onClick: hide }]);
+                        if (hideTimer) clearTimeout(hideTimer);
+                        hideTimer = setTimeout(hide, name === 'connected' ? 3500 : 2500);
+                        break;
+                    case 'error':
+                        showError(d);
+                        break;
+                    case 'cancelled':
+                        hide();
+                        break;
+                    case 'lost':
+                        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+                        deviceName = d.name || deviceName;
+                        lastReconnect = { attempt: 0, max: d.max || 0 };
+                        setMode('reconnecting');
+                        setText('btcTitle', L.reconnecting); setText('btcDevice', deviceName);
+                        $('btcSteps').style.display = 'none'; $('btcInfo').style.display = 'none';
+                        setText('btcMsg', fmt(L.lost, { name: deviceName || 'micro:bit' })); setHints([]);
+                        setActions([{ label: L.btnStopTrying, cls: 'danger', onClick: () => { if (bt) bt._reconnectAbort = true; } }]);
+                        break;
+                    case 'reconnecting':
+                        lastReconnect = { attempt: d.attempt, max: d.max };
+                        waitUntil = Date.now() + (d.waitMs || 0);
+                        if (mode !== 'reconnecting') onEvent('lost', { name: deviceName, max: d.max }, bt);
+                        renderMeta();
+                        break;
+                    case 'reconnect-failed':
+                        waitUntil = 0;
+                        if (d.aborted) {
+                            setMode('error'); setText('btcTitle', L.reconnecting);
+                            setText('btcMsg', L.reconnectAborted); setHints([]);
+                            setActions([{ label: L.btnRetry, cls: 'primary', onClick: () => { hide(); if (typeof connectBluetooth === 'function') connectBluetooth(); } }, { label: L.btnClose, onClick: hide }]);
+                        } else {
+                            resetSteps(); setStep('gatt', 'error', '');
+                            showError({ code: 'RECONNECT', message: L.reconnectFailed });
+                        }
+                        break;
+                    case 'closed':
+                        if (mode !== 'error') hide();
+                        deviceName = '';
+                        break;
+                }
+                syncStrip();
+            }
+
+            // ── Franja de estado (celulares / tablets) ──
+            function stripVisible() {
+                const s = $('btcStrip');
+                if (!s) return false;
+                const b = document.body.classList;
+                if (b.contains('sensor-mode-active') || b.contains('experiment-active') || b.contains('desktop-lab-active')) return false;
+                const full = ['mk-panel', 'trk-panel', 'vm-panel'].some(id => { const e = $(id); return e && e.classList.contains('open'); });
+                if (full) return false;
+                if (window.__mapeoCtrl && window.__mapeoCtrl.panel && window.__mapeoCtrl.panel.classList.contains('open')) return false;
+                return true;
+            }
+            function syncStrip() {
+                const s = $('btcStrip'); if (!s) return;
+                const vis = stripVisible();
+                s.classList.toggle('avail', vis);
+                const shown = vis && getComputedStyle(s).display !== 'none';
+                document.body.classList.toggle('btc-strip-pad', shown);
+                if (!shown) return;
+                const L = t();
+                const tr = translations[currentLanguage] || {};
+                let cls = 'st-idle', text = '', right = '';
+                const fw = $('formatWarning');
+                if (fw && fw.style.display !== 'none' && fw.textContent) {
+                    cls = 'st-warn'; text = fw.textContent; right = '';
+                } else if (mode === 'connecting') {
+                    cls = 'st-busy'; text = L.connecting + '…';
+                    const active = STEP_KEYS.find(k => stepState[k] === 'active');
+                    if (active) right = L.steps[STEP_KEYS.indexOf(active)];
+                } else if (mode === 'reconnecting') {
+                    cls = 'st-warn'; text = fmt(L.reconnectTry, lastReconnect ? { a: lastReconnect.attempt, m: lastReconnect.max } : { a: 1, m: '?' });
+                } else if (mode === 'error') {
+                    cls = 'st-err'; text = L.error;
+                } else if (state.isConnected) {
+                    const bt = state.isBluetooth;
+                    if (state.isCollecting) {
+                        cls = 'st-live';
+                        text = (tr.capturing || 'CAPTURANDO') + (bt && deviceName ? ' · ' + deviceName : bt ? ' · BT' : ' · USB');
+                        right = fmt(L.stripHz, { hz: currentHz().toFixed(1), n: state.rawData.length });
+                    } else {
+                        cls = 'st-ok';
+                        text = (bt ? L.stripBt : L.stripUsb) + (bt && deviceName ? ' · ' + deviceName : '');
+                        right = (tr.capture || 'CAPTURAR') + ' ▶';
+                    }
+                } else {
+                    const stEl = $('statusText');
+                    const raw = stEl ? stEl.textContent.trim() : '';
+                    const disc = tr.disconnected || 'DESCONECTADO';
+                    text = (!raw || raw === disc) ? L.stripNone : raw;
+                    cls = raw && raw !== disc ? 'st-busy' : 'st-idle';
+                }
+                s.className = 'btc-strip avail ' + cls;
+                setText('btcStripText', text);
+                setText('btcStripRight', right);
+            }
+            function onStripTap() {
+                const fw = $('formatWarning');
+                if (fw && fw.style.display !== 'none' && typeof applyFormatFix === 'function') { applyFormatFix(); return; }
+                if (mode !== 'hidden') { $('btcSheet').scrollIntoView && $('btcSheet').classList.add('open'); return; }
+                if (state.isConnected && state.isBluetooth) { openInfo(); return; }
+                if (!state.isConnected) {
+                    const b = $('connectBluetoothBtn');
+                    if (b && !b.disabled && b.style.display !== 'none') b.click();
+                }
+            }
+
+            function init() {
+                const c = $('btcClose'); if (c) c.addEventListener('click', hide);
+                const bd = $('btcBackdrop'); if (bd) bd.addEventListener('click', () => { if (mode === 'connected' || mode === 'info' || mode === 'error') hide(); });
+                const s = $('btcStrip'); if (s) s.addEventListener('click', onStripTap);
+                resetSteps();
+                setInterval(syncStrip, 700);
+                syncStrip();
+            }
+            init();
+
+            return { onEvent, hide, openInfo, syncStrip, get mode() { return mode; } };
+        })();
+        window.btConnUI = btConnUI;
+
         // ========== CONEXIÓN BLUETOOTH ROBUSTA ==========
         // Basado en microbit-web-bluetooth (thegecko) + mejoras de robustez
         // Soporta: UART (CSV desde MakeCode) + lectura directa de sensores BLE
@@ -12040,6 +12646,31 @@ bluetooth.startIOPinService()</pre>
             warn(msg, ...args) { console.warn('[BT]', msg, ...args); }
             error(msg, ...args) { console.error('[BT]', msg, ...args); }
 
+            // Eventos para el comunicador de conexión (btConnUI). Nunca rompen la conexión.
+            _emit(name, data) {
+                try { if (window.btConnUI) window.btConnUI.onEvent(name, data || {}, this); }
+                catch (e) { this.warn('UI de conexión:', e.message); }
+            }
+
+            // Aviso de error: hoja de estado si existe, diálogo simple si no.
+            _notifyError(code, message, fallbackText) {
+                if (window.btConnUI) this._emit('error', { code: code, message: message });
+                else uiAlert(fallbackText || message);
+            }
+
+            // Cancelación por el usuario durante la conexión inicial
+            cancel() {
+                this._cancelled = true;
+                this.log('Conexión cancelada por el usuario');
+                this._emit('cancelled');
+                this.destroy();
+                // La promesa de conexión en curso puede tardar en rechazarse (o no
+                // hacerlo nunca si el stack BLE quedó colgado): liberar la UI ya.
+                this.connecting = false;
+                const statusEl = document.getElementById('statusText');
+                if (statusEl) statusEl.textContent = translations[currentLanguage].disconnected || 'DESCONECTADO';
+            }
+
             // ── Solicitar dispositivo BLE ──
             async requestDevice() {
                 this.log('Solicitando dispositivo BLE...');
@@ -12055,6 +12686,7 @@ bluetooth.startIOPinService()</pre>
                 // Ref: codal-microbit-v2 MicroBitBLEManager.cpp — BLE_ADVDATA_FULL_NAME.
                 const filters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
 
+                this._emit('select');
                 try {
                     this.device = await navigator.bluetooth.requestDevice({ filters, optionalServices });
                 } catch (filterErr) {
@@ -12073,6 +12705,7 @@ bluetooth.startIOPinService()</pre>
                 }
 
                 this.log('Dispositivo seleccionado:', this.device.name, '| ID:', this.device.id);
+                this._emit('selected', { name: this.device.name });
                 return this.device;
             }
 
@@ -12091,6 +12724,7 @@ bluetooth.startIOPinService()</pre>
             // Usamos un listener de disconnect para detectar este caso.
             async _connectGATTWithStabilization(device, stabilizationMs) {
                 const waitMs = stabilizationMs || 600;
+                this._emit('gatt', { name: device.name });
                 try {
                     this.server = await this._withTimeout(device.gatt.connect(), BT_CONFIG.gattConnectTimeout, 'GATT_CONNECT_TIMEOUT');
                 } catch (e) {
@@ -12099,6 +12733,11 @@ bluetooth.startIOPinService()</pre>
                         try { device.gatt.disconnect(); } catch (_) {}
                     }
                     throw e;
+                }
+                if (this._destroyed) {
+                    // Cancelado mientras conectaba: no dejar el enlace abierto sin dueño
+                    try { device.gatt.disconnect(); } catch (_) {}
+                    throw new Error('CANCELLED');
                 }
                 this.log('GATT connected:', this.server.connected);
 
@@ -12166,6 +12805,7 @@ bluetooth.startIOPinService()</pre>
 
                 // Discovery completo: listar todos los servicios disponibles
                 this.log('Descubriendo servicios BLE...');
+                this._emit('discover');
                 let allSvcs = [];
                 try {
                     allSvcs = await this.server.getPrimaryServices();
@@ -12213,6 +12853,7 @@ bluetooth.startIOPinService()</pre>
                     }
                 }
                 this.log('Servicio UART encontrado');
+                this._emit('uart');
                 this.services[BLE_UUIDS.UART_SERVICE] = uartService;
                 this.availableServices.add(BLE_UUIDS.UART_SERVICE);
 
@@ -12472,12 +13113,14 @@ bluetooth.startIOPinService()</pre>
                 }
 
                 // startNotifications con reintentos
+                this._emit('notify');
                 try {
                     await this._startNotifyWithRetry(txChar);
                 } catch (notifyErr) {
                     this.error('startNotifications falló:', notifyErr.message);
                     this.btLoopRunning = false;
-                    uiAlert(currentLanguage === 'en' ?
+                    if (this._destroyed) return;
+                    this._notifyError('NOTIFY', notifyErr.message, currentLanguage === 'en' ?
                         'Error: Could not enable UART notifications.\n\nVerify your MakeCode program has "bluetooth uart service".\nTry forgetting the device in Bluetooth settings and reconnect.' :
                         currentLanguage === 'pt' ?
                         'Erro: Não foi possível ativar notificações UART.\n\nVerifique que seu programa MakeCode tenha "bluetooth uart service".\nTente esquecer o dispositivo nas configurações Bluetooth e reconectar.' :
@@ -12582,6 +13225,8 @@ bluetooth.startIOPinService()</pre>
                 }
                 this.connecting = true;
                 this._destroyed = false;
+                this._cancelled = false;
+                this._emit('start');
 
                 const statusEl = document.getElementById('statusText');
                 try {
@@ -12637,11 +13282,13 @@ bluetooth.startIOPinService()</pre>
                                 try {
                                     await this._delay(1500);
                                     const retryFilters = [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }];
+                                    this._emit('select', { again: true });
                                     this.device = await navigator.bluetooth.requestDevice({
                                         filters: retryFilters,
                                         optionalServices: ALL_OPTIONAL_SERVICES
                                     });
                                     this.log('Dispositivo re-seleccionado:', this.device.name, '| ID:', this.device.id);
+                                    this._emit('selected', { name: this.device.name });
                                     statusEl.textContent = 'Conectando a ' + (this.device.name || 'micro:bit') + '...';
                                     await this.connectAndSetupUART(this.device, 1200);
                                     connected = true;
@@ -12668,7 +13315,9 @@ bluetooth.startIOPinService()</pre>
                                     const stabilMs = stabilizationWindows[attempt - 2] || 3000;
                                     statusEl.textContent = `Reconectando... intento ${attempt}/4`;
                                     this.log(`Reintento sin forget ${attempt}/4: delay=${retryDelay}ms, estabilización=${stabilMs}ms`);
+                                    this._emit('retry', { attempt: attempt, max: 4, delayMs: retryDelay });
                                     await this._delay(retryDelay);
+                                    if (this._destroyed) throw new Error('CANCELLED');
                                     try {
                                         try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                                         await this.connectAndSetupUART(this.device, stabilMs);
@@ -12682,11 +13331,13 @@ bluetooth.startIOPinService()</pre>
                                             try {
                                                 try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                                                 statusEl.textContent = 'Selecciona la micro:bit de nuevo...';
+                                                this._emit('select', { again: true });
                                                 this.device = await navigator.bluetooth.requestDevice({
                                                     filters: [{ namePrefix: 'BBC micro:bit' }, { namePrefix: 'uBit' }],
                                                     optionalServices: ALL_OPTIONAL_SERVICES
                                                 });
                                                 this.log('Re-seleccionado:', this.device.name, '| nuevo ID:', this.device.id);
+                                                this._emit('selected', { name: this.device.name });
                                             } catch (reqErr) {
                                                 if (reqErr.name === 'NotFoundError') { this.connecting = false; return false; }
                                                 this.warn('Re-solicitar falló:', reqErr.message);
@@ -12697,9 +13348,10 @@ bluetooth.startIOPinService()</pre>
                             }
 
                         if (!connected) {
+                                this.connecting = false;
+                                if (this._destroyed) return false;
                                 this.error('Conexión fallida:', e1.message);
                                 this._showConnectionError(lastError || e1);
-                                this.connecting = false;
                                 return false;
                             }
 
@@ -12710,8 +13362,10 @@ bluetooth.startIOPinService()</pre>
                                     const retryDelay = 1500 * attempt;
                                     statusEl.textContent = `Reconectando... intento ${attempt}/3`;
                                     this.log(`Reintento ${attempt}/3: esperando ${retryDelay}ms...`);
+                                    this._emit('retry', { attempt: attempt, max: 3, delayMs: retryDelay });
                                     try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
                                     await this._delay(retryDelay);
+                                    if (this._destroyed) throw new Error('CANCELLED');
                                     await this.connectAndSetupUART(this.device);
                                     connected = true;
                                 } catch (e) {
@@ -12724,9 +13378,10 @@ bluetooth.startIOPinService()</pre>
                     }
 
                     if (!connected) {
+                        this.connecting = false;
+                        if (this._destroyed) return false;
                         this.error('Conexión fallida:', lastError?.message);
                         this._showConnectionError(lastError);
-                        this.connecting = false;
                         return false;
                     }
 
@@ -12780,16 +13435,23 @@ bluetooth.startIOPinService()</pre>
                     await this.startUARTLoop();
 
                     this.connecting = false;
+                    if (this.btLoopRunning) this._emit('connected', { name: this.device.name });
                     return true;
 
                 } catch (err) {
                     this.connecting = false;
+                    if (this._destroyed || this._cancelled) {
+                        this.log('Conexión interrumpida por el usuario');
+                        statusEl.textContent = translations[currentLanguage].disconnected || 'DESCONECTADO';
+                        return false;
+                    }
                     this.error('Error en conexión:', err.name, err.message, err.stack);
                     statusEl.textContent = 'Error de conexión BT';
                     const userCancelled = err.name === 'NotFoundError' && /cancel/i.test(err.message || '');
                     if (userCancelled) {
                         this.log('Usuario canceló el selector');
                         statusEl.textContent = translations[currentLanguage].disconnected || 'DESCONECTADO';
+                        this._emit('cancelled');
                     } else if (err.name === 'NotFoundError' || err.name === 'NotAllowedError' || err.name === 'SecurityError') {
                         // En Android, NotFoundError también aparece cuando el adaptador
                         // Bluetooth está apagado, cuando faltan permisos al navegador o
@@ -12811,15 +13473,15 @@ bluetooth.startIOPinService()</pre>
                                     : '1. Verifique se o Bluetooth está ligado\n2. Verifique as permissões de Bluetooth do navegador\n3. Reinicie a micro:bit e tente de novo\n') +
                                 '\nDetalhe: ' + err.message
                         };
-                        uiAlert(hints[currentLanguage] || hints.es);
+                        this._notifyError(err.name, err.message, hints[currentLanguage] || hints.es);
                     } else if (err.message && err.message.includes('UART')) {
-                        uiAlert(currentLanguage === 'en' ?
+                        this._notifyError('NO_UART', err.message, currentLanguage === 'en' ?
                             'UART service not found on the micro:bit.\n\nVerify the MakeCode program has the block:\n"bluetooth uart service"' :
                             currentLanguage === 'pt' ?
                             'Serviço UART não encontrado na micro:bit.\n\nVerifique que o programa MakeCode tenha o bloco:\n"bluetooth uart service"' :
                             'No se encontró el servicio UART en la micro:bit.\n\nVerifica que el programa MakeCode tenga el bloque:\n"bluetooth uart service"');
                     } else {
-                        uiAlert('Error Bluetooth: ' + err.message);
+                        this._notifyError(err.name || 'ERROR', err.message, 'Error Bluetooth: ' + err.message);
                     }
                     return false;
                 }
@@ -12848,6 +13510,7 @@ bluetooth.startIOPinService()</pre>
                 }
 
                 this.warn('── GATT desconectado ── Iniciando reconexión automática');
+                this._emit('lost', { name: this.device && this.device.name, max: BT_CONFIG.maxReconnectAttempts });
                 this.connected = false;
                 state.isConnected = false;
                 state.btCharTx = null;
@@ -12880,6 +13543,7 @@ bluetooth.startIOPinService()</pre>
                     try {
                         this.log(`Reconexión intento ${attempt}/${maxReconnect} — esperando ${waitMs}ms...`);
                         statusEl.textContent = `${t.reconnecting || 'Reconectando'} (${attempt}/${maxReconnect})...`;
+                        this._emit('reconnecting', { attempt: attempt, max: maxReconnect, waitMs: waitMs });
                         await this._delay(waitMs);
 
                         if (this._reconnectAbort || this._destroyed) break;
@@ -12907,6 +13571,7 @@ bluetooth.startIOPinService()</pre>
                         await this.startUARTLoop();
 
                         this.reconnecting = false;
+                        this._emit('reconnected', { name: this.device && this.device.name });
                         return;
                     } catch (e) {
                         this.warn(`Reconexión intento ${attempt}/${maxReconnect} fallido:`, e.name, e.message);
@@ -12919,6 +13584,7 @@ bluetooth.startIOPinService()</pre>
                 this.reconnecting = false;
                 this._releaseWakeLock();
                 this.error(`Reconexión fallida después de ${maxReconnect} intentos`);
+                this._emit('reconnect-failed', { aborted: !!this._reconnectAbort && !this._destroyed });
                 state.isBluetooth = false;
                 state.btDevice = null;
                 syncExpBtButton();
@@ -12961,6 +13627,7 @@ bluetooth.startIOPinService()</pre>
 
             // ── Desconexión limpia ──
             destroy() {
+                if (!this._destroyed) this._emit('closed');
                 this._destroyed = true;
                 this._reconnectAbort = true;
                 this.reconnecting = false;
@@ -13059,11 +13726,17 @@ bluetooth.startIOPinService()</pre>
             }
 
             _showConnectionError(err) {
+                if (this._destroyed) return;
+                const code = err && err.message;
+                if (window.btConnUI) {
+                    this._emit('error', { code: code, message: (err && err.originalMessage) || '' });
+                    if (_isWindows) renderBtWindowsModal();
+                    return;
+                }
                 if (_isWindows) {
                     renderBtWindowsModal();
                     return;
                 }
-                const code = err && err.message;
                 let msg;
                 if (code === 'GATT_CONNECT_TIMEOUT' || code === 'CONNECT_TIMEOUT') {
                     msg = 'La micro:bit no respondió a tiempo.\n\n';
@@ -13637,12 +14310,8 @@ bluetooth.startIOPinService()</pre>
                         const tr = translations[currentLanguage];
                         const n = state.numVariables;
                         const expected = state.microbitTimestamp ? n + 1 : n;
-                        const hint = _lastMismatchParts === n + 1 && !state.microbitTimestamp
-                            ? tr.formatHintEnable
-                            : _lastMismatchParts === n && state.microbitTimestamp
-                            ? tr.formatHintDisable
-                            : '';
-                        fwEl.textContent = tr.formatWarn.replace('{got}', _lastMismatchParts).replace('{exp}', expected) + hint;
+                        const fix = computeFormatFix();
+                        fwEl.textContent = tr.formatWarn.replace('{got}', _lastMismatchParts).replace('{exp}', expected) + fix.hint + (fix.apply ? ' · ' + (tr.formatFixTap || 'Tocá para corregir') : '');
                         fwEl.style.display = 'inline-block';
                     } else {
                         fwEl.style.display = 'none';
