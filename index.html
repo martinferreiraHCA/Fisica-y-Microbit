@@ -6450,7 +6450,7 @@ basic.forever(function () {
                 saveGraphAs: 'Guardar como imagen',
                 // Bluetooth pairing guide
                 btPairingTitle: 'CONEXIÓN BLUETOOTH',
-                btPairingStep1: 'Asegúrate de que tu programa MakeCode tenga <b>"No Pairing Required: JustWorks pairing"</b> activado en <b>⚙ → Project Settings</b>.<br><br>Además, verifica que en el archivo <b>pxt.json</b> la sección <code>bluetooth</code> tenga estos valores:<pre style="background:#1a1a2e;color:#e0e0e0;padding:8px;border-radius:6px;font-size:12px;margin-top:6px;text-align:left">"bluetooth": {\n    "open": 1,\n    "pairing_mode": 0,\n    "whitelist": 0,\n    "security_level": null\n}</pre>',
+                btPairingStep1: 'Si armaste el programa con la extensión <b>FisicaBit</b> (categoría FisicaBit BT), la conexión sin vinculación ya viene configurada: no hace falta tocar nada. Solo si usás los bloques Bluetooth comunes de MakeCode, o si cambiaste la configuración del proyecto, activá <b>"No Pairing Required: Anyone can connect via Bluetooth"</b> en <b>⚙ → Project Settings</b>. Equivale a esta sección de <b>pxt.json</b> (la clave <code>bluetooth</code> suelta, fuera de <code>yotta</code>, no la lee el compilador):<pre style="background:#1a1a2e;color:#e0e0e0;padding:8px;border-radius:6px;font-size:12px;margin-top:6px;text-align:left">"yotta": {\n  "config": {\n    "microbit-dal": {\n      "bluetooth": {\n        "open": 1,\n        "whitelist": 0,\n        "security_level": null\n      }\n    }\n  }\n}</pre>',
                 btPairingStep2: 'Enciende la micro:bit (o presiona <b>RESET</b> una vez para reiniciar).',
                 btPairingStep3: 'Presiona <b>CONECTAR</b> y selecciona tu micro:bit (<b>"BBC micro:bit"</b>) en la ventana del navegador.',
                 btPairingCancel: 'CANCELAR',
@@ -6839,7 +6839,7 @@ basic.forever(function () {
                 saveGraphAs: 'Save as image',
                 // Bluetooth pairing guide
                 btPairingTitle: 'BLUETOOTH CONNECTION',
-                btPairingStep1: 'Make sure your MakeCode program has <b>"No Pairing Required: JustWorks pairing"</b> enabled in <b>⚙ → Project Settings</b>.<br><br>Also, verify that the <b>pxt.json</b> file has these values in the <code>bluetooth</code> section:<pre style="background:#1a1a2e;color:#e0e0e0;padding:8px;border-radius:6px;font-size:12px;margin-top:6px;text-align:left">"bluetooth": {\n    "open": 1,\n    "pairing_mode": 0,\n    "whitelist": 0,\n    "security_level": null\n}</pre>',
+                btPairingStep1: 'If you built the program with the <b>FisicaBit</b> extension (FisicaBit BT category), the no-pairing connection is already configured: nothing to change. Only if you use MakeCode\'s generic Bluetooth blocks, or changed the project settings, enable <b>"No Pairing Required: Anyone can connect via Bluetooth"</b> in <b>⚙ → Project Settings</b>. It is equivalent to this section of <b>pxt.json</b> (a bare <code>bluetooth</code> key outside <code>yotta</code> is ignored by the compiler):<pre style="background:#1a1a2e;color:#e0e0e0;padding:8px;border-radius:6px;font-size:12px;margin-top:6px;text-align:left">"yotta": {\n  "config": {\n    "microbit-dal": {\n      "bluetooth": {\n        "open": 1,\n        "whitelist": 0,\n        "security_level": null\n      }\n    }\n  }\n}</pre>',
                 btPairingStep2: 'Turn on the micro:bit (or press <b>RESET</b> once to restart).',
                 btPairingStep3: 'Press <b>CONNECT</b> and select your micro:bit (<b>"BBC micro:bit"</b>) from the browser popup.',
                 btPairingCancel: 'CANCEL',
@@ -7228,7 +7228,7 @@ basic.forever(function () {
                 saveGraphAs: 'Salvar como imagem',
                 // Bluetooth pairing guide
                 btPairingTitle: 'CONEXÃO BLUETOOTH',
-                btPairingStep1: 'Certifique-se de que seu programa MakeCode tenha <b>"No Pairing Required: JustWorks pairing"</b> ativado em <b>⚙ → Project Settings</b>.<br><br>Além disso, verifique que o arquivo <b>pxt.json</b> tenha estes valores na seção <code>bluetooth</code>:<pre style="background:#1a1a2e;color:#e0e0e0;padding:8px;border-radius:6px;font-size:12px;margin-top:6px;text-align:left">"bluetooth": {\n    "open": 1,\n    "pairing_mode": 0,\n    "whitelist": 0,\n    "security_level": null\n}</pre>',
+                btPairingStep1: 'Se você montou o programa com a extensão <b>FisicaBit</b> (categoria FisicaBit BT), a conexão sem pareamento já vem configurada: não precisa mudar nada. Só se usar os blocos Bluetooth comuns do MakeCode, ou se alterou as configurações do projeto, ative <b>"No Pairing Required: Anyone can connect via Bluetooth"</b> em <b>⚙ → Project Settings</b>. Equivale a esta seção do <b>pxt.json</b> (uma chave <code>bluetooth</code> solta, fora de <code>yotta</code>, não é lida pelo compilador):<pre style="background:#1a1a2e;color:#e0e0e0;padding:8px;border-radius:6px;font-size:12px;margin-top:6px;text-align:left">"yotta": {\n  "config": {\n    "microbit-dal": {\n      "bluetooth": {\n        "open": 1,\n        "whitelist": 0,\n        "security_level": null\n      }\n    }\n  }\n}</pre>',
                 btPairingStep2: 'Ligue o micro:bit (ou pressione <b>RESET</b> uma vez para reiniciar).',
                 btPairingStep3: 'Pressione <b>CONECTAR</b> e selecione seu micro:bit (<b>"BBC micro:bit"</b>) na janela do navegador.',
                 btPairingCancel: 'CANCELAR',
@@ -32922,7 +32922,7 @@ bluetooth.startIOPinService()</pre>
                         <h4>Tus prácticas</h4>
                         <p>Al abrir, el editor crea solo una práctica con la extensión cargada, o reabre la última. <strong>Guardar en Drive</strong> la sube a tu Google Drive, en la carpeta <em>fisicabit / prácticas de micro:bit</em> (la misma sesión de Google que usa el resto del sitio); una vez subida, los cambios siguientes se guardan solos. <strong>Mis prácticas ▾</strong> lista las de Drive y las de este navegador para retomarlas, y permite crear otra práctica nueva.</p>
                         <h4>Si algo no aparece</h4>
-                        <p>La extensión se agrega desde <em>Extensiones</em> pegando <code>https://github.com/preparadordelaboratorio/pxt-fisicabit-usb</code>. Si el editor no carga dentro del sitio (red escolar que bloquea iframes), usá <strong>Pestaña ↗</strong> y pegá esa misma URL.</p>
+                        <p>La extensión se agrega desde <em>Extensiones</em> pegando <code>https://github.com/martinferreiraHCA/pxt-fisicabit-usb</code>. Si el editor no carga dentro del sitio (red escolar que bloquea iframes), usá <strong>Pestaña ↗</strong> y pegá esa misma URL.</p>
                     </div>
                 </div>
             </div>
@@ -32936,7 +32936,7 @@ bluetooth.startIOPinService()</pre>
 
     var ORIGIN = 'https://makecode.microbit.org';
     var EXT_NAME = 'fisicabit-usb';
-    var EXT_REPO = 'github:preparadordelaboratorio/pxt-fisicabit-usb';
+    var EXT_REPO = 'github:martinferreiraHCA/pxt-fisicabit-usb';
     var LS_KEY = 'fisicabit_makecode_workspace_v1';
     var LS_BAR = 'fisicabit_makecode_barhidden';
     var LS_POS = 'fisicabit_makecode_barpos';
