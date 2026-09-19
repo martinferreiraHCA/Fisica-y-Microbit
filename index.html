@@ -11846,6 +11846,14 @@ bluetooth.startIOPinService()</pre>
                 t.btPairingStep2,
                 t.btPairingStep3
             ];
+            if (typeof _isAndroid !== 'undefined' && _isAndroid) {
+                const androidStep = {
+                    es: 'En el celular: activá <b>Bluetooth</b> (y <b>Ubicación</b> en Android 11 o anterior) y dale a Chrome el permiso de <b>"Dispositivos cercanos"</b>. Mantené la pantalla encendida durante la captura.',
+                    en: 'On the phone: turn on <b>Bluetooth</b> (and <b>Location</b> on Android 11 or older) and grant Chrome the <b>"Nearby devices"</b> permission. Keep the screen on while capturing.',
+                    pt: 'No celular: ative o <b>Bluetooth</b> (e a <b>Localização</b> no Android 11 ou anterior) e dê ao Chrome a permissão de <b>"Dispositivos próximos"</b>. Mantenha a tela ligada durante a captura.'
+                };
+                steps.unshift(androidStep[currentLanguage] || androidStep.es);
+            }
 
             let html = '';
             for (let i = 0; i < steps.length; i++) {
@@ -11980,7 +11988,17 @@ bluetooth.startIOPinService()</pre>
             // Health monitoring
             healthCheckInterval: 5000,      // Intervalo de verificación de salud (ms)
             connectionTimeout: 30000,       // Timeout para conexión completa (ms)
+            // device.gatt.connect() no tiene timeout propio: en Android puede quedar
+            // colgado indefinidamente si la micro:bit dejó de anunciarse (reset,
+            // fuera de alcance). Cortamos nosotros para no bloquear la UI.
+            get gattConnectTimeout() { return isMobileBrowser ? 15000 : 20000; },
             notifyStartRetries: 3,          // Reintentos para startNotifications
+            // Sensores BLE directos (acelerómetro a 20ms, magnetómetro, botones…).
+            // FisicaBit solo consume el UART: esas notificaciones extra compiten por
+            // el enlace (sobre todo en celulares, con intervalos de conexión más
+            // largos) y el UART TX usa INDICATE (un paquete por ida y vuelta).
+            // Desactivado por defecto; activar solo para depuración.
+            enableDirectSensors: false,
         };
 
         // ── Clase principal de conexión BLE robusta ──
@@ -12001,6 +12019,7 @@ bluetooth.startIOPinService()</pre>
                 this._reconnectAbort = null;
                 this._disconnectListenerBound = null;
                 this._notificationHandlers = [];  // Para limpiar event listeners
+                this._wakeLock = null;            // WakeLockSentinel (celulares)
 
                 // Estadísticas
                 this.stats = { chunks: 0, lines: 0, dataPoints: 0, errors: 0, reconnects: 0, lastLogTime: 0 };
@@ -12072,7 +12091,15 @@ bluetooth.startIOPinService()</pre>
             // Usamos un listener de disconnect para detectar este caso.
             async _connectGATTWithStabilization(device, stabilizationMs) {
                 const waitMs = stabilizationMs || 600;
-                this.server = await device.gatt.connect();
+                try {
+                    this.server = await this._withTimeout(device.gatt.connect(), BT_CONFIG.gattConnectTimeout, 'GATT_CONNECT_TIMEOUT');
+                } catch (e) {
+                    if (e.message === 'GATT_CONNECT_TIMEOUT') {
+                        this.warn(`gatt.connect() no respondió en ${BT_CONFIG.gattConnectTimeout}ms — cancelando`);
+                        try { device.gatt.disconnect(); } catch (_) {}
+                    }
+                    throw e;
+                }
                 this.log('GATT connected:', this.server.connected);
 
                 // Esperar brevemente y verificar que la conexión no cayó
@@ -12108,6 +12135,23 @@ bluetooth.startIOPinService()</pre>
             }
 
             async connectAndSetupUART(device, stabilizationMs) {
+                // Toda la secuencia (connect + discovery + características) acotada
+                // por connectionTimeout. Si expira, desconectamos para que el próximo
+                // intento arranque limpio en vez de quedar "Conectando..." para siempre.
+                try {
+                    return await this._withTimeout(
+                        this._connectAndSetupUARTImpl(device, stabilizationMs),
+                        BT_CONFIG.connectionTimeout, 'CONNECT_TIMEOUT');
+                } catch (e) {
+                    if (e.message === 'CONNECT_TIMEOUT') {
+                        this.warn(`Conexión no completada en ${BT_CONFIG.connectionTimeout}ms — abortando`);
+                        try { if (device.gatt.connected) device.gatt.disconnect(); } catch (_) {}
+                    }
+                    throw e;
+                }
+            }
+
+            async _connectAndSetupUARTImpl(device, stabilizationMs) {
                 this.log('Conectando a GATT server...');
                 await this._connectGATTWithStabilization(device, stabilizationMs);
 
@@ -12250,6 +12294,11 @@ bluetooth.startIOPinService()</pre>
             // delays entre cada getPrimaryService para no saturar el stack BLE.
             async initDirectSensors() {
                 const inited = [];
+
+                if (!BT_CONFIG.enableDirectSensors) {
+                    this.log('Sensores BLE directos desactivados (solo UART) — menos carga en el enlace');
+                    return inited;
+                }
 
                 // Descubrir servicios de sensores (secuencial, con delays en Windows)
                 await this._discoverService(BLE_UUIDS.ACCEL_SERVICE, 'acelerómetro');
@@ -12649,7 +12698,7 @@ bluetooth.startIOPinService()</pre>
 
                         if (!connected) {
                                 this.error('Conexión fallida:', e1.message);
-                                this._showConnectionError();
+                                this._showConnectionError(lastError || e1);
                                 this.connecting = false;
                                 return false;
                             }
@@ -12676,7 +12725,7 @@ bluetooth.startIOPinService()</pre>
 
                     if (!connected) {
                         this.error('Conexión fallida:', lastError?.message);
-                        this._showConnectionError();
+                        this._showConnectionError(lastError);
                         this.connecting = false;
                         return false;
                     }
@@ -12703,6 +12752,11 @@ bluetooth.startIOPinService()</pre>
 
                     // Health monitoring
                     this._startHealthCheck();
+
+                    // Celular: si la pantalla se apaga, Chrome manda la pestaña a
+                    // segundo plano y Android suele cortar el enlace BLE. Pedimos
+                    // un wake lock de pantalla mientras dure la conexión.
+                    this._acquireWakeLock();
 
                     // UI
                     document.getElementById('connectBtn').style.display = 'none';
@@ -12732,8 +12786,32 @@ bluetooth.startIOPinService()</pre>
                     this.connecting = false;
                     this.error('Error en conexión:', err.name, err.message, err.stack);
                     statusEl.textContent = 'Error de conexión BT';
-                    if (err.name === 'NotFoundError') {
+                    const userCancelled = err.name === 'NotFoundError' && /cancel/i.test(err.message || '');
+                    if (userCancelled) {
                         this.log('Usuario canceló el selector');
+                        statusEl.textContent = translations[currentLanguage].disconnected || 'DESCONECTADO';
+                    } else if (err.name === 'NotFoundError' || err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+                        // En Android, NotFoundError también aparece cuando el adaptador
+                        // Bluetooth está apagado, cuando faltan permisos al navegador o
+                        // (Android ≤ 11) cuando la Ubicación está desactivada.
+                        const hints = {
+                            es: 'No se pudo abrir el selector Bluetooth.\n\n' +
+                                (_isAndroid
+                                    ? '1. Activá Bluetooth (y Ubicación en Android 11 o anterior)\n2. Ajustes → Aplicaciones → Chrome → Permisos: permití "Dispositivos cercanos" y "Ubicación"\n3. Reseteá la micro:bit y volvé a intentar\n'
+                                    : '1. Verificá que el Bluetooth esté encendido\n2. Verificá los permisos de Bluetooth del navegador\n3. Reseteá la micro:bit y volvé a intentar\n') +
+                                '\nDetalle: ' + err.message,
+                            en: 'Could not open the Bluetooth chooser.\n\n' +
+                                (_isAndroid
+                                    ? '1. Turn on Bluetooth (and Location on Android 11 or older)\n2. Settings → Apps → Chrome → Permissions: allow "Nearby devices" and "Location"\n3. Reset the micro:bit and try again\n'
+                                    : '1. Check that Bluetooth is on\n2. Check the browser Bluetooth permissions\n3. Reset the micro:bit and try again\n') +
+                                '\nDetail: ' + err.message,
+                            pt: 'Não foi possível abrir o seletor Bluetooth.\n\n' +
+                                (_isAndroid
+                                    ? '1. Ative o Bluetooth (e a Localização no Android 11 ou anterior)\n2. Configurações → Apps → Chrome → Permissões: permita "Dispositivos próximos" e "Localização"\n3. Reinicie a micro:bit e tente de novo\n'
+                                    : '1. Verifique se o Bluetooth está ligado\n2. Verifique as permissões de Bluetooth do navegador\n3. Reinicie a micro:bit e tente de novo\n') +
+                                '\nDetalhe: ' + err.message
+                        };
+                        uiAlert(hints[currentLanguage] || hints.es);
                     } else if (err.message && err.message.includes('UART')) {
                         uiAlert(currentLanguage === 'en' ?
                             'UART service not found on the micro:bit.\n\nVerify the MakeCode program has the block:\n"bluetooth uart service"' :
@@ -12760,6 +12838,14 @@ bluetooth.startIOPinService()</pre>
 
             async _handleDisconnect() {
                 if (this._destroyed) return;
+                // Durante la reconexión el enlace puede caer varias veces (y nosotros
+                // mismos llamamos gatt.disconnect() antes de cada intento). Cada caída
+                // dispara 'gattserverdisconnected'; sin este guard se lanzaban ciclos
+                // de reconexión en paralelo (doble startUARTLoop, handlers duplicados).
+                if (this.reconnecting) {
+                    this.log('GATT desconectado durante la reconexión — ya hay un ciclo activo, ignorando');
+                    return;
+                }
 
                 this.warn('── GATT desconectado ── Iniciando reconexión automática');
                 this.connected = false;
@@ -12831,6 +12917,7 @@ bluetooth.startIOPinService()</pre>
 
                 // Reconexión fallida
                 this.reconnecting = false;
+                this._releaseWakeLock();
                 this.error(`Reconexión fallida después de ${maxReconnect} intentos`);
                 state.isBluetooth = false;
                 state.btDevice = null;
@@ -12876,10 +12963,16 @@ bluetooth.startIOPinService()</pre>
             destroy() {
                 this._destroyed = true;
                 this._reconnectAbort = true;
+                this.reconnecting = false;
                 this._stopHealthCheck();
+                this._releaseWakeLock();
                 this._cleanupNotificationHandlers();
+                if (this.device && this._disconnectListenerBound) {
+                    try { this.device.removeEventListener('gattserverdisconnected', this._disconnectListenerBound); } catch (_) {}
+                    this._disconnectListenerBound = null;
+                }
                 if (this.device && this.device.gatt && this.device.gatt.connected) {
-                    this.device.gatt.disconnect();
+                    try { this.device.gatt.disconnect(); } catch (_) {}
                 }
                 this.connected = false;
                 this.btLoopRunning = false;
@@ -12892,6 +12985,40 @@ bluetooth.startIOPinService()</pre>
 
             // ── Helpers internos ──
             _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+            // Promesa con timeout. Rechaza con Error(label) si expira.
+            _withTimeout(promise, ms, label) {
+                let timer = null;
+                const timeout = new Promise((_, reject) => {
+                    timer = setTimeout(() => reject(new Error(label)), ms);
+                });
+                return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+            }
+
+            // ── Wake lock de pantalla (celulares) ──
+            // Chrome libera el wake lock al ocultar la pestaña; lo re-pedimos al
+            // volver (ver listener global de visibilitychange más abajo).
+            async _acquireWakeLock() {
+                if (!('wakeLock' in navigator) || this._destroyed) return;
+                if (this._wakeLock && !this._wakeLock.released) return;
+                if (document.visibilityState !== 'visible') return;
+                try {
+                    this._wakeLock = await navigator.wakeLock.request('screen');
+                    this._wakeLock.addEventListener('release', () => this.log('Wake lock liberado'));
+                    this.log('Wake lock de pantalla activo');
+                } catch (e) {
+                    // Puede fallar por batería baja o política del navegador: no es crítico
+                    this.log('Wake lock no disponible:', e.message);
+                }
+            }
+
+            _releaseWakeLock() {
+                const wl = this._wakeLock;
+                this._wakeLock = null;
+                if (wl && !wl.released) {
+                    wl.release().catch(() => {});
+                }
+            }
 
             async _getChar(service, uuid) {
                 try {
@@ -12931,12 +13058,23 @@ bluetooth.startIOPinService()</pre>
                 this._notificationHandlers = [];
             }
 
-            _showConnectionError() {
+            _showConnectionError(err) {
                 if (_isWindows) {
                     renderBtWindowsModal();
                     return;
                 }
-                let msg = 'No se encontraron servicios BLE en el micro:bit.\n\n';
+                const code = err && err.message;
+                let msg;
+                if (code === 'GATT_CONNECT_TIMEOUT' || code === 'CONNECT_TIMEOUT') {
+                    msg = 'La micro:bit no respondió a tiempo.\n\n';
+                    msg += '• Verificá que esté encendida, cerca del celular y con el programa Bluetooth cargado\n';
+                    msg += '• Reseteala (botón de atrás) y volvé a intentar\n\n';
+                } else if (code === 'UART_SERVICE_NOT_FOUND') {
+                    msg = 'La micro:bit se conectó pero no expone el servicio UART.\n\n';
+                    msg += '• Verificá que el programa MakeCode tenga el bloque "bluetooth uart service"\n\n';
+                } else {
+                    msg = 'No se encontraron servicios BLE en el micro:bit.\n\n';
+                }
                 if (_isAndroid) {
                     msg += '1. Bluetooth y Ubicación activados\n';
                     msg += '2. Permisos de Bluetooth otorgados al navegador\n';
@@ -13022,6 +13160,49 @@ bluetooth.startIOPinService()</pre>
             microbitBT = new MicrobitBluetooth();
             await microbitBT.connect();
         }
+
+        // Desconexión manual de Bluetooth. IMPORTANTE: usar esta función en vez de
+        // state.btDevice.gatt.disconnect() directo: el disconnect directo dispara
+        // 'gattserverdisconnected' y la instancia arrancaba la reconexión automática
+        // (volvía a conectar la micro:bit que el usuario acababa de desconectar).
+        function disconnectBluetooth() {
+            if (microbitBT) {
+                try { microbitBT.destroy(); } catch (e) { console.warn('[BT] destroy() falló:', e.message); }
+                microbitBT = null;
+            } else if (state.btDevice && state.btDevice.gatt && state.btDevice.gatt.connected) {
+                try { state.btDevice.gatt.disconnect(); } catch (_) {}
+            }
+            if (state.isBluetooth) state.isConnected = false;
+            state.isBluetooth = false;
+            state.btDevice = null;
+            state.btCharTx = null;
+            // Dejar la barra principal coherente (igual que cuando falla la reconexión)
+            const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v; };
+            show('connectBtn', 'inline-block');
+            show('connectBluetoothBtn', 'inline-block');
+            show('collectBtn', 'none');
+            show('stopBtn', 'none');
+            const st = document.getElementById('statusText');
+            if (st) st.textContent = (translations[currentLanguage] && translations[currentLanguage].disconnected) || 'DESCONECTADO';
+            if (typeof updateGraphLegendPills === 'function') {
+                for (let i = 0; i < (state.numGraphs || 0); i++) updateGraphLegendPills(i);
+            }
+            if (typeof syncExpBtButton === 'function') syncExpBtButton();
+        }
+
+        // Al volver a primer plano (celular: pantalla apagada, cambio de app):
+        // re-pedir el wake lock y verificar de inmediato si el enlace sigue vivo,
+        // sin esperar al próximo health check.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState !== 'visible' || !microbitBT || microbitBT._destroyed) return;
+            if (!microbitBT.connected) return;
+            microbitBT._acquireWakeLock();
+            const dev = microbitBT.device;
+            if (dev && dev.gatt && !dev.gatt.connected && !microbitBT.reconnecting) {
+                microbitBT.warn('Pestaña visible de nuevo: GATT caído mientras estaba en segundo plano');
+                microbitBT._handleDisconnect();
+            }
+        });
 
         document.getElementById('collectBtn').addEventListener('click', () => {
             track('capturar_datos', 'microbit');
@@ -20730,7 +20911,9 @@ bluetooth.startIOPinService()</pre>
                 try { state.port.close(); } catch(e) {}
                 state.port = null;
             }
-            if (state.btDevice && state.btDevice.gatt && state.btDevice.gatt.connected) {
+            if (typeof disconnectBluetooth === 'function') {
+                disconnectBluetooth();
+            } else if (state.btDevice && state.btDevice.gatt && state.btDevice.gatt.connected) {
                 try { state.btDevice.gatt.disconnect(); } catch(e) {}
             }
             state.isConnected = false;
@@ -23458,7 +23641,9 @@ bluetooth.startIOPinService()</pre>
               }
               if (state.reader) { try { state.reader.cancel(); } catch (_) {} }
               if (state.port)   { try { state.port.close();   } catch (_) {}; state.port = null; }
-              if (state.btDevice && state.btDevice.gatt && state.btDevice.gatt.connected) {
+              if (typeof disconnectBluetooth === 'function') {
+                disconnectBluetooth();
+              } else if (state.btDevice && state.btDevice.gatt && state.btDevice.gatt.connected) {
                 try { state.btDevice.gatt.disconnect(); } catch (_) {}
               }
               state.isConnected = false;
