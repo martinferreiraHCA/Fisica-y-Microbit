@@ -4719,6 +4719,14 @@
             .btc-step { padding:3px 0; }
             .btc-step-hint { display:none; }
         }
+        /* Resaltado del botón de conectar mientras no hay conexión (anillo pulsante) */
+        @keyframes btcRingBlue  { 0% { box-shadow:0 0 0 0 rgba(21,101,192,.65); } 70% { box-shadow:0 0 0 10px rgba(21,101,192,0); } 100% { box-shadow:0 0 0 0 rgba(21,101,192,0); } }
+        @keyframes btcRingDark  { 0% { box-shadow:0 0 0 0 rgba(0,0,0,.55); } 70% { box-shadow:0 0 0 10px rgba(0,0,0,0); } 100% { box-shadow:0 0 0 0 rgba(0,0,0,0); } }
+        @keyframes btcRingLight { 0% { box-shadow:0 0 0 0 rgba(255,255,255,.7); } 70% { box-shadow:0 0 0 8px rgba(255,255,255,0); } 100% { box-shadow:0 0 0 0 rgba(255,255,255,0); } }
+        .connect-attention { animation: btcRingBlue 1.6s ease-out infinite; position: relative; z-index: 1; }
+        #connectBtn.connect-attention { animation-name: btcRingDark; }
+        .mapeo-btn.connect-attention { animation-name: btcRingLight; }
+        @media (prefers-reduced-motion: reduce) { .connect-attention { animation: none; outline: 3px solid #1565c0; outline-offset: 2px; } }
         /* Franja de estado para celulares y tablets: en pantallas chicas el texto de estado
            de la barra superior queda fuera de la vista (la barra se desplaza de costado). */
         .btc-strip { display:none; position:fixed; left:0; right:0; bottom:0; z-index:9400; background:#111; color:#fff;
@@ -11966,7 +11974,9 @@ bluetooth.startIOPinService()</pre>
                 // Esto evita acumulación de datos en el buffer del puerto serial
                 startSerialLoop();
             } catch (err) {
-                uiAlert('Error: ' + err.message);
+                console.warn('[USB] Error al conectar:', err.name, err.message);
+                if (window.btConnUI) btConnUI.showUsbError(err);
+                else if (err.name !== 'NotFoundError') uiAlert('Error: ' + err.message);
             }
         });
 
@@ -12076,6 +12086,9 @@ bluetooth.startIOPinService()</pre>
                     infoNoData: 'Capturando, pero no llegan datos. ¿La micro:bit está enviando?',
                     stripNone: 'Sin conexión · tocá BLUETOOTH o CONECTAR', stripHz: '{hz}/s · {n} pts',
                     stripUsb: 'USB conectado', stripBt: 'Bluetooth conectado',
+                    stripNoneBt: 'Sin conexión · tocá BT', stripNoneConnect: 'Sin conexión · tocá CONECTAR',
+                    errorUsbTitle: 'No se pudo conectar por USB', errUsb: 'No se pudo abrir el puerto USB de la micro:bit.',
+                    hintsUsb: ['Cerrá MakeCode u otra pestaña o programa que esté usando el puerto (solo uno puede tenerlo abierto)', 'Desenchufá y volvé a enchufar la micro:bit; probá otro cable (algunos son solo de carga)', 'Si la micro:bit no aparece en la lista, en Windows instalá el driver "mbed serial"', 'Usá Chrome o Edge en computadora: Web Serial no funciona en Firefox ni en celulares'],
                     errNotFound: 'No se pudo abrir el selector Bluetooth.',
                     errTimeout: 'La micro:bit no respondió a tiempo.',
                     errNoUart: 'La micro:bit se conectó pero no tiene el canal de datos (UART).',
@@ -12111,6 +12124,9 @@ bluetooth.startIOPinService()</pre>
                     infoNoData: 'Capturing, but no data arrives. Is the micro:bit sending?',
                     stripNone: 'Not connected · tap BLUETOOTH or CONNECT', stripHz: '{hz}/s · {n} pts',
                     stripUsb: 'USB connected', stripBt: 'Bluetooth connected',
+                    stripNoneBt: 'Not connected · tap BT', stripNoneConnect: 'Not connected · tap CONNECT',
+                    errorUsbTitle: 'Could not connect via USB', errUsb: 'Could not open the micro:bit USB port.',
+                    hintsUsb: ['Close MakeCode or any other tab or program using the port (only one can hold it open)', 'Unplug and plug the micro:bit again; try another cable (some are charge-only)', 'If the micro:bit is not listed, on Windows install the "mbed serial" driver', 'Use Chrome or Edge on a computer: Web Serial does not work in Firefox or on phones'],
                     errNotFound: 'Could not open the Bluetooth chooser.',
                     errTimeout: 'The micro:bit did not respond in time.',
                     errNoUart: 'The micro:bit connected but has no data channel (UART).',
@@ -12146,6 +12162,9 @@ bluetooth.startIOPinService()</pre>
                     infoNoData: 'Capturando, mas não chegam dados. A micro:bit está enviando?',
                     stripNone: 'Sem conexão · toque em BLUETOOTH ou CONECTAR', stripHz: '{hz}/s · {n} pts',
                     stripUsb: 'USB conectado', stripBt: 'Bluetooth conectado',
+                    stripNoneBt: 'Sem conexão · toque em BT', stripNoneConnect: 'Sem conexão · toque em CONECTAR',
+                    errorUsbTitle: 'Não foi possível conectar por USB', errUsb: 'Não foi possível abrir a porta USB da micro:bit.',
+                    hintsUsb: ['Feche o MakeCode ou outra aba ou programa que esteja usando a porta (só um pode mantê-la aberta)', 'Desconecte e reconecte a micro:bit; tente outro cabo (alguns são só de carga)', 'Se a micro:bit não aparece na lista, no Windows instale o driver "mbed serial"', 'Use Chrome ou Edge no computador: Web Serial não funciona no Firefox nem em celulares'],
                     errNotFound: 'Não foi possível abrir o seletor Bluetooth.',
                     errTimeout: 'A micro:bit não respondeu a tempo.',
                     errNoUart: 'A micro:bit conectou mas não tem o canal de dados (UART).',
@@ -12158,6 +12177,10 @@ bluetooth.startIOPinService()</pre>
                 },
             };
             const STEP_KEYS = ['select', 'gatt', 'discover', 'notify', 'ready'];
+            // Acceso seguro a la instancia: 'microbitBT' es un let declarado más abajo en
+            // el mismo script; leerlo antes de esa línea (TDZ) lanza ReferenceError y
+            // typeof no lo evita. El módulo se inicializa antes de esa declaración.
+            function btInst() { try { return microbitBT || null; } catch (_) { return null; } }
             const $ = (id) => document.getElementById(id);
             const t = () => S[currentLanguage] || S.es;
             const fmt = (s, o) => String(s || '').replace(/\{(\w+)\}/g, (m, k) => (o && o[k] !== undefined) ? o[k] : m);
@@ -12272,7 +12295,7 @@ bluetooth.startIOPinService()</pre>
             }
             function renderInfo() {
                 const L = t();
-                const bt = (typeof microbitBT !== 'undefined') ? microbitBT : null;
+                const bt = btInst();
                 const box = $('btcInfo'); if (!box) return;
                 box.innerHTML = '';
                 const row = (k, v) => { const d = document.createElement('div'); const b = document.createElement('b'); b.textContent = k; d.appendChild(b); d.appendChild(document.createTextNode(v)); box.appendChild(d); };
@@ -12432,30 +12455,15 @@ bluetooth.startIOPinService()</pre>
                 syncStrip();
             }
 
-            // ── Franja de estado (celulares / tablets) ──
-            function stripVisible() {
-                const s = $('btcStrip');
-                if (!s) return false;
-                const b = document.body.classList;
-                if (b.contains('sensor-mode-active') || b.contains('experiment-active') || b.contains('desktop-lab-active')) return false;
-                const full = ['mk-panel', 'trk-panel', 'vm-panel'].some(id => { const e = $(id); return e && e.classList.contains('open'); });
-                if (full) return false;
-                if (window.__mapeoCtrl && window.__mapeoCtrl.panel && window.__mapeoCtrl.panel.classList.contains('open')) return false;
-                return true;
-            }
-            function syncStrip() {
-                const s = $('btcStrip'); if (!s) return;
-                const vis = stripVisible();
-                s.classList.toggle('avail', vis);
-                const shown = vis && getComputedStyle(s).display !== 'none';
-                document.body.classList.toggle('btc-strip-pad', shown);
-                if (!shown) return;
+            // ── Estado unificado: franja (celular/tablet), estados de los modos y resaltado ──
+            function computeStatus() {
                 const L = t();
                 const tr = translations[currentLanguage] || {};
+                const b = document.body.classList;
                 let cls = 'st-idle', text = '', right = '';
                 const fw = $('formatWarning');
                 if (fw && fw.style.display !== 'none' && fw.textContent) {
-                    cls = 'st-warn'; text = fw.textContent; right = '';
+                    cls = 'st-warn'; text = fw.textContent;
                 } else if (mode === 'connecting') {
                     cls = 'st-busy'; text = L.connecting + '…';
                     const active = STEP_KEYS.find(k => stepState[k] === 'active');
@@ -12479,12 +12487,98 @@ bluetooth.startIOPinService()</pre>
                     const stEl = $('statusText');
                     const raw = stEl ? stEl.textContent.trim() : '';
                     const disc = tr.disconnected || 'DESCONECTADO';
-                    text = (!raw || raw === disc) ? L.stripNone : raw;
+                    const idle = (b.contains('experiment-active') || b.contains('desktop-lab-active')) ? L.stripNoneBt
+                        : b.contains('sensor-mode-active') ? L.stripNoneConnect : L.stripNone;
+                    text = (!raw || raw === disc) ? idle : raw;
                     cls = raw && raw !== disc ? 'st-busy' : 'st-idle';
                 }
-                s.className = 'btc-strip avail ' + cls;
-                setText('btcStripText', text);
-                setText('btcStripRight', right);
+                return { cls, text, right };
+            }
+            function statusInfo() { return computeStatus(); }
+
+            function stripVisible() {
+                const s = $('btcStrip');
+                if (!s) return false;
+                const b = document.body.classList;
+                if (b.contains('sensor-mode-active') || b.contains('experiment-active') || b.contains('desktop-lab-active')) return false;
+                const full = ['mk-panel', 'trk-panel', 'vm-panel'].some(id => { const e = $(id); return e && e.classList.contains('open'); });
+                if (full) return false;
+                if (window.__mapeoCtrl && window.__mapeoCtrl.panel && window.__mapeoCtrl.panel.classList.contains('open')) return false;
+                return true;
+            }
+            const MIRROR_COLORS = { 'st-busy': '#1565c0', 'st-warn': '#e65100', 'st-err': '#c62828', 'st-ok': '#2e7d32', 'st-live': '#2e7d32' };
+            const lastMirror = {};
+            // Refleja el estado en el indicador propio de cada modo (LAB, LAB escritorio,
+            // SENSORES). Mientras no hay conexión, o en aviso/error/conectando, se
+            // actualiza siempre; al conectar se escribe una sola vez y después el modo
+            // vuelve a usar su indicador para lo suyo (punto seleccionado, etc.).
+            function mirrorInto(id, info) {
+                const e = $(id); if (!e) return;
+                const full = info.text + (info.right ? ' · ' + info.right : '');
+                const forced = !state.isConnected || info.cls === 'st-busy' || info.cls === 'st-warn' || info.cls === 'st-err';
+                if (forced) {
+                    if (e.textContent !== full) e.textContent = full;
+                    e.style.color = MIRROR_COLORS[info.cls] || '';
+                    lastMirror[id] = info.cls;
+                } else if (lastMirror[id] && lastMirror[id] !== 'st-ok' && lastMirror[id] !== 'st-live') {
+                    e.textContent = full;
+                    e.style.color = MIRROR_COLORS[info.cls] || '';
+                    lastMirror[id] = info.cls;
+                } else if (lastMirror[id] && info.cls === 'st-live' && lastMirror[id] !== 'st-live') {
+                    e.style.color = '';
+                    lastMirror[id] = 'st-live';
+                }
+            }
+            function mirrorModeStatus(info) {
+                const b = document.body.classList;
+                if (b.contains('experiment-active')) mirrorInto('expPointInfo', info);
+                if (b.contains('desktop-lab-active')) mirrorInto('dlabStatus', info);
+                if (b.contains('sensor-mode-active')) mirrorInto('smStatus', info);
+            }
+            // Anillo pulsante en los botones de conectar mientras no hay conexión
+            const CONNECT_BTNS = ['connectBluetoothBtn', 'connectBtn', 'expBtBtn', 'dlabBtBtn', 'smBtBtn', 'mp-conn-bt', 'mp-conn-usb'];
+            function syncConnectAttention() {
+                const bt = btInst();
+                const need = !state.isConnected && mode === 'hidden' && !(bt && (bt.connecting || bt.reconnecting));
+                CONNECT_BTNS.forEach(id => {
+                    const el = $(id); if (!el) return;
+                    let ok = need && !el.disabled && el.style.display !== 'none';
+                    if (ok && (id === 'connectBtn' || id === 'mp-conn-usb') && !('serial' in navigator)) ok = false;
+                    if (ok && id !== 'connectBtn' && id !== 'mp-conn-usb' && !('bluetooth' in navigator)) ok = false;
+                    el.classList.toggle('connect-attention', ok);
+                });
+            }
+            function syncStrip() {
+                const info = computeStatus();
+                mirrorModeStatus(info);
+                syncConnectAttention();
+                const s = $('btcStrip'); if (!s) return;
+                const vis = stripVisible();
+                s.classList.toggle('avail', vis);
+                const shown = vis && getComputedStyle(s).display !== 'none';
+                document.body.classList.toggle('btc-strip-pad', shown);
+                if (!shown) return;
+                s.className = 'btc-strip avail ' + info.cls;
+                setText('btcStripText', info.text);
+                setText('btcStripRight', info.right);
+            }
+            // Error de conexión USB (Web Serial) con la misma hoja de ayuda
+            function showUsbError(err) {
+                const L = t();
+                if (err && err.name === 'NotFoundError') return; // el usuario cerró el selector
+                if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+                deviceName = '';
+                resetSteps();
+                setMode('error');
+                setText('btcTitle', L.errorUsbTitle); setText('btcDevice', 'USB');
+                $('btcSteps').style.display = 'none'; $('btcInfo').style.display = 'none';
+                setText('btcMsg', L.errUsb + (err && err.message ? '\n' + err.message : ''));
+                setHints(L.hintsUsb);
+                setActions([
+                    { label: L.btnRetry, cls: 'primary', onClick: () => { hide(); const b = $('connectBtn'); if (b) b.click(); } },
+                    { label: L.btnClose, onClick: hide },
+                ]);
+                renderMeta();
             }
             function onStripTap() {
                 const fw = $('formatWarning');
@@ -12507,7 +12601,7 @@ bluetooth.startIOPinService()</pre>
             }
             init();
 
-            return { onEvent, hide, openInfo, syncStrip, get mode() { return mode; } };
+            return { onEvent, hide, openInfo, syncStrip, statusInfo, showUsbError, get mode() { return mode; } };
         })();
         window.btConnUI = btConnUI;
 
@@ -21632,8 +21726,12 @@ bluetooth.startIOPinService()</pre>
                 smUpdateStatus();
                 return;
             }
-            // Use the main connect button
-            document.getElementById('connectBtn').click();
+            // Usar el botón principal: USB en computadora; Bluetooth en celulares
+            // y tablets, o cuando el navegador no tiene Web Serial.
+            const preferBT = (typeof isMobileBrowser !== 'undefined' && isMobileBrowser) || !('serial' in navigator);
+            const btBtn = document.getElementById('connectBluetoothBtn');
+            if (preferBT && btBtn && !btBtn.disabled) btBtn.click();
+            else document.getElementById('connectBtn').click();
             // Poll for connection
             const poll = setInterval(() => {
                 smUpdateStatus();
@@ -24257,11 +24355,17 @@ bluetooth.startIOPinService()</pre>
             if (typeof state === 'undefined') { el.textContent = ''; return; }
 
             if (!state.isConnected) {
-              el.innerHTML =
-                '<div style="color:#ef5350;font-weight:600;margin-bottom:6px;">○ Sin conexión</div>' +
-                '<div style="color:#9e9e9e;font-size:10px;line-height:1.4;">' +
-                  'Elegí transporte abajo. La placa debe tener el código de MAPEO descargado.' +
-                '</div>';
+              // Mientras la conexión Bluetooth está en curso (o falló), mostrar el
+              // estado vivo del comunicador en lugar del texto fijo.
+              const live = (window.btConnUI && btConnUI.mode !== 'hidden') ? btConnUI.statusInfo() : null;
+              const liveColor = live ? ({ 'st-busy': '#42a5f5', 'st-warn': '#ffa726', 'st-err': '#ef5350' }[live.cls] || '#9e9e9e') : null;
+              const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+              el.innerHTML = live
+                ? '<div style="color:' + liveColor + ';font-weight:600;margin-bottom:6px;">◌ ' + esc(live.text) + (live.right ? ' · ' + esc(live.right) : '') + '</div>'
+                : '<div style="color:#ef5350;font-weight:600;margin-bottom:6px;">○ Sin conexión</div>' +
+                  '<div style="color:#9e9e9e;font-size:10px;line-height:1.4;">' +
+                    'Elegí transporte abajo. La placa debe tener el código de MAPEO descargado.' +
+                  '</div>';
               if (btnBT)  btnBT.style.display  = '';
               if (btnUSB) btnUSB.style.display = '';
               if (btnOff) btnOff.style.display = 'none';
