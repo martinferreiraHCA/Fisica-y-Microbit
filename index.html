@@ -33655,6 +33655,8 @@ bluetooth.startIOPinService()</pre>
     .mk-help-body h4 { margin:14px 0 4px; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#b39ddb; }
     .mk-help-body code { background:#101216; padding:1px 5px; font-size:12px; }
     .mk-help-body kbd { background:#101216; border:1px solid #444; padding:0 4px; font-size:11px; }
+    .mk-toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(12px); z-index:9160; background:#0a0a0a; color:#e0e0e0; border:1px solid #444; border-left:4px solid #b39ddb; border-radius:4px; padding:8px 14px; font-size:12px; font-family:-apple-system, 'Segoe UI', sans-serif; box-shadow:0 2px 10px rgba(0,0,0,.4); opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; max-width:calc(100vw - 32px); box-sizing:border-box; text-align:center; }
+    .mk-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
     @media (max-width: 600px) { .mk-bar h2 { display:none; } }
     </style>
 
@@ -33670,7 +33672,7 @@ bluetooth.startIOPinService()</pre>
                     <button id="mk-help-btn" class="mk-top-btn" title="Cómo usar MakeCode con FisicaBit">Ayuda</button>
                     <a class="mk-top-btn" href="https://makecode.microbit.org/" target="_blank" rel="noopener" title="Abrir MakeCode en una pestaña aparte">↗</a>
                     <button id="mk-hidebar" class="mk-top-btn" title="Ocultar la barra (queda una pestañita para volver a mostrarla)">▲</button>
-                    <button id="mk-close" class="mk-close" title="Volver al sitio (el editor sigue abierto)">✕ Volver</button>
+                    <button id="mk-close" class="mk-close" title="Volver al sitio y soltar la micro:bit para usarla desde FisicaBit (la práctica queda guardada)">✕ Volver</button>
                 </div>
                 <button id="mk-showbar" class="mk-showbar" title="Volver a mostrar la barra de FisicaBit">▼ FisicaBit</button>
                 <div class="mk-list" id="mk-list" hidden></div>
@@ -33691,7 +33693,7 @@ bluetooth.startIOPinService()</pre>
                         <h4>2 · Grabá la micro:bit</h4>
                         <p>Con el botón <strong>Descargar</strong> del editor. Si la micro:bit ya está emparejada por WebUSB se graba directo; si no, se baja el <code>.hex</code> y lo arrastrás al disco <strong>MICROBIT</strong>. Si la grabación directa falla porque FisicaBit tiene el USB abierto, tocá <strong>Desconectar USB de FisicaBit</strong> arriba y reintentá.</p>
                         <h4>3 · Capturá los datos</h4>
-                        <p>Cerrá este panel (✕), y en el sitio: <strong>USB → Conectar</strong>, número de variables según los valores que enviás, <strong>"Micro:bit envía timestamp" activado</strong>, e <strong>Iniciar</strong>.</p>
+                        <p>Cerrá este panel (✕): al cerrarlo, la práctica queda guardada y el editor <strong>suelta la micro:bit</strong> (mientras MakeCode está emparejado por USB se queda leyendo el serial de la placa, y los datos no llegan al sitio). Después, en el sitio: <strong>USB → Conectar</strong>, número de variables según los valores que enviás, <strong>"Micro:bit envía timestamp" activado</strong>, e <strong>Iniciar</strong>. Al volver a abrir el panel, el editor se carga de nuevo con tu última práctica.</p>
                         <h4>Tus prácticas</h4>
                         <p>Al abrir, el editor crea solo una práctica con la extensión cargada, o reabre la última. <strong>Guardar en Drive</strong> la sube a tu Google Drive, en la carpeta <em>fisicabit / prácticas de micro:bit</em> (la misma sesión de Google que usa el resto del sitio); una vez subida, los cambios siguientes se guardan solos. <strong>Mis prácticas ▾</strong> lista las de Drive y las de este navegador para retomarlas, y permite crear otra práctica nueva.</p>
                         <h4>Si algo no aparece</h4>
@@ -33701,6 +33703,7 @@ bluetooth.startIOPinService()</pre>
             </div>
         </div>
     </div>
+    <div class="mk-toast" id="mk-toast" role="status" aria-live="polite"></div>
 
     <script>
     /* ===== MAKECODE + FISICABIT MODULE ===== */
@@ -33726,6 +33729,8 @@ bluetooth.startIOPinService()</pre>
         '})\n';
 
     var panel, iframe, opened = false, editorReady = false, initialDone = false, startTimer = null;
+    var editorLoaded = false;              // el iframe tiene cargado el editor (se descarga al cerrar el panel)
+    var unloadTimer = null, pendingSaveId = null, toastTimer = null;
     var projects = loadJSON(LS_KEY, {});   // { headerId: { header, text } }
     var driveMap = loadJSON(LS_DRIVE, {}); // { headerId: { fileId, savedAt, name } }
     var syncedIds = {};                    // proyectos que el editor conoce (entregados en workspacesync)
@@ -33741,6 +33746,12 @@ bluetooth.startIOPinService()</pre>
         var s = el('mk-status'); if (!s) return;
         s.textContent = msg || '';
         if (msg && ms) setTimeout(function () { if (s.textContent === msg) s.textContent = ''; }, ms);
+    }
+    function showToast(msg, ms) {
+        var t = el('mk-toast'); if (!t) return;
+        t.textContent = msg; t.classList.add('show');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { t.classList.remove('show'); }, ms || 5000);
     }
     function loadJSON(key, def) {
         try { var raw = localStorage.getItem(key); var o = raw ? JSON.parse(raw) : null; return (o && typeof o === 'object') ? o : def; } catch (_) { return def; }
@@ -33836,6 +33847,7 @@ bluetooth.startIOPinService()</pre>
         pendingOpenId = openId || null;
         initialDone = false; editorReady = false; syncedIds = {};
         if (startTimer) { clearTimeout(startTimer); startTimer = null; }
+        editorLoaded = true;
         iframe.setAttribute('src', 'about:blank');
         setTimeout(function () { iframe.setAttribute('src', editorUrl()); }, 50);
     }
@@ -33843,7 +33855,11 @@ bluetooth.startIOPinService()</pre>
     async function onMessage(ev) {
         if (ev.origin !== ORIGIN || !iframe || ev.source !== iframe.contentWindow) return;
         var msg = ev.data;
-        if (!msg || msg.type !== 'pxthost' || !msg.action) return;
+        if (!msg) return;
+        // Respuesta del editor a un pedido nuestro (type = 'pxteditor', sin action):
+        // solo nos interesa la del «guardar» previo a descargar el editor.
+        if (msg.type === 'pxteditor' && msg.id && msg.id === pendingSaveId) { finishUnload(); return; }
+        if (msg.type !== 'pxthost' || !msg.action) return;
         switch (msg.action) {
             case 'workspacesync': {
                 // El editor pide la lista de proyectos al arrancar. Si hay sesión de
@@ -34113,9 +34129,14 @@ bluetooth.startIOPinService()</pre>
         panel.classList.add('open');
         panel.setAttribute('aria-hidden', 'false');
         opened = true;
-        if (!iframe.getAttribute('src')) {
+        // Se reabrió antes de que terminara la descarga del editor: se cancela y sigue vivo.
+        if (unloadTimer) { clearTimeout(unloadTimer); unloadTimer = null; pendingSaveId = null; }
+        if (!editorLoaded) {
+            editorLoaded = true;
             iframe.setAttribute('src', editorUrl());
-            setStatus('Cargando el editor oficial de MakeCode… la primera vez puede demorar. Si no aparece, usá "↗".');
+            setStatus(pendingOpenId
+                ? 'Cargando el editor de MakeCode con tu última práctica…'
+                : 'Cargando el editor oficial de MakeCode… la primera vez puede demorar. Si no aparece, usá "↗".');
         }
         refreshConn();
         if (!connTimer) connTimer = setInterval(refreshConn, 1500);
@@ -34126,7 +34147,34 @@ bluetooth.startIOPinService()</pre>
         opened = false;
         closeList();
         if (connTimer) { clearInterval(connTimer); connTimer = null; }
-        // El iframe queda vivo: al volver a entrar, el editor sigue donde estaba.
+        releaseEditor();
+    }
+
+    /* ---------- Soltar la micro:bit al cerrar ----------
+       Una vez emparejado por WebUSB (al grabar con «Descargar»), MakeCode se
+       queda leyendo el serial de la micro:bit en un bucle (DAPWrapper.startReadSerial,
+       comando DAP 0x83). DAPLink tiene un único buffer de serial, así que
+       mientras el editor siga vivo el sitio no recibe datos por «USB → Conectar»
+       (o le llegan cortados). El protocolo controller no tiene ninguna acción
+       de «desconectar» (solo «pair»), de modo que la única forma de que el
+       editor suelte la placa es descargar el iframe. Antes se le pide que
+       guarde la práctica; al volver a abrir el panel se recarga con ella. */
+    function releaseEditor() {
+        if (!editorLoaded || unloadTimer) return;
+        pendingSaveId = 'fb-save-' + Date.now();
+        post({ type: 'pxteditor', action: 'saveproject', response: true, id: pendingSaveId });
+        // Con o sin respuesta del editor, se descarga igual (plazo de respaldo).
+        unloadTimer = setTimeout(finishUnload, 1500);
+    }
+    function finishUnload() {
+        if (unloadTimer) { clearTimeout(unloadTimer); unloadTimer = null; }
+        pendingSaveId = null;
+        if (opened || !editorLoaded) return;
+        pendingOpenId = currentHeaderId || pendingOpenId;
+        editorLoaded = false; editorReady = false; initialDone = false; syncedIds = {};
+        if (startTimer) { clearTimeout(startTimer); startTimer = null; }
+        iframe.setAttribute('src', 'about:blank');   // destruye el documento del editor → Chrome cierra su WebUSB
+        showToast('MakeCode cerrado: la micro:bit quedó libre. En el sitio, usá USB → Conectar.', 5000);
     }
 
     /* ---------- Barra flotante: ocultar / mostrar / arrastrar ---------- */
