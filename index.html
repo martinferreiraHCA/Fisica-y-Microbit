@@ -6630,6 +6630,9 @@ basic.forever(function () {
                 // Common alerts
                 alertNoData: 'No hay datos',
                 alertClearConfirm: '¿Eliminar todos los datos y video?',
+                alertResumeCapture: 'Ya hay {count} datos capturados.\n\nCONTINUAR: los datos nuevos se agregan a la misma gráfica y el tiempo sigue desde el último dato (la pausa cuenta como tiempo real).\n\nNUEVA CAPTURA: se borran los datos y el video anteriores y el tiempo vuelve a empezar en 0.',
+                btnNewCapture: 'Nueva captura',
+                btnContinueCapture: 'Continuar',
                 alertInvalidRange: 'Por favor ingresa un rango válido (desde ≤ hasta)',
                 alertRangeExceed: 'El rango excede el número de datos (máximo: {max})',
                 alertMinPoints: 'Necesitas al menos 2 puntos de datos para realizar el ajuste',
@@ -7022,6 +7025,9 @@ basic.forever(function () {
                 // Common alerts
                 alertNoData: 'No data available',
                 alertClearConfirm: 'Delete all data and video?',
+                alertResumeCapture: 'There are already {count} data points.\n\nCONTINUE: new data is added to the same graph and time keeps counting from the last point (the pause counts as real time).\n\nNEW CAPTURE: previous data and video are deleted and time starts again at 0.',
+                btnNewCapture: 'New capture',
+                btnContinueCapture: 'Continue',
                 alertInvalidRange: 'Please enter a valid range (from ≤ to)',
                 alertRangeExceed: 'Range exceeds data count (maximum: {max})',
                 alertMinPoints: 'You need at least 2 data points to perform the fit',
@@ -7414,6 +7420,9 @@ basic.forever(function () {
                 // Common alerts
                 alertNoData: 'Não há dados',
                 alertClearConfirm: 'Eliminar todos os dados e vídeo?',
+                alertResumeCapture: 'Já há {count} dados capturados.\n\nCONTINUAR: os novos dados são adicionados ao mesmo gráfico e o tempo continua a partir do último dado (a pausa conta como tempo real).\n\nNOVA CAPTURA: os dados e o vídeo anteriores são apagados e o tempo recomeça em 0.',
+                btnNewCapture: 'Nova captura',
+                btnContinueCapture: 'Continuar',
                 alertInvalidRange: 'Por favor insira um intervalo válido (de ≤ até)',
                 alertRangeExceed: 'O intervalo excede o número de dados (máximo: {max})',
                 alertMinPoints: 'Você precisa de pelo menos 2 pontos de dados para realizar o ajuste',
@@ -13972,12 +13981,61 @@ bluetooth.startIOPinService()</pre>
         });
 
         document.getElementById('collectBtn').addEventListener('click', () => {
+            if (state.isCollecting) return;
+            if (state.rawData.length === 0) { beginCapture(false); return; }
+            // Ya hay datos (captura anterior, importación o transferencia): hay
+            // que decidir si la nueva captura se suma a la misma línea temporal o
+            // empieza de cero. Antes se reiniciaba T=0 al reloj del navegador sin
+            // borrar nada: los datos viejos (en ms del micro:bit) quedaban a
+            // -1,79×10⁹ s y luego, al llegar el primer dato nuevo, T=0 saltaba
+            // otra vez y todo se mezclaba en la misma gráfica.
+            const n = state.rawData.length;
+            const ask = (typeof uiDialog === 'function')
+                ? uiDialog({ message: tr('alertResumeCapture', { count: n }), okLabel: tr('btnNewCapture'), cancelLabel: tr('btnContinueCapture') })
+                : Promise.resolve(window.confirm(tr('alertResumeCapture', { count: n }) + '\n\n' + tr('btnNewCapture') + ' = OK · ' + tr('btnContinueCapture') + ' = Cancel'));
+            ask.then((newRun) => {
+                if (state.isCollecting) return;
+                if (newRun) resetCaptureData();
+                beginCapture(!newRun);
+            });
+        });
+
+        // Arranca la captura. resume=true: continúa la línea temporal existente
+        // (el próximo dato se ubica a la distancia real, según el reloj del
+        // navegador, del último dato ya capturado, haya o no reiniciado el
+        // micro:bit). resume=false: T=0 se define con el primer dato.
+        function beginCapture(resume) {
             track('capturar_datos', 'microbit');
-            // Establecer tiempo inicial en el momento de comenzar a capturar
-            // Se sobrescribe al recibir el primer timestamp del micro:bit (formato N+1)
-            state.timeZeroOffset = Date.now();
-            state.microbitTimeZeroSet = false;
-            state._lastMicrobitTimestamp = -Infinity; // Track monotonicity
+            if (resume) {
+                let last = null;
+                for (let i = 0; i < state.rawData.length; i++) {
+                    const d = state.rawData[i];
+                    if (!last || d.time > last.time) last = d;
+                }
+                const lastWall = (last && last.wallTime) ? last.wallTime : Date.now();
+                _resumeAnchor = { time: last.time, wall: lastWall };
+                state.microbitTimeZeroSet = true;          // T=0 no se toca
+                state._lastMicrobitTimestamp = last.time;
+                _lastValidTimestamp = last.time;
+                _lastBatchWallTime = lastWall;
+                _lastBrowserPointTime = last.time;
+                // Datos sin reloj de pared (importados): el reloj del navegador
+                // se corre para que los nuevos sigan justo después de los viejos.
+                _browserTimeShift = (last && last.wallTime) ? 0 : (last.time + 50) - Date.now();
+            } else {
+                // Establecer tiempo inicial en el momento de comenzar a capturar
+                // Se sobrescribe al recibir el primer timestamp del micro:bit (formato N+1)
+                state.timeZeroOffset = Date.now();
+                state.microbitTimeZeroSet = false;
+                state._lastMicrobitTimestamp = -Infinity; // Track monotonicity
+                _resumeAnchor = null;
+                _lastValidTimestamp = -1;
+                _lastBatchWallTime = Date.now();
+                _mbTimeShift = 0;
+                _mbDeltas = [];
+                _lastBrowserPointTime = 0;
+                _browserTimeShift = 0;
+            }
 
             // Limpiar buffers de streaming
             pendingChartPoints = [];
@@ -13986,16 +14044,11 @@ bluetooth.startIOPinService()</pre>
             lastSamplingRateUpdate = 0;
             _formatMismatchCount = 0;
             _lastMismatchParts = 0;
-            _lastValidTimestamp = -1;
             _serialLastDataTime = Date.now();
-            _lastBatchWallTime = Date.now();
-            _mbTimeShift = 0;
             _backwardsRun = 0;
             _backwardsPrevRaw = -1;
             _forwardRun = 0;
             _forwardPrevRaw = -1;
-            _mbDeltas = [];
-            _lastBrowserPointTime = 0;
             _corruptionBuffer = {};
             _spikeFilterHistory = {};
             _spikeLastValue = {};
@@ -14027,7 +14080,7 @@ bluetooth.startIOPinService()</pre>
 
             // Iniciar render loop a 60fps (desacoplado de los datos)
             startRenderLoop();
-        });
+        }
 
         document.getElementById('stopBtn').addEventListener('click', async () => {
             track('detener_captura', 'microbit');
@@ -14551,6 +14604,8 @@ bluetooth.startIOPinService()</pre>
         let _forwardPrevRaw = -1;       // Último mt crudo de la racha de saltos adelante
         let _mbDeltas = [];             // Últimos pasos de mt entre muestras aceptadas (cadencia)
         let _lastBrowserPointTime = 0;  // Último tiempo asignado en modo sin timestamp (reloj del navegador)
+        let _browserTimeShift = 0;      // Corrimiento del reloj del navegador al continuar sobre datos importados
+        let _resumeAnchor = null;       // {time, wall}: último dato previo al continuar una captura (ancla del primer dato nuevo)
         let _corruptionMedian = {};     // Running median por variable para detección de digit-loss
         let _corruptionBuffer = {};     // Buffer circular de últimos N valores por variable
 
@@ -14640,6 +14695,15 @@ bluetooth.startIOPinService()</pre>
         // aparecer los nuevos "hacia atrás"), se desplaza el timestamp con
         // _mbTimeShift para que la línea temporal continúe hacia adelante.
         function mapMicrobitTimestamp(mt, batchTime) {
+            if (_resumeAnchor) {
+                // Primer dato tras CONTINUAR: se ancla a la distancia real (reloj
+                // del navegador) del último dato previo. Sirve igual si el
+                // micro:bit siguió corriendo, se reinició o es otra placa.
+                const gap = Math.max(50, batchTime - _resumeAnchor.wall);
+                _mbTimeShift = (_resumeAnchor.time + gap) - mt;
+                _resumeAnchor = null;
+                _mbDeltas = [];
+            }
             let mapped = mt + _mbTimeShift;
 
             if (!state.microbitTimeZeroSet) {
@@ -14726,7 +14790,7 @@ bluetooth.startIOPinService()</pre>
         // (ajuste NTP del sistema) y varias líneas del mismo batch BLE/serial
         // llegarían con tiempo idéntico; ambos casos rompen el ploteo.
         function nextBrowserPointTime(batchTime) {
-            let t = batchTime;
+            let t = batchTime + _browserTimeShift;
             if (t <= _lastBrowserPointTime) t = _lastBrowserPointTime + 1;
             _lastBrowserPointTime = t;
             return t;
@@ -19923,6 +19987,13 @@ bluetooth.startIOPinService()</pre>
         document.getElementById('clearBtn').addEventListener('click', () => {
             uiConfirm(tr('alertClearConfirm')).then((ok) => {
                 if (!ok) return;
+                resetCaptureData();
+            });
+        });
+
+        // Borra datos, video y fotos y reinicia la línea temporal. Lo usan
+        // LIMPIAR y «Nueva captura» (CAPTURAR con datos previos).
+        function resetCaptureData() {
                 state.rawData = [];
                 state.selectedPoints.clear();
                 // Reiniciar la línea temporal: si se limpia en plena captura,
@@ -19938,6 +20009,8 @@ bluetooth.startIOPinService()</pre>
                 _forwardPrevRaw = -1;
                 _mbDeltas = [];
                 _lastBrowserPointTime = 0;
+                _browserTimeShift = 0;
+                _resumeAnchor = null;
                 state.sensorPhotos = [];
                 state.videoBlob = null;
                 state.recordedChunks = [];
@@ -19970,8 +20043,7 @@ bluetooth.startIOPinService()</pre>
                 }
                 if (typeof ganMarkButtons === 'function') ganMarkButtons();
                 updateDisplay();
-            });
-        });
+        }
 
         // ========== CÁMARA Y VIDEO ==========
 
@@ -26679,7 +26751,7 @@ bluetooth.startIOPinService()</pre>
       function uiConfirm(message) { return uiDialog({ message: message }); }
       function uiPrompt(message, def) { return uiDialog({ message: message, prompt: true, def: def }); }
       // Exponer los diálogos propios para todo el sitio (el app principal también los usa).
-      try { window.uiAlert = uiAlert; window.uiConfirm = uiConfirm; window.uiPrompt = uiPrompt; } catch (e) {}
+      try { window.uiAlert = uiAlert; window.uiConfirm = uiConfirm; window.uiPrompt = uiPrompt; window.uiDialog = uiDialog; } catch (e) {}
       function todayStr() {
         var d = new Date();
         return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
