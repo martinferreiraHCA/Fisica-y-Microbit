@@ -30,3 +30,11 @@ En el apartado del sitio (`#piezas3d`), bajo **Genera tu propia pieza**:
 Cuando una pieza te guste, usá **Descargar código .scad** para guardarla
 en tu equipo. Para incorporarla al catálogo del sitio, el administrador
 sube el archivo a esta carpeta desde GitHub.
+
+## Versión en cartón
+
+El mismo apartado tiene arriba el modo **Encastre en cartón** (`#carton`):
+piezas planas que se imprimen en A4, se pegan sobre cartón y se encastran.
+Con **Convertir a cartón encastrable…** cualquier pieza de esta carpeta se
+corta en láminas cruzadas listas para imprimir. Esos diseños viven en la
+carpeta `diseños carton`.
