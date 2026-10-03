@@ -1,7 +1,9 @@
 // Pantalla reflectora para el sensor ultrasónico · cartón encastrable
 // Panel vertical, plano y rígido, para montar sobre un carrito: devuelve el
 // eco del HC-SR04 de frente y las distancias salen limpias (sin el panel, el
-// eco rebota en bordes y ruedas y la medida salta). Dos escuadras lo cruzan
+// eco rebota en bordes y ruedas y la medida salta). Es apaisado (ancho y
+// bajo) para no frenar el carrito con el aire: alcanza con que el panel esté
+// a la altura del sensor. Dos escuadras lo cruzan
 // a media altura y todo se pestañea a una placa de base que se pega con
 // cinta a cualquier carrito. En el «carro para micro:bit» no hace falta la
 // placa: el chasis ya trae las ranuras para encastrar panel y escuadras.
@@ -17,9 +19,9 @@ material = "carton"; // [carton, laser, impresion3d]
 
 /* [Pantalla] */
 // Ancho del panel (mm): el haz del HC-SR04 abre unos 15°, a 1 m cubre ~25 cm
-ancho = 150; // [80:10:250]
-// Alto del panel (mm)
-alto = 150; // [60:10:250]
+ancho = 160; // [80:10:250]
+// Alto del panel (mm): bajo para no frenar con el aire (el sensor a su altura)
+alto = 70; // [40:5:250]
 // Profundidad de las escuadras (mm)
 profundidad = 36; // [24:2:80]
 // Separación entre las pestañas del panel (50 = ranuras del carro para micro:bit)
@@ -34,6 +36,7 @@ e = espesor;
 p = profundidad;
 tw = 14;
 he = min(alto * 0.6, 90);              // alto de las escuadras
+rb = min(14, alto / 2 - 10);           // radio del blanco de puntería
 fr = e / 2 + 4;                        // cuánto pasa la escuadra por delante del panel
 bp = p + fr + 16;                      // profundidad de la placa de base
 yp = -bp / 2 + fr + 6;                 // posición del panel en la placa (desde atrás del frente)
@@ -45,12 +48,13 @@ module pantalla() difference() {
     }
     for (x = [ancho / 2 - separacion_escuadras / 2, ancho / 2 + separacion_escuadras / 2]) translate([x, 0]) ranura(he / 2);
     // blanco de puntería en la cara que mira al sensor
-    translate([ancho / 2, alto / 2]) marca() difference() { circle(r = 14); circle(r = 13); }
-    translate([ancho / 2, alto / 2]) marca() difference() { circle(r = 5); circle(r = 4); }
-    translate([ancho / 2 - 20, alto / 2]) linea([0, 0], [40, 0], 0.4);
-    translate([ancho / 2, alto / 2 - 20]) linea([0, 0], [0, 40], 0.4);
-    translate([ancho / 2, alto - 10]) texto("ESTA CARA HACIA EL SENSOR", h = 3.2, centrado = true);
-    translate([ancho / 2, he / 2 + 6]) texto("REFLECTOR", h = 4, centrado = true);
+    translate([ancho / 2, alto / 2]) marca() difference() { circle(r = rb); circle(r = rb - 1); }
+    translate([ancho / 2, alto / 2]) marca() difference() { circle(r = 4); circle(r = 3); }
+    translate([ancho / 2 - rb - 6, alto / 2]) linea([0, 0], [2 * rb + 12, 0], 0.4);
+    translate([ancho / 2, alto / 2 - rb - 4]) linea([0, 0], [0, 2 * rb + 8, 0], 0.4);
+    translate([ancho / 2, alto - 7]) texto("ESTA CARA HACIA EL SENSOR", h = 3, centrado = true);
+    translate([ancho * 0.2, alto / 2 - 2]) texto("REFLECTOR", h = 4, centrado = true);
+    translate([ancho * 0.8, alto / 2 - 2]) texto("ULTRASONIDO", h = 4, centrado = true);
 }
 // Escuadra: triángulo detrás del panel (x > 0) con un pico que lo cruza (x < 0)
 module escuadra() difference() {
