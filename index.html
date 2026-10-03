@@ -4778,6 +4778,7 @@
                 <div id="extrasMenu" class="data-entry-dropdown" style="display:none;" onclick="closeExtrasMenu()">
                     <button id="btn-makecode" style="border-left:4px solid #b39ddb;" title="Editor oficial de MakeCode con la extensión FisicaBit USB ya cargada">MAKECODE + FISICABIT</button>
                     <button id="btn-piezas3d" style="border-left:4px solid #666;">PIEZAS 3D</button>
+                    <button id="btn-carton" style="border-left:4px solid #ffca28;" title="Piezas de laboratorio en cartón: se imprimen en A4, se pegan sobre cartón, se cortan y se encastran">CARTÓN ENCASTRABLE</button>
                     <button id="btn-tracker" style="border-left:4px solid #00695c;">TRACKER</button>
                     <button id="btn-videomov" style="border-left:4px solid #000;">VIDEO + MOVIMIENTO</button>
                     <button id="btn-mapeo" style="border-left:4px solid #f9a825;">MAPEO</button>
@@ -31272,8 +31273,11 @@ bluetooth.startIOPinService()</pre>
     </script>
     <!-- ============================================================
          PIEZAS 3D · Editor de piezas OpenSCAD
-         Acceso: menú EXTRAS de la toolbar; #piezas3d en la URL abre el
-         panel directamente (deep-link).
+         Dos modos (selector arriba): «Impresión 3D» (piezas para impresora
+         3D) y «Encastre en cartón» (piezas planas que se imprimen en A4,
+         se pegan sobre cartón y se encastran; ver lib/fisicabit-carton.scad).
+         Acceso: menú EXTRAS de la toolbar; #piezas3d o #carton en la URL
+         abren el panel directamente (deep-link).
          ============================================================ -->
     <style id="s3d-style">
     .s3d-panel { display:none; position:fixed; inset:0; z-index:9200; background:#1a1d23; color:#e0e0e0; font-family:-apple-system, 'Segoe UI', sans-serif; flex-direction:column; }
@@ -31391,7 +31395,37 @@ bluetooth.startIOPinService()</pre>
     .s3d-log.open { display:block; }
     .s3d-log .err { color:#ef5350; }
     .s3d-log .warn { color:#ffca28; }
+    /* Modo «Encastre en cartón» */
+    .s3d-modes { display:flex; border:1px solid #444; flex:0 0 auto; }
+    .s3d-mode-btn { background:none; border:none; color:#aab; font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:6px 10px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .s3d-mode-btn:hover:not(.active) { background:#2b303b; color:#fff; }
+    .s3d-mode-btn.active { background:#ffca28; color:#1a1d23; font-weight:700; }
+    .s3d-only-carton { display:none !important; }
+    .s3d-panel.modo-carton .s3d-only-carton { display:block !important; }
+    .s3d-panel.modo-carton label.s3d-only-carton { display:flex !important; }
+    .s3d-panel.modo-carton .s3d-only-3d { display:none !important; }
+    .s3d-view-tools { z-index:7; }
+    .s3d-view-tools button.active { background:#ffca28; color:#1a1d23; border-color:#ffca28; }
+    .s3d-sheets { display:none; position:absolute; inset:0; z-index:6; overflow:auto; background:#2b2f37; padding:12px 14px 20px; box-sizing:border-box; }
+    .s3d-panel.show-sheets .s3d-sheets { display:block; }
+    .s3d-sheets-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:11px; color:#cfd4dd; margin:0 0 10px; padding-right:250px; }
+    .s3d-sheets-bar .s3d-check { margin:0; }
+    .s3d-sheets-bar button { background:none; border:1px solid #666; color:#fff; font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:5px 9px; cursor:pointer; font-family:inherit; }
+    .s3d-sheets-bar button:hover { background:#fff; color:#000; border-color:#fff; }
+    .s3d-sheets-bar button.primary { background:#ffca28; color:#1a1d23; border-color:#ffca28; }
+    .s3d-sheets-bar button.primary:hover { background:#fff; }
+    .s3d-sheet { background:#fff; width:min(100%, 560px); margin:0 auto 14px; box-shadow:0 4px 18px rgba(0,0,0,.5); }
+    .s3d-sheet svg { display:block; width:100%; height:auto; }
+    .s3d-sheets-empty { color:#aab; font-size:12px; padding:30px; text-align:center; }
+    .s3d-cv-row { display:grid; grid-template-columns:150px 1fr 70px; gap:8px; align-items:center; font-size:11px; color:#cfd4dd; margin-bottom:8px; }
+    .s3d-cv-row input[type="range"] { accent-color:#fff; width:100%; }
+    .s3d-cv-row select { background:#101216; color:#e0e0e0; border:1px solid #444; padding:5px; font-size:11px; }
+    .s3d-cv-row .v { text-align:right; font-variant-numeric:tabular-nums; color:#ffca28; }
+    .s3d-recursos a { color:#8ab4ff; text-decoration:none; }
+    .s3d-recursos a:hover { text-decoration:underline; }
     @media (max-width: 820px) {
+        .s3d-topbar { flex-wrap:wrap; gap:8px; }
+        .s3d-sheets-bar { padding-right:0; }
         .s3d-body { flex-direction:column; overflow-y:auto; }
         .s3d-sidebar { width:100%; flex:0 0 auto; max-height:38vh; border-right:none; border-bottom:1px solid #2b303b; }
         .s3d-main { flex-direction:column; flex:1 0 auto; }
@@ -31402,8 +31436,12 @@ bluetooth.startIOPinService()</pre>
 
     <div id="s3d-panel" class="s3d-panel" aria-hidden="true">
         <div class="s3d-topbar">
-            <h2>Diseño de piezas 3D</h2>
-            <span class="s3d-badge">OpenSCAD · en tu navegador</span>
+            <h2 id="s3d-title">Diseño de piezas 3D</h2>
+            <div class="s3d-modes" id="s3d-modes" role="tablist" aria-label="Tipo de diseño">
+                <button class="s3d-mode-btn active" data-modo="3d" title="Piezas para imprimir en impresora 3D (OpenSCAD)">Impresión 3D</button>
+                <button class="s3d-mode-btn" data-modo="carton" title="Piezas planas: se imprimen en hojas A4, se pegan sobre cartón, se cortan y se encastran">Encastre en cartón</button>
+            </div>
+            <span class="s3d-badge" id="s3d-badge">OpenSCAD · en tu navegador</span>
             <span class="s3d-spacer"></span>
             <button id="s3d-code-toggle" class="s3d-top-btn" title="Mostrar u ocultar el código OpenSCAD de la pieza">Ver código ▸</button>
             <button id="s3d-close" class="s3d-close" title="Cerrar (Esc)">✕</button>
@@ -31424,8 +31462,9 @@ bluetooth.startIOPinService()</pre>
                 <div class="s3d-section">
                     <div class="s3d-section-title">Genera tu propia pieza</div>
                     <button id="s3d-wiz-open" class="s3d-btn">✦ Asistente con IA</button>
-                    <button id="s3d-open-file" class="s3d-btn">Abrir archivo .scad / .stl</button>
-                    <input type="file" id="s3d-file-input" accept=".scad,.stl" style="display:none">
+                    <button id="s3d-open-file" class="s3d-btn"><span class="s3d-only-3d">Abrir archivo .scad / .stl</span><span class="s3d-only-carton">Abrir archivo .scad / .svg</span></button>
+                    <input type="file" id="s3d-file-input" accept=".scad,.stl,.svg" style="display:none">
+                    <button id="s3d-to-carton" class="s3d-btn s3d-only-3d" title="Cortar este modelo 3D en láminas de cartón cruzadas que se encastran (tipo rejilla)">📦 Convertir a cartón encastrable…</button>
                 </div>
                 <div class="s3d-section">
                     <div class="s3d-section-title">Parámetros</div>
@@ -31434,7 +31473,9 @@ bluetooth.startIOPinService()</pre>
                 <div class="s3d-section">
                     <div class="s3d-section-title">Acciones</div>
                     <button id="s3d-render" class="s3d-btn primary">Renderizar</button>
+                    <button id="s3d-print" class="s3d-btn primary s3d-only-carton" title="Abre las hojas A4 listas para imprimir al 100 % o guardar como PDF">🖨 Imprimir en A4 / PDF</button>
                     <button id="s3d-save" class="s3d-btn">💾 Guardar pieza…</button>
+                    <button id="s3d-dl-svg" class="s3d-btn s3d-only-carton" title="Todas las hojas en un solo archivo SVG en milímetros (sirve también para cortadora láser)">Descargar SVG (hojas)</button>
                     <button id="s3d-dl-stl" class="s3d-btn" disabled>Descargar STL</button>
                     <button id="s3d-dl-scad" class="s3d-btn">Descargar código .scad</button>
                     <label class="s3d-check"><input type="checkbox" id="s3d-auto" checked> Render automático al cambiar parámetros</label>
@@ -31445,7 +31486,11 @@ bluetooth.startIOPinService()</pre>
                     <button id="s3d-drive-connect" class="s3d-btn">Iniciar sesión con Google</button>
                     <button id="s3d-drive-sync" class="s3d-btn" style="display:none">☁ Sincronizar con Drive</button>
                 </div>
-                <div class="s3d-section">
+                <div class="s3d-section s3d-only-carton">
+                    <div class="s3d-section-title">Cómo se usa</div>
+                    <div class="s3d-empty-params"><b>1.</b> Imprimí primero el <b>peine de ajuste</b> y elegí la <b>holgura</b> que encastra justo con tu cartón. <b>2.</b> Elegí un diseño, ajustá sus medidas y mirá el armado en 3D o las <b>hojas A4</b>. <b>3.</b> <b>IMPRIMIR</b> al 100 % (sin «ajustar a la página»): la barra de cada hoja debe medir 100 mm. <b>4.</b> Pegá las hojas sobre cartón, cortá por las líneas negras (lo azul es tinta: reglas, ángulos y nombres) y encastrá. Las piezas más grandes que una hoja salen en varias, con franjas para superponer.<br><br>Con el <b>ASISTENTE CON IA</b> describís el elemento y la IA lo diseña en pocas piezas encastrables usando la biblioteca del sitio (ranuras, pestañas, reglas, transportadores). También podés <b>abrir un SVG</b> hecho con otro programa libre, por ejemplo <a href="https://www.festi.info/boxes.py/" target="_blank" rel="noopener" style="color:#8ab4ff">boxes.py</a> (cajas con dientes) o <a href="https://clementzheng.github.io/joinery/" target="_blank" rel="noopener" style="color:#8ab4ff">Joinery</a> (uniones), y el sitio lo reparte en hojas A4 con calibración. Desde <b>IMPRESIÓN 3D</b>, el botón <b>CONVERTIR A CARTÓN</b> corta cualquier pieza en láminas cruzadas encastradas.</div>
+                </div>
+                <div class="s3d-section s3d-only-3d">
                     <div class="s3d-section-title">Ayuda</div>
                     <div class="s3d-empty-params">Al pasar por un parámetro o moverlo, su medida se acota en amarillo sobre la pieza (flechas, líneas de referencia y valor). Con <b>COTAS</b> ves todas las medidas a la vez, como en un plano. Con <b>CORTE</b> ves el interior por la mitad. <b>VER CÓDIGO</b> despliega el código OpenSCAD: las variables del inicio aparecen como parámetros, un comentario <b>// [mín:máx]</b> crea un deslizador y <b>/* [Grupo] */</b> agrupa. Con el <b>ASISTENTE CON IA</b> podés crear una pieza nueva describiéndola: el sistema arma el prompt, lo pegás en tu IA favorita y traés la respuesta.</div>
                 </div>
@@ -31457,6 +31502,7 @@ bluetooth.startIOPinService()</pre>
                 </div>
                 <div class="s3d-viewport-wrap" id="s3d-viewport">
                     <div class="s3d-view-tools">
+                        <button id="s3d-vista-plano" class="s3d-only-carton" title="Alternar entre el armado 3D y las hojas A4 listas para imprimir">Ver hojas A4</button>
                         <button id="s3d-cotas" title="Mostrar todas las medidas (cotas) de la pieza a la vez">Cotas: no</button>
                         <button id="s3d-corte" title="Ver la pieza cortada por la mitad para mirar su interior">Corte: no</button>
                         <button id="s3d-fit" title="Encuadrar la pieza">Encuadrar</button>
@@ -31464,6 +31510,15 @@ bluetooth.startIOPinService()</pre>
                     <div class="s3d-overlay" id="s3d-overlay">
                         <div class="s3d-spinner"></div>
                         <div id="s3d-overlay-msg">Preparando el visor 3D…</div>
+                    </div>
+                    <div class="s3d-sheets" id="s3d-sheets">
+                        <div class="s3d-sheets-bar">
+                            <button id="s3d-sheets-print" class="primary">🖨 Imprimir / PDF</button>
+                            <button id="s3d-sheets-svg">Descargar SVG</button>
+                            <label class="s3d-check"><input type="checkbox" id="s3d-numerar" checked> Numerar las piezas</label>
+                            <span id="s3d-sheets-info"></span>
+                        </div>
+                        <div id="s3d-sheets-pages"></div>
                     </div>
                 </div>
             </div>
@@ -31476,6 +31531,7 @@ bluetooth.startIOPinService()</pre>
                 </div>
                 <div class="s3d-wizard-body">
                     <div class="s3d-wiz-steptitle">1 · ¿Qué querés hacer?</div>
+                    <div class="s3d-wiz-msg s3d-only-carton" style="margin:0 0 10px">Modo <b>cartón</b>: la IA va a diseñar el elemento en pocas piezas planas que se unen por encastre, con ranuras, pestañas, reglas y transportadores de la biblioteca del sitio.</div>
                     <label class="s3d-wiz-radio"><input type="radio" name="s3d-wiz-mode" value="nueva" checked> Crear una pieza nueva a partir de una descripción</label>
                     <label class="s3d-wiz-radio"><input type="radio" name="s3d-wiz-mode" value="iterar"> Modificar la pieza que está ahora en el editor</label>
                     <label class="s3d-wiz-radio" id="s3d-wiz-fix-label"><input type="radio" name="s3d-wiz-mode" value="corregir"> Corregir el último error de render</label>
@@ -31530,6 +31586,27 @@ bluetooth.startIOPinService()</pre>
                     <div class="s3d-folder-note" id="s3d-save-note">La pieza se guarda en este navegador y, si iniciaste sesión con Google, también en la carpeta «fisicabit / piezas 3d» de tu Drive.</div>
                     <button id="s3d-save-ok" class="s3d-btn primary" style="margin-top:10px">Guardar</button>
                     <div id="s3d-save-msg" class="s3d-wiz-msg"></div>
+                </div>
+            </div>
+        </div>
+        <div id="s3d-carton-modal" class="s3d-wizard" aria-hidden="true">
+            <div class="s3d-wizard-card" style="max-width:560px">
+                <div class="s3d-wizard-head">
+                    <h3>Convertir a cartón encastrable</h3>
+                    <button id="s3d-cv-close" class="s3d-close" title="Cerrar">✕</button>
+                </div>
+                <div class="s3d-wizard-body">
+                    <div class="s3d-wiz-msg" style="margin:0 0 12px">El modelo se corta en láminas verticales de cartón a lo largo de X y de Y, que se cruzan y se encastran a media altura (como una rejilla o un huevo de cartón). Cada cruce se calcula sobre el modelo, así que las piezas se arman sin pegamento. El resultado se abre en <b>ENCASTRE EN CARTÓN</b>, donde podés ajustarlo, verlo armado e imprimirlo en A4.</div>
+                    <div class="s3d-cv-row"><span>Láminas a lo largo de X</span><input type="range" id="s3d-cv-nx" min="1" max="14" step="1" value="3"><span class="v" id="s3d-cv-nx-v">3</span></div>
+                    <div class="s3d-cv-row"><span>Láminas a lo largo de Y</span><input type="range" id="s3d-cv-ny" min="1" max="14" step="1" value="3"><span class="v" id="s3d-cv-ny-v">3</span></div>
+                    <div class="s3d-cv-row"><span>Grosor del cartón</span><input type="range" id="s3d-cv-esp" min="1" max="8" step="0.5" value="3"><span class="v" id="s3d-cv-esp-v">3 mm</span></div>
+                    <div class="s3d-cv-row"><span>Holgura de las ranuras</span><input type="range" id="s3d-cv-hol" min="-0.6" max="0.8" step="0.1" value="0"><span class="v" id="s3d-cv-hol-v">0 mm</span></div>
+                    <div class="s3d-cv-row"><span>Escala del modelo</span><input type="range" id="s3d-cv-esc" min="25" max="600" step="5" value="100"><span class="v" id="s3d-cv-esc-v">100 %</span></div>
+                    <div class="s3d-cv-row"><span>Eje vertical</span><select id="s3d-cv-eje"><option value="z">Z (arriba, como en el visor)</option><option value="y">Y</option><option value="x">X</option></select><span class="v"></span></div>
+                    <div class="s3d-folder-note" id="s3d-cv-info"></div>
+                    <button id="s3d-cv-ok" class="s3d-btn primary" style="margin-top:12px">Crear el diseño de cartón</button>
+                    <div id="s3d-cv-msg" class="s3d-wiz-msg"></div>
+                    <div class="s3d-folder-note">Consejo: pocas láminas (3 a 5 por eje) dan piezas fáciles de cortar; más láminas copian mejor la forma. Las piezas muy chicas conviene escalarlas. Si una sección queda demasiado angosta o cortada, cambiá la cantidad de láminas o el eje vertical.</div>
                 </div>
             </div>
         </div>
@@ -31669,7 +31746,8 @@ bluetooth.startIOPinService()</pre>
     var libPiecesArr = [];
     function libPiece(e) {
         return { id: 'lib:' + e.id, nombre: e.nombre, kind: 'scad', code: e.code,
-                 categoria: e.categoria, libId: e.id, updatedAt: e.updatedAt, driveId: e.driveId };
+                 categoria: e.categoria, libId: e.id, updatedAt: e.updatedAt, driveId: e.driveId,
+                 modo: e.modo === 'carton' ? 'carton' : undefined, files: e.files || undefined };
     }
     function rebuildLibPieces() {
         libPiecesArr = lib.map(function (e) {
@@ -31881,17 +31959,22 @@ bluetooth.startIOPinService()</pre>
             "self.addEventListener('error', function (e) { e.preventDefault(); });",
             "// Cada render usa una instancia fresca: el binario de OpenSCAD no",
             "// tolera más de una corrida por instancia. Crearla cuesta <1 s.",
-            "async function renderOnce(mod, code, logs, manifold) {",
+            "// job: { code, files?: {ruta: texto}, out?: 'stl'|'svg', defs?: ['var=valor'] }",
+            "async function renderOnce(mod, job, logs, manifold) {",
             "  var scad = await mod.createOpenSCAD({",
             "    print: function (t) { logs.push(t); },",
             "    printErr: function (t) { logs.push(t); }",
             "  });",
             "  var inst = scad.getInstance();",
-            "  inst.FS.writeFile('/input.scad', code);",
-            "  var args = ['/input.scad', '-o', '/output.stl'];",
-            "  if (manifold) args.push('--backend=Manifold'); // motor rápido",
+            "  var files = job.files || {};",
+            "  for (var k in files) if (Object.prototype.hasOwnProperty.call(files, k)) inst.FS.writeFile(k, files[k]);",
+            "  inst.FS.writeFile('/input.scad', job.code);",
+            "  var out = '/output.' + (job.out || 'stl');",
+            "  var args = ['/input.scad', '-o', out];",
+            "  (job.defs || []).forEach(function (d) { args.push('-D', d); });",
+            "  if (manifold) args.push('--backend=Manifold'); // motor rápido (imprescindible para projection(cut))",
             "  inst.callMain(args);",
-            "  return inst.FS.readFile('/output.stl', { encoding: 'utf8' });",
+            "  return inst.FS.readFile(out, { encoding: 'utf8' });",
             "}",
             "self.onmessage = async function (e) {",
             "  var id = e.data.id, logs = [];",
@@ -31899,13 +31982,13 @@ bluetooth.startIOPinService()</pre>
             "    var mod = await import(e.data.url);",
             "    var stl;",
             "    try {",
-            "      stl = await renderOnce(mod, e.data.code, logs, true);",
+            "      stl = await renderOnce(mod, e.data, logs, true);",
             "    } catch (err1) {",
             "      // Si el código en sí tiene un error, no vale la pena reintentar",
             "      var hayError = logs.some(function (l) { return /error/i.test(l); });",
             "      if (hayError) throw err1;",
             "      logs.push('Aviso: reintentando con el motor clásico (CGAL)…');",
-            "      stl = await renderOnce(mod, e.data.code, logs, false);",
+            "      stl = await renderOnce(mod, e.data, logs, false);",
             "    }",
             "    self.postMessage({ id: id, ok: true, stl: stl, logs: logs });",
             "  } catch (err) {",
@@ -31939,6 +32022,7 @@ bluetooth.startIOPinService()</pre>
     function render() {
         clearTimeout(renderTimer);
         if (stlMode) return;
+        if (modo === 'carton') return renderCarton();
         if (rendering) { renderQueued = true; return; }
         rendering = true;
         renderQueued = false;
@@ -32720,36 +32804,47 @@ bluetooth.startIOPinService()</pre>
         folderLoaded = true;
         folderError = false;
         folderNote = 'Leyendo la carpeta «' + FOLDER_NAME + '» del repositorio…';
+        cartonNote = 'Leyendo la carpeta «' + CARTON_FOLDER + '» del repositorio…';
         renderPieceMenu();
-        fetch(FOLDER_API).then(function (r) {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
-        }).then(function (items) {
-            (items || []).forEach(function (f) {
-                var m = f.type === 'file' && f.name.match(/\.(scad|stl)$/i);
-                if (!m) return;
-                if (pieces.some(function (p) { return p.id === 'file:' + f.name; })) return;
-                pieces.push({
-                    id: 'file:' + f.name,
-                    nombre: f.name.replace(/\.(scad|stl)$/i, '').replace(/[-_]+/g, ' '),
-                    kind: m[1].toLowerCase(),
-                    specKey: f.name.replace(/\.(scad|stl)$/i, '').toLowerCase(),
-                    url: f.download_url,
-                    sha: f.sha
+        function readFolder(api, name, modoCarpeta) {
+            return fetch(api).then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(function (items) {
+                var n = 0;
+                (items || []).forEach(function (f) {
+                    var m = f.type === 'file' && f.name.match(/\.(scad|stl)$/i);
+                    if (!m) return;
+                    if (modoCarpeta === 'carton' && m[1].toLowerCase() === 'stl') return;
+                    var id = 'file:' + (modoCarpeta === 'carton' ? 'carton/' : '') + f.name;
+                    n++;
+                    if (pieces.some(function (p) { return p.id === id; })) return;
+                    pieces.push({
+                        id: id,
+                        nombre: f.name.replace(/\.(scad|stl)$/i, '').replace(/[-_]+/g, ' '),
+                        kind: m[1].toLowerCase(),
+                        specKey: f.name.replace(/\.(scad|stl)$/i, '').toLowerCase(),
+                        url: f.download_url,
+                        sha: f.sha,
+                        modo: modoCarpeta
+                    });
                 });
+                return n ? '' : 'La carpeta «' + name + '» no tiene todavía archivos .scad' + (modoCarpeta === 'carton' ? '.' : ' o .stl.');
+            }, function (e) {
+                folderError = true;
+                return 'No se pudo leer la carpeta «' + name + '» (' + (e && e.message || e) + ').';
             });
-            folderNote = pieces.length ? '' : 'La carpeta «' + FOLDER_NAME + '» no tiene todavía archivos .scad o .stl.';
+        }
+        Promise.all([readFolder(FOLDER_API, FOLDER_NAME, undefined), readFolder(CARTON_FOLDER_API, CARTON_FOLDER, 'carton')]).then(function (notes) {
+            folderNote = notes[0];
+            cartonNote = notes[1];
             renderPieceMenu();
             queueThumbs();
             // Elegir la primera pieza al abrir: primero las del usuario
-            if (!currentPiece && libPiecesArr.length) selectPiece(libPiecesArr[0], false);
-            else if (!currentPiece && pieces.length) selectPiece(pieces[0], false);
-            else if (!pieces.length) setStatus('La carpeta «' + FOLDER_NAME + '» está vacía. Subí un .scad o .stl, o usá «Generá tu propia pieza».', '');
-        }).catch(function (e) {
-            folderError = true;
-            folderNote = 'No se pudo leer la carpeta «' + FOLDER_NAME + '» (' + (e && e.message || e) + ').';
-            renderPieceMenu();
-            setStatus('No se pudo leer el catálogo de piezas (¿sin conexión?). Podés abrir un archivo propio o reintentar.', 'error');
+            if (!currentPiece && !selectFirstPiece()) {
+                if (!pieces.filter(pieceInModo).length) setStatus('La carpeta «' + (modo === 'carton' ? CARTON_FOLDER : FOLDER_NAME) + '» está vacía. Subí un .scad, o usá «Generá tu propia pieza».', '');
+            }
+            if (folderError) setStatus('No se pudo leer el catálogo de piezas (¿sin conexión?). Podés abrir un archivo propio o reintentar.', 'error');
         });
     }
 
@@ -32842,15 +32937,17 @@ bluetooth.startIOPinService()</pre>
             });
             menu.appendChild(g);
         }
-        // Biblioteca del usuario primero, agrupada por categoría
+        // Biblioteca del usuario primero, agrupada por categoría (solo las del modo actual)
+        var carpeta = modo === 'carton' ? CARTON_FOLDER : FOLDER_NAME;
         libCategories().forEach(function (cat) {
-            var list = libPiecesArr.filter(function (p) { return p.categoria === cat; });
+            var list = libPiecesArr.filter(function (p) { return p.categoria === cat && pieceInModo(p); });
             grid(list, cat, { renameCat: cat });
         });
-        grid(pieces, 'Piezas · carpeta «' + FOLDER_NAME + '»');
+        grid(pieces.filter(pieceInModo), 'Piezas · carpeta «' + carpeta + '»');
         var note = document.createElement('div');
         note.className = 's3d-folder-note';
-        note.textContent = folderNote || 'Subí archivos .scad o .stl a la carpeta «' + FOLDER_NAME + '» del repositorio y aparecerán acá con su miniatura.';
+        var nota = modo === 'carton' ? cartonNote : folderNote;
+        note.textContent = nota || 'Subí archivos .scad' + (modo === 'carton' ? '' : ' o .stl') + ' a la carpeta «' + carpeta + '» del repositorio y aparecerán acá con su miniatura.';
         menu.appendChild(note);
         if (folderError) {
             var retry = document.createElement('button');
@@ -33007,6 +33104,8 @@ bluetooth.startIOPinService()</pre>
         var codeP = piece.code != null
             ? Promise.resolve(piece.code)
             : fetch(piece.url).then(function (r) { return r.text(); });
+        var carton = isCartonPiece(piece);
+        if (carton) codeP = codeP.then(function (code) { return ensureCartonLib().then(function () { return cartonCode(code); }); });
         return codeP.then(function (code) {
             return new Promise(function (resolve, reject) {
                 if (!workerBlobUrl) {
@@ -33030,7 +33129,7 @@ bluetooth.startIOPinService()</pre>
                     if (thumbWorker === w) thumbWorker = null;
                     reject(new Error('worker'));
                 };
-                w.postMessage({ id: 0, code: code, url: OPENSCAD_URL });
+                w.postMessage({ id: 0, code: code, url: OPENSCAD_URL, files: carton ? cartonFiles(piece) : undefined, defs: carton ? ['vista="armado"'] : undefined });
             }).then(function (stl) {
                 return snapshotGeometry(positionsFromAsciiStl(stl));
             });
@@ -33076,14 +33175,20 @@ bluetooth.startIOPinService()</pre>
     }
 
     function openLocalFile(file) {
-        var nombre = file.name.replace(/\.(scad|stl)$/i, '').replace(/[-_]+/g, ' ');
+        var nombre = file.name.replace(/\.(scad|stl|svg)$/i, '').replace(/[-_]+/g, ' ');
         var isStl = /\.stl$/i.test(file.name);
+        if (/\.svg$/i.test(file.name)) {
+            if (modo !== 'carton') { setStatus('Los archivos SVG se abren en el modo ENCASTRE EN CARTÓN (arriba).', 'error'); return; }
+            openSvgAsCarton(file);
+            return;
+        }
+        if (modo === 'carton' && isStl) { setStatus('En cartón se abren archivos .scad o .svg. Para un STL, abrilo en IMPRESIÓN 3D y usá CONVERTIR A CARTÓN.', 'error'); return; }
         if (!isStl && !/\.scad$/i.test(file.name)) {
-            setStatus('Solo se pueden abrir archivos .scad o .stl.', 'error');
+            setStatus('Solo se pueden abrir archivos .scad' + (modo === 'carton' ? ' o .svg.' : ' o .stl.'), 'error');
             return;
         }
         if (!confirmReplace(nombre)) return;
-        var piece = { id: 'local:' + file.name, nombre: nombre, kind: isStl ? 'stl' : 'scad' };
+        var piece = { id: 'local:' + file.name, nombre: nombre, kind: isStl ? 'stl' : 'scad', modo: modo === 'carton' ? 'carton' : undefined };
         currentPiece = piece;
         el('s3d-piece-name').textContent = nombre;
         renderPieceMenu();
@@ -33119,6 +33224,8 @@ bluetooth.startIOPinService()</pre>
 
     function wizBuildPrompt() {
         var mode = wizMode();
+        var reqs = modo === 'carton' ? wizRequisitosCarton() : wizRequisitos();
+        if (mode === 'nueva' && modo === 'carton') return wizPromptCartonNueva();
         if (mode === 'nueva') {
             var nombre = el('s3d-wiz-nombre').value.trim();
             var desc = el('s3d-wiz-desc').value.trim();
@@ -33136,9 +33243,10 @@ bluetooth.startIOPinService()</pre>
             if (!cambio) return null;
             return 'Actuá como experto en OpenSCAD. Tengo esta pieza para impresión 3D y quiero modificarla.\n\n' +
                 'CÓDIGO ACTUAL:\n```\n' + codeEl.value + '\n```\n\n' +
+                (modo === 'carton' ? 'Es un diseño de ENCASTRE EN CARTÓN (piezas planas 2D con plano() y armado()).\n\n' : '') +
                 'CAMBIO PEDIDO: ' + cambio + '\n\n' +
                 'Devolvé el código completo ya modificado, conservando las variables y agregando las nuevas que hagan falta.\n\n' +
-                wizRequisitos();
+                reqs;
         }
         var err = lastRenderError
             ? lastRenderError.msg + '\n' + (lastRenderError.logs || []).filter(function (l) { return /error|warning/i.test(l); }).slice(0, 8).join('\n')
@@ -33147,7 +33255,7 @@ bluetooth.startIOPinService()</pre>
             'CÓDIGO:\n```\n' + codeEl.value + '\n```\n\n' +
             'ERROR REPORTADO POR OPENSCAD:\n' + err + '\n\n' +
             'Corregilo y devolvé el código completo arreglado.\n\n' +
-            wizRequisitos();
+            reqs;
     }
 
     // Extrae el código OpenSCAD de una respuesta de IA (con o sin ```bloques```)
@@ -33186,6 +33294,11 @@ bluetooth.startIOPinService()</pre>
         }
         wizRefreshForms();
         wizSetMsg('', '');
+        var carton = modo === 'carton';
+        el('s3d-wiz-nombre').placeholder = carton ? 'Nombre (ej.: soporte de péndulo con escala de ángulos)' : 'Nombre (ej.: soporte para sensor de distancia)';
+        el('s3d-wiz-desc').placeholder = carton ? '¿Qué es y para qué se usa? (ej.: soporte para colgar un péndulo de hasta 40 cm, con un transportador impreso para leer la amplitud)' : '¿Qué es y para qué se usa? (ej.: soporte para sujetar el sensor ultrasónico HC-SR04 a una varilla de 12 mm, mirando hacia adelante)';
+        el('s3d-wiz-dims').placeholder = carton ? 'Dimensiones aproximadas (ej.: 30 cm de alto, base de 20 × 20 cm) — opcional' : 'Dimensiones aproximadas (ej.: base de 60×30 mm, altura total 40 mm) — opcional';
+        el('s3d-wiz-det').placeholder = carton ? 'Detalles: instrumentos impresos (regla, transportador), qué sostiene, cantidad de piezas… — opcional' : 'Detalles: agujeros, encastres, tolerancias, cantidad… — opcional';
         el('s3d-wizard').classList.add('open');
         el('s3d-wizard').setAttribute('aria-hidden', 'false');
     }
@@ -33239,7 +33352,7 @@ bluetooth.startIOPinService()</pre>
             // usuario la guarde en su biblioteca con «Guardar pieza».
             var nombre = el('s3d-wiz-nombre').value.trim() || 'pieza generada';
             if (!confirmReplace(nombre)) return;
-            currentPiece = { id: 'ai:' + slug(nombre) + ':' + Date.now().toString(36), nombre: nombre, kind: 'scad' };
+            currentPiece = { id: 'ai:' + slug(nombre) + ':' + Date.now().toString(36), nombre: nombre, kind: 'scad', modo: modo === 'carton' ? 'carton' : undefined };
             el('s3d-piece-name').textContent = nombre;
             renderPieceMenu();
             loadScadIntoEditor(code, '');
@@ -33271,7 +33384,7 @@ bluetooth.startIOPinService()</pre>
         if (!codeEl.value.trim()) { setStatus('No hay código para guardar.', 'error'); return; }
         var entry = currentPiece && currentPiece.libId ? libEntryById(currentPiece.libId) : null;
         el('s3d-save-nombre').value = entry ? entry.nombre : (currentPiece ? currentPiece.nombre : '');
-        el('s3d-save-cat').value = entry ? entry.categoria : DEFAULT_CAT;
+        el('s3d-save-cat').value = entry ? entry.categoria : (modo === 'carton' ? 'Mis piezas de cartón' : DEFAULT_CAT);
         var dl = el('s3d-cat-list');
         dl.innerHTML = '';
         var cats = libCategories();
@@ -33300,9 +33413,13 @@ bluetooth.startIOPinService()</pre>
             entry.categoria = cat;
             entry.code = codeEl.value;
             entry.updatedAt = Date.now();
+            entry.modo = modo === 'carton' ? 'carton' : undefined;
+            if (currentPiece && currentPiece.files) entry.files = currentPiece.files;
         } else {
             entry = { id: newLibId(), nombre: nombre, categoria: cat, code: codeEl.value,
-                      createdAt: Date.now(), updatedAt: Date.now(), driveId: null };
+                      createdAt: Date.now(), updatedAt: Date.now(), driveId: null,
+                      modo: modo === 'carton' ? 'carton' : undefined,
+                      files: currentPiece && currentPiece.files ? currentPiece.files : undefined };
             lib.push(entry);
         }
         currentPiece = libPiece(entry);
@@ -33394,6 +33511,8 @@ bluetooth.startIOPinService()</pre>
     function pieceFileBody(entry) {
         return JSON.stringify({ tipo: 'fisicabit-pieza3d', id: entry.id, nombre: entry.nombre,
                                 categoria: entry.categoria, code: entry.code,
+                                modo: entry.modo === 'carton' ? 'carton' : undefined,
+                                archivos: entry.files || undefined,
                                 createdAt: entry.createdAt, updatedAt: entry.updatedAt });
     }
 
@@ -33458,6 +33577,8 @@ bluetooth.startIOPinService()</pre>
                 if (!local) {
                     lib.push({ id: String(data.id || newLibId()), nombre: String(data.nombre || files[i].name),
                                categoria: String(data.categoria || DEFAULT_CAT), code: data.code,
+                               modo: data.modo === 'carton' ? 'carton' : undefined,
+                               files: data.archivos && typeof data.archivos === 'object' ? data.archivos : undefined,
                                createdAt: data.createdAt || Date.now(), updatedAt: data.updatedAt || Date.now(),
                                driveId: files[i].id });
                     nuevos++;
@@ -33468,6 +33589,8 @@ bluetooth.startIOPinService()</pre>
                         local.nombre = String(data.nombre || local.nombre);
                         local.categoria = String(data.categoria || local.categoria);
                         local.code = data.code;
+                        local.modo = data.modo === 'carton' ? 'carton' : undefined;
+                        if (data.archivos && typeof data.archivos === 'object') local.files = data.archivos;
                         local.updatedAt = data.updatedAt;
                         actualizados++;
                     }
@@ -33543,15 +33666,18 @@ bluetooth.startIOPinService()</pre>
         panel.classList.remove('open');
         panel.setAttribute('aria-hidden', 'true');
         opened = false;
-        if (/^#piezas3d$/i.test(location.hash)) {
+        if (/^#(piezas3d|carton)$/i.test(location.hash)) {
             try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
         }
     }
 
     function checkHash() {
-        // Deep-link: entrar con #piezas3d abre el panel directamente
+        // Deep-link: #piezas3d abre el panel; #carton lo abre en «Encastre en cartón»
         if (/^#piezas3d$/i.test(location.hash)) {
             openPanel();
+        } else if (/^#carton$/i.test(location.hash)) {
+            openPanel();
+            setModo('carton');
         }
     }
 
@@ -33627,6 +33753,7 @@ bluetooth.startIOPinService()</pre>
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape' || !opened) return;
             if (el('s3d-save-modal').classList.contains('open')) { closeSaveModal(); return; }
+            if (el('s3d-carton-modal').classList.contains('open')) { closeCartonModal(); return; }
             if (el('s3d-wizard').classList.contains('open')) { closeWizard(); return; }
             if (document.activeElement !== codeEl) closePanel();
         });
@@ -33661,12 +33788,739 @@ bluetooth.startIOPinService()</pre>
 
         var btn = el('btn-piezas3d');
         if (btn) btn.addEventListener('click', openPanel);
+        var btnC = el('btn-carton');
+        if (btnC) btnC.addEventListener('click', function () { openPanel(); setModo('carton'); });
 
+        initCarton();
         window.addEventListener('hashchange', checkHash);
         checkHash();
     }
 
+    /* ================================================================
+       ENCASTRE EN CARTÓN
+       Segundo modo del apartado: diseños de piezas PLANAS que se imprimen
+       en hojas A4, se pegan sobre cartón, se cortan y se unen por encastre.
+       - El código OpenSCAD del diseño define plano() (2D, piezas a cortar)
+         y armado() (3D). La biblioteca lib/fisicabit-carton.scad aporta
+         ranuras, pestañas, reglas, transportadores y una tipografía de
+         trazos (no hay fuentes en el motor WebAssembly).
+       - Cada render pide al motor tres salidas: plano (SVG de corte), marcas
+         (SVG de tinta: reglas y textos) y armado (STL para el visor 3D).
+       - El SVG se separa en piezas (contornos y agujeros), se empaquetan en
+         hojas A4 con barra de calibración de 100 mm y se imprimen al 100 %.
+       - «Convertir a cartón» corta cualquier modelo 3D del otro modo en
+         láminas verticales cruzadas (tipo rejilla), con las ranuras a media
+         altura calculadas sobre la malla (idea de 123D Make / Lamina).
+       ================================================================ */
+    var modo = '3d';
+    var CARTON_FOLDER = 'diseños carton';
+    var CARTON_FOLDER_API = 'https://api.github.com/repos/martinferreiraHCA/Fisica-y-Microbit/contents/' + encodeURIComponent(CARTON_FOLDER);
+    var CARTON_LIB_URL = new URL('lib/fisicabit-carton.scad', location.href).href;
+    var CARTON_INCLUDE = 'include <fisicabit-carton.scad>';
+    var cartonLib = null, cartonLibPromise = null;
+    var cartonNote = '';
+    var cartonBusy = false, cartonQueued = false, cartonSeq = 0, cartonWorker = null;
+    var sheets = null;                 // última distribución en hojas A4
+    var modeState = { '3d': null, carton: null };
+    var A4 = { w: 210, h: 297, margin: 10, header: 18, gap: 5, overlap: 12 };
+
+    function ensureCartonLib() {
+        if (cartonLib) return Promise.resolve(cartonLib);
+        if (!cartonLibPromise) {
+            cartonLibPromise = fetch(CARTON_LIB_URL).then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            }).then(function (t) { cartonLib = t; return t; }).catch(function (e) {
+                cartonLibPromise = null;
+                throw new Error('no se pudo cargar la biblioteca de cartón (' + (e && e.message || e) + ')');
+            });
+        }
+        return cartonLibPromise;
+    }
+    function isCartonPiece(p) { return !!(p && p.modo === 'carton'); }
+    function pieceInModo(p) { return isCartonPiece(p) === (modo === 'carton'); }
+    function cartonCode(code) {
+        return /include\s*<\s*fisicabit-carton\.scad\s*>/.test(code) ? code : code + '\n' + CARTON_INCLUDE + '\n';
+    }
+    function cartonFiles(piece) {
+        var f = { '/fisicabit-carton.scad': cartonLib || '' };
+        var extra = piece && piece.files;
+        if (extra) for (var k in extra) if (Object.prototype.hasOwnProperty.call(extra, k)) f[k] = extra[k];
+        return f;
+    }
+
+    /* ---------- Trabajos del motor (secuenciales, worker propio) ---------- */
+    function scadJob(job) {
+        return new Promise(function (resolve, reject) {
+            if (!workerBlobUrl) {
+                workerBlobUrl = URL.createObjectURL(new Blob([workerSource()], { type: 'text/javascript' }));
+            }
+            if (!cartonWorker) cartonWorker = new Worker(workerBlobUrl, { type: 'module' });
+            var w = cartonWorker, id = ++cartonSeq;
+            function kill() { try { w.terminate(); } catch (e) {} if (cartonWorker === w) cartonWorker = null; }
+            var to = setTimeout(function () { kill(); reject(new Error('El render tardó demasiado y fue cancelado.')); }, RENDER_TIMEOUT_MS);
+            w.onmessage = function (e) {
+                if (e.data.id !== id) return;
+                clearTimeout(to);
+                if (e.data.ok) resolve({ text: e.data.stl, logs: e.data.logs || [] });
+                else {
+                    kill(); // la instancia queda inservible tras un error
+                    var err = new Error(e.data.error || 'fallo del motor OpenSCAD');
+                    err.logs = e.data.logs || [];
+                    reject(err);
+                }
+            };
+            w.onerror = function (ev) {
+                if (ev && ev.preventDefault) ev.preventDefault();
+                clearTimeout(to);
+                kill();
+                reject(new Error((ev && ev.message) || 'no se pudo cargar el motor OpenSCAD (¿sin conexión?)'));
+            };
+            w.postMessage({ id: id, code: job.code, url: OPENSCAD_URL, files: job.files, out: job.out, defs: job.defs });
+        });
+    }
+
+    function renderCarton() {
+        clearTimeout(renderTimer);
+        if (cartonBusy) { cartonQueued = true; return; }
+        cartonBusy = true; cartonQueued = false;
+        var t0 = performance.now();
+        var piece = currentPiece;
+        var code = codeEl.value;
+        clearLog();
+        setStatus('Renderizando el cartón… (la primera vez carga el motor OpenSCAD, ~14 MB)', 'busy');
+        el('s3d-render').disabled = true;
+        if (viewer && viewer.mesh) { viewer.material.transparent = true; viewer.material.opacity = 0.45; viewer.needsFrame = true; }
+        var res = { stl: null, plano: null, marcas: null, logs: [] };
+        ensureCartonLib().then(function () {
+            var files = cartonFiles(piece);
+            var full = cartonCode(code);
+            return scadJob({ code: full, files: files, out: 'svg', defs: ['vista="plano"'] }).then(function (r) {
+                res.plano = r.text; res.logs = res.logs.concat(r.logs);
+                setStatus('Plano listo; dibujando las marcas…', 'busy');
+                return scadJob({ code: full, files: files, out: 'svg', defs: ['vista="marcas"'] })
+                    .then(function (r2) { res.marcas = r2.text; }, function () { res.marcas = null; });
+            }).then(function () {
+                setStatus('Marcas listas; armando la vista 3D…', 'busy');
+                return scadJob({ code: full, files: files, out: 'stl', defs: ['vista="armado"'] }).then(function (r3) {
+                    res.stl = r3.text; res.logs = res.logs.concat(r3.logs);
+                }, function (e3) {
+                    var lg = e3.logs || [];
+                    var sinArmado = !/module\s+armado\s*\(/.test(code) || lg.some(function (l) { return /unknown module 'armado'/i.test(l); });
+                    if (!sinArmado) throw e3;
+                    res.logs.push('Aviso: el diseño no define armado(): se muestra el plano extruido.');
+                    return scadJob({ code: full, files: files, out: 'stl', defs: ['vista="plano_3d"'] })
+                        .then(function (r4) { res.stl = r4.text; });
+                });
+            });
+        }).then(function () {
+            if (res.logs.length) appendLog(res.logs);
+            lastRenderError = null;
+            lastStl = res.stl;
+            el('s3d-dl-stl').disabled = !lastStl;
+            var info = buildSheets(res.plano, res.marcas, currentName());
+            var secs = ((performance.now() - t0) / 1000).toFixed(1);
+            var msg = 'Cartón listo en ' + secs + ' s · ' + info.pieces + ' pieza' + (info.pieces === 1 ? '' : 's') +
+                      ' · ' + info.pages + ' hoja' + (info.pages === 1 ? '' : 's') + ' A4';
+            if (lastStl) {
+                displayGeometry(function (THREE) { return geometryFromPositions(THREE, positionsFromAsciiStl(lastStl)); }, msg);
+            } else setStatus(msg, '');
+        }).catch(function (e) {
+            var lg = (e && e.logs) || [];
+            if (lg.length) appendLog(lg);
+            var pick = function (re) { var f = lg.filter(function (l) { return re.test(l); }); return f[f.length - 1]; };
+            var msg = pick(/error/i) || (e && e.message) || 'fallo del motor OpenSCAD';
+            lastRenderError = { msg: String(msg), logs: lg };
+            if (viewer && viewer.mesh) { viewer.material.transparent = false; viewer.material.opacity = 1; viewer.needsFrame = true; }
+            setStatus('Error: ' + msg + ' — revisá la consola.', 'error');
+            if (!logEl.classList.contains('open')) logEl.classList.add('open');
+        }).then(function () {
+            cartonBusy = false;
+            el('s3d-render').disabled = stlMode;
+            if (cartonQueued) { cartonQueued = false; renderCarton(); }
+        });
+    }
+
+    /* ---------- SVG de OpenSCAD → piezas (contornos con agujeros) ---------- */
+    function parseScadSvg(text) {
+        var contours = [];
+        if (!text) return contours;
+        var re = /<path[^>]*\sd="([^"]*)"/g, m;
+        while ((m = re.exec(text)) !== null) {
+            m[1].split(/(?=[Mm])/).forEach(function (s) {
+                var nums = s.replace(/[MmLlZz]/g, ' ').trim().split(/[\s,]+/).map(parseFloat).filter(isFinite);
+                var pts = [];
+                for (var i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
+                if (pts.length >= 2) {
+                    var a = pts[0], b = pts[pts.length - 1];
+                    if (Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9) pts.pop();
+                }
+                if (pts.length < 3) return;
+                contours.push(makeContour(pts));
+            });
+        }
+        return contours;
+    }
+    function makeContour(pts) {
+        var area = 0, minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+        for (var i = 0; i < pts.length; i++) {
+            var p = pts[i], q = pts[(i + 1) % pts.length];
+            area += p[0] * q[1] - q[0] * p[1];
+            if (p[0] < minx) minx = p[0]; if (p[0] > maxx) maxx = p[0];
+            if (p[1] < miny) miny = p[1]; if (p[1] > maxy) maxy = p[1];
+        }
+        return { pts: pts, area: area / 2, bbox: [minx, miny, maxx, maxy] };
+    }
+    function bboxInside(inner, outer) {
+        return inner[0] >= outer[0] - 1e-6 && inner[1] >= outer[1] - 1e-6 && inner[2] <= outer[2] + 1e-6 && inner[3] <= outer[3] + 1e-6;
+    }
+    function pointInContour(c, p) {
+        var x = p[0], y = p[1], inside = false, pts = c.pts;
+        for (var i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+            var xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1];
+            if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+        }
+        return inside;
+    }
+    // Un punto interior robusto: el primer vértice puede caer justo sobre un
+    // borde de otro contorno; se prueba un punto apenas corrido hacia adentro.
+    function samplePoint(c) {
+        var a = c.pts[0], b = c.pts[1], z = c.pts[c.pts.length - 1];
+        var mx = (a[0] + b[0] + z[0]) / 3, my = (a[1] + b[1] + z[1]) / 3;
+        var p = [a[0] + (mx - a[0]) * 0.02, a[1] + (my - a[1]) * 0.02];
+        return pointInContour(c, p) ? p : a;
+    }
+    function groupPieces(contours) {
+        var info = contours.map(function (c) {
+            var depth = 0, parent = null, sp = samplePoint(c);
+            contours.forEach(function (o) {
+                if (o === c || !bboxInside(c.bbox, o.bbox) || !pointInContour(o, sp)) return;
+                depth++;
+                if (!parent || Math.abs(o.area) < Math.abs(parent.area)) parent = o;
+            });
+            return { c: c, depth: depth, parent: parent };
+        });
+        var pieces = [], byOuter = new Map();
+        info.forEach(function (it) {
+            if (it.depth % 2 === 0) {
+                var p = { outer: it.c, holes: [], marks: [], bbox: it.c.bbox.slice() };
+                pieces.push(p); byOuter.set(it.c, p);
+            }
+        });
+        info.forEach(function (it) {
+            if (it.depth % 2 === 1) { var p = byOuter.get(it.parent); if (p) p.holes.push(it.c); }
+        });
+        // Orden de lectura: de arriba a abajo e izquierda a derecha
+        pieces.sort(function (a, b) { return (a.bbox[1] - b.bbox[1]) || (a.bbox[0] - b.bbox[0]); });
+        return pieces;
+    }
+    function assignMarks(pieces, markContours) {
+        markContours.forEach(function (c) {
+            var sp = samplePoint(c), best = null;
+            pieces.forEach(function (p) {
+                if (!bboxInside(c.bbox, p.bbox) || !pointInContour(p.outer, sp)) return;
+                if (!best || Math.abs(p.outer.area) < Math.abs(best.outer.area)) best = p;
+            });
+            if (best) best.marks.push(c);
+        });
+    }
+    function contourPath(c) {
+        var d = '';
+        for (var i = 0; i < c.pts.length; i++) d += (i ? 'L' : 'M') + fmtMm(c.pts[i][0]) + ',' + fmtMm(c.pts[i][1]);
+        return d + 'Z';
+    }
+    function fmtMm(n) { return (Math.round(n * 1000) / 1000).toString(); }
+    function escXml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+    /* ---------- Distribución en hojas A4 ---------- */
+    function packPieces(pieces) {
+        var W = A4.w - 2 * A4.margin, H = A4.h - 2 * A4.margin - A4.header;
+        var items = pieces.map(function (p, i) {
+            var w = p.bbox[2] - p.bbox[0], h = p.bbox[3] - p.bbox[1];
+            var rot = 0;
+            if ((w > W || h > H) && h <= W && w <= H) rot = 90;          // girada entra en la hoja
+            else if (w <= W && h <= H && w > h && h <= W && w <= H && w > W * 0.6 && h < w * 0.5) rot = 0;
+            return { piece: p, num: i + 1, w: w, h: h, rot: rot, ew: rot ? h : w, eh: rot ? w : h };
+        });
+        var pages = [], normal = [], tiled = [];
+        items.forEach(function (it) { (it.ew > W + 1e-6 || it.eh > H + 1e-6 ? tiled : normal).push(it); });
+        normal.sort(function (a, b) { return (b.eh - a.eh) || (b.ew - a.ew); });
+        var page = null, cx = 0, cy = 0, rowH = 0;
+        function newPage() { page = { items: [], tile: null }; pages.push(page); cx = 0; cy = 0; rowH = 0; }
+        normal.forEach(function (it) {
+            if (!page) newPage();
+            if (cx + it.ew > W + 1e-6) { cy += rowH + A4.gap; cx = 0; rowH = 0; }
+            if (cy + it.eh > H + 1e-6) newPage();
+            page.items.push({ it: it, x: cx, y: cy });
+            cx += it.ew + A4.gap;
+            rowH = Math.max(rowH, it.eh);
+        });
+        tiled.forEach(function (it) {
+            var cols = Math.max(1, Math.ceil((it.ew - A4.overlap) / (W - A4.overlap)));
+            var rows = Math.max(1, Math.ceil((it.eh - A4.overlap) / (H - A4.overlap)));
+            for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+                pages.push({ items: [{ it: it, x: -c * (W - A4.overlap), y: -r * (H - A4.overlap) }],
+                             tile: { r: r, c: c, rows: rows, cols: cols, num: it.num } });
+            }
+        });
+        return { pages: pages, W: W, H: H };
+    }
+
+    function pieceGroupSvg(placed, numerar) {
+        var it = placed.it, p = it.piece, b = p.bbox;
+        var ox = A4.margin, oy = A4.margin + A4.header;
+        var tr = it.rot
+            ? 'translate(' + fmtMm(ox + placed.x + b[3]) + ',' + fmtMm(oy + placed.y - b[0]) + ') rotate(90)'
+            : 'translate(' + fmtMm(ox + placed.x - b[0]) + ',' + fmtMm(oy + placed.y - b[1]) + ')';
+        var cut = contourPath(p.outer) + p.holes.map(contourPath).join('');
+        var s = '<g transform="' + tr + '">';
+        s += '<path d="' + cut + '" fill="none" stroke="#000" stroke-width="0.25" stroke-linejoin="round" fill-rule="evenodd"/>';
+        if (p.marks.length) s += '<path d="' + p.marks.map(contourPath).join('') + '" fill="#1f3f8f" stroke="none" fill-rule="evenodd"/>';
+        s += '</g>';
+        if (numerar) {
+            var cxp = ox + placed.x + it.ew / 2, cyp = oy + placed.y + it.eh / 2;
+            s += '<g transform="translate(' + fmtMm(cxp) + ',' + fmtMm(cyp) + ')"><circle r="3.4" fill="#fff" fill-opacity="0.85" stroke="#1f3f8f" stroke-width="0.25"/>' +
+                 '<text font-family="Arial, Helvetica, sans-serif" font-size="3.8" font-weight="700" fill="#1f3f8f" text-anchor="middle" dominant-baseline="central">' + it.num + '</text></g>';
+        }
+        return s;
+    }
+
+    function pageInnerSvg(page, idx, total, name, numerar) {
+        var m = A4.margin, W = A4.w - 2 * m, H = A4.h - 2 * m - A4.header;
+        var esp = (function () { var v = valuesMap(); return v.espesor != null ? v.espesor : null; })();
+        var s = '';
+        var titulo = name + ' · hoja ' + (idx + 1) + ' de ' + total;
+        if (page.tile) titulo += ' · pieza ' + page.tile.num + ', parte fila ' + (page.tile.r + 1) + '/' + page.tile.rows + ' columna ' + (page.tile.c + 1) + '/' + page.tile.cols;
+        s += '<text x="' + m + '" y="' + (m + 4) + '" font-family="Arial, Helvetica, sans-serif" font-size="3.4" font-weight="700" fill="#000">' + escXml(titulo) + '</text>';
+        s += '<text x="' + m + '" y="' + (m + 8.4) + '" font-family="Arial, Helvetica, sans-serif" font-size="2.5" fill="#333">Imprimir al 100 % (sin «ajustar a la página»)' +
+             (esp != null ? ' · cartón de ' + fmtNum(esp) + ' mm' : '') + ' · negro: cortar · azul: tinta</text>';
+        s += '<text x="' + m + '" y="' + (m + 12.4) + '" font-family="Arial, Helvetica, sans-serif" font-size="2.2" fill="#666">fisicabit · Diseño 3D ▸ Encastre en cartón</text>';
+        // Barra de calibración de 100 mm
+        var bx = A4.w - m - 100, by = m + 13.5;
+        s += '<g stroke="#000" stroke-width="0.3"><line x1="' + bx + '" y1="' + by + '" x2="' + (bx + 100) + '" y2="' + by + '"/>' +
+             '<line x1="' + bx + '" y1="' + (by - 2.5) + '" x2="' + bx + '" y2="' + (by + 2.5) + '"/>' +
+             '<line x1="' + (bx + 50) + '" y1="' + (by - 1.5) + '" x2="' + (bx + 50) + '" y2="' + (by + 1.5) + '"/>' +
+             '<line x1="' + (bx + 100) + '" y1="' + (by - 2.5) + '" x2="' + (bx + 100) + '" y2="' + (by + 2.5) + '"/></g>';
+        s += '<text x="' + (bx + 50) + '" y="' + (by - 3.2) + '" font-family="Arial, Helvetica, sans-serif" font-size="2.6" fill="#000" text-anchor="middle">esta barra debe medir 100 mm</text>';
+        // Área útil (recortada para las piezas en varias hojas)
+        var ox = m, oy = m + A4.header;
+        if (page.tile) {
+            var id = 'clip' + idx;
+            s += '<clipPath id="' + id + '"><rect x="' + ox + '" y="' + oy + '" width="' + W + '" height="' + H + '"/></clipPath>';
+            s += '<g clip-path="url(#' + id + ')">';
+            s += page.items.map(function (pl) { return pieceGroupSvg(pl, false); }).join('');
+            s += '</g>';
+            // Franjas de superposición y marcas de registro
+            var dash = 'stroke="#1f3f8f" stroke-width="0.25" stroke-dasharray="2,1.5" fill="none"';
+            if (page.tile.c + 1 < page.tile.cols) s += '<rect x="' + (ox + W - A4.overlap) + '" y="' + oy + '" width="' + A4.overlap + '" height="' + H + '" ' + dash + '/>' +
+                '<text x="' + (ox + W - A4.overlap / 2) + '" y="' + (oy + H / 2) + '" font-family="Arial, Helvetica, sans-serif" font-size="2.4" fill="#1f3f8f" text-anchor="middle" transform="rotate(-90 ' + (ox + W - A4.overlap / 2) + ' ' + (oy + H / 2) + ')">superponer con la hoja de la derecha</text>';
+            if (page.tile.c > 0) s += '<rect x="' + ox + '" y="' + oy + '" width="' + A4.overlap + '" height="' + H + '" ' + dash + '/>';
+            if (page.tile.r + 1 < page.tile.rows) s += '<rect x="' + ox + '" y="' + (oy + H - A4.overlap) + '" width="' + W + '" height="' + A4.overlap + '" ' + dash + '/>' +
+                '<text x="' + (ox + W / 2) + '" y="' + (oy + H - A4.overlap / 2) + '" font-family="Arial, Helvetica, sans-serif" font-size="2.4" fill="#1f3f8f" text-anchor="middle">superponer con la hoja de abajo</text>';
+            if (page.tile.r > 0) s += '<rect x="' + ox + '" y="' + oy + '" width="' + W + '" height="' + A4.overlap + '" ' + dash + '/>';
+            s += '<rect x="' + ox + '" y="' + oy + '" width="' + W + '" height="' + H + '" fill="none" stroke="#999" stroke-width="0.2"/>';
+        } else {
+            s += page.items.map(function (pl) { return pieceGroupSvg(pl, numerar); }).join('');
+        }
+        return s;
+    }
+    function pageSvg(page, idx, total, name, numerar, attrs) {
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 210 297"' + (attrs || '') + '>' +
+               '<rect width="210" height="297" fill="#fff"/>' + pageInnerSvg(page, idx, total, name, numerar) + '</svg>';
+    }
+
+    function buildSheets(planoSvg, marcasSvg, name) {
+        var pieces = groupPieces(parseScadSvg(planoSvg));
+        if (marcasSvg) assignMarks(pieces, parseScadSvg(marcasSvg));
+        var packed = packPieces(pieces);
+        sheets = { pieces: pieces, pages: packed.pages, name: name };
+        renderSheetsView();
+        return { pieces: pieces.length, pages: packed.pages.length };
+    }
+    function numerarOn() { var c = el('s3d-numerar'); return !c || c.checked; }
+    function renderSheetsView() {
+        var box = el('s3d-sheets-pages');
+        if (!box) return;
+        box.innerHTML = '';
+        if (!sheets || !sheets.pages.length) {
+            box.innerHTML = '<div class="s3d-sheets-empty">Todavía no hay piezas: el plano está vacío o falta renderizar.</div>';
+            el('s3d-sheets-info').textContent = '';
+            return;
+        }
+        var n = sheets.pages.length;
+        el('s3d-sheets-info').textContent = sheets.pieces.length + ' pieza' + (sheets.pieces.length === 1 ? '' : 's') + ' en ' + n + ' hoja' + (n === 1 ? '' : 's') + ' A4';
+        sheets.pages.forEach(function (pg, i) {
+            var d = document.createElement('div');
+            d.className = 's3d-sheet';
+            d.innerHTML = pageSvg(pg, i, n, sheets.name, numerarOn());
+            box.appendChild(d);
+        });
+    }
+    function showSheets(on) {
+        panel.classList.toggle('show-sheets', !!on);
+        var b = el('s3d-vista-plano');
+        if (b) { b.textContent = on ? 'Ver armado 3D' : 'Ver hojas A4'; b.classList.toggle('active', !!on); }
+        if (!on && viewer) { viewer.resize(); viewer.needsFrame = true; }
+    }
+
+    function printSheets() {
+        if (!sheets || !sheets.pages.length) { setStatus('No hay hojas para imprimir: renderizá el diseño primero.', 'error'); return; }
+        var n = sheets.pages.length;
+        var svgs = sheets.pages.map(function (pg, i) { return pageSvg(pg, i, n, sheets.name, numerarOn(), ' class="hoja"'); }).join('\n');
+        var html = '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>' + escXml(sheets.name) + ' · cartón encastrable</title>' +
+            '<style>@page{size:A4 portrait;margin:0} html,body{margin:0;padding:0;background:#fff} svg.hoja{display:block;width:210mm;height:297mm;page-break-after:always;break-after:page} svg.hoja:last-child{page-break-after:auto;break-after:auto}</style></head><body>' +
+            svgs + '<scr' + 'ipt>window.onload=function(){setTimeout(function(){window.focus();window.print();},400);};</scr' + 'ipt></body></html>';
+        var w = window.open('', '_blank');
+        if (!w) { setStatus('El navegador bloqueó la ventana de impresión: permití las ventanas emergentes y volvé a intentar.', 'error'); return; }
+        w.document.open(); w.document.write(html); w.document.close();
+        if (window.track) window.track('carton_imprimir', 'carton');
+        setStatus('Hojas enviadas a imprimir (o a guardar como PDF). Verificá que la barra mida 100 mm.', '');
+    }
+    function downloadSheetsSvg() {
+        if (!sheets || !sheets.pages.length) { setStatus('No hay hojas para descargar: renderizá el diseño primero.', 'error'); return; }
+        var n = sheets.pages.length, step = A4.h + 10;
+        var inner = sheets.pages.map(function (pg, i) {
+            return '<g transform="translate(0,' + (i * step) + ')"><rect width="210" height="297" fill="#fff" stroke="#bbb" stroke-width="0.2"/>' + pageInnerSvg(pg, i, n, sheets.name, numerarOn()) + '</g>';
+        }).join('\n');
+        var svg = '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="' + (n * step - 10) + 'mm" viewBox="0 0 210 ' + (n * step - 10) + '">\n' +
+                  '<title>' + escXml(sheets.name) + ' · hojas A4 · fisicabit</title>\n' + inner + '\n</svg>';
+        download(slug(sheets.name) + '-hojas-a4.svg', svg, 'image/svg+xml');
+    }
+
+    /* ---------- Cambio de modo ---------- */
+    function setModo(m) {
+        if (m === modo) return;
+        modeState[modo] = { piece: currentPiece, code: codeEl.value, loaded: window.__s3dLoadedCode,
+                            stlMode: stlMode, stlBuf: stlMode && lastStl && lastStl.buffer ? lastStl.buffer : null };
+        modo = m;
+        var carton = m === 'carton';
+        panel.classList.toggle('modo-carton', carton);
+        Array.prototype.forEach.call(document.querySelectorAll('.s3d-mode-btn'), function (b) {
+            b.classList.toggle('active', b.getAttribute('data-modo') === m);
+        });
+        el('s3d-title').textContent = carton ? 'Encastre en cartón' : 'Diseño de piezas 3D';
+        el('s3d-badge').textContent = carton ? 'Cartón · hojas A4 · OpenSCAD' : 'OpenSCAD · en tu navegador';
+        showSheets(false);
+        if (/^#(piezas3d|carton)$/i.test(location.hash)) {
+            try { history.replaceState(null, '', location.pathname + location.search + (carton ? '#carton' : '#piezas3d')); } catch (e) {}
+        }
+        currentPiece = null;
+        dimActiveParam = null; clearDims();
+        var st = modeState[m];
+        if (st && st.piece) {
+            currentPiece = st.piece;
+            el('s3d-piece-name').textContent = st.piece.nombre;
+            setPickerThumb(st.piece);
+            renderPieceMenu();
+            if (st.stlMode && st.stlBuf) loadStlPiece(st.piece, st.stlBuf);
+            else { loadScadIntoEditor(st.code, ''); window.__s3dLoadedCode = st.loaded; }
+        } else {
+            el('s3d-piece-name').textContent = 'Elegir pieza…';
+            el('s3d-piece-thumb').src = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+            renderPieceMenu();
+            if (!selectFirstPiece()) {
+                if (carton) ensureCartonLib().catch(function () {});
+                codeEl.value = ''; window.__s3dLoadedCode = ''; lastStl = null; refreshParams();
+                setStatus(carton ? 'Elegí un diseño de cartón, abrí un .scad o .svg, o usá el asistente con IA.' : 'Elegí una pieza.', '');
+            }
+        }
+        if (carton) { ensureCartonLib().catch(function (e) { setStatus('Error: ' + e.message, 'error'); }); pumpThumbs(); }
+        if (window.track) window.track(carton ? 'abrir_carton' : 'abrir_piezas3d', 'modo');
+    }
+    function selectFirstPiece() {
+        var l = libPiecesArr.filter(pieceInModo);
+        if (l.length) { selectPiece(l[0], false); return true; }
+        var f = pieces.filter(pieceInModo);
+        if (f.length) { selectPiece(f[0], false); return true; }
+        return false;
+    }
+
+    /* ---------- Importar un SVG (de boxes.py, Joinery u otro generador) ---------- */
+    function openSvgAsCarton(file) {
+        var nombre = file.name.replace(/\.svg$/i, '').replace(/[-_]+/g, ' ');
+        if (!confirmReplace(nombre)) return;
+        file.text().then(function (text) {
+            var code = '// Plano importado del archivo SVG «' + file.name + '»\n' +
+                '// (por ejemplo generado con boxes.py, Joinery u otro programa libre).\n' +
+                '// Cada forma cerrada del SVG es una pieza; se imprimen en A4 con la barra\n' +
+                '// de calibración. Podés sumarle marcas: regla(), transportador(), texto().\n\n' +
+                '/* [Cartón] */\n// Grosor del cartón (mm)\nespesor = 3; // [1:0.5:8]\n// Ancho extra de las ranuras (mm)\nholgura = 0; // [-0.6:0.1:0.8]\n\n' +
+                'module plano() import("/importado.svg");\n' +
+                'module armado() linear_extrude(espesor) plano();\n';
+            var piece = { id: 'local:' + file.name, nombre: nombre, kind: 'scad', modo: 'carton', files: { '/importado.svg': text } };
+            currentPiece = piece;
+            el('s3d-piece-name').textContent = nombre;
+            renderPieceMenu();
+            loadScadIntoEditor(code, '');
+            setStatus('SVG «' + nombre + '» importado como diseño de cartón: renderizando…', 'busy');
+        }).catch(function (e) { setStatus('No se pudo leer el archivo: ' + e, 'error'); });
+    }
+
+    /* ---------- Convertir un modelo 3D en láminas encastradas ---------- */
+    function meshPositions() {
+        if (!lastStl) return null;
+        return lastStl.buffer ? positionsFromStlBuffer(lastStl.buffer) : positionsFromAsciiStl(lastStl);
+    }
+    // Alturas (z) donde una vertical en (x, y) entra y sale del modelo
+    function rayZ(P, x, y) {
+        var zs = [];
+        for (var t = 0; t < P.length; t += 9) {
+            var ax = P[t], ay = P[t + 1], bx = P[t + 3], by = P[t + 4], cx = P[t + 6], cy = P[t + 7];
+            var d = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+            if (Math.abs(d) < 1e-12) continue;
+            var l1 = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / d;
+            var l2 = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / d;
+            var l3 = 1 - l1 - l2;
+            if (l1 < -1e-9 || l2 < -1e-9 || l3 < -1e-9) continue;
+            zs.push(l1 * P[t + 2] + l2 * P[t + 5] + l3 * P[t + 8]);
+        }
+        zs.sort(function (a, b) { return a - b; });
+        var out = [];
+        zs.forEach(function (z) { if (!out.length || z - out[out.length - 1] > 1e-5) out.push(z); });
+        return out;
+    }
+    function intervalsAt(P, x, y, dx, dy) {
+        for (var k = 0; k < 4; k++) {
+            var zs = rayZ(P, x + dx * (k + 1) * 0.37, y + dy * (k + 1) * 0.29);
+            if (zs.length % 2 === 0) {
+                var iv = [];
+                for (var i = 0; i + 1 < zs.length; i += 2) if (zs[i + 1] - zs[i] > 0.5) iv.push([zs[i], zs[i + 1]]);
+                return iv;
+            }
+        }
+        return [];
+    }
+    function polyhedronCode(pos) {
+        var keys = new Map(), pts = [], faces = [];
+        for (var t = 0; t < pos.length; t += 9) {
+            var f = [];
+            for (var v = 0; v < 3; v++) {
+                var x = pos[t + v * 3], y = pos[t + v * 3 + 1], z = pos[t + v * 3 + 2];
+                var k = x.toFixed(4) + ',' + y.toFixed(4) + ',' + z.toFixed(4);
+                var idx = keys.get(k);
+                if (idx === undefined) { idx = pts.length; keys.set(k, idx); pts.push('[' + fmtMm(x) + ',' + fmtMm(y) + ',' + fmtMm(z) + ']'); }
+                f.push(idx);
+            }
+            faces.push('[' + f[2] + ',' + f[1] + ',' + f[0] + ']'); // OpenSCAD: caras en sentido horario vistas desde afuera
+        }
+        return 'polyhedron(points = [' + pts.join(',') + '], faces = [' + faces.join(',') + '], convexity = 10);';
+    }
+    function fmtList(a) { return '[' + a.map(fmtMm).join(', ') + ']'; }
+
+    function convertToCarton(o) {
+        var pos = meshPositions();
+        if (!pos || !pos.length) throw new Error('Renderizá primero la pieza para poder convertirla.');
+        var nT = pos.length / 9;
+        if (stlMode && nT > 60000) throw new Error('El STL tiene demasiados triángulos (' + nT + ') para convertirlo acá.');
+        // Reorientar: el eje elegido pasa a ser vertical (z)
+        var rot = o.eje === 'y' ? [90, 0, 0] : o.eje === 'x' ? [0, -90, 0] : [0, 0, 0];
+        var P = new Float32Array(pos.length);
+        for (var i = 0; i < pos.length; i += 3) {
+            var x = pos[i], y = pos[i + 1], z = pos[i + 2];
+            if (o.eje === 'y') { P[i] = x; P[i + 1] = -z; P[i + 2] = y; }
+            else if (o.eje === 'x') { P[i] = -z; P[i + 1] = y; P[i + 2] = x; }
+            else { P[i] = x; P[i + 1] = y; P[i + 2] = z; }
+        }
+        var mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+        for (i = 0; i < P.length; i += 3) for (var a = 0; a < 3; a++) { if (P[i + a] < mn[a]) mn[a] = P[i + a]; if (P[i + a] > mx[a]) mx[a] = P[i + a]; }
+        var tam = [mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]];
+        if (!(tam[0] > 0 && tam[1] > 0 && tam[2] > 0)) throw new Error('El modelo no tiene volumen.');
+        var px = [], py = [];
+        for (i = 0; i < o.nx; i++) px.push(mn[0] + (i + 0.5) * tam[0] / o.nx);
+        for (i = 0; i < o.ny; i++) py.push(mn[1] + (i + 0.5) * tam[1] / o.ny);
+        var ranuras = [];
+        px.forEach(function (xi, ii) {
+            py.forEach(function (yj, jj) {
+                intervalsAt(P, xi, yj, tam[0] / o.nx * 0.01, tam[1] / o.ny * 0.01).forEach(function (iv) {
+                    ranuras.push('[' + ii + ', ' + jj + ', ' + fmtMm(iv[0]) + ', ' + fmtMm(iv[1]) + ']');
+                });
+            });
+        });
+        var origen = stlMode ? polyhedronCode(pos)
+            : codeEl.value.replace(/\/\*\s*\[[^\]]*\]\s*\*\//g, function (m) { return '// ' + m; });
+        var nombre = currentName();
+        var code = [
+            '// «' + nombre + '» · cortes encastrados en cartón',
+            '// Generado por FisicaBit a partir del modelo 3D: ' + o.nx + ' lámina' + (o.nx === 1 ? '' : 's') + ' vertical' + (o.nx === 1 ? '' : 'es') +
+            ' a lo largo de X y ' + o.ny + ' a lo largo de Y, cruzadas y encastradas a media altura (tipo rejilla).',
+            '// Las ranuras se calcularon para las medidas actuales del modelo: si cambiás el',
+            '// modelo original, volvé a convertirlo. Podés cambiar espesor, holgura y escala.',
+            '',
+            '/* [Cartón] */',
+            '// Grosor del cartón (mm)',
+            'espesor = ' + fmtNum(o.espesor) + '; // [1:0.5:8]',
+            '// Ancho extra de las ranuras (mm): + más flojo, − más apretado',
+            'holgura = ' + fmtNum(o.holgura) + '; // [-0.6:0.1:0.8]',
+            '',
+            '/* [Modelo] */',
+            '// Escala respecto del modelo original (1 = tamaño original)',
+            'escala = ' + fmtNum(o.escala) + '; // [0.25:0.05:6]',
+            '// Separación entre láminas en el plano de corte (mm)',
+            'separacion = 6; // [2:1:20]',
+            '',
+            '/* [Hidden] */',
+            '_pos_x = ' + fmtList(px) + ';',
+            '_pos_y = ' + fmtList(py) + ';',
+            '_ranuras = [' + ranuras.join(', ') + '];',
+            '_bmin = ' + fmtList(mn) + ';',
+            '_tam = ' + fmtList(tam) + ';',
+            '_rot = [' + rot.join(', ') + '];',
+            '',
+            '// Modelo original (tal cual estaba en el editor de piezas 3D)',
+            'module modelo() {',
+            origen,
+            '}',
+            'module _modelo_o() scale(escala) rotate(_rot) modelo();',
+            '// Sección vertical del modelo en x = _pos_x[i] (coordenadas: y horizontal, z vertical)',
+            'module corte_x(i) projection(cut = true) rotate([-90, 0, 0]) rotate([0, 0, -90]) translate([-_pos_x[i] * escala, 0, 0]) _modelo_o();',
+            '// Sección vertical del modelo en y = _pos_y[j] (coordenadas: x horizontal, z vertical)',
+            'module corte_y(j) projection(cut = true) rotate([-90, 0, 0]) translate([0, -_pos_y[j] * escala, 0]) _modelo_o();',
+            '// Lámina X: ranuras desde arriba hasta la mitad de cada cruce',
+            'module lamina_x(i) difference() {',
+            '    corte_x(i);',
+            '    for (r = _ranuras) if (r[0] == i)',
+            '        translate([_pos_y[r[1]] * escala, r[3] * escala]) rotate(180) ranura((r[3] - r[2]) / 2 * escala);',
+            '    translate([(_bmin[1] + _tam[1] / 2) * escala, (_bmin[2] + 1.5) * escala]) texto(str("X", i + 1), h = 3, centrado = true);',
+            '}',
+            '// Lámina Y: ranuras desde abajo hasta la mitad de cada cruce',
+            'module lamina_y(j) difference() {',
+            '    corte_y(j);',
+            '    for (r = _ranuras) if (r[1] == j)',
+            '        translate([_pos_x[r[0]] * escala, r[2] * escala]) ranura((r[3] - r[2]) / 2 * escala);',
+            '    translate([(_bmin[0] + _tam[0] / 2) * escala, (_bmin[2] + 1.5) * escala]) texto(str("Y", j + 1), h = 3, centrado = true);',
+            '}',
+            'module plano() {',
+            '    for (i = [0 : len(_pos_x) - 1])',
+            '        translate([i * (_tam[1] * escala + separacion) - _bmin[1] * escala, -_bmin[2] * escala]) lamina_x(i);',
+            '    for (j = [0 : len(_pos_y) - 1])',
+            '        translate([j * (_tam[0] * escala + separacion) - _bmin[0] * escala, _tam[2] * escala + separacion - _bmin[2] * escala]) lamina_y(j);',
+            '}',
+            'module armado() {',
+            '    for (i = [0 : len(_pos_x) - 1]) translate([_pos_x[i] * escala, 0, 0]) laja_yz() lamina_x(i);',
+            '    for (j = [0 : len(_pos_y) - 1]) translate([0, _pos_y[j] * escala, 0]) laja_xz() lamina_y(j);',
+            '}'
+        ].join('\n');
+        return { code: code, nombre: nombre + ' (cartón)', ranuras: ranuras.length };
+    }
+
+    function cartonModalValues() {
+        var v = function (id) { return parseFloat(el(id).value); };
+        return { nx: Math.round(v('s3d-cv-nx')), ny: Math.round(v('s3d-cv-ny')), espesor: v('s3d-cv-esp'),
+                 holgura: v('s3d-cv-hol'), escala: v('s3d-cv-esc') / 100, eje: el('s3d-cv-eje').value };
+    }
+    function cartonModalRefresh() {
+        var o = cartonModalValues();
+        el('s3d-cv-nx-v').textContent = o.nx;
+        el('s3d-cv-ny-v').textContent = o.ny;
+        el('s3d-cv-esp-v').textContent = fmtNum(o.espesor) + ' mm';
+        el('s3d-cv-hol-v').textContent = (o.holgura > 0 ? '+' : '') + fmtNum(o.holgura) + ' mm';
+        el('s3d-cv-esc-v').textContent = Math.round(o.escala * 100) + ' %';
+        var pos = meshPositions();
+        var info = el('s3d-cv-info');
+        if (!pos || !pos.length) { info.textContent = 'Primero renderizá la pieza (o abrí un STL) para poder convertirla.'; return; }
+        var mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+        for (var i = 0; i < pos.length; i += 3) for (var a = 0; a < 3; a++) { if (pos[i + a] < mn[a]) mn[a] = pos[i + a]; if (pos[i + a] > mx[a]) mx[a] = pos[i + a]; }
+        var t = [mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]].map(function (d) { return d * o.escala; });
+        info.textContent = 'Modelo «' + currentName() + '»: ' + t[0].toFixed(0) + ' × ' + t[1].toFixed(0) + ' × ' + t[2].toFixed(0) + ' mm a esta escala · ' +
+            (o.nx + o.ny) + ' láminas de cartón de ' + fmtNum(o.espesor) + ' mm.';
+    }
+    function openCartonModal() {
+        if (!lastStl) { setStatus('Renderizá primero la pieza para poder convertirla a cartón.', 'error'); return; }
+        cartonModalRefresh();
+        el('s3d-cv-msg').textContent = '';
+        el('s3d-carton-modal').classList.add('open');
+        el('s3d-carton-modal').setAttribute('aria-hidden', 'false');
+    }
+    function closeCartonModal() {
+        el('s3d-carton-modal').classList.remove('open');
+        el('s3d-carton-modal').setAttribute('aria-hidden', 'true');
+    }
+    function doConvertToCarton() {
+        var o = cartonModalValues(), r;
+        try { r = convertToCarton(o); }
+        catch (e) { el('s3d-cv-msg').textContent = e.message || String(e); el('s3d-cv-msg').className = 's3d-wiz-msg err'; return; }
+        closeCartonModal();
+        setModo('carton');
+        currentPiece = { id: 'carton:' + slug(r.nombre) + ':' + Date.now().toString(36), nombre: r.nombre, kind: 'scad', modo: 'carton' };
+        el('s3d-piece-name').textContent = r.nombre;
+        el('s3d-piece-thumb').src = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+        renderPieceMenu();
+        loadScadIntoEditor(r.code, '');
+        setStatus('Diseño de cartón «' + r.nombre + '» creado (' + r.ranuras + ' cruces): renderizando… Usá GUARDAR PIEZA para conservarlo.', 'busy');
+        if (window.track) window.track('carton_convertir', 'carton');
+    }
+
+    /* ---------- Asistente con IA: requisitos para diseños de cartón ---------- */
+    function wizRequisitosCarton() {
+        return [
+            'REQUISITOS OBLIGATORIOS DEL CÓDIGO (diseño de ENCASTRE EN CARTÓN):',
+            '1. Unidades en milímetros. El objeto se construye SOLO con piezas planas de cartón que se imprimen en hojas A4 (conviene que cada pieza entre en 190 × 270 mm; si es más grande se imprime en varias hojas), se pegan sobre cartón, se cortan con cúter y se unen únicamente por encastre: ranuras a media altura que se cruzan y pestañas que entran en ranuras. Sin pegamento ni tornillos. Usá la MENOR cantidad de piezas posible y repetí piezas iguales cuando se pueda; dejá cada pieza con una forma simple de cortar a mano.',
+            '2. Definí al inicio, con este formato exacto (el comentario // [mín:máx] crea un deslizador):',
+            '   /* [Cartón] */',
+            '   // Grosor del cartón (mm)',
+            '   espesor = 3; // [1:0.5:8]',
+            '   // Ancho extra de las ranuras (mm): + más flojo, − más apretado',
+            '   holgura = 0; // [-0.6:0.1:0.8]',
+            '   y después un grupo /* [Nombre] */ con las demás medidas importantes, una por línea, cada una con su comentario // [mín:máx]. Poné /* [Hidden] */ antes de las variables calculadas. NO definas la variable vista.',
+            '3. Cada pieza es un módulo 2D con la forma module nombre() difference() { forma; ranuras; marcas; }. Definí obligatoriamente:',
+            '   module plano() { ... }   todas las piezas a cortar, en 2D, separadas entre sí (dejá 6 mm entre piezas; nunca superpuestas ni tocándose). Para repetir una pieza usá translate() o rotate(); NUNCA mirror() (las marcas quedarían espejadas).',
+            '   module armado() { ... }  la vista 3D del objeto armado: cada pieza con laja() (horizontal), laja_xz() o laja_yz() (verticales), ubicada con translate() y rotate().',
+            '4. Módulos ya disponibles (NO los redefinas; no uses include ni use):',
+            '   ranura(prof)                 ranura ABIERTA de ancho espesor+holgura que entra por y=0 y avanza hacia +y: se RESTA en un borde (translate([x, 0]) ranura(p) desde abajo; translate([x, alto]) rotate(180) ranura(p) desde arriba). Dos piezas verticales que se cruzan llevan una ranura desde abajo en una y desde arriba en la otra, cada una de la mitad del alto del cruce.',
+            '   ranura_interior(largo)       ranura CERRADA centrada en el origen, a lo largo de x, de ancho espesor+holgura: se resta donde entra una pestaña.',
+            '   pestana(largo, ancho)        pestaña que nace en y=0 hacia +y: se SUMA (union) en un borde y entra en una ranura_interior de otra pieza (largo = espesor para que quede a ras).',
+            '   agujero(d)                   agujero redondo con juego para una varilla o eje de diámetro d.',
+            '   rect(ancho, alto, r)         rectángulo con esquinas redondeadas.',
+            '   laja() / laja_xz() / laja_yz()   extruyen una pieza 2D al espesor del cartón: horizontal (XY), vertical en el plano XZ, vertical en el plano YZ; centradas en su espesor.',
+            '   MARCAS IMPRESAS (tinta, no se cortan). Van DENTRO del difference() de la pieza, después de las ranuras, como si fueran agujeros:',
+            '   regla(largo, cada=10)        regla en mm apoyada en y=0, ticks hacia +y: ubicarla en un borde con translate([x, 0]) o rotate.',
+            '   transportador(r, desde, hasta)  escala de ángulos centrada en el origen, ticks de 1° y números cada 10° (desde y hasta en grados, antihorario desde +x).',
+            '   texto("TEXTO", h = 4, centrado = true)   texto (mayúsculas, dígitos y ° . - : / ( ) + =).',
+            '   arco(r, desde, hasta)  linea([x1, y1], [x2, y2])  flecha(largo)  cuadricula(ancho, alto, paso)  doblez(largo)',
+            '   EJEMPLO MÍNIMO (dos piezas cruzadas con una regla):',
+            '   module a() difference() { rect(100, 50, 2); translate([50, 0]) ranura(25); translate([5, 0]) regla(90); translate([5, 44]) texto("A", h = 4); }',
+            '   module b() difference() { rect(100, 50, 2); translate([50, 50]) rotate(180) ranura(25); }',
+            '   module plano() { a(); translate([0, 58]) b(); }',
+            '   module armado() { translate([-50, 0, 0]) laja_xz() a(); translate([0, -50, 0]) laja_yz() b(); }',
+            '5. Reglas de diseño: entre una ranura y un borde, o entre dos ranuras, dejá al menos 2 × espesor de material; las ranuras de cruce miden la mitad del alto en cada pieza; las piezas verticales necesitan una base o pies cruzados para pararse solas; los instrumentos (reglas, transportadores) se ubican donde se van a leer durante el experimento.',
+            '6. Usá solo funciones estándar de OpenSCAD 2D (square, circle, polygon, difference, union, translate, rotate, offset, hull, for, intersection) más los módulos de arriba. No uses text(), linear_extrude fuera de armado(), ni librerías externas.',
+            '7. Respondé ÚNICAMENTE con el código OpenSCAD completo dentro de un solo bloque de código, sin explicaciones antes ni después.'
+        ].join('\n');
+    }
+    function wizPromptCartonNueva() {
+        var nombre = el('s3d-wiz-nombre').value.trim();
+        var desc = el('s3d-wiz-desc').value.trim();
+        if (!nombre && !desc) return null;
+        return 'Actuá como experto en OpenSCAD y en diseño de objetos de cartón que se arman por encastre (press-fit, sin pegamento) para un laboratorio de física escolar de bajo costo. Las piezas se imprimen en papel A4, se pegan sobre cartón y se cortan a mano.\n\n' +
+            'Diseñá este elemento con la menor cantidad de piezas posible:\n\n' +
+            'ELEMENTO: ' + (nombre || '(sin nombre)') + '\n' +
+            'DESCRIPCIÓN Y USO EN EL LABORATORIO: ' + (desc || '—') + '\n' +
+            'DIMENSIONES APROXIMADAS: ' + (el('s3d-wiz-dims').value.trim() || 'a criterio, razonables para una mesa de laboratorio escolar') + '\n' +
+            'DETALLES (instrumentos impresos, piezas que sostiene, cantidad): ' + (el('s3d-wiz-det').value.trim() || '—') + '\n\n' +
+            wizRequisitosCarton();
+    }
+
+    function initCarton() {
+        Array.prototype.forEach.call(document.querySelectorAll('.s3d-mode-btn'), function (b) {
+            b.addEventListener('click', function () { setModo(b.getAttribute('data-modo')); });
+        });
+        el('s3d-vista-plano').addEventListener('click', function () { showSheets(!panel.classList.contains('show-sheets')); });
+        el('s3d-print').addEventListener('click', printSheets);
+        el('s3d-sheets-print').addEventListener('click', printSheets);
+        el('s3d-dl-svg').addEventListener('click', downloadSheetsSvg);
+        el('s3d-sheets-svg').addEventListener('click', downloadSheetsSvg);
+        el('s3d-numerar').addEventListener('change', renderSheetsView);
+        el('s3d-to-carton').addEventListener('click', openCartonModal);
+        el('s3d-cv-close').addEventListener('click', closeCartonModal);
+        el('s3d-carton-modal').addEventListener('click', function (e) { if (e.target === this) closeCartonModal(); });
+        el('s3d-cv-ok').addEventListener('click', doConvertToCarton);
+        ['s3d-cv-nx', 's3d-cv-ny', 's3d-cv-esp', 's3d-cv-hol', 's3d-cv-esc', 's3d-cv-eje'].forEach(function (id) {
+            el(id).addEventListener('input', cartonModalRefresh);
+        });
+    }
+
     window.abrirPiezas3D = openPanel;
+    window.abrirCarton = function () { openPanel(); setModo('carton'); };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
