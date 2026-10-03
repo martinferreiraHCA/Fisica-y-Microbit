@@ -8,6 +8,9 @@
 espesor = 3; // [1:0.5:8]
 // Ancho extra de las ranuras (mm): + más flojo, − más apretado
 holgura = 0; // [-0.6:0.1:0.8]
+// Material: carton (las pestañas salen más largas, con sobrante para recortar
+// después de armar), laser (medidas exactas, compensa el kerf) o impresion3d
+material = "carton"; // [carton, laser, impresion3d]
 
 /* [Pie] */
 // Diámetro de la varilla (mm)
@@ -51,9 +54,10 @@ module placa() difference() {
 }
 
 module plano() {
-    for (i = [0 : 3]) translate([0, i * (altura + 2 * e + 6)]) pared();
-    translate([P / 2, 4 * (altura + 2 * e + 6) + P / 2]) placa();
-    translate([P / 2 + P + 8, 4 * (altura + 2 * e + 6) + P / 2]) placa();
+    paso = altura + 2 * (e + fb_sobrante()) + 6;
+    for (i = [0 : 3]) translate([0, i * paso]) pared();
+    translate([P / 2, 4 * paso + P / 2]) placa();
+    translate([P / 2 + P + 8, 4 * paso + P / 2]) placa();
 }
 
 module armado() {

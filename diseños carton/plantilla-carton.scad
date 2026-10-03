@@ -6,6 +6,9 @@
 espesor = 3; // [1:0.5:8]
 // Ancho extra de las ranuras (mm): + más flojo, − más apretado
 holgura = 0; // [-0.6:0.1:0.8]
+// Material: carton (las pestañas salen más largas, con sobrante para recortar
+// después de armar), laser (medidas exactas, compensa el kerf) o impresion3d
+material = "carton"; // [carton, laser, impresion3d]
 
 /* [Pieza] */
 // Largo (mm)

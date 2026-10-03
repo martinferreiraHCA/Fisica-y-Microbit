@@ -31476,6 +31476,7 @@ bluetooth.startIOPinService()</pre>
                     <button id="s3d-print" class="s3d-btn primary s3d-only-carton" title="Abre las hojas A4 listas para imprimir al 100 % o guardar como PDF">🖨 Imprimir en A4 / PDF</button>
                     <button id="s3d-save" class="s3d-btn">💾 Guardar pieza…</button>
                     <button id="s3d-dl-svg" class="s3d-btn s3d-only-carton" title="Todas las hojas en un solo archivo SVG en milímetros (sirve también para cortadora láser)">Descargar SVG (hojas)</button>
+                    <button id="s3d-dl-stl-plano" class="s3d-btn s3d-only-carton" title="Las piezas planas extruidas al espesor, en un STL, para imprimirlas en 3D (poné material = impresion3d)">STL de piezas planas (3D)</button>
                     <button id="s3d-dl-stl" class="s3d-btn" disabled>Descargar STL</button>
                     <button id="s3d-dl-scad" class="s3d-btn">Descargar código .scad</button>
                     <label class="s3d-check"><input type="checkbox" id="s3d-auto" checked> Render automático al cambiar parámetros</label>
@@ -31824,6 +31825,10 @@ bluetooth.startIOPinService()</pre>
             }
             // Anotación en el comentario: [min:max], [min:paso:max] o [a,b,c]
             var ann = comment.match(/\[([^\]]*)\]/);
+            if (ann && p.type === 'text' && ann[1].indexOf(',') >= 0) {
+                p.options = ann[1].split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+                p.type = 'select'; p.textSelect = true;
+            }
             if (ann && p.type === 'number') {
                 var body = ann[1];
                 if (body.indexOf(',') >= 0) {
@@ -31857,7 +31862,7 @@ bluetooth.startIOPinService()</pre>
         }
         var newVal;
         if (p.type === 'bool') newVal = value ? 'true' : 'false';
-        else if (p.type === 'text') newVal = '"' + String(value).replace(/"/g, '') + '"';
+        else if (p.type === 'text' || p.textSelect) newVal = '"' + String(value).replace(/"/g, '') + '"';
         else newVal = fmtNum(value);
         p.value = value;
         lines[p.lineIndex] = m[1] + m[2] + m[3] + newVal + m[5] + (m[6] || '');
@@ -31911,10 +31916,10 @@ bluetooth.startIOPinService()</pre>
                 p.options.forEach(function (o) {
                     var op = document.createElement('option');
                     op.value = o; op.textContent = o;
-                    if (parseFloat(o) === p.value) op.selected = true;
+                    if (p.textSelect ? o === p.value : parseFloat(o) === p.value) op.selected = true;
                     sel.appendChild(op);
                 });
-                sel.addEventListener('change', function () { setParamValue(p, parseFloat(sel.value)); });
+                sel.addEventListener('change', function () { setParamValue(p, p.textSelect ? sel.value : parseFloat(sel.value)); });
                 row.appendChild(sel);
             } else if (p.type === 'bool') {
                 var chk = document.createElement('input');
@@ -34087,13 +34092,15 @@ bluetooth.startIOPinService()</pre>
 
     function pageInnerSvg(page, idx, total, name, numerar) {
         var m = A4.margin, W = A4.w - 2 * m, H = A4.h - 2 * m - A4.header;
-        var esp = (function () { var v = valuesMap(); return v.espesor != null ? v.espesor : null; })();
+        var vals = valuesMap();
+        var esp = vals.espesor != null ? vals.espesor : null;
+        var matTxt = { carton: 'cartón', laser: 'corte láser', impresion3d: 'impresión 3D' }[vals.material] || null;
         var s = '';
         var titulo = name + ' · hoja ' + (idx + 1) + ' de ' + total;
         if (page.tile) titulo += ' · pieza ' + page.tile.num + ', parte fila ' + (page.tile.r + 1) + '/' + page.tile.rows + ' columna ' + (page.tile.c + 1) + '/' + page.tile.cols;
         s += '<text x="' + m + '" y="' + (m + 4) + '" font-family="Arial, Helvetica, sans-serif" font-size="3.4" font-weight="700" fill="#000">' + escXml(titulo) + '</text>';
         s += '<text x="' + m + '" y="' + (m + 8.4) + '" font-family="Arial, Helvetica, sans-serif" font-size="2.5" fill="#333">Imprimir al 100 % (sin «ajustar a la página»)' +
-             (esp != null ? ' · cartón de ' + fmtNum(esp) + ' mm' : '') + ' · negro: cortar · azul: tinta</text>';
+             (esp != null ? ' · ' + (matTxt || 'cartón') + ' de ' + fmtNum(esp) + ' mm' : '') + (vals.material === 'carton' || !vals.material ? ' · pestañas con sobrante: recortar al ras después de armar' : '') + ' · negro: cortar · azul: tinta</text>';
         s += '<text x="' + m + '" y="' + (m + 12.4) + '" font-family="Arial, Helvetica, sans-serif" font-size="2.2" fill="#666">fisicabit · Diseño 3D ▸ Encastre en cartón</text>';
         // Barra de calibración de 100 mm
         var bx = A4.w - m - 100, by = m + 13.5;
@@ -34175,6 +34182,20 @@ bluetooth.startIOPinService()</pre>
         w.document.open(); w.document.write(html); w.document.close();
         if (window.track) window.track('carton_imprimir', 'carton');
         setStatus('Hojas enviadas a imprimir (o a guardar como PDF). Verificá que la barra mida 100 mm.', '');
+    }
+    // STL de todas las piezas planas (vista plano_3d), para imprimir en 3D
+    function downloadFlatStl() {
+        if (!codeEl.value.trim()) { setStatus('No hay diseño para exportar.', 'error'); return; }
+        var piece = currentPiece, nombre = currentName();
+        setStatus('Generando el STL de las piezas planas…', 'busy');
+        ensureCartonLib().then(function () {
+            return scadJob({ code: cartonCode(codeEl.value), files: cartonFiles(piece), out: 'stl', defs: ['vista="plano_3d"'] });
+        }).then(function (r) {
+            download(slug(nombre) + '-piezas-planas.stl', r.text, 'model/stl');
+            setStatus('STL de piezas planas descargado (' + slug(nombre) + '-piezas-planas.stl).', '');
+        }).catch(function (e) {
+            setStatus('No se pudo generar el STL: ' + ((e && e.message) || e), 'error');
+        });
     }
     function downloadSheetsSvg() {
         if (!sheets || !sheets.pages.length) { setStatus('No hay hojas para descargar: renderizá el diseño primero.', 'error'); return; }
@@ -34461,6 +34482,8 @@ bluetooth.startIOPinService()</pre>
             '   espesor = 3; // [1:0.5:8]',
             '   // Ancho extra de las ranuras (mm): + más flojo, − más apretado',
             '   holgura = 0; // [-0.6:0.1:0.8]',
+            '   // Material: carton (pestañas con sobrante para recortar), laser o impresion3d',
+            '   material = "carton"; // [carton, laser, impresion3d]',
             '   y después un grupo /* [Nombre] */ con las demás medidas importantes, una por línea, cada una con su comentario // [mín:máx]. Poné /* [Hidden] */ antes de las variables calculadas. NO definas la variable vista.',
             '3. Cada pieza es un módulo 2D con la forma module nombre() difference() { forma; ranuras; marcas; }. Definí obligatoriamente:',
             '   module plano() { ... }   todas las piezas a cortar, en 2D, separadas entre sí (dejá 6 mm entre piezas; nunca superpuestas ni tocándose). Para repetir una pieza usá translate() o rotate(); NUNCA mirror() (las marcas quedarían espejadas).',
@@ -34468,7 +34491,7 @@ bluetooth.startIOPinService()</pre>
             '4. Módulos ya disponibles (NO los redefinas; no uses include ni use):',
             '   ranura(prof)                 ranura ABIERTA de ancho espesor+holgura que entra por y=0 y avanza hacia +y: se RESTA en un borde (translate([x, 0]) ranura(p) desde abajo; translate([x, alto]) rotate(180) ranura(p) desde arriba). Dos piezas verticales que se cruzan llevan una ranura desde abajo en una y desde arriba en la otra, cada una de la mitad del alto del cruce.',
             '   ranura_interior(largo)       ranura CERRADA centrada en el origen, a lo largo de x, de ancho espesor+holgura: se resta donde entra una pestaña.',
-            '   pestana(largo, ancho)        pestaña que nace en y=0 hacia +y: se SUMA (union) en un borde y entra en una ranura_interior de otra pieza (largo = espesor para que quede a ras).',
+            '   pestana(largo, ancho)        pestaña que nace en y=0 hacia +y: se SUMA (union) en un borde y entra en una ranura_interior de otra pieza (largo = espesor de la pieza que atraviesa). En cartón la biblioteca le agrega sola un sobrante para recortar después de armar; en laser e impresion3d queda exacta. No sumes el sobrante vos.',
             '   agujero(d)                   agujero redondo con juego para una varilla o eje de diámetro d.',
             '   rect(ancho, alto, r)         rectángulo con esquinas redondeadas.',
             '   laja() / laja_xz() / laja_yz()   extruyen una pieza 2D al espesor del cartón: horizontal (XY), vertical en el plano XZ, vertical en el plano YZ; centradas en su espesor.',
@@ -34508,6 +34531,7 @@ bluetooth.startIOPinService()</pre>
         el('s3d-print').addEventListener('click', printSheets);
         el('s3d-sheets-print').addEventListener('click', printSheets);
         el('s3d-dl-svg').addEventListener('click', downloadSheetsSvg);
+        el('s3d-dl-stl-plano').addEventListener('click', downloadFlatStl);
         el('s3d-sheets-svg').addEventListener('click', downloadSheetsSvg);
         el('s3d-numerar').addEventListener('change', renderSheetsView);
         el('s3d-to-carton').addEventListener('click', openCartonModal);

@@ -23,11 +23,20 @@ vista = "armado";   // la página lo cambia con -D; el diseño NO lo define
 $marcas = false;    // true solo mientras se dibuja la capa de tinta
 $fn = 48;
 
-/* ---------- Medidas del cartón ---------- */
+/* ---------- Material y medidas ---------- */
+// material: "carton" (se corta a mano: las pestañas salen MÁS LARGAS, con
+// sobrante, para que traspasen y se recorte lo que sobra una vez armado),
+// "laser" (medidas exactas, compensa el kerf del haz) o "impresion3d"
+// (medidas exactas; descargá el STL de las piezas planas).
+function fb_material() = is_undef(material) ? "carton" : material;
 function fb_espesor() = is_undef(espesor) ? 3 : espesor;
 function fb_holgura() = is_undef(holgura) ? 0 : holgura;
+// Largo extra de las pestañas en cartón (mm); 0 en láser e impresión 3D
+function fb_sobrante() = !is_undef(sobrante) ? sobrante : (fb_material() == "carton" ? 8 : 0);
+// Ancho del haz del láser (mm): se descuenta de las ranuras y se suma a las pestañas
+function fb_kerf() = !is_undef(kerf) ? kerf : (fb_material() == "laser" ? 0.15 : 0);
 // Ancho de una ranura donde entra otra pieza de cartón
-function fb_ranura() = fb_espesor() + fb_holgura();
+function fb_ranura() = fb_espesor() + fb_holgura() - fb_kerf();
 
 /* ---------- Encastres (2D, para restar o sumar en una pieza) ---------- */
 // Ranura abierta: entra por y=0 (borde de la pieza) y avanza hacia +y.
@@ -45,9 +54,13 @@ module ranura_interior(largo, ancho = undef) {
     square([largo, a], center = true);
 }
 // Pestaña (para sumar con union): nace en y=0 y sobresale hacia +y.
-module pestana(largo, ancho = undef) {
-    a = is_undef(ancho) ? fb_espesor() : ancho;
-    translate([-a / 2, -0.01]) square([a, largo + 0.01]);
+//   largo  lo que debe traspasar (normalmente el espesor de la otra pieza).
+//   En cartón se agrega el sobrante (fb_sobrante) para recortarlo después;
+//   exacta = true lo evita (pestañas que no deben sobresalir).
+module pestana(largo, ancho = undef, exacta = false) {
+    a = (is_undef(ancho) ? fb_espesor() : ancho) + fb_kerf();
+    l = largo + (exacta ? 0 : fb_sobrante());
+    translate([-a / 2, -0.01]) square([a, l + 0.01]);
 }
 // Agujero redondo (varillas, ejes, tornillos). d = diámetro de la pieza que pasa.
 module agujero(d, juego = 0.4) { circle(d = d + juego); }
