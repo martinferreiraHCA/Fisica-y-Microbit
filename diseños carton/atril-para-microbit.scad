@@ -9,6 +9,9 @@
 espesor = 3; // [1:0.5:8]
 // Ancho extra de las ranuras (mm): + más flojo, − más apretado
 holgura = 0; // [-0.6:0.1:0.8]
+// Material: carton (las pestañas salen más largas, con sobrante para recortar
+// después de armar), laser (medidas exactas, compensa el kerf) o impresion3d
+material = "carton"; // [carton, laser, impresion3d]
 
 /* [Atril] */
 // Inclinación de la placa respecto de la mesa (grados)
@@ -48,8 +51,9 @@ module base() difference() {
 
 module plano() {
     lateral();
-    translate([0, h + e + 6]) lateral();
-    translate([B[0] / 2, 2 * (h + e + 6) + B[1] / 2]) base();
+    paso = h + e + fb_sobrante() + 6;
+    translate([0, paso]) lateral();
+    translate([B[0] / 2, 2 * paso + B[1] / 2]) base();
 }
 
 module armado() {

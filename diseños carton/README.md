@@ -27,11 +27,50 @@ piezas del modo cartón, con su miniatura (vista armada en 3D).
 |---|---|---|
 | `peine-de-ajuste.scad` | 1 | **Imprimilo primero**: ranuras de distinto ancho para elegir la `holgura` que encastra justo con tu cartón. |
 | `plantilla-carton.scad` | 2 | Punto de partida: dos piezas cruzadas con regla y rótulos. |
+| `portico-ley-de-hooke.scad` | 8 (5 distintas) | **Pórtico para ley de Hooke**: dos columnas en cruz, viga con gancho para el resorte, tirantes y escala milimetrada colgante. Aguanta masa colgante y oscilante. |
 | `pie-para-varilla.scad` | 6 (2 distintas) | Pie para sostener una varilla vertical (soportes de laboratorio). |
 | `plano-inclinado.scad` | 4 (3 distintas) | Rampa con ángulo ajustable, regla de recorrido y ángulo impreso. |
 | `soporte-de-pendulo.scad` | 5 (4 distintas) | Soporte con escala de amplitud (0° abajo) y regla del largo del hilo. |
+| `polea-con-horquilla.scad` | 6 (3 distintas) | Polea de tres discos sobre un palito de brochette, con horquilla y base (máquina de Atwood, cambio de dirección de una cuerda). |
+| `carro-para-microbit.scad` | 7 (3 distintas) | Carro con ruedas de cartón y ejes de brochette, con ranura para parar la micro:bit (acelerómetro, Tracker). |
+| `gradilla-tubos-de-ensayo.scad` | 4 (3 distintas) | Gradilla para tubos de ensayo (cantidad, diámetro y paso ajustables). |
+| `soporte-sensor-ultrasonico.scad` | 2 | Soporte para el HC-SR04 con una regla de distancia impresa en la base. |
 | `atril-para-microbit.scad` | 3 (2 distintas) | Atril inclinado para la micro:bit (pantalla, brújula, acelerómetro). |
+| `soporte-de-celular.scad` | 3 (2 distintas) | Soporte para filmar con el celular fijo (Tracker, Video + Movimiento). |
+| `caja-encastrable.scad` | 5 (3 distintas) | Caja sin pegamento para guardar piezas, sensores o masas. |
 | `regla-y-transportador.scad` | 2 | Regla de 20 cm y transportador de 180°, para pegar sobre cartón. |
+
+### Pórtico para ley de Hooke
+
+Es la estructura más exigida: tiene que aguantar una masa colgada y las
+oscilaciones. Por eso se arma solo con **encastres en cruz** (lo que mejor
+resiste en cartón), sin pestañas:
+
+- Cada columna son **dos paneles trapezoidales** (base ancha, cima angosta)
+  que se atraviesan en toda su altura: rigidez en las dos direcciones.
+- La **viga** se aloja en la ranura superior del panel frontal y se cruza
+  con el lateral: la carga baja por las columnas a compresión.
+- Dos **tirantes** abajo fijan la separación y cierran el marco.
+- La **escala** (0 a la altura del gancho) cuelga de la viga junto al
+  resorte; se lee de costado.
+
+Usá cartón de **5 mm** (doble onda) para masas de hasta 1 kg; si tenés
+cartón de 3 mm, pegá dos capas en los paneles. Los paneles de 320 mm salen
+en dos hojas cada uno (franjas de superposición); si tenés una plancha de
+cartón grande, podés transferir las medidas directamente.
+
+## Según el material
+
+Todos los diseños tienen el parámetro `material`:
+
+- **carton** (por defecto): las **pestañas salen más largas** (8 mm de
+  sobrante) para que atraviesen de sobra la otra pieza; una vez armado se
+  recorta el sobrante al ras. Así el encastre no queda corto aunque el corte
+  a mano no sea perfecto.
+- **laser**: medidas exactas y compensación del kerf del haz (0,15 mm por
+  defecto; variable `kerf`). Descargá el **SVG** en milímetros.
+- **impresion3d**: medidas exactas; el botón **STL de piezas planas** da las
+  piezas extruidas al espesor para imprimirlas en 3D y encastrarlas.
 
 ## Cómo se escribe un diseño
 

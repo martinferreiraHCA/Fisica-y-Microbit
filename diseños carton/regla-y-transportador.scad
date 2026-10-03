@@ -7,6 +7,9 @@
 // Grosor del cartón (mm)
 espesor = 3; // [1:0.5:8]
 holgura = 0; // [-0.6:0.1:0.8]
+// Material: carton (las pestañas salen más largas, con sobrante para recortar
+// después de armar), laser (medidas exactas, compensa el kerf) o impresion3d
+material = "carton"; // [carton, laser, impresion3d]
 
 /* [Instrumentos] */
 // Largo de la regla (mm)
