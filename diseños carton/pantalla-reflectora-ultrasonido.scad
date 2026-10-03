@@ -3,7 +3,7 @@
 // eco del HC-SR04 de frente y las distancias salen limpias (sin el panel, el
 // eco rebota en bordes y ruedas y la medida salta). Es apaisado (ancho y
 // bajo) para no frenar el carrito con el aire: alcanza con que el panel esté
-// a la altura del sensor. Dos escuadras lo cruzan
+// a la altura del sensor. Para distancias de hasta 1 m, 100 × 50 mm sobra. Dos escuadras lo cruzan
 // a media altura y todo se pestañea a una placa de base que se pega con
 // cinta a cualquier carrito. En el «carro para micro:bit» no hace falta la
 // placa: el chasis ya trae las ranuras para encastrar panel y escuadras.
@@ -18,12 +18,12 @@ holgura = 0; // [-0.6:0.1:0.8]
 material = "carton"; // [carton, laser, impresion3d]
 
 /* [Pantalla] */
-// Ancho del panel (mm): el haz del HC-SR04 abre unos 15°, a 1 m cubre ~25 cm
-ancho = 160; // [80:10:250]
+// Ancho del panel (mm): para distancias de hasta 1 m alcanza con 100 mm
+ancho = 100; // [60:10:250]
 // Alto del panel (mm): bajo para no frenar con el aire (el sensor a su altura)
-alto = 70; // [40:5:250]
+alto = 50; // [30:5:250]
 // Profundidad de las escuadras (mm)
-profundidad = 36; // [24:2:80]
+profundidad = 30; // [20:2:80]
 // Separación entre las pestañas del panel (50 = ranuras del carro para micro:bit)
 separacion_pestanas = 50; // [30:2:120]
 // Separación entre las escuadras (24 = ranuras del carro para micro:bit)
@@ -53,8 +53,8 @@ module pantalla() difference() {
     translate([ancho / 2 - rb - 6, alto / 2]) linea([0, 0], [2 * rb + 12, 0], 0.4);
     translate([ancho / 2, alto / 2 - rb - 4]) linea([0, 0], [0, 2 * rb + 8, 0], 0.4);
     translate([ancho / 2, alto - 7]) texto("ESTA CARA HACIA EL SENSOR", h = 3, centrado = true);
-    translate([ancho * 0.2, alto / 2 - 2]) texto("REFLECTOR", h = 4, centrado = true);
-    translate([ancho * 0.8, alto / 2 - 2]) texto("ULTRASONIDO", h = 4, centrado = true);
+    translate([ancho * 0.17, alto / 2 - 1.5]) texto("REFLECTOR", h = 3, centrado = true);
+    translate([ancho * 0.83, alto / 2 - 1.5]) texto("ULTRASONIDO", h = 2.6, centrado = true);
 }
 // Escuadra: triángulo detrás del panel (x > 0) con un pico que lo cruza (x < 0)
 module escuadra() difference() {
