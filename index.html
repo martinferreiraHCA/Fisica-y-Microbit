@@ -31479,6 +31479,7 @@ bluetooth.startIOPinService()</pre>
                     <button id="s3d-dl-stl-plano" class="s3d-btn s3d-only-carton" title="Las piezas planas extruidas al espesor, en un STL, para imprimirlas en 3D (poné material = impresion3d)">STL de piezas planas (3D)</button>
                     <button id="s3d-dl-stl" class="s3d-btn" disabled>Descargar STL</button>
                     <button id="s3d-dl-scad" class="s3d-btn">Descargar código .scad</button>
+                    <label class="s3d-check s3d-only-carton" title="Imprime un número en cada pieza de las hojas A4 (en tinta, para identificarlas al armar). Desactivalo si no lo querés en las piezas."><input type="checkbox" id="s3d-numerar-side" checked> Numerar las piezas en las hojas</label>
                     <label class="s3d-check"><input type="checkbox" id="s3d-auto" checked> Render automático al cambiar parámetros</label>
                 </div>
                 <div class="s3d-section">
@@ -34144,7 +34145,14 @@ bluetooth.startIOPinService()</pre>
         renderSheetsView();
         return { pieces: pieces.length, pages: packed.pages.length };
     }
+    var NUMERAR_KEY = 's3d_numerar_piezas';
     function numerarOn() { var c = el('s3d-numerar'); return !c || c.checked; }
+    // Las dos casillas (barra de hojas y panel de acciones) van juntas y se recuerdan
+    function setNumerar(on, from) {
+        ['s3d-numerar', 's3d-numerar-side'].forEach(function (id) { var c = el(id); if (c && c !== from) c.checked = on; });
+        try { localStorage.setItem(NUMERAR_KEY, on ? '1' : '0'); } catch (e) {}
+        renderSheetsView();
+    }
     function renderSheetsView() {
         var box = el('s3d-sheets-pages');
         if (!box) return;
@@ -34533,7 +34541,10 @@ bluetooth.startIOPinService()</pre>
         el('s3d-dl-svg').addEventListener('click', downloadSheetsSvg);
         el('s3d-dl-stl-plano').addEventListener('click', downloadFlatStl);
         el('s3d-sheets-svg').addEventListener('click', downloadSheetsSvg);
-        el('s3d-numerar').addEventListener('change', renderSheetsView);
+        ['s3d-numerar', 's3d-numerar-side'].forEach(function (id) {
+            el(id).addEventListener('change', function () { setNumerar(this.checked, this); });
+        });
+        try { if (localStorage.getItem(NUMERAR_KEY) === '0') setNumerar(false, null); } catch (e) {}
         el('s3d-to-carton').addEventListener('click', openCartonModal);
         el('s3d-cv-close').addEventListener('click', closeCartonModal);
         el('s3d-carton-modal').addEventListener('click', function (e) { if (e.target === this) closeCartonModal(); });
