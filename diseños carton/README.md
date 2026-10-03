@@ -34,6 +34,7 @@ piezas del modo cartón, con su miniatura (vista armada en 3D).
 | `carro-para-microbit.scad` | 9 (4 distintas) | Carro con marco rígido (laterales y travesaños en cruz), ruedas de cartón sobre ejes de brochette y ranura para parar la micro:bit (acelerómetro, Tracker). |
 | `gradilla-tubos-de-ensayo.scad` | 4 (3 distintas) | Gradilla para tubos de ensayo (cantidad, diámetro y paso ajustables). |
 | `soporte-sensor-ultrasonico.scad` | 2 | Soporte para el HC-SR04 con una regla de distancia impresa en la base. |
+| `pantalla-reflectora-ultrasonido.scad` | 4 (3 distintas) | Panel plano y rígido para montar sobre un carrito y devolver limpio el eco del sensor ultrasónico; encastra directo en el carro para micro:bit o se pega con su placa a cualquier carrito. |
 | `atril-para-microbit.scad` | 3 (2 distintas) | Atril inclinado para la micro:bit (pantalla, brújula, acelerómetro). |
 | `soporte-de-celular.scad` | 3 (2 distintas) | Soporte para filmar con el celular fijo (Tracker, Video + Movimiento). |
 | `caja-encastrable.scad` | 5 (3 distintas) | Caja sin pegamento para guardar piezas, sensores o masas. |
