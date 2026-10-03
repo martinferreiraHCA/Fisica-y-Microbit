@@ -2,7 +2,8 @@
 // Chasis con ranura para parar la micro:bit, dos laterales con agujeros para
 // ejes de brochette (palito de madera de 3 mm), dos travesaños que cruzan
 // los laterales (marco rígido, en cruz) y cuatro ruedas de cartón.
-// Para experimentos de movimiento con el acelerómetro o con Tracker.
+// Para experimentos de movimiento con el acelerómetro o con Tracker. El
+// frente trae ranuras para encastrar la «pantalla reflectora de ultrasonido».
 // 9 piezas: chasis, 2 laterales iguales, 2 travesaños iguales, 4 ruedas iguales.
 
 /* [Cartón] */
@@ -39,6 +40,9 @@ module chasis() difference() {
     rect(largo, ancho, 4);
     for (x = ex, y = yl) translate([x, y]) ranura_interior(tw + 0.4);
     for (x = tx, y = [8 + lt / 4, 8 + 3 * lt / 4]) translate([x, y]) rotate(90) ranura_interior(tw2 + 0.4);
+    // frente: ranuras para la pantalla reflectora de ultrasonido (panel y escuadras)
+    for (y = [ancho / 2 - 25, ancho / 2 + 25]) translate([6, y]) rotate(90) ranura_interior(14.4);
+    for (y = [ancho / 2 - 12, ancho / 2 + 12]) translate([6 + 18, y]) ranura_interior(14.4);
     translate([largo / 2, ancho / 2]) rotate(90) ranura_interior(46, ancho = ranura_placa);   // micro:bit parada, mirando al frente
     translate([largo / 2 + 9, ancho / 2]) rotate(90) texto("MICRO:BIT", h = 3, centrado = true);
     translate([6, 4]) regla(largo - 12, alto = 3, h_num = 2, unidad = "");
