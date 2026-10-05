@@ -31599,8 +31599,8 @@ bluetooth.startIOPinService()</pre>
                 </div>
                 <div class="s3d-wizard-body">
                     <div class="s3d-wiz-msg" style="margin:0 0 12px">El modelo se corta en láminas verticales de cartón a lo largo de X y de Y, que se cruzan y se encastran a media altura (como una rejilla o un huevo de cartón). Cada cruce se calcula sobre el modelo, así que las piezas se arman sin pegamento. El resultado se abre en <b>ENCASTRE EN CARTÓN</b>, donde podés ajustarlo, verlo armado e imprimirlo en A4.</div>
-                    <div class="s3d-cv-row"><span>Láminas a lo largo de X</span><input type="range" id="s3d-cv-nx" min="1" max="14" step="1" value="3"><span class="v" id="s3d-cv-nx-v">3</span></div>
-                    <div class="s3d-cv-row"><span>Láminas a lo largo de Y</span><input type="range" id="s3d-cv-ny" min="1" max="14" step="1" value="3"><span class="v" id="s3d-cv-ny-v">3</span></div>
+                    <div class="s3d-cv-row"><span>Láminas a lo largo de X</span><input type="range" id="s3d-cv-nx" min="1" max="14" step="1" value="5"><span class="v" id="s3d-cv-nx-v">5</span></div>
+                    <div class="s3d-cv-row"><span>Láminas a lo largo de Y</span><input type="range" id="s3d-cv-ny" min="1" max="14" step="1" value="5"><span class="v" id="s3d-cv-ny-v">5</span></div>
                     <div class="s3d-cv-row"><span>Grosor del cartón</span><input type="range" id="s3d-cv-esp" min="1" max="8" step="0.5" value="3"><span class="v" id="s3d-cv-esp-v">3 mm</span></div>
                     <div class="s3d-cv-row"><span>Holgura de las ranuras</span><input type="range" id="s3d-cv-hol" min="-0.6" max="0.8" step="0.1" value="0"><span class="v" id="s3d-cv-hol-v">0 mm</span></div>
                     <div class="s3d-cv-row"><span>Escala del modelo</span><input type="range" id="s3d-cv-esc" min="25" max="600" step="5" value="100"><span class="v" id="s3d-cv-esc-v">100 %</span></div>
@@ -32990,6 +32990,7 @@ bluetooth.startIOPinService()</pre>
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.text();
             }).then(function (code) {
+                if (currentPiece !== piece) return; // mientras tanto se eligió otra pieza
                 loadScadIntoEditor(code, '');
             }).catch(function (e) {
                 setStatus('No se pudo descargar el diseño: ' + (e && e.message || e), 'error');
@@ -33000,6 +33001,7 @@ bluetooth.startIOPinService()</pre>
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.arrayBuffer();
             }).then(function (buf) {
+                if (currentPiece !== piece) return; // mientras tanto se eligió otra pieza
                 loadStlPiece(piece, buf);
             }).catch(function (e) {
                 setStatus('No se pudo descargar el diseño: ' + (e && e.message || e), 'error');
@@ -34218,7 +34220,10 @@ bluetooth.startIOPinService()</pre>
     }
 
     /* ---------- Cambio de modo ---------- */
-    function setModo(m) {
+    // opts.sinPieza: el que llama va a cargar su propia pieza a continuación
+    // (p. ej. «Convertir a cartón»), así que no se restaura ni se elige ninguna.
+    function setModo(m, opts) {
+        opts = opts || {};
         if (m === modo) return;
         modeState[modo] = { piece: currentPiece, code: codeEl.value, loaded: window.__s3dLoadedCode,
                             stlMode: stlMode, stlBuf: stlMode && lastStl && lastStl.buffer ? lastStl.buffer : null };
@@ -34237,7 +34242,10 @@ bluetooth.startIOPinService()</pre>
         currentPiece = null;
         dimActiveParam = null; clearDims();
         var st = modeState[m];
-        if (st && st.piece) {
+        if (opts.sinPieza) {
+            el('s3d-piece-name').textContent = 'Elegir pieza…';
+            renderPieceMenu();
+        } else if (st && st.piece) {
             currentPiece = st.piece;
             el('s3d-piece-name').textContent = st.piece.nombre;
             setPickerThumb(st.piece);
@@ -34337,7 +34345,8 @@ bluetooth.startIOPinService()</pre>
     }
     function fmtList(a) { return '[' + a.map(fmtMm).join(', ') + ']'; }
 
-    function convertToCarton(o) {
+    // Geometría de la conversión: posiciones de las láminas y cruces (ranuras)
+    function cartonLayout(o) {
         var pos = meshPositions();
         if (!pos || !pos.length) throw new Error('Renderizá primero la pieza para poder convertirla.');
         var nT = pos.length / 9;
@@ -34358,14 +34367,24 @@ bluetooth.startIOPinService()</pre>
         var px = [], py = [];
         for (i = 0; i < o.nx; i++) px.push(mn[0] + (i + 0.5) * tam[0] / o.nx);
         for (i = 0; i < o.ny; i++) py.push(mn[1] + (i + 0.5) * tam[1] / o.ny);
-        var ranuras = [];
+        var ranuras = [], cruces = [];
+        var usoX = px.map(function () { return 0; }), usoY = py.map(function () { return 0; });
         px.forEach(function (xi, ii) {
             py.forEach(function (yj, jj) {
                 intervalsAt(P, xi, yj, tam[0] / o.nx * 0.01, tam[1] / o.ny * 0.01).forEach(function (iv) {
                     ranuras.push('[' + ii + ', ' + jj + ', ' + fmtMm(iv[0]) + ', ' + fmtMm(iv[1]) + ']');
+                    cruces.push([ii, jj, iv[0], iv[1]]);
+                    usoX[ii]++; usoY[jj]++;
                 });
             });
         });
+        var sueltas = usoX.filter(function (n) { return !n; }).length + usoY.filter(function (n) { return !n; }).length;
+        return { pos: pos, rot: rot, mn: mn, tam: tam, px: px, py: py, ranuras: ranuras, cruces: cruces, sueltas: sueltas };
+    }
+
+    function convertToCarton(o) {
+        var L = cartonLayout(o);
+        var pos = L.pos, rot = L.rot, mn = L.mn, tam = L.tam, px = L.px, py = L.py, ranuras = L.ranuras;
         var origen = stlMode ? polyhedronCode(pos)
             : codeEl.value.replace(/\/\*\s*\[[^\]]*\]\s*\*\//g, function (m) { return '// ' + m; });
         var nombre = currentName();
@@ -34445,14 +34464,15 @@ bluetooth.startIOPinService()</pre>
         el('s3d-cv-esp-v').textContent = fmtNum(o.espesor) + ' mm';
         el('s3d-cv-hol-v').textContent = (o.holgura > 0 ? '+' : '') + fmtNum(o.holgura) + ' mm';
         el('s3d-cv-esc-v').textContent = Math.round(o.escala * 100) + ' %';
-        var pos = meshPositions();
         var info = el('s3d-cv-info');
-        if (!pos || !pos.length) { info.textContent = 'Primero renderizá la pieza (o abrí un STL) para poder convertirla.'; return; }
-        var mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
-        for (var i = 0; i < pos.length; i += 3) for (var a = 0; a < 3; a++) { if (pos[i + a] < mn[a]) mn[a] = pos[i + a]; if (pos[i + a] > mx[a]) mx[a] = pos[i + a]; }
-        var t = [mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]].map(function (d) { return d * o.escala; });
-        info.textContent = 'Modelo «' + currentName() + '»: ' + t[0].toFixed(0) + ' × ' + t[1].toFixed(0) + ' × ' + t[2].toFixed(0) + ' mm a esta escala · ' +
-            (o.nx + o.ny) + ' láminas de cartón de ' + fmtNum(o.espesor) + ' mm.';
+        var L;
+        try { L = cartonLayout(o); } catch (e) { info.textContent = e.message || String(e); return; }
+        var t = L.tam.map(function (d) { return d * o.escala; });
+        var txt = 'Modelo «' + currentName() + '»: ' + t[0].toFixed(0) + ' × ' + t[1].toFixed(0) + ' × ' + t[2].toFixed(0) + ' mm a esta escala · ' +
+            (o.nx + o.ny) + ' láminas de cartón de ' + fmtNum(o.espesor) + ' mm · ' + L.cruces.length + ' cruce' + (L.cruces.length === 1 ? '' : 's') + ' entre láminas.';
+        if (!L.cruces.length) txt += ' ⚠ Ninguna lámina se cruza con otra: subí la cantidad de láminas o cambiá el eje vertical.';
+        else if (L.sueltas) txt += ' ⚠ ' + L.sueltas + ' lámina' + (L.sueltas === 1 ? ' queda suelta' : 's quedan sueltas') + ' (no se cruza con ninguna): probá con más láminas o con otro eje.';
+        info.textContent = txt;
     }
     function openCartonModal() {
         if (!lastStl) { setStatus('Renderizá primero la pieza para poder convertirla a cartón.', 'error'); return; }
@@ -34470,7 +34490,7 @@ bluetooth.startIOPinService()</pre>
         try { r = convertToCarton(o); }
         catch (e) { el('s3d-cv-msg').textContent = e.message || String(e); el('s3d-cv-msg').className = 's3d-wiz-msg err'; return; }
         closeCartonModal();
-        setModo('carton');
+        setModo('carton', { sinPieza: true });
         currentPiece = { id: 'carton:' + slug(r.nombre) + ':' + Date.now().toString(36), nombre: r.nombre, kind: 'scad', modo: 'carton' };
         el('s3d-piece-name').textContent = r.nombre;
         el('s3d-piece-thumb').src = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
