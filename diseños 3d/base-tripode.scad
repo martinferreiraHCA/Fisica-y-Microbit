@@ -43,6 +43,8 @@ sujecion_m6 = true;
 diametro_paso_tornillo = 6.6; // [5:0.1:9]
 // Altura del eje del tornillo (mm)
 altura_tornillo = 20; // [10:1:50]
+// Ángulo del tornillo: 30° queda entre las patas de 330° y 90° (grados)
+angulo_sujecion = 30; // [0:5:355]
 // Tuerca: entre caras, incluida holgura (mm)
 tuerca_ancho = 10.4; // [8:0.1:14]
 // Tuerca: espesor, incluida holgura (mm)
@@ -52,6 +54,7 @@ tuerca_x = 12; // [8:0.5:25]
 // Insertar una tuerca M6 desde arriba, con eje horizontal y un vértice abajo.
 // El fondo hexagonal la centra frente al paso del tornillo.
 // Introducir un tornillo M6 desde el lateral hasta sujetar la varilla.
+// El orificio impreso es de paso; la rosca la aporta la tuerca metálica.
 // Elegir largo según cabeza/arandela; M6x20 es un punto de partida.
 // Los parámetros M6 son independientes: revisar al cambiar diametro_centro.
 
@@ -118,9 +121,12 @@ module base_tripode() {
         // Chaflán de entrada de 0.8 mm.
         translate([0,0,altura_centro-0.8])
             cylinder(d1=agujero,d2=agujero+1.6,h=0.8+eps);
-        if(sujecion_m6) {
+        if(sujecion_m6) rotate([0,0,angulo_sujecion]) {
+            // Taladrar hasta FUERA del conjunto, no solo hasta el radio
+            // del cilindro central: los brazos pueden tapar esa salida.
             translate([0,0,altura_tornillo]) rotate([0,90,0])
-                cylinder(d=diametro_paso_tornillo,h=diametro_centro/2+eps);
+                cylinder(d=diametro_paso_tornillo,
+                         h=radio_patas+diametro_pies+diametro_centro);
             alojamiento_tuerca();
         }
     }
