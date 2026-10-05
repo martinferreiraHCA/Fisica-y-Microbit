@@ -32374,6 +32374,7 @@ bluetooth.startIOPinService()</pre>
     // para cantidades y resoluciones).
     function paramValueText(p) {
         if (p.type === 'bool') return p.value ? 'sí' : 'no';
+        if (p.type === 'text' || p.textSelect) return String(p.value);
         if (p.type === 'select') return fmtNum(p.value);
         if (/angul|apertura|grad|giro|rot/i.test(p.name)) return fmtNum(p.value) + '°';
         if (/^(n|num|numero|cant|cantidad|resol|segment|fn|pasos|dientes|agujeros|vueltas|repet)/i.test(p.name)) return fmtNum(p.value);
