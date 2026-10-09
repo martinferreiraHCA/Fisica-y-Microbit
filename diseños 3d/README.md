@@ -38,3 +38,11 @@ piezas planas que se imprimen en A4, se pegan sobre cartón y se encastran.
 Con **Convertir a cartón encastrable…** cualquier pieza de esta carpeta se
 corta en láminas cruzadas listas para imprimir. Esos diseños viven en la
 carpeta `diseños carton`.
+
+## Créditos
+
+- `conectores-de-varilla.scad` está inspirado en el «Fun science: Universal
+  laboratory stand» de ToFe ([Thingiverse 2005771](https://www.thingiverse.com/thing:2005771),
+  CC BY-NC-SA): bloque con agujero para la varilla, tornillo lateral y tuerca
+  cautiva. El archivo de este repositorio es un diseño propio y paramétrico;
+  no copia los modelos originales.
