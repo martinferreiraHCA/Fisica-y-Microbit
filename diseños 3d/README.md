@@ -39,6 +39,13 @@ Con **Convertir a cartón encastrable…** cualquier pieza de esta carpeta se
 corta en láminas cruzadas listas para imprimir. Esos diseños viven en la
 carpeta `diseños carton`.
 
+## Piezas en STL
+
+- `perilla-de-apriete-para-tornillo-hexagonal-*.stl`: perillas para convertir
+  un tornillo con tuerca hexagonal en tornillo de mano (la tuerca entra en el
+  hueco de abajo). Hay una por medida de tuerca (8, 10, 12 y 13 mm entre
+  caras) y un archivo con las cuatro juntas para imprimir de una vez.
+
 ## Créditos
 
 - `conectores-de-varilla.scad` está inspirado en el «Fun science: Universal
