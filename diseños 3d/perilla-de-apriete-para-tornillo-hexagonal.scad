@@ -11,10 +11,9 @@
 //    o como tornillo de mano (la cabeza hexagonal en el hueco).
 // Se imprimen tal cual: la cara de los lóbulos apoyada en la cama y el
 // hueco de abajo queda como un agujero (su techo es un puente corto).
+// miniaturas: tipo="redonda" | tipo="trilobulada", tornillo="M3"
 
-/* [Qué imprimir] */
-// Una perilla, o el juego de medidas (redonda: 8, 10, 12 y 13 mm; trilobulada: M3, M4, M5, M6 y M8)
-pieza = "perilla"; // [perilla, juego]
+/* [Perilla] */
 // Forma de la perilla
 tipo = "redonda"; // [redonda, trilobulada]
 
@@ -34,7 +33,7 @@ pasante = "auto"; // [auto, si, no]
 // Diámetro del agujero pasante (mm; 0 = automático: rosca + 0,5)
 diametro_pasante = 0; // [0:0.5:16]
 
-/* [Perilla] */
+/* [Medidas] */
 // Diámetro exterior (mm; 0 = automático según el tornillo)
 diametro = 0; // [0:0.5:60]
 // Alto total (mm; 0 = automático)
@@ -64,12 +63,10 @@ _e_tue = [2.4, 3.2, 4.7, 5.2, 6.8, 8.4];
 _d_cab = [5.5, 7, 8.5, 10, 13, 16];
 _h_cab = [3, 4, 5, 6, 8, 10];
 function _ti(t) = let (s = search([t], _T)) len(s) > 0 && s[0] != [] ? s[0] : -1;
-$af_otra = undef;                                   // medida «otra» impuesta por el juego
-function af_otra() = $af_otra != undef ? $af_otra : entre_caras_otra;
-function af_de(t)  = _ti(t) >= 0 ? _af[_ti(t)] : af_otra();
-function dt_de(t)  = _ti(t) >= 0 ? _d_tor[_ti(t)] : af_otra() / 1.65;
+function af_de(t)  = _ti(t) >= 0 ? _af[_ti(t)] : entre_caras_otra;
+function dt_de(t)  = _ti(t) >= 0 ? _d_tor[_ti(t)] : entre_caras_otra / 1.65;
 function et_de(t)  = _ti(t) >= 0 ? _e_tue[_ti(t)] : dt_de(t) * 0.85;
-function dc_de(t)  = _ti(t) >= 0 ? _d_cab[_ti(t)] : af_otra();
+function dc_de(t)  = _ti(t) >= 0 ? _d_cab[_ti(t)] : entre_caras_otra;
 function hc_de(t)  = _ti(t) >= 0 ? _h_cab[_ti(t)] : dt_de(t);
 // Medidas de las perillas redondas originales: [entre caras, diámetro, alto, profundidad del hueco]
 _tabla = [[8, 14.4, 5.1, 2.7], [10, 17.4, 6.2, 3.4], [12, 27.3, 9.8, 7.1], [13, 31, 11, 8]];
@@ -120,11 +117,33 @@ module redonda(t) {
     }
 }
 
-// ---- Perilla trilobulada con cuello ----
-module lobulos2d(r_hub, r_l, d_l, n) {
-    offset(r = 1.2) offset(r = -1.2) union() {
+// ---- Perilla trilobulada con cuello (bordes redondeados y empalmes suaves) ----
+module lobulos2d(r_hub, r_l, d_l, n, suav) {
+    offset(r = suav) offset(r = -suav) union() {
         circle(r_hub);
         for (i = [0 : n - 1]) rotate(i * 360 / n + 270) translate([d_l, 0]) circle(r_l);
+    }
+}
+// Extruye una forma 2D de alto e con los bordes superior e inferior redondeados (radio rb, en capas)
+module lobulos_redondeados(e, rb, capas = 6) {
+    for (k = [0 : capas - 1]) {
+        z0 = rb * k / capas; z1 = rb * (k + 1) / capas; zm = (z0 + z1) / 2;
+        d = rb - sqrt(rb * rb - (rb - zm) * (rb - zm));
+        translate([0, 0, z0]) linear_extrude(z1 - z0 + eps) offset(delta = -d) children();
+        translate([0, 0, e - z1]) linear_extrude(z1 - z0 + eps) offset(delta = -d) children();
+    }
+    translate([0, 0, rb - eps]) linear_extrude(e - 2 * rb + 2 * eps) children();
+}
+// Perfil (r, z) del cuello con empalme cóncavo abajo y borde redondeado arriba
+module perfil_cuello(r_c, z0, z1, rf, rt) {
+    union() {
+        square([r_c, z1 - rt - z0 + eps]);                                // cuerpo
+        translate([0, z1 - z0 - rt]) square([r_c - rt, rt]);              // tapa hasta el borde
+        translate([r_c - rt, z1 - z0 - rt]) circle(rt, $fn = 32);         // borde redondeado
+        difference() {                                                    // empalme cóncavo con los lóbulos
+            square([r_c + rf, rf]);
+            translate([r_c + rf, rf]) circle(rf, $fn = 32);
+        }
     }
 }
 module trilobulada(t) {
@@ -135,19 +154,19 @@ module trilobulada(t) {
     h = alto > 0 ? alto : 1.82 * af;                      // alto total
     p = prof_auto(t, h);
     r_l = R * 0.45; d_l = R - r_l;                        // lóbulos: círculos de radio r_l a distancia d_l
+    rb = min(1.2, e * 0.22);                              // redondeo de los bordes de los lóbulos
+    rf = min(1.5, af * 0.16);                             // empalme cóncavo lóbulos–cuello
+    rt = min(1, af * 0.1);                                // redondeo de la boca del cuello
     rh = (hueco == "cilindrico" ? (dc_de(t) + holgura) / 2 : (af + holgura) / sqrt(3));
     assert(h > e + 2, "El alto total tiene que superar al de los lóbulos");
     assert(r_cuello - rh >= 1.2, str("La pared del cuello alrededor del hueco queda de ", round((r_cuello - rh) * 100) / 100, " mm: subí «diametro_cuello»"));
     assert(p * (hueco_doble ? 2 : 1) < h - 1.5, "Los huecos son más hondos que la perilla: bajá «profundidad_hueco» o subí «alto»");
     difference() {
         union() {
-            // lóbulos con un chaflán chico abajo
-            linear_extrude(0.6, scale = 1 / 0.93) scale(0.93) lobulos2d(r_cuello, r_l, d_l, n_lob());
-            translate([0, 0, 0.6 - eps]) linear_extrude(e - 0.6 + eps) lobulos2d(r_cuello, r_l, d_l, n_lob());
-            // cuello con empalme cónico
-            translate([0, 0, e - eps]) cylinder(r1 = r_cuello + 1.5, r2 = r_cuello, h = 1.5 + eps);
-            cylinder(r = r_cuello, h = h - 0.5);
-            translate([0, 0, h - 0.5 - eps]) cylinder(r1 = r_cuello, r2 = r_cuello - 0.5, h = 0.5 + eps);
+            // lóbulos con los bordes de arriba y abajo redondeados (capas de offset)
+            lobulos_redondeados(e, rb) lobulos2d(r_cuello + rf + rb, r_l, d_l, n_lob(), af * 0.22);
+            // cuello: empalme cóncavo con los lóbulos y boca redondeada
+            translate([0, 0, e - eps]) rotate_extrude() perfil_cuello(r_cuello, e - eps, h, rf, rt);
         }
         hueco_tuerca(t, p);
         if (hueco_doble) translate([0, 0, h]) mirror([0, 0, 1]) hueco_tuerca(t, p);
@@ -156,15 +175,4 @@ module trilobulada(t) {
 }
 
 module perilla(t) { if (tipo == "trilobulada") trilobulada(t); else redonda(t); }
-function d_ext(af) = diametro > 0 ? diametro : (tipo == "trilobulada" ? 3.1 * af : _auto(af, 1));
-module juego() {
-    // trilobulada: roscas estándar; redonda: las medidas de los STL originales (13, 12, 10 y 8 mm)
-    ts  = tipo == "trilobulada" ? ["M8", "M6", "M5", "M4", "M3"] : ["otra", "otra", "otra", "otra"];
-    afs = tipo == "trilobulada" ? [13, 10, 8, 7, 5.5] : [13, 12, 10, 8];
-    for (i = [0 : len(ts) - 1]) {
-        x = [for (j = [0 : i]) d_ext(afs[j])] * [for (j = [0 : i]) 1] - d_ext(afs[0]) / 2 - d_ext(afs[i]) / 2 + 6 * i;
-        translate([x, 0, 0]) { $af_otra = afs[i]; perilla(ts[i]); }
-    }
-}
-if (pieza == "juego") juego();
-else perilla(tornillo);
+perilla(tornillo);
