@@ -1,62 +1,112 @@
 // ============ PERILLA DE APRIETE PARA TORNILLO HEXAGONAL ============
-// Perilla que se calza sobre una TUERCA (o la cabeza de un tornillo)
-// hexagonal y la convierte en tornillo de mano: perilla baja con lóbulos
-// redondeados alrededor, tapa abombada y hueco hexagonal ciego por abajo.
-// Versión paramétrica de las perillas en STL de la carpeta (8, 10, 12 y
-// 13 mm entre caras): con «entre_caras» elegís la medida y el resto de
-// las dimensiones se calcula con las proporciones de los originales, o
-// las fijás a mano. Se imprime tal cual, con la boca del hueco apoyada
-// en la cama; el techo del hueco es un puente corto que no necesita
-// soporte. La tuerca entra a presión (o con una gota de pegamento).
+// Perillas que se calzan sobre una TUERCA o la CABEZA de un tornillo y la
+// convierten en tornillo de mano. Elegís la forma y el tornillo, y el resto
+// de las medidas se calcula (o se fija a mano).
+//  · redonda: perilla baja con 16 lóbulos redondeados, tapa abombada y hueco
+//    hexagonal ciego por abajo (réplica de las perillas en STL de la carpeta
+//    para tuercas de 8, 10, 12 y 13 mm).
+//  · trilobulada: tres lóbulos con cuello cilíndrico, hueco hexagonal en las
+//    dos caras y agujero pasante (réplica de la «perilla M3»): sirve como
+//    tuerca de mano (la tuerca en la cara de los lóbulos y el tornillo pasa)
+//    o como tornillo de mano (la cabeza hexagonal en el hueco).
+// Se imprimen tal cual: la cara de los lóbulos apoyada en la cama y el
+// hueco de abajo queda como un agujero (su techo es un puente corto).
 
 /* [Qué imprimir] */
-// Una perilla con la medida elegida, o el juego de 8, 10, 12 y 13 mm
-pieza = "perilla"; // [perilla, juego_8_10_12_13]
+// Una perilla, o el juego de medidas (redonda: 8, 10, 12 y 13 mm; trilobulada: M3, M4, M5, M6 y M8)
+pieza = "perilla"; // [perilla, juego]
+// Forma de la perilla
+tipo = "redonda"; // [redonda, trilobulada]
 
-/* [Tuerca] */
-// Medida de la tuerca entre caras (mm)
-entre_caras = 13; // [4:0.5:24]
-// Holgura del hueco hexagonal (mm): subí 0,1 si la tuerca no entra
+/* [Tornillo o tuerca] */
+// Rosca del tornillo o la tuerca: fija la medida entre caras (M3 5,5 · M4 7 · M5 8 · M6 10 · M8 13 · M10 17 mm)
+tornillo = "M8"; // [M3, M4, M5, M6, M8, M10, otra]
+// Medida entre caras si elegiste «otra» (mm)
+entre_caras_otra = 13; // [4:0.5:30]
+// Hueco para tuerca o cabeza hexagonal, o para cabeza cilíndrica (Allen)
+hueco = "hexagonal"; // [hexagonal, cilindrico]
+// Holgura del hueco (mm): subí 0,1 si la tuerca no entra
 holgura = 0.2; // [0:0.05:0.8]
-// Profundidad del hueco (mm; 0 = automática según la medida)
+// Profundidad del hueco (mm; 0 = automática)
 profundidad_hueco = 0; // [0:0.5:30]
-// Agujero pasante para el tornillo (mm; 0 = sin agujero, hueco ciego como el original)
-agujero_pasante = 0; // [0:0.5:16]
+// Agujero pasante para el tornillo
+pasante = "auto"; // [auto, si, no]
+// Diámetro del agujero pasante (mm; 0 = automático: rosca + 0,5)
+diametro_pasante = 0; // [0:0.5:16]
 
 /* [Perilla] */
-// Diámetro exterior (mm; 0 = automático según la medida)
+// Diámetro exterior (mm; 0 = automático según el tornillo)
 diametro = 0; // [0:0.5:60]
-// Alto total (mm; 0 = automático según la medida)
-alto = 0; // [0:0.5:30]
-// Cantidad de lóbulos del agarre
-lobulos = 16; // [6:1:32]
-// Profundidad de los valles entre lóbulos (mm; 0 = automática)
+// Alto total (mm; 0 = automático)
+alto = 0; // [0:0.5:40]
+// Cantidad de lóbulos (0 = automático: 16 redonda, 3 trilobulada)
+lobulos = 0; // [0:1:32]
+// Redonda: profundidad de los valles entre lóbulos (mm; 0 = automática)
 profundidad_lobulos = 0; // [0:0.1:5]
-// Alto de la tapa abombada (mm; 0 = automático)
+// Redonda: alto de la tapa abombada (mm; 0 = automático)
 alto_cupula = 0; // [0:0.5:10]
+// Trilobulada: diámetro del cuello (mm; 0 = automático)
+diametro_cuello = 0; // [0:0.5:40]
+// Trilobulada: alto de la parte de los lóbulos (mm; 0 = automático)
+alto_lobulos = 0; // [0:0.5:20]
+// Trilobulada: hueco hexagonal también en la cara del cuello
+hueco_doble = true;
 
 /* [Hidden] */
 $fn = 96;
 eps = 0.02;
-// Medidas de las perillas originales: [entre caras, diámetro, alto, profundidad del hueco]
+// Tablas de tornillería (mm): rosca, entre caras (tuerca y cabeza hexagonal),
+// espesor de tuerca, diámetro y alto de cabeza cilíndrica (Allen)
+_T = ["M3", "M4", "M5", "M6", "M8", "M10"];
+_d_tor = [3, 4, 5, 6, 8, 10];
+_af    = [5.5, 7, 8, 10, 13, 17];
+_e_tue = [2.4, 3.2, 4.7, 5.2, 6.8, 8.4];
+_d_cab = [5.5, 7, 8.5, 10, 13, 16];
+_h_cab = [3, 4, 5, 6, 8, 10];
+function _ti(t) = let (s = search([t], _T)) len(s) > 0 && s[0] != [] ? s[0] : -1;
+$af_otra = undef;                                   // medida «otra» impuesta por el juego
+function af_otra() = $af_otra != undef ? $af_otra : entre_caras_otra;
+function af_de(t)  = _ti(t) >= 0 ? _af[_ti(t)] : af_otra();
+function dt_de(t)  = _ti(t) >= 0 ? _d_tor[_ti(t)] : af_otra() / 1.65;
+function et_de(t)  = _ti(t) >= 0 ? _e_tue[_ti(t)] : dt_de(t) * 0.85;
+function dc_de(t)  = _ti(t) >= 0 ? _d_cab[_ti(t)] : af_otra();
+function hc_de(t)  = _ti(t) >= 0 ? _h_cab[_ti(t)] : dt_de(t);
+// Medidas de las perillas redondas originales: [entre caras, diámetro, alto, profundidad del hueco]
 _tabla = [[8, 14.4, 5.1, 2.7], [10, 17.4, 6.2, 3.4], [12, 27.3, 9.8, 7.1], [13, 31, 11, 8]];
 function _auto(af, i) = af <= 13 ? lookup(af, [for (t = _tabla) [t[0], t[i]]]) : _tabla[3][i] * af / 13;
-function d_de(af)  = diametro > 0 ? diametro : _auto(af, 1);
-function h_de(af)  = alto > 0 ? alto : _auto(af, 2);
-function p_de(af)  = profundidad_hueco > 0 ? profundidad_hueco : _auto(af, 3);
-function cup_de(h) = alto_cupula > 0 ? min(alto_cupula, h - 1) : h * 0.27;
-function lob_de(r) = profundidad_lobulos > 0 ? profundidad_lobulos : r * 0.135;
+function n_lob() = lobulos > 0 ? lobulos : (tipo == "trilobulada" ? 3 : 16);
+function con_pasante() = pasante == "si" || (pasante == "auto" && tipo == "trilobulada");
+function d_pas(t) = diametro_pasante > 0 ? diametro_pasante : dt_de(t) + 0.5;
 
-echo(str("Perilla para tuerca de ", entre_caras, " mm: Ø", round(d_de(entre_caras) * 10) / 10, " × ", round(h_de(entre_caras) * 10) / 10,
-         " mm, hueco de ", round(p_de(entre_caras) * 10) / 10, " mm, ", lobulos, " lóbulos"));
+echo(str("Perilla ", tipo, " para ", tornillo, " (", af_de(tornillo), " mm entre caras)"));
 
-module perilla(af) {
-    r = d_de(af) / 2; h = h_de(af); p = p_de(af); hc = cup_de(h); zl = h - hc;
-    r_tapa = r * 0.39;                                   // radio de la parte plana de arriba
-    zc = (r_tapa * r_tapa + h * h - r * r - zl * zl) / (2 * (h - zl));   // centro de la esfera de la cúpula
+// Hueco para la tuerca / cabeza, con la boca en z = 0 hacia abajo (para restar)
+module hueco_tuerca(t, prof) {
+    if (hueco == "cilindrico") {
+        translate([0, 0, -eps]) cylinder(d = dc_de(t) + holgura, h = prof + eps);
+        translate([0, 0, -eps]) cylinder(d1 = dc_de(t) + holgura + 1.2, d2 = dc_de(t) + holgura, h = 0.6 + eps);
+    } else {
+        rh = (af_de(t) + holgura) / sqrt(3);
+        translate([0, 0, -eps]) cylinder(r = rh, h = prof + eps, $fn = 6);
+        translate([0, 0, -eps]) cylinder(r1 = rh + 0.6, r2 = rh, h = 0.6 + eps, $fn = 6);
+    }
+}
+function prof_auto(t, h) = profundidad_hueco > 0 ? profundidad_hueco
+    : hueco == "cilindrico" ? hc_de(t) + 0.5
+    : tipo == "trilobulada" ? et_de(t) + 0.6 : _auto(af_de(t), 3);
+
+// ---- Perilla redonda (16 lóbulos, tapa abombada) ----
+module redonda(t) {
+    af = af_de(t);
+    r = (diametro > 0 ? diametro : _auto(af, 1)) / 2;
+    h = alto > 0 ? alto : _auto(af, 2);
+    p = prof_auto(t, h);
+    hc = alto_cupula > 0 ? min(alto_cupula, h - 1) : h * 0.27; zl = h - hc;
+    r_tapa = r * 0.39;
+    zc = (r_tapa * r_tapa + h * h - r * r - zl * zl) / (2 * (h - zl));
     R = sqrt(r * r + (zl - zc) * (zl - zc));
-    rh = (af + holgura) / sqrt(3);                       // radio de los vértices del hexágono
-    prof_l = lob_de(r); rc = prof_l + 0.3;               // radio del cortador de cada valle
+    prof_l = profundidad_lobulos > 0 ? profundidad_lobulos : r * 0.135; rc = prof_l + 0.3;
+    rh = (hueco == "cilindrico" ? (dc_de(t) + holgura) / 2 : (af + holgura) / sqrt(3));
     assert(p < h - 1.5, "El hueco es más hondo que la perilla: bajá «profundidad_hueco» o subí «alto»");
     assert(r - rh - prof_l >= 1.2, str("La pared entre el hueco y los valles queda de ", round((r - rh - prof_l) * 100) / 100, " mm: subí «diametro» o bajá «profundidad_lobulos»"));
     difference() {
@@ -64,17 +114,57 @@ module perilla(af) {
             cylinder(r = r, h = h);
             translate([0, 0, zc]) sphere(R, $fn = 160);
         }
-        // valles entre lóbulos
-        for (a = [0 : 360 / lobulos : 359]) rotate([0, 0, a]) translate([r + rc - prof_l, 0, -1]) cylinder(r = rc, h = h + 2, $fn = 32);
-        // hueco hexagonal (abajo) con boca achaflanada
-        translate([0, 0, -eps]) cylinder(r = rh, h = p + eps, $fn = 6);
-        translate([0, 0, -eps]) cylinder(r1 = rh + 0.6, r2 = rh, h = 0.6 + eps, $fn = 6);
-        if (agujero_pasante > 0) translate([0, 0, -1]) cylinder(d = agujero_pasante, h = h + 2);
+        for (a = [0 : 360 / n_lob() : 359]) rotate([0, 0, a]) translate([r + rc - prof_l, 0, -1]) cylinder(r = rc, h = h + 2, $fn = 32);
+        hueco_tuerca(t, p);
+        if (con_pasante()) translate([0, 0, -1]) cylinder(d = d_pas(t), h = h + 2);
     }
 }
-module juego() {
-    medidas = [13, 12, 10, 8];
-    for (i = [0 : 3]) translate([i == 0 ? 0 : [for (j = [0 : i]) d_de(medidas[j])] * [for (j = [0 : i]) 1] - d_de(medidas[0]) / 2 - d_de(medidas[i]) / 2 + 6 * i, 0, 0]) perilla(medidas[i]);
+
+// ---- Perilla trilobulada con cuello ----
+module lobulos2d(r_hub, r_l, d_l, n) {
+    offset(r = 1.2) offset(r = -1.2) union() {
+        circle(r_hub);
+        for (i = [0 : n - 1]) rotate(i * 360 / n + 270) translate([d_l, 0]) circle(r_l);
+    }
 }
-if (pieza == "juego_8_10_12_13") juego();
-else perilla(entre_caras);
+module trilobulada(t) {
+    af = af_de(t);
+    R = (diametro > 0 ? diametro : 3.1 * af) / 2;        // radio de las puntas de los lóbulos
+    r_cuello = (diametro_cuello > 0 ? diametro_cuello : 1.82 * af) / 2;
+    e = alto_lobulos > 0 ? alto_lobulos : 0.73 * af;      // alto de los lóbulos
+    h = alto > 0 ? alto : 1.82 * af;                      // alto total
+    p = prof_auto(t, h);
+    r_l = R * 0.45; d_l = R - r_l;                        // lóbulos: círculos de radio r_l a distancia d_l
+    rh = (hueco == "cilindrico" ? (dc_de(t) + holgura) / 2 : (af + holgura) / sqrt(3));
+    assert(h > e + 2, "El alto total tiene que superar al de los lóbulos");
+    assert(r_cuello - rh >= 1.2, str("La pared del cuello alrededor del hueco queda de ", round((r_cuello - rh) * 100) / 100, " mm: subí «diametro_cuello»"));
+    assert(p * (hueco_doble ? 2 : 1) < h - 1.5, "Los huecos son más hondos que la perilla: bajá «profundidad_hueco» o subí «alto»");
+    difference() {
+        union() {
+            // lóbulos con un chaflán chico abajo
+            linear_extrude(0.6, scale = 1 / 0.93) scale(0.93) lobulos2d(r_cuello, r_l, d_l, n_lob());
+            translate([0, 0, 0.6 - eps]) linear_extrude(e - 0.6 + eps) lobulos2d(r_cuello, r_l, d_l, n_lob());
+            // cuello con empalme cónico
+            translate([0, 0, e - eps]) cylinder(r1 = r_cuello + 1.5, r2 = r_cuello, h = 1.5 + eps);
+            cylinder(r = r_cuello, h = h - 0.5);
+            translate([0, 0, h - 0.5 - eps]) cylinder(r1 = r_cuello, r2 = r_cuello - 0.5, h = 0.5 + eps);
+        }
+        hueco_tuerca(t, p);
+        if (hueco_doble) translate([0, 0, h]) mirror([0, 0, 1]) hueco_tuerca(t, p);
+        if (con_pasante()) translate([0, 0, -1]) cylinder(d = d_pas(t), h = h + 2);
+    }
+}
+
+module perilla(t) { if (tipo == "trilobulada") trilobulada(t); else redonda(t); }
+function d_ext(af) = diametro > 0 ? diametro : (tipo == "trilobulada" ? 3.1 * af : _auto(af, 1));
+module juego() {
+    // trilobulada: roscas estándar; redonda: las medidas de los STL originales (13, 12, 10 y 8 mm)
+    ts  = tipo == "trilobulada" ? ["M8", "M6", "M5", "M4", "M3"] : ["otra", "otra", "otra", "otra"];
+    afs = tipo == "trilobulada" ? [13, 10, 8, 7, 5.5] : [13, 12, 10, 8];
+    for (i = [0 : len(ts) - 1]) {
+        x = [for (j = [0 : i]) d_ext(afs[j])] * [for (j = [0 : i]) 1] - d_ext(afs[0]) / 2 - d_ext(afs[i]) / 2 + 6 * i;
+        translate([x, 0, 0]) { $af_otra = afs[i]; perilla(ts[i]); }
+    }
+}
+if (pieza == "juego") juego();
+else perilla(tornillo);

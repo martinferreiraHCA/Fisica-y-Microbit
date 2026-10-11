@@ -41,12 +41,14 @@ carpeta `diseños carton`.
 
 ## Piezas en STL
 
-- `perilla-de-apriete-para-tornillo-hexagonal-original-8-10-12-13mm.stl`:
-  las cuatro perillas originales (tuercas de 8, 10, 12 y 13 mm entre caras)
-  juntas, para imprimirlas tal cual. La versión paramétrica es
-  `perilla-de-apriete-para-tornillo-hexagonal.scad`: elegís la medida de la
-  tuerca y el resto se calcula con las proporciones de los originales (o se
-  fija a mano: diámetro, alto, lóbulos, profundidad del hueco, agujero
+- `perilla-de-apriete-para-tornillo-hexagonal-original-8-10-12-13mm.stl` y
+  `…-original-M3.stl`: las perillas originales (cuatro redondas para tuercas
+  de 8, 10, 12 y 13 mm, y la trilobulada para M3), para imprimirlas tal
+  cual. La versión paramétrica de las dos formas es
+  `perilla-de-apriete-para-tornillo-hexagonal.scad`: elegís la forma
+  (redonda o trilobulada) y el tornillo o tuerca (M3 a M10, u otra medida),
+  y el resto se calcula con las proporciones de los originales o se fija a
+  mano (diámetro, alto, lóbulos, hueco hexagonal o cilíndrico, agujero
   pasante).
 
 ## Créditos
