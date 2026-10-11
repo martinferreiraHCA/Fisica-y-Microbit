@@ -39,22 +39,24 @@ Con **Convertir a cartón encastrable…** cualquier pieza de esta carpeta se
 corta en láminas cruzadas listas para imprimir. Esos diseños viven en la
 carpeta `diseños carton`.
 
-## Piezas en STL
+## Perilla de apriete para tornillo hexagonal
 
-- `perilla-de-apriete-para-tornillo-hexagonal-original-8-10-12-13mm.stl` y
-  `…-original-M3.stl`: las perillas originales (cuatro redondas para tuercas
-  de 8, 10, 12 y 13 mm, y la trilobulada para M3), para imprimirlas tal
-  cual. La versión paramétrica de las dos formas es
-  `perilla-de-apriete-para-tornillo-hexagonal.scad`: elegís la forma
-  (redonda o trilobulada) y el tornillo o tuerca (M3 a M10, u otra medida),
-  y el resto se calcula con las proporciones de los originales o se fija a
-  mano (diámetro, alto, lóbulos, hueco hexagonal o cilíndrico, agujero
-  pasante).
+`perilla-de-apriete-para-tornillo-hexagonal.scad` reúne dos formas de
+perilla (redonda de 16 lóbulos y trilobulada con cuello) que convierten una
+tuerca o la cabeza de un tornillo en tornillo de mano. Se elige la forma y el
+tornillo (M3 a M10, u otra medida entre caras) y el resto de las medidas se
+calcula o se fija a mano. En el menú de piezas, al pasar el mouse por su
+miniatura se van mostrando las dos formas.
 
-## Créditos
+### Miniaturas alternativas
 
-- `conectores-de-varilla.scad` está inspirado en el «Fun science: Universal
-  laboratory stand» de ToFe ([Thingiverse 2005771](https://www.thingiverse.com/thing:2005771),
-  CC BY-NC-SA): bloque con agujero para la varilla, tornillo lateral y tuerca
-  cautiva. El archivo de este repositorio es un diseño propio y paramétrico;
-  no copia los modelos originales.
+Un diseño `.scad` puede mostrar más de una miniatura en el menú (por ejemplo
+una por cada forma que ofrece) con una línea de comentario al inicio:
+
+```
+// miniaturas: tipo="redonda" | tipo="trilobulada", tornillo="M3"
+```
+
+Cada variante va separada por `|`, y dentro de una variante las asignaciones
+van separadas por comas. La primera es la miniatura normal; las demás se van
+mostrando, con un fundido, mientras el mouse está sobre la tarjeta.

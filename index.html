@@ -31310,7 +31310,11 @@ bluetooth.startIOPinService()</pre>
     .s3d-piece-card:hover { border-color:#fff; }
     .s3d-piece-card.selected { border-color:#ffca28; }
     .s3d-piece-card-img { width:100%; aspect-ratio:1 / 1; background:#15171c; display:flex; align-items:center; justify-content:center; color:#3a4150; font-size:11px; overflow:hidden; }
+    .s3d-piece-card-img { position:relative; }
     .s3d-piece-card-img img { width:100%; height:100%; object-fit:cover; }
+    .s3d-piece-card-img img.s3d-thumb-alt { position:absolute; left:0; top:0; opacity:0; transition:opacity .8s ease; pointer-events:none; }
+    .s3d-piece-card-img img.s3d-thumb-alt.on { opacity:1; }
+    #s3d-piece-thumb { transition:opacity .35s ease; }
     .s3d-piece-card-name { font-size:11px; color:#d6dbe4; margin-top:5px; line-height:1.3; word-break:break-word; }
     .s3d-piece-card-kind { font-size:9px; letter-spacing:1px; color:#6f7887; text-transform:uppercase; margin-top:2px; }
     .s3d-folder-note { font-size:10px; color:#6f7887; margin-top:8px; line-height:1.5; }
@@ -31663,16 +31667,6 @@ bluetooth.startIOPinService()</pre>
             base_ancho: { t: 'lin', a: [v.base_largo / 2 + 7, -v.base_ancho / 2, 0], b: [v.base_largo / 2 + 7, v.base_ancho / 2, 0], off: [7, 0, 0] },
             base_espesor: { t: 'lin', a: [v.base_largo / 2 + 7, 0, 0], b: [v.base_largo / 2 + 7, 0, v.base_espesor], off: [7, 0, 0] },
             tornillo_base: { t: 'dia', c: [v.base_largo / 2 - v.tornillo_base * 1.6, 0, v.base_espesor], r: v.tornillo_base / 2, axis: 'z' }
-        };
-    },
-    'gancho-de-carga': function (v) {
-        var rg = v.diametro_gancho / 2, g = v.grosor;
-        return {
-            diametro_gancho: { t: 'dia', c: [0, 0, 0], r: rg, axis: 'y' },
-            grosor: { t: 'lin', a: [0, 0, -(rg - g / 2)], b: [0, 0, -(rg + g / 2)] },
-            vastago: { t: 'lin', a: [g / 2 + 6, 0, rg], b: [g / 2 + 6, 0, rg + v.vastago], off: [6, 0, 0] },
-            ojal: { t: 'dia', c: [0, 0, rg + v.vastago + v.ojal / 2], r: v.ojal / 2, axis: 'y' },
-            apertura: { t: 'arc', c: [0, 0, 0], r: rg + g / 2 + 5, from: 90, to: 90 + v.apertura, value: fmtNum(v.apertura) + '\u00b0' }
         };
     },
     'pie-para-varilla': function (v) {
@@ -32896,13 +32890,7 @@ bluetooth.startIOPinService()</pre>
                 var imgBox = document.createElement('div');
                 imgBox.className = 's3d-piece-card-img';
                 imgBox.setAttribute('data-piece-id', piece.id);
-                if (piece.thumb) {
-                    var im = document.createElement('img');
-                    im.src = piece.thumb;
-                    imgBox.appendChild(im);
-                } else {
-                    imgBox.textContent = 'generando…';
-                }
+                fillThumbBox(imgBox, piece);
                 card.appendChild(imgBox);
                 if (piece.driveId) {
                     var cm = document.createElement('span');
@@ -32966,8 +32954,28 @@ bluetooth.startIOPinService()</pre>
         }
     }
 
+    var pickerThumbTimer = null, pickerThumbIdx = 0;
+    function pickerThumbGo(k) {
+        var img = el('s3d-piece-thumb');
+        var thumbs = img._thumbs;
+        if (!thumbs || k === pickerThumbIdx) return;
+        pickerThumbIdx = k;
+        img.style.opacity = '0.15';
+        setTimeout(function () { img.src = thumbs[k]; img.style.opacity = ''; }, 360);
+    }
+    function pickerThumbHover(on) {
+        var img = el('s3d-piece-thumb');
+        clearInterval(pickerThumbTimer); pickerThumbTimer = null;
+        if (on && img._thumbs && img._thumbs.length > 1) {
+            pickerThumbTimer = setInterval(function () { pickerThumbGo((pickerThumbIdx + 1) % img._thumbs.length); }, 1700);
+            setTimeout(function () { if (pickerThumbTimer) pickerThumbGo((pickerThumbIdx + 1) % img._thumbs.length); }, 500);
+        } else pickerThumbGo(0);
+    }
     function setPickerThumb(piece) {
         var img = el('s3d-piece-thumb');
+        img._thumbs = piece && piece.thumbs && piece.thumbs.length > 1 ? piece.thumbs : null;
+        pickerThumbIdx = 0;
+        img.style.opacity = '';
         if (piece && piece.thumb) img.src = piece.thumb;
     }
 
@@ -33062,19 +33070,80 @@ bluetooth.startIOPinService()</pre>
         return 's3d-thumb-p' + (h >>> 0).toString(36) + '-' + s.length;
     }
 
+    function cardThumbBox(piece) {
+        var sel = '.s3d-piece-card-img[data-piece-id="' + piece.id.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"]';
+        try { return document.querySelector(sel); } catch (e) { return null; }
+    }
     function setPieceThumb(piece, dataUrl) {
         piece.thumb = dataUrl;
         try { localStorage.setItem(thumbKey(piece), dataUrl); } catch (e) {}
-        var sel = '.s3d-piece-card-img[data-piece-id="' + piece.id.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"]';
-        var box = null;
-        try { box = document.querySelector(sel); } catch (e) {}
-        if (box) {
-            box.textContent = '';
-            var im = document.createElement('img');
-            im.src = dataUrl;
-            box.appendChild(im);
-        }
+        var box = cardThumbBox(piece);
+        if (box) fillThumbBox(box, piece);
         if (currentPiece && currentPiece.id === piece.id) setPickerThumb(piece);
+    }
+    // Miniaturas alternativas de una pieza (línea «// miniaturas: a=1 | a=2» del código):
+    // la tarjeta las va mostrando, con un fundido suave, mientras el mouse está encima.
+    function setPieceThumbs(piece, urls) {
+        piece.thumbs = urls;
+        for (var i = 1; i < urls.length; i++) { try { localStorage.setItem(thumbKey(piece) + '-v' + i, urls[i]); } catch (e) {} }
+        var box = cardThumbBox(piece);
+        if (box) fillThumbBox(box, piece);
+        if (currentPiece && currentPiece.id === piece.id) setPickerThumb(piece);
+    }
+    function fillThumbBox(box, piece) {
+        box.textContent = '';
+        if (box._thumbStop) { box._thumbStop(); box._thumbStop = null; }
+        if (!piece.thumb) { box.textContent = 'generando…'; return; }
+        var im = document.createElement('img');
+        im.src = piece.thumb;
+        box.appendChild(im);
+        var thumbs = piece.thumbs;
+        if (!thumbs || thumbs.length < 2) return;
+        var alt = document.createElement('img');
+        alt.className = 's3d-thumb-alt';
+        alt.src = thumbs[1];
+        box.appendChild(alt);
+        var idx = 0, timer = null, swapTimer = null;
+        function goTo(k) {
+            if (k === idx) return;
+            alt.src = thumbs[k];
+            alt.classList.add('on');
+            clearTimeout(swapTimer);
+            swapTimer = setTimeout(function () { im.src = thumbs[k]; alt.classList.remove('on'); }, 850);
+            idx = k;
+        }
+        function start() {
+            if (timer) return;
+            timer = setInterval(function () { goTo((idx + 1) % thumbs.length); }, 1700);
+            setTimeout(function () { if (timer) goTo((idx + 1) % thumbs.length); }, 500);
+        }
+        function stop() {
+            clearInterval(timer); timer = null;
+            goTo(0);
+        }
+        var card = box.parentNode || box;
+        card.addEventListener('mouseenter', start);
+        card.addEventListener('mouseleave', stop);
+        card.addEventListener('touchstart', start, { passive: true });
+        box._thumbStop = function () { clearInterval(timer); timer = null; clearTimeout(swapTimer); };
+    }
+    function thumbVariants(code) {
+        var m = /^\s*\/\/\s*miniaturas?\s*:\s*(.+)$/mi.exec(code || '');
+        if (!m) return null;
+        var vs = m[1].split('|').map(function (v) {
+            return v.split(',').map(function (d) { return d.trim(); }).filter(Boolean);
+        }).filter(function (v) { return v.length; });
+        return vs.length > 1 ? vs : null;
+    }
+    function makeThumbVariants(piece) {
+        var vs = piece._thumbVariants;
+        if (!vs || piece.kind === 'stl') return Promise.resolve();
+        var urls = [piece.thumb];
+        var p = Promise.resolve();
+        vs.slice(1).forEach(function (defs) {
+            p = p.then(function () { return makeThumb(piece, defs); }).then(function (u) { if (u) urls.push(u); });
+        });
+        return p.then(function () { if (urls.length > 1) setPieceThumbs(piece, urls); });
     }
 
     function queueThumbs() {
@@ -33082,7 +33151,13 @@ bluetooth.startIOPinService()</pre>
             if (piece.thumb) return;
             try {
                 var c = localStorage.getItem(thumbKey(piece));
-                if (c) { piece.thumb = c; return; }
+                if (c) {
+                    piece.thumb = c;
+                    var extra = [c];
+                    for (var i = 1; i < 8; i++) { var cv = localStorage.getItem(thumbKey(piece) + '-v' + i); if (!cv) break; extra.push(cv); }
+                    if (extra.length > 1) piece.thumbs = extra;
+                    return;
+                }
             } catch (e) {}
             if (thumbQueue.indexOf(piece) < 0) thumbQueue.push(piece);
         });
@@ -33098,6 +33173,7 @@ bluetooth.startIOPinService()</pre>
         var piece = thumbQueue.shift();
         makeThumb(piece).then(function (url) {
             if (url) setPieceThumb(piece, url);
+            if (url) return makeThumbVariants(piece);
         }).catch(function () {}).then(function () {
             thumbBusy = false;
             if (thumbQueue.length) setTimeout(pumpThumbs, 80);
@@ -33105,14 +33181,22 @@ bluetooth.startIOPinService()</pre>
         });
     }
 
-    function makeThumb(piece) {
+    function makeThumb(piece, defs) {
         if (piece.kind === 'stl') {
             return fetch(piece.url).then(function (r) { return r.arrayBuffer(); })
                 .then(function (buf) { return snapshotGeometry(positionsFromStlBuffer(buf)); });
         }
         var codeP = piece.code != null
             ? Promise.resolve(piece.code)
-            : fetch(piece.url).then(function (r) { return r.text(); });
+            : (piece._code != null ? Promise.resolve(piece._code) : fetch(piece.url).then(function (r) { return r.text(); }));
+        codeP = codeP.then(function (code) {
+            piece._code = code;
+            if (!defs) {
+                piece._thumbVariants = thumbVariants(code);
+                if (piece._thumbVariants) defs = piece._thumbVariants[0];
+            }
+            return code;
+        });
         var carton = isCartonPiece(piece);
         if (carton) codeP = codeP.then(function (code) { return ensureCartonLib().then(function () { return cartonCode(code); }); });
         return codeP.then(function (code) {
@@ -33138,7 +33222,7 @@ bluetooth.startIOPinService()</pre>
                     if (thumbWorker === w) thumbWorker = null;
                     reject(new Error('worker'));
                 };
-                w.postMessage({ id: 0, code: code, url: OPENSCAD_URL, files: carton ? cartonFiles(piece) : undefined, defs: carton ? ['vista="armado"'] : undefined });
+                w.postMessage({ id: 0, code: code, url: OPENSCAD_URL, files: carton ? cartonFiles(piece) : undefined, defs: (carton ? ['vista="armado"'] : []).concat(defs || []) });
             }).then(function (stl) {
                 return snapshotGeometry(positionsFromAsciiStl(stl));
             });
@@ -33705,6 +33789,8 @@ bluetooth.startIOPinService()</pre>
         rebuildLibPieces();
         renderPieceMenu();
         queueThumbs(); // levanta las miniaturas ya guardadas en caché
+        el('s3d-piece-btn').addEventListener('mouseenter', function () { pickerThumbHover(true); });
+        el('s3d-piece-btn').addEventListener('mouseleave', function () { pickerThumbHover(false); });
         el('s3d-piece-btn').addEventListener('click', function (e) {
             e.stopPropagation();
             toggleMenu();
