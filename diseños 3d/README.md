@@ -41,10 +41,13 @@ carpeta `diseños carton`.
 
 ## Piezas en STL
 
-- `perilla-de-apriete-para-tornillo-hexagonal-*.stl`: perillas para convertir
-  un tornillo con tuerca hexagonal en tornillo de mano (la tuerca entra en el
-  hueco de abajo). Hay una por medida de tuerca (8, 10, 12 y 13 mm entre
-  caras) y un archivo con las cuatro juntas para imprimir de una vez.
+- `perilla-de-apriete-para-tornillo-hexagonal-original-8-10-12-13mm.stl`:
+  las cuatro perillas originales (tuercas de 8, 10, 12 y 13 mm entre caras)
+  juntas, para imprimirlas tal cual. La versión paramétrica es
+  `perilla-de-apriete-para-tornillo-hexagonal.scad`: elegís la medida de la
+  tuerca y el resto se calcula con las proporciones de los originales (o se
+  fija a mano: diámetro, alto, lóbulos, profundidad del hueco, agujero
+  pasante).
 
 ## Créditos
 
