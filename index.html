@@ -34802,11 +34802,38 @@ bluetooth.startIOPinService()</pre>
     var ORIGIN = 'https://makecode.microbit.org';
     var EXT_NAME = 'fisicabit-usb';
     var EXT_REPO = 'github:martinferreiraHCA/pxt-fisicabit-usb';
-    // Bloques Bluetooth: extensión aparte (rama "bluetooth" del mismo repositorio).
-    // MakeCode no permite Radio y Bluetooth juntas; la práctica nueva conserva
-    // Radio y Bluetooth se activa a propósito con el botón de la barra.
+    // Bloques Bluetooth: paquete aparte (rama "bluetooth" del mismo repositorio)
+    // que trae USB + BT y REEMPLAZA a fisicabit-usb en la práctica. MakeCode no
+    // permite Radio y Bluetooth juntas, y tampoco dos dependencias del mismo
+    // repositorio (las carga dos veces → identificadores duplicados). La práctica
+    // nueva conserva Radio; Bluetooth se activa a propósito con el botón de la barra.
     var EXT_BT_NAME = 'fisicabit-bt';
     var EXT_BT_REPO = 'github:martinferreiraHCA/pxt-fisicabit-usb#bluetooth';
+    // El CDN de MakeCode cachea el contenido de una extensión POR NOMBRE de rama
+    // (puede servir una versión vieja durante horas), pero por SHA de commit es
+    // siempre exacto. Por eso las dependencias se fijan al SHA actual de la rama,
+    // consultado al momento (con respaldo a la referencia por nombre si no hay red).
+    var REPO_PATH = 'martinferreiraHCA/pxt-fisicabit-usb';
+    var _refCache = {};   // rama → { sha, at }
+    async function resolveShaAsync(branch) {
+        var c = _refCache[branch];
+        if (c && Date.now() - c.at < 10 * 60 * 1000) return c.sha;
+        var sha = null;
+        try {
+            var r = await withTimeout(fetch('https://www.makecode.com/api/gh/' + REPO_PATH + '/refs?rnd=' + Math.random(), { cache: 'no-store' }).then(function (x) { return x.json(); }), 6000);
+            sha = (r && r.refs && r.refs['refs/heads/' + branch]) || null;
+        } catch (_) {}
+        if (!sha) {
+            try {
+                var g = await withTimeout(fetch('https://api.github.com/repos/' + REPO_PATH + '/commits/' + encodeURIComponent(branch), { headers: { Accept: 'application/vnd.github+json' } }).then(function (x) { return x.json(); }), 6000);
+                sha = (g && typeof g.sha === 'string' && /^[0-9a-f]{40}$/.test(g.sha)) ? g.sha : null;
+            } catch (_) {}
+        }
+        if (sha) _refCache[branch] = { sha: sha, at: Date.now() };
+        return sha;
+    }
+    async function usbDepAsync() { var sha = await resolveShaAsync('main'); return sha ? 'github:' + REPO_PATH + '#' + sha : EXT_REPO; }
+    async function btDepAsync() { var sha = await resolveShaAsync('bluetooth'); return sha ? 'github:' + REPO_PATH + '#' + sha : EXT_BT_REPO; }
     var LS_KEY = 'fisicabit_makecode_workspace_v1';
     var LS_BAR = 'fisicabit_makecode_barhidden';
     var LS_POS = 'fisicabit_makecode_barpos';
@@ -34881,21 +34908,32 @@ bluetooth.startIOPinService()</pre>
     /* ---------- Bluetooth en la práctica (Radio ↔ FisicaBit BT) ---------- */
     function projectCfg(p) { try { return JSON.parse((p && p.text || {})['pxt.json'] || '{}'); } catch (_) { return {}; } }
     function projectDeps(p) { return projectCfg(p).dependencies || {}; }
-    function isBtDep(v) { return /pxt-fisicabit-usb#bluetooth/i.test(String(v)); }
-    function isUsbDep(v) { return /pxt-fisicabit-usb(?!#bluetooth)/i.test(String(v)); }
-    function projectHasBt(p) { var d = projectDeps(p); return !!d[EXT_BT_NAME] || Object.keys(d).some(function (k) { return isBtDep(d[k]); }); }
+    // Las dos extensiones viven en el mismo repositorio (ramas main y bluetooth):
+    // se distinguen por el NOMBRE de la dependencia, no por su referencia.
+    function usbDepKey(deps) { return Object.keys(deps).filter(function (k) { return k !== EXT_BT_NAME && (k === EXT_NAME || /pxt-fisicabit-usb/i.test(String(deps[k]))); })[0] || null; }
+    function projectHasBt(p) { return !!projectDeps(p)[EXT_BT_NAME]; }
     // Prácticas guardadas con la extensión vieja (que traía Bluetooth) y Radio a la
     // vez: nunca compilaron (MakeCode pedía borrar una). Se pasan a la extensión
     // actual (sin Bluetooth) y, si el código usa bloques FisicaBit BT, a la
     // extensión Bluetooth sin Radio. Devuelve true si cambió algo.
-    function migrateProject(p) {
+    // refs = { usb, bt }: referencias fijadas al SHA actual (o por nombre si no hubo red)
+    function migrateProject(p, refs) {
         var cfg = projectCfg(p), deps = cfg.dependencies || {}, changed = false;
-        if (projectHasBt(p)) return false;
-        var usbKey = Object.keys(deps).filter(function (k) { return k === EXT_NAME || isUsbDep(deps[k]); })[0];
-        if (!usbKey || !deps.radio) return false;
-        var usesBt = /FisicaBitBT\./.test((p.text || {})['main.ts'] || '');
-        if (deps[usbKey] !== EXT_REPO) { deps[usbKey] = EXT_REPO; changed = true; }
-        if (usesBt) { delete deps.radio; deps[EXT_BT_NAME] = EXT_BT_REPO; changed = true; }
+        if (deps[EXT_BT_NAME]) {
+            // Bluetooth activado antes con la referencia por nombre (caché vieja del CDN): fijar al SHA actual
+            if (/#bluetooth$/i.test(String(deps[EXT_BT_NAME])) && refs.bt !== EXT_BT_REPO) { deps[EXT_BT_NAME] = refs.bt; changed = true; }
+            var oldUsb = usbDepKey(deps);
+            if (oldUsb) { delete deps[oldUsb]; changed = true; }   // no pueden convivir (mismo repositorio)
+        } else {
+            var usbKey = usbDepKey(deps);
+            if (usbKey && deps.radio) {
+                // Extensión vieja (con Bluetooth) + Radio: nunca compiló. Pasar a la actual.
+                var usesBt = /FisicaBitBT\./.test((p.text || {})['main.ts'] || '');
+                if (usesBt) { delete deps.radio; delete deps[usbKey]; deps[EXT_BT_NAME] = refs.bt; }
+                else if (deps[usbKey] !== refs.usb) deps[usbKey] = refs.usb;
+                changed = true;
+            }
+        }
         if (changed) { cfg.dependencies = deps; p.text['pxt.json'] = JSON.stringify(cfg, null, 4); }
         return changed;
     }
@@ -34907,23 +34945,28 @@ bluetooth.startIOPinService()</pre>
         b.title = on ? 'Esta práctica envía por Bluetooth (sin Radio). Clic para ver opciones o volver a Radio.'
                      : 'Activar el envío por Bluetooth en esta práctica (guiado: quita Radio y agrega la categoría FisicaBit BT)';
     }
-    function setProjectBluetooth(on) {
+    async function setProjectBluetooth(on) {
         var p = currentProject();
         if (!p || !p.header || !p.text) { setStatus('Primero creá o abrí una práctica FisicaBit.', 6000); return; }
+        closeBtBox();
+        setStatus(on ? 'Buscando la versión actual de FisicaBit BT…' : 'Buscando la versión actual de FisicaBit USB…', 8000);
+        var ref = on ? await btDepAsync() : await usbDepAsync();
         var cfg = projectCfg(p); cfg.dependencies = cfg.dependencies || {};
         var deps = cfg.dependencies;
         if (on) {
             delete deps.radio;
-            var usbKey = Object.keys(deps).filter(function (k) { return k === EXT_NAME || isUsbDep(deps[k]); })[0] || EXT_NAME;
-            deps[usbKey] = EXT_REPO;
-            deps[EXT_BT_NAME] = EXT_BT_REPO;
+            // fisicabit-bt incluye los bloques USB: se intercambia, no se suma
+            // (MakeCode no admite dos dependencias del mismo repositorio)
+            Object.keys(deps).forEach(function (k) { if (k !== EXT_BT_NAME && (k === EXT_NAME || /pxt-fisicabit-usb/i.test(String(deps[k])))) delete deps[k]; });
+            deps[EXT_BT_NAME] = ref;
             // Si la práctica todavía tiene el programa de ejemplo, cambiarlo por el de Bluetooth
             if (String(p.text['main.ts'] || '').trim() === SAMPLE_TS.trim()) {
                 p.text['main.ts'] = SAMPLE_BT_TS;
                 delete p.text['main.blocks'];
             }
         } else {
-            Object.keys(deps).forEach(function (k) { if (k === EXT_BT_NAME || isBtDep(deps[k])) delete deps[k]; });
+            delete deps[EXT_BT_NAME];
+            deps[EXT_NAME] = ref;
             deps.radio = '*';
         }
         p.text['pxt.json'] = JSON.stringify(cfg, null, 4);
@@ -34931,7 +34974,6 @@ bluetooth.startIOPinService()</pre>
         projects[p.header.id] = p;
         saveProjects();
         if (driveMap[p.header.id] && driveMap[p.header.id].fileId) scheduleAutoPush(p.header.id);
-        closeBtBox();
         setStatus(on ? 'Activando Bluetooth: se quita Radio y se agrega FisicaBit BT. El editor se recarga con la práctica…'
                      : 'Volviendo a Radio: se quita FisicaBit BT. El editor se recarga con la práctica…', 12000);
         reloadEditor(p.header.id);
@@ -34954,7 +34996,7 @@ bluetooth.startIOPinService()</pre>
                 '<ol>' +
                 '<li>Se quita <strong>Radio</strong> de <em>esta</em> práctica (' + escapeHtml(p.header.name || 'Práctica FisicaBit') + '). Si usabas bloques de Radio, dejarán de compilar.</li>' +
                 '<li>Se agrega la categoría <strong>FisicaBit BT</strong>: <em>iniciar Bluetooth para fisicabit.com</em> (va en <em>al iniciar</em>) y <em>enviar a fisicabit.com por Bluetooth tiempo y [valor] cada [100] ms</em> (va en <em>para siempre</em>).</li>' +
-                '<li><strong>FisicaBit USB</strong> sigue disponible. El editor se recarga con la práctica actualizada (unos segundos).</li>' +
+                '<li>Los bloques de <strong>FisicaBit USB</strong> siguen disponibles (vienen en el mismo paquete). El editor se recarga con la práctica actualizada (unos segundos).</li>' +
                 '</ol>' +
                 '<h4>Después</h4>' +
                 '<p>Descargá el programa a la micro:bit y, en el sitio, tocá <strong>BLUETOOTH</strong> → elegí <code>BBC micro:bit [xxxxx]</code>. Para volver a Radio, tocá de nuevo este botón.</p>' +
@@ -34966,7 +35008,7 @@ bluetooth.startIOPinService()</pre>
                 '<h4>Cómo conectar</h4>' +
                 '<p>Descargá el programa a la micro:bit, cerrá este panel (✕ Volver) y tocá <strong>BLUETOOTH</strong> en el sitio. Elegí <code>BBC micro:bit [xxxxx]</code>, poné el número de variables igual a los valores que enviás y dejá activado <em>Micro:bit envía timestamp</em>.</p>' +
                 '<h4>Volver a Radio</h4>' +
-                '<p>Quita FisicaBit BT y vuelve a poner Radio. Si usás bloques de FisicaBit BT, dejarán de compilar.</p>' +
+                '<p>Vuelve a poner Radio y FisicaBit USB, y quita FisicaBit BT. Si usás bloques de FisicaBit BT, dejarán de compilar; los de FisicaBit USB siguen igual.</p>' +
                 '<div class="mk-dlg-actions"><button class="mk-dlg-btn warn" id="mk-btbox-off">Volver a Radio</button><button class="mk-dlg-btn" id="mk-btbox-cancel">Cerrar</button></div>';
         }
         var bOn = el('mk-btbox-on'), bOff = el('mk-btbox-off'), bC = el('mk-btbox-cancel');
@@ -35012,14 +35054,16 @@ bluetooth.startIOPinService()</pre>
         post(r);
     }
     function newFisicaBitProject() {
-        var deps = {};
-        deps[EXT_NAME] = EXT_REPO;
-        post({
-            type: 'pxteditor', action: 'newproject', response: false,
-            options: { name: 'Práctica FisicaBit', dependencies: deps, filesOverride: { 'main.ts': SAMPLE_TS }, preferredEditor: 'blocksprj' }
-        });
         currentHeaderId = null;
         setStatus('Creando la práctica con la extensión FisicaBit USB…', 6000);
+        usbDepAsync().then(function (ref) {
+            var deps = {};
+            deps[EXT_NAME] = ref;
+            post({
+                type: 'pxteditor', action: 'newproject', response: false,
+                options: { name: 'Práctica FisicaBit', dependencies: deps, filesOverride: { 'main.ts': SAMPLE_TS }, preferredEditor: 'blocksprj' }
+            });
+        });
     }
     function openHeader(id) {
         post({ type: 'pxteditor', action: 'openheader', response: false, headerId: id });
@@ -35067,7 +35111,10 @@ bluetooth.startIOPinService()</pre>
                 // que el editor las conozca desde el inicio.
                 try { await withTimeout(pullDriveProjects(false), 8000); } catch (_) {}
                 var migrated = 0;
-                projectList().forEach(function (p) { try { if (migrateProject(p)) migrated++; } catch (_) {} });
+                try {
+                    var refs = { usb: await usbDepAsync(), bt: await btDepAsync() };
+                    projectList().forEach(function (p) { try { if (migrateProject(p, refs)) migrated++; } catch (_) {} });
+                } catch (_) {}
                 if (migrated) saveProjects();
                 var list = projectList();
                 syncedIds = {};
