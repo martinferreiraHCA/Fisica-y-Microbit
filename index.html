@@ -825,6 +825,16 @@
             margin: 0 2px;
         }
 
+        /* Botón "unir los puntos con una línea" (por gráfica). Apagado: solo
+           puntos, la línea del ícono se dibuja punteada y gris. Encendido: negro. */
+        .graph-controls button.line-toggle-btn svg { display: block; }
+        .graph-controls button.line-toggle-btn:not(.active) .ltb-line { stroke-dasharray: 2 2; opacity: 0.35; }
+        .graph-controls button.line-toggle-btn.active {
+            background: #000;
+            color: #fff;
+            border-color: #000;
+        }
+
         .graph-sel-count {
             font-size: 0.68rem;
             color: #1976d2;
@@ -4812,6 +4822,8 @@
                 <button id="exportBtn" class="toolbar-btn" disabled>EXPORTAR CSV</button>
                 <button id="photoFrameBtn" class="toolbar-btn" style="display:none;" onclick="smFrameOpen()">FOTOS</button>
                 <button id="clearBtn" class="toolbar-btn">LIMPIAR</button>
+                <button id="undoBtn" class="toolbar-btn" title="Deshacer (Ctrl+Z)" aria-label="Deshacer (Ctrl+Z)" disabled>&#8630;</button>
+                <button id="redoBtn" class="toolbar-btn" title="Rehacer (Ctrl+Y)" aria-label="Rehacer (Ctrl+Y)" disabled>&#8631;</button>
             </span>
 
             <div class="toolbar-separator"></div>
@@ -4873,6 +4885,8 @@
         <button id="exportBtn2" class="toolbar-btn" onclick="document.getElementById('exportBtn').click(); closeToolbarMenu();">EXPORTAR CSV</button>
         <button id="btn-informe2" class="toolbar-btn" style="background:#111; color:#fff; border-color:#111;" onclick="document.getElementById('btn-informe').click(); closeToolbarMenu();">INFORME</button>
         <button id="clearBtn2" class="toolbar-btn" onclick="document.getElementById('clearBtn').click(); closeToolbarMenu();">LIMPIAR</button>
+        <button id="undoBtn2" class="toolbar-btn" disabled>DESHACER (Ctrl+Z)</button>
+        <button id="redoBtn2" class="toolbar-btn" disabled>REHACER (Ctrl+Y)</button>
         <a href="https://makecode.microbit.org/" target="_blank" class="toolbar-btn" style="text-decoration: none; display: flex; align-items: center;">MAKECODE ↗</a>
         <button id="examplesBtn2" class="toolbar-btn" onclick="openExamplesModal(); closeToolbarMenu();">EJEMPLOS</button>
         <button id="helpBtn2" class="toolbar-btn" onclick="document.getElementById('helpBtn').click(); closeToolbarMenu();">AYUDA</button>
@@ -5236,7 +5250,7 @@
 
                     <div class="checkbox-row">
                         <input type="checkbox" id="showLinesToggle" checked>
-                        <label for="showLinesToggle">Mostrar Líneas</label>
+                        <label for="showLinesToggle">Unir los puntos con una línea</label>
                     </div>
 
                     <div class="checkbox-row">
@@ -6407,7 +6421,7 @@ basic.forever(function () {
                 milliseconds: 'Milisegundos',
                 seconds: 'Segundos',
                 minutes: 'Minutos',
-                showLines: 'Mostrar Líneas',
+                showLines: 'Unir los puntos con una línea',
                 applyGraphConfig: 'APLICAR CONFIGURACIÓN',
                 setZero: 'ESTABLECER T=0',
                 curveFit: 'AJUSTE DE CURVA',
@@ -6730,6 +6744,67 @@ basic.forever(function () {
                 tipResetZoom: 'Restablecer zoom',
                 tipAnnotate: 'Anotar: escribir y dibujar sobre la gráfica',
                 tipSave: 'Guardar como imagen',
+                tipLinesOn: 'Puntos unidos con línea · clic para ver solo los puntos',
+                tipLinesOff: 'Solo puntos (sin unir) · clic para unirlos con una línea',
+                tipUndo: 'Deshacer el último cambio en los datos (Ctrl+Z)',
+                tipRedo: 'Rehacer (Ctrl+Y)',
+                undoBtn: 'DESHACER',
+                redoBtn: 'REHACER',
+                undoNothing: 'No hay nada para deshacer.',
+                redoNothing: 'No hay nada para rehacer.',
+                undoDone: 'Deshecho ✓',
+                redoDone: 'Rehecho ✓',
+                undoWhileCapturing: 'Detené la captura antes de deshacer o restaurar.',
+                wsLabel: 'Espacios de trabajo',
+                wsDefaultName: 'Espacio {n}',
+                wsNewTip: 'Nuevo espacio de trabajo: otro gráfico con sus propios datos, variables y ajustes',
+                wsHint: 'cada espacio tiene sus propios datos y gráficas',
+                wsTipActive: 'Espacio activo · doble clic para renombrar',
+                wsTipSwitch: 'Cambiar a este espacio de trabajo',
+                wsRename: 'Renombrar',
+                wsDuplicate: 'Duplicar este espacio (copia los datos para procesarlos de otra forma)',
+                wsDelete: 'Cerrar este espacio',
+                wsDeleteConfirm: '¿Cerrar el espacio «{name}»? Se quitan sus {n} puntos y sus gráficas (podés recuperarlos desde el historial de versiones).',
+                wsStopCapture: 'Detené la captura antes de cambiar de espacio de trabajo.',
+                wsRenamePrompt: 'Nombre de este espacio de trabajo:',
+                wsCopySuffix: '(copia)',
+                wsDuplicated: 'Espacio duplicado ✓',
+                wsCreated: 'Nuevo espacio de trabajo en blanco ✓',
+                wsSafetyBeforeClose: 'Antes de cerrar el espacio',
+                histTitle: 'Historial de versiones',
+                histTabLocal: 'En este navegador',
+                histTabDrive: 'En Google Drive',
+                histSaveNamed: 'Guardar una versión con nombre…',
+                histRefresh: 'Actualizar',
+                histNoteLocal: 'Se guarda una versión automática cada pocos minutos mientras cambian los datos, además de versiones de seguridad antes de limpiar, abrir otro proyecto o volver atrás. Viven solo en este navegador.',
+                histLoading: 'Cargando…',
+                histEmptyLocal: 'Todavía no hay versiones guardadas en este navegador.',
+                histRestore: 'Restaurar',
+                histDelete: 'Borrar esta versión',
+                histErrLocal: 'No se pudo leer el historial de este navegador.',
+                histDriveNotConfigured: 'Google Drive no está configurado en esta copia de la página.',
+                histNoteDriveOff: 'Conectá tu cuenta de Google para ver las versiones guardadas en la nube: Drive conserva las copias automáticas del experimento y las versiones con nombre que guardes.',
+                histDriveConnect: 'Conectar con Google',
+                histDriveFail: 'No se pudo conectar con Google.',
+                histNoteDriveOn: 'Google Drive guarda solo una copia cada vez que el experimento se sincroniza (las conserva unos 30 días). Las versiones con nombre quedan en la carpeta fisicabit / Versiones y no se borran.',
+                histDriveNoFile: 'Este experimento todavía no se sincronizó con Drive: guardalo con «Guardar ahora en Drive».',
+                histEmptyDrive: 'Todavía no hay versiones de este experimento en Drive.',
+                histDriveFetchErr: 'No se pudo descargar esa versión de Drive.',
+                histErrDrive: 'No se pudieron leer las versiones de Drive.',
+                histKindNamed: 'Con nombre',
+                histKindSafety: 'Seguridad',
+                histKindAuto: 'Automática',
+                histAutoLabel: 'Guardado automático',
+                histNothing: 'Todavía no hay nada para guardar en una versión.',
+                histNamePrompt: 'Nombre de esta versión (ej.: «antes de borrar los picos», «datos crudos», «ajuste final»):',
+                histSavedLocal: 'Versión «{name}» guardada en este navegador ✓',
+                histSavedDrive: 'Versión «{name}» guardada también en Google Drive (fisicabit / Versiones) ✓',
+                histDriveError: 'No se pudo guardar la versión en Drive.',
+                histDriveAuto: 'Guardado automático en Drive',
+                histBad: 'Esa versión está vacía o dañada.',
+                histRestoreConfirm: '¿Volver a la versión «{what}»?\n\nLo que tenés abierto ahora se guarda primero como versión de seguridad, así no perdés nada.',
+                histSafetyBeforeRestore: 'Antes de volver a una versión anterior',
+                histRestored: 'Versión restaurada ✓',
                 showDropLinesLabel: 'Líneas punteadas a los ejes',
                 pillClickColor: 'Click para cambiar el color',
                 fitColorLabel: 'Color de la línea de ajuste',
@@ -6802,7 +6877,7 @@ basic.forever(function () {
                 milliseconds: 'Milliseconds',
                 seconds: 'Seconds',
                 minutes: 'Minutes',
-                showLines: 'Show Lines',
+                showLines: 'Join the points with a line',
                 applyGraphConfig: 'APPLY CONFIGURATION',
                 setZero: 'SET T=0',
                 curveFit: 'CURVE FITTING',
@@ -7125,6 +7200,67 @@ basic.forever(function () {
                 tipResetZoom: 'Reset zoom',
                 tipAnnotate: 'Annotate: write and draw over the graph',
                 tipSave: 'Save as image',
+                tipLinesOn: 'Points joined by a line · click to show points only',
+                tipLinesOff: 'Points only (not joined) · click to join them with a line',
+                tipUndo: 'Undo the last change to the data (Ctrl+Z)',
+                tipRedo: 'Redo (Ctrl+Y)',
+                undoBtn: 'UNDO',
+                redoBtn: 'REDO',
+                undoNothing: 'Nothing to undo.',
+                redoNothing: 'Nothing to redo.',
+                undoDone: 'Undone ✓',
+                redoDone: 'Redone ✓',
+                undoWhileCapturing: 'Stop the capture before undoing or restoring.',
+                wsLabel: 'Workspaces',
+                wsDefaultName: 'Workspace {n}',
+                wsNewTip: 'New workspace: another graph with its own data, variables and fits',
+                wsHint: 'each workspace has its own data and graphs',
+                wsTipActive: 'Active workspace · double-click to rename',
+                wsTipSwitch: 'Switch to this workspace',
+                wsRename: 'Rename',
+                wsDuplicate: 'Duplicate this workspace (copies the data to process it differently)',
+                wsDelete: 'Close this workspace',
+                wsDeleteConfirm: 'Close workspace “{name}”? Its {n} points and graphs are removed (you can recover them from the version history).',
+                wsStopCapture: 'Stop the capture before switching workspaces.',
+                wsRenamePrompt: 'Name of this workspace:',
+                wsCopySuffix: '(copy)',
+                wsDuplicated: 'Workspace duplicated ✓',
+                wsCreated: 'New blank workspace ✓',
+                wsSafetyBeforeClose: 'Before closing the workspace',
+                histTitle: 'Version history',
+                histTabLocal: 'In this browser',
+                histTabDrive: 'In Google Drive',
+                histSaveNamed: 'Save a named version…',
+                histRefresh: 'Refresh',
+                histNoteLocal: 'An automatic version is saved every few minutes while the data changes, plus safety versions before clearing, opening another project or going back. They live only in this browser.',
+                histLoading: 'Loading…',
+                histEmptyLocal: 'No versions saved in this browser yet.',
+                histRestore: 'Restore',
+                histDelete: 'Delete this version',
+                histErrLocal: 'Could not read the history of this browser.',
+                histDriveNotConfigured: 'Google Drive is not configured in this copy of the page.',
+                histNoteDriveOff: 'Connect your Google account to see the versions saved in the cloud: Drive keeps the automatic copies of the experiment and the named versions you save.',
+                histDriveConnect: 'Connect with Google',
+                histDriveFail: 'Could not connect with Google.',
+                histNoteDriveOn: 'Google Drive keeps a copy every time the experiment syncs (for about 30 days). Named versions are stored in the fisicabit / Versiones folder and are never deleted.',
+                histDriveNoFile: 'This experiment has not been synced to Drive yet: save it with “Save now to Drive”.',
+                histEmptyDrive: 'No versions of this experiment in Drive yet.',
+                histDriveFetchErr: 'Could not download that version from Drive.',
+                histErrDrive: 'Could not read the versions from Drive.',
+                histKindNamed: 'Named',
+                histKindSafety: 'Safety',
+                histKindAuto: 'Automatic',
+                histAutoLabel: 'Automatic save',
+                histNothing: 'There is nothing to save in a version yet.',
+                histNamePrompt: 'Name of this version (e.g. “before removing spikes”, “raw data”, “final fit”):',
+                histSavedLocal: 'Version “{name}” saved in this browser ✓',
+                histSavedDrive: 'Version “{name}” also saved to Google Drive (fisicabit / Versiones) ✓',
+                histDriveError: 'Could not save the version to Drive.',
+                histDriveAuto: 'Automatic save in Drive',
+                histBad: 'That version is empty or damaged.',
+                histRestoreConfirm: 'Go back to version “{what}”?\n\nWhat you have open now is saved first as a safety version, so nothing is lost.',
+                histSafetyBeforeRestore: 'Before going back to an earlier version',
+                histRestored: 'Version restored ✓',
                 showDropLinesLabel: 'Dashed projection lines to axes',
                 pillClickColor: 'Click to change color',
                 fitColorLabel: 'Fit line color',
@@ -7197,7 +7333,7 @@ basic.forever(function () {
                 milliseconds: 'Milissegundos',
                 seconds: 'Segundos',
                 minutes: 'Minutos',
-                showLines: 'Mostrar Linhas',
+                showLines: 'Unir os pontos com uma linha',
                 applyGraphConfig: 'APLICAR CONFIGURAÇÃO',
                 setZero: 'DEFINIR T=0',
                 curveFit: 'AJUSTE DE CURVA',
@@ -7520,6 +7656,67 @@ basic.forever(function () {
                 tipResetZoom: 'Restaurar zoom',
                 tipAnnotate: 'Anotar: escrever e desenhar sobre o gráfico',
                 tipSave: 'Salvar como imagem',
+                tipLinesOn: 'Pontos unidos por linha · clique para ver só os pontos',
+                tipLinesOff: 'Só pontos (sem unir) · clique para uni-los com uma linha',
+                tipUndo: 'Desfazer a última alteração nos dados (Ctrl+Z)',
+                tipRedo: 'Refazer (Ctrl+Y)',
+                undoBtn: 'DESFAZER',
+                redoBtn: 'REFAZER',
+                undoNothing: 'Não há nada para desfazer.',
+                redoNothing: 'Não há nada para refazer.',
+                undoDone: 'Desfeito ✓',
+                redoDone: 'Refeito ✓',
+                undoWhileCapturing: 'Pare a captura antes de desfazer ou restaurar.',
+                wsLabel: 'Espaços de trabalho',
+                wsDefaultName: 'Espaço {n}',
+                wsNewTip: 'Novo espaço de trabalho: outro gráfico com seus próprios dados, variáveis e ajustes',
+                wsHint: 'cada espaço tem seus próprios dados e gráficos',
+                wsTipActive: 'Espaço ativo · clique duplo para renomear',
+                wsTipSwitch: 'Mudar para este espaço de trabalho',
+                wsRename: 'Renomear',
+                wsDuplicate: 'Duplicar este espaço (copia os dados para processá-los de outra forma)',
+                wsDelete: 'Fechar este espaço',
+                wsDeleteConfirm: 'Fechar o espaço «{name}»? Seus {n} pontos e gráficos são removidos (você pode recuperá-los no histórico de versões).',
+                wsStopCapture: 'Pare a captura antes de mudar de espaço de trabalho.',
+                wsRenamePrompt: 'Nome deste espaço de trabalho:',
+                wsCopySuffix: '(cópia)',
+                wsDuplicated: 'Espaço duplicado ✓',
+                wsCreated: 'Novo espaço de trabalho em branco ✓',
+                wsSafetyBeforeClose: 'Antes de fechar o espaço',
+                histTitle: 'Histórico de versões',
+                histTabLocal: 'Neste navegador',
+                histTabDrive: 'No Google Drive',
+                histSaveNamed: 'Salvar uma versão com nome…',
+                histRefresh: 'Atualizar',
+                histNoteLocal: 'Uma versão automática é salva a cada poucos minutos enquanto os dados mudam, além de versões de segurança antes de limpar, abrir outro projeto ou voltar atrás. Elas ficam só neste navegador.',
+                histLoading: 'Carregando…',
+                histEmptyLocal: 'Ainda não há versões salvas neste navegador.',
+                histRestore: 'Restaurar',
+                histDelete: 'Apagar esta versão',
+                histErrLocal: 'Não foi possível ler o histórico deste navegador.',
+                histDriveNotConfigured: 'O Google Drive não está configurado nesta cópia da página.',
+                histNoteDriveOff: 'Conecte sua conta do Google para ver as versões salvas na nuvem: o Drive guarda as cópias automáticas do experimento e as versões com nome que você salvar.',
+                histDriveConnect: 'Conectar com o Google',
+                histDriveFail: 'Não foi possível conectar com o Google.',
+                histNoteDriveOn: 'O Google Drive guarda uma cópia cada vez que o experimento sincroniza (por uns 30 dias). As versões com nome ficam na pasta fisicabit / Versiones e não são apagadas.',
+                histDriveNoFile: 'Este experimento ainda não foi sincronizado com o Drive: salve-o com «Salvar agora no Drive».',
+                histEmptyDrive: 'Ainda não há versões deste experimento no Drive.',
+                histDriveFetchErr: 'Não foi possível baixar essa versão do Drive.',
+                histErrDrive: 'Não foi possível ler as versões do Drive.',
+                histKindNamed: 'Com nome',
+                histKindSafety: 'Segurança',
+                histKindAuto: 'Automática',
+                histAutoLabel: 'Salvamento automático',
+                histNothing: 'Ainda não há nada para salvar em uma versão.',
+                histNamePrompt: 'Nome desta versão (ex.: «antes de apagar os picos», «dados brutos», «ajuste final»):',
+                histSavedLocal: 'Versão «{name}» salva neste navegador ✓',
+                histSavedDrive: 'Versão «{name}» salva também no Google Drive (fisicabit / Versiones) ✓',
+                histDriveError: 'Não foi possível salvar a versão no Drive.',
+                histDriveAuto: 'Salvamento automático no Drive',
+                histBad: 'Essa versão está vazia ou danificada.',
+                histRestoreConfirm: 'Voltar à versão «{what}»?\n\nO que está aberto agora é salvo primeiro como versão de segurança, assim nada se perde.',
+                histSafetyBeforeRestore: 'Antes de voltar a uma versão anterior',
+                histRestored: 'Versão restaurada ✓',
                 showDropLinesLabel: 'Linhas pontilhadas aos eixos',
                 pillClickColor: 'Clique para mudar a cor',
                 fitColorLabel: 'Cor da linha de ajuste',
@@ -7727,6 +7924,10 @@ basic.forever(function () {
             const setZeroBtn = document.getElementById('setZeroBtn');
             if (setZeroBtn) setZeroBtn.textContent = t.setZero;
 
+            // Casilla general "Unir los puntos con una línea" (está en una checkbox-row, no en input-row)
+            const showLinesLbl = document.querySelector('label[for="showLinesToggle"]');
+            if (showLinesLbl && t.showLines) showLinesLbl.textContent = t.showLines;
+
             // Panel lateral - Labels
             document.querySelectorAll('.input-row label').forEach(label => {
                 const text = label.textContent.trim();
@@ -7751,7 +7952,8 @@ basic.forever(function () {
                     label.textContent = t.yLabel;
                 } else if (text.startsWith('Unidad tiempo') || text.startsWith('Time Unit') || text.startsWith('Unidade de tempo')) {
                     label.textContent = t.timeUnit;
-                } else if (text.startsWith('Mostrar Líneas') || text.startsWith('Show Lines') || text.startsWith('Mostrar Linhas')) {
+                } else if (text.startsWith('Mostrar Líneas') || text.startsWith('Show Lines') || text.startsWith('Mostrar Linhas') ||
+                           text.startsWith('Unir los puntos') || text.startsWith('Join the points') || text.startsWith('Unir os pontos')) {
                     label.textContent = t.showLines;
                 } else if (text.startsWith('Tipo de Ajuste') || text.startsWith('Fit Type') || text.startsWith('Tipo de Ajuste')) {
                     label.textContent = t.fitType;
@@ -8360,6 +8562,19 @@ basic.forever(function () {
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
+    ↶ DESHACER, HISTORIAL DE VERSIONES Y ESPACIOS DE TRABAJO <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
+    <ul>
+        <li><strong>Deshacer / Rehacer:</strong> <code>Ctrl+Z</code> y <code>Ctrl+Y</code> (o los botones ↶ ↷ de la barra) revierten los cambios en los datos y su procesamiento: puntos borrados o editados, planillas cargadas, variables y gráficas aplicadas, ajustes de curva. No funciona durante la captura.</li>
+        <li><strong>Historial de versiones:</strong> en «Guardar / Retomar ▾» → «Ver versiones anteriores…». Cada pocos minutos se guarda una versión automática en este navegador, y antes de limpiar, abrir otro proyecto o restaurar se guarda una versión de seguridad. También podés guardar una versión con nombre («datos crudos», «ajuste final»…). Desde la lista se restaura cualquiera; lo que tengas abierto se guarda primero como seguridad.</li>
+        <li><strong>Versiones en Google Drive:</strong> si conectaste tu cuenta, la pestaña «En Google Drive» muestra las copias automáticas que Drive guarda del experimento (unos 30 días) y las versiones con nombre, que quedan en la carpeta fisicabit / Versiones.</li>
+        <li><strong>Espacios de trabajo:</strong> la barra sobre las gráficas permite tener varios gráficos independientes dentro del mismo proyecto, cada uno con sus propios datos, variables, gráficas y ajustes. Con <strong>+</strong> creás uno en blanco, ⧉ lo duplica (para procesar los mismos datos de otra forma), ✎ lo renombra y ✕ lo cierra. Todos se guardan juntos en el proyecto.</li>
+        <li><strong>Unir los puntos con una línea:</strong> el botón de la barra de cada gráfica (ícono de puntos y línea) prende o apaga la línea solo en esa gráfica; la casilla general está en Configuración de Gráficas.</li>
+    </ul>
+</div>
+
+<div class="help-accordion-header" onclick="toggleSection(this)">
     📋 TABLA DE DATOS <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
@@ -8957,6 +9172,19 @@ bluetooth.startIOPinService()</pre>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
+    ↶ UNDO, VERSION HISTORY AND WORKSPACES <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
+    <ul>
+        <li><strong>Undo / Redo:</strong> <code>Ctrl+Z</code> and <code>Ctrl+Y</code> (or the ↶ ↷ toolbar buttons) revert changes to the data and its processing: deleted or edited points, loaded tables, applied variables and graphs, curve fits. Not available while capturing.</li>
+        <li><strong>Version history:</strong> in “Guardar / Retomar ▾” → “Ver versiones anteriores…”. Every few minutes an automatic version is saved in this browser, and a safety version is saved before clearing, opening another project or restoring. You can also save a named version (“raw data”, “final fit”…). Any version can be restored from the list; what you have open is saved first as a safety copy.</li>
+        <li><strong>Versions in Google Drive:</strong> if your account is connected, the “In Google Drive” tab shows the automatic copies Drive keeps of the experiment (about 30 days) and the named versions, stored in the fisicabit / Versiones folder.</li>
+        <li><strong>Workspaces:</strong> the bar above the graphs lets you keep several independent graphs within the same project, each with its own data, variables, graphs and fits. <strong>+</strong> creates a blank one, ⧉ duplicates it (to process the same data differently), ✎ renames it and ✕ closes it. They are all saved together in the project.</li>
+        <li><strong>Join the points with a line:</strong> the button on each graph's bar (points-and-line icon) turns the line on or off for that graph only; the general checkbox is in Graph Configuration.</li>
+    </ul>
+</div>
+
+<div class="help-accordion-header" onclick="toggleSection(this)">
     📋 DATA TABLE <span class="help-accordion-arrow">▶</span>
 </div>
 <div class="help-accordion-content collapsed">
@@ -9551,6 +9779,19 @@ bluetooth.startIOPinService()</pre>
         <li><strong>Limpar Seleção:</strong> Desmarca todos os pontos sem eliminá-los</li>
     </ul>
     <p>Clique nos pontos do gráfico para selecioná-los (marcados em vermelho).</p>
+</div>
+
+<div class="help-accordion-header" onclick="toggleSection(this)">
+    ↶ DESFAZER, HISTÓRICO DE VERSÕES E ESPAÇOS DE TRABALHO <span class="help-accordion-arrow">▶</span>
+</div>
+<div class="help-accordion-content collapsed">
+    <ul>
+        <li><strong>Desfazer / Refazer:</strong> <code>Ctrl+Z</code> e <code>Ctrl+Y</code> (ou os botões ↶ ↷ da barra) revertem as alterações nos dados e no seu processamento: pontos apagados ou editados, planilhas carregadas, variáveis e gráficos aplicados, ajustes de curva. Não funciona durante a captura.</li>
+        <li><strong>Histórico de versões:</strong> em «Guardar / Retomar ▾» → «Ver versiones anteriores…». A cada poucos minutos uma versão automática é salva neste navegador, e antes de limpar, abrir outro projeto ou restaurar é salva uma versão de segurança. Você também pode salvar uma versão com nome («dados brutos», «ajuste final»…). Qualquer versão pode ser restaurada na lista; o que estiver aberto é salvo antes como segurança.</li>
+        <li><strong>Versões no Google Drive:</strong> se sua conta estiver conectada, a aba «No Google Drive» mostra as cópias automáticas que o Drive guarda do experimento (uns 30 dias) e as versões com nome, que ficam na pasta fisicabit / Versiones.</li>
+        <li><strong>Espaços de trabalho:</strong> a barra acima dos gráficos permite ter vários gráficos independentes no mesmo projeto, cada um com seus próprios dados, variáveis, gráficos e ajustes. Com <strong>+</strong> você cria um em branco, ⧉ o duplica (para processar os mesmos dados de outra forma), ✎ o renomeia e ✕ o fecha. Todos são salvos juntos no projeto.</li>
+        <li><strong>Unir os pontos com uma linha:</strong> o botão da barra de cada gráfico (ícone de pontos e linha) liga ou desliga a linha só nesse gráfico; a caixa geral está em Configuração de Gráficos.</li>
+    </ul>
 </div>
 
 <div class="help-accordion-header" onclick="toggleSection(this)">
@@ -10604,6 +10845,13 @@ bluetooth.startIOPinService()</pre>
 
         function onTimestampToggle() {
             const checked = document.getElementById('microbitTimestamp').checked;
+            // ¿Cambió realmente el modo (con/sin marca de tiempo)? Solo en ese caso
+            // se reconfiguran los ejes de las gráficas. Antes se reiniciaban SIEMPRE
+            // (también al pulsar APLICAR en variables, al cargar la planilla o al
+            // volver del modo sensor), con lo que una gráfica configurada para la
+            // variable 2 volvía a mostrar la variable 1 y el nombre de la variable
+            // 2 nunca llegaba a los ejes.
+            const modeChanged = (checked !== !!state.microbitTimestamp);
             state.microbitTimestamp = checked;
             const isVarsOnly = !checked;
 
@@ -10618,7 +10866,27 @@ bluetooth.startIOPinService()</pre>
 
             // Auto-configure graphs based on timestamp mode.
             // Respeta etiquetas personalizadas por el usuario (xLabelCustom / yLabelCustom).
-            if (isVarsOnly) {
+            if (!modeChanged) {
+                // Mismo modo: conservar la configuración de cada gráfica (eje X y
+                // variables Y elegidas), saneando índices y regenerando las etiquetas
+                // automáticas con los nombres actuales de las variables.
+                for (let g = 0; g < 3; g++) {
+                    const gg = state.graphs[g];
+                    if (!gg) continue;
+                    if (isVarsOnly && gg.xAxis === 'time') gg.xAxis = 'var0';
+                    if (gg.xAxis !== 'time') {
+                        const xIdx = parseInt(gg.xAxis.replace('var', ''));
+                        if (isNaN(xIdx) || xIdx >= state.numVariables) gg.xAxis = isVarsOnly ? 'var0' : 'time';
+                    }
+                    const xVarIdx = gg.xAxis === 'time' ? -1 : parseInt(gg.xAxis.replace('var', ''));
+                    gg.yVars = (gg.yVars || []).filter(v => v < state.numVariables && !(isVarsOnly && v === xVarIdx && state.numVariables > 1));
+                    if (gg.yVars.length === 0) {
+                        gg.yVars = [(isVarsOnly && xVarIdx === 0 && state.numVariables > 1) ? 1 : 0];
+                    }
+                    if (!gg.xLabelCustom) gg.xLabel = getXAxisLabel(gg.xAxis);
+                    if (!gg.yLabelCustom) gg.yLabel = getYAxisLabel(g);
+                }
+            } else if (isVarsOnly) {
                 for (let g = 0; g < 3; g++) {
                     state.graphs[g].xAxis = 'var0';
                     if (!state.graphs[g].xLabelCustom) {
@@ -10670,7 +10938,9 @@ bluetooth.startIOPinService()</pre>
             }
         }
 
-        function applyVariableConfiguration() {
+        // quiet === true: aplicar sin el cartel de confirmación (lo usan la planilla
+        // de valores, la importación de CSV y el modo sensor, que ya avisan por su cuenta).
+        function applyVariableConfiguration(quiet) {
             const num = parseInt(document.getElementById('numVariables').value);
             state.numVariables = num;
 
@@ -10713,7 +10983,7 @@ bluetooth.startIOPinService()</pre>
             updateIntegralVarOptions();
             updateIntegralGraphOptions();
 
-            uiAlert(tr('alertConfigApplied', {num}));
+            if (quiet !== true) uiAlert(tr('alertConfigApplied', {num}));
         }
 
         // ========== CONFIGURACIÓN DE GRÁFICAS ==========
@@ -10727,8 +10997,44 @@ bluetooth.startIOPinService()</pre>
 
         document.getElementById('showLinesToggle').addEventListener('change', function() {
             state.showLines = this.checked;
+            // La casilla general manda sobre todas las gráficas: borra los
+            // ajustes individuales hechos con el botón de cada gráfica.
+            for (let g = 0; g < state.graphs.length; g++) { if (state.graphs[g]) delete state.graphs[g].showLine; }
             updateAllCharts();
+            for (let g = 0; g < state.numGraphs; g++) _syncLineToggleBtn(g);
         });
+
+        // ¿Esta gráfica une los puntos con una línea? Cada gráfica puede fijar
+        // su propio valor (botón ⌁ de su barra); si no lo fijó, sigue la casilla
+        // general "Mostrar Líneas".
+        function graphShowsLines(index) {
+            const g = state.graphs[index];
+            if (g && typeof g.showLine === 'boolean') return g.showLine;
+            return !!state.showLines;
+        }
+        function _syncLineToggleBtn(index) {
+            const btn = document.getElementById(`lineToggleBtn${index}`);
+            if (!btn) return;
+            const on = graphShowsLines(index);
+            const t = translations[currentLanguage] || {};
+            const tip = on ? (t.tipLinesOn || 'Puntos unidos con línea · clic para mostrar solo los puntos')
+                           : (t.tipLinesOff || 'Solo puntos · clic para unirlos con una línea');
+            btn.classList.toggle('active', on);
+            btn.setAttribute('data-tip', tip);
+            btn.setAttribute('aria-label', tip);
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+        // Botón ⌁ de la barra de cada gráfica: prende/apaga la línea que une los
+        // puntos SOLO en esa gráfica (la casilla general queda como está).
+        function toggleGraphLines(index) {
+            const g = state.graphs[index];
+            if (!g) return;
+            g.showLine = !graphShowsLines(index);
+            const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
+            if (state.isCollecting && chartDatasetsInitialized) initializeChartDatasets();
+            else updateChart(index, timeUnitValue);
+            _syncLineToggleBtn(index);
+        }
 
         document.getElementById('showAxisRolesToggle').addEventListener('change', function() {
             state.showAxisRoles = this.checked;
@@ -11193,6 +11499,20 @@ bluetooth.startIOPinService()</pre>
                 colorInp.setAttribute('aria-label', colorSpan.title);
                 colorSpan.appendChild(colorInp);
 
+                // Al marcar/desmarcar una variable Y, la etiqueta del eje Y del panel
+                // sigue a la selección (salvo que el usuario la haya personalizado).
+                checkbox.addEventListener('change', function () {
+                    const cfg = state.graphs[gIdx];
+                    const yInp = document.getElementById(`graph${graphNum}YLabel`);
+                    if (!cfg || !yInp || cfg.yLabelCustom) return;
+                    const chosen = [];
+                    for (let k = 0; k < state.numVariables; k++) {
+                        const c = document.getElementById(`graph${graphNum}Var${k}`);
+                        if (c && c.checked && state.variables[k]) chosen.push(state.variables[k].name);
+                    }
+                    if (chosen.length) yInp.value = chosen.join(', ');
+                });
+
                 div.appendChild(checkbox);
                 div.appendChild(label);
                 label.appendChild(colorSpan);
@@ -11225,13 +11545,17 @@ bluetooth.startIOPinService()</pre>
             // Guardar configuración de cada gráfica
             for (let g = 0; g < 3; g++) {
                 const graphNum = g + 1;
+                // Etiquetas automáticas ANTES del cambio: si lo que hay en el campo
+                // coincide con ellas, el usuario no las personalizó y deben seguir
+                // al nuevo eje X / a las nuevas variables Y (antes quedaba el nombre
+                // viejo, p. ej. "Variable 1" en una gráfica pasada a la variable 2).
+                const prevAutoX = getXAxisLabel(state.graphs[g].xAxis);
+                const prevAutoY = getYAxisLabel(g);
                 state.graphs[g].xAxis = document.getElementById(`graph${graphNum}XAxis`).value;
 
                 // Leer etiquetas desde la UI; marcar como personalizado si difieren del auto
-                const xLabelInput = document.getElementById(`graph${graphNum}XLabel`).value;
-                const yLabelInput = document.getElementById(`graph${graphNum}YLabel`).value;
-                state.graphs[g].xLabel = xLabelInput;
-                state.graphs[g].yLabel = yLabelInput;
+                let xLabelInput = document.getElementById(`graph${graphNum}XLabel`).value;
+                let yLabelInput = document.getElementById(`graph${graphNum}YLabel`).value;
                 state.graphs[g].title = document.getElementById(`graph${graphNum}TitleInput`).value;
 
                 // Leer flag de título automático
@@ -11252,8 +11576,14 @@ bluetooth.startIOPinService()</pre>
                 // Si coinciden, desmarcar como personalizado (para que vuelvan a auto-actualizarse).
                 const autoX = getXAxisLabel(state.graphs[g].xAxis);
                 const autoY = getYAxisLabel(g);
-                if (xLabelInput === autoX) state.graphs[g].xLabelCustom = false;
-                if (yLabelInput === autoY) state.graphs[g].yLabelCustom = false;
+                const xWasAuto = !xLabelInput.trim() || xLabelInput === prevAutoX || (!state.graphs[g].xLabelCustom && xLabelInput === state.graphs[g].xLabel);
+                const yWasAuto = !yLabelInput.trim() || yLabelInput === prevAutoY || (!state.graphs[g].yLabelCustom && yLabelInput === state.graphs[g].yLabel);
+                if (xWasAuto) { xLabelInput = autoX; document.getElementById(`graph${graphNum}XLabel`).value = autoX; }
+                if (yWasAuto) { yLabelInput = autoY; document.getElementById(`graph${graphNum}YLabel`).value = autoY; }
+                state.graphs[g].xLabel = xLabelInput;
+                state.graphs[g].yLabel = yLabelInput;
+                state.graphs[g].xLabelCustom = (xLabelInput !== autoX);
+                state.graphs[g].yLabelCustom = (yLabelInput !== autoY);
             }
 
             // Limpiar ajuste de curva ya que la configuración cambió
@@ -11304,6 +11634,8 @@ bluetooth.startIOPinService()</pre>
                     <button onclick="zoomChart(${i}, 'out')" data-tip="${_escHtml(t.tipZoomOut || 'Alejar')}" aria-label="${_escHtml(t.tipZoomOut || 'Alejar')}">&minus;</button>
                     <button onclick="fitChartToData(${i})" data-tip="${_escHtml(t.tipFit || 'Encuadrar todos los datos')}" aria-label="${_escHtml(t.tipFit || 'Encuadrar todos los datos')}">⊡</button>
                     <button onclick="resetChartZoom(${i})" data-tip="${_escHtml(t.tipResetZoom || 'Restablecer zoom')}" aria-label="${_escHtml(t.tipResetZoom || 'Restablecer zoom')}">&#8634;</button>
+                    <span class="graph-controls-sep"></span>
+                    <button id="lineToggleBtn${i}" class="line-toggle-btn" onclick="toggleGraphLines(${i})" data-tip="" aria-label=""><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path class="ltb-line" d="M2.5 14.5 L7 8.5 L11 11.5 L17.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="2.5" cy="14.5" r="2" fill="currentColor"/><circle cx="7" cy="8.5" r="2" fill="currentColor"/><circle cx="11" cy="11.5" r="2" fill="currentColor"/><circle cx="17.5" cy="4.5" r="2" fill="currentColor"/></svg></button>
                     <button id="annotBtn${i}" onclick="openGraphAnnotator(${i})" data-tip="${_escHtml(t.tipAnnotate || 'Anotar la gráfica')}" aria-label="${_escHtml(t.tipAnnotate || 'Anotar la gráfica')}">&#9998;</button>
                     <button onclick="saveChartAsImage(${i})" data-tip="${_escHtml(t.tipSave || 'Guardar como imagen')}" aria-label="${_escHtml(t.tipSave || 'Guardar como imagen')}">&#128190;</button>
                 `;
@@ -11355,6 +11687,8 @@ bluetooth.startIOPinService()</pre>
 
                 // Pintar pills de variables (didáctico)
                 updateGraphLegendPills(i);
+                // Estado del botón "unir puntos con línea" de esta gráfica
+                _syncLineToggleBtn(i);
             }
 
             // Restaurar datos si existen
@@ -14170,7 +14504,7 @@ bluetooth.startIOPinService()</pre>
 
         // Crea la configuración de dataset optimizada para streaming
         // Inspirada en Smoothie.js: líneas suavizadas, sin fill, puntos discretos
-        function createStreamingDatasetConfig(varIdx) {
+        function createStreamingDatasetConfig(varIdx, chartIdx) {
             const varDef = state.variables[varIdx] || { color: '#000000', name: `Var ${varIdx + 1}` };
             const color = varDef.color;
             return {
@@ -14183,7 +14517,7 @@ bluetooth.startIOPinService()</pre>
                 borderWidth: 2.5,
                 borderCapStyle: 'round',
                 borderJoinStyle: 'round',
-                showLine: state.showLines,
+                showLine: (typeof chartIdx === 'number') ? graphShowsLines(chartIdx) : state.showLines,
                 tension: 0.35,
                 cubicInterpolationMode: 'monotone',
                 // Puntos reales: marcadores pequeños visibles
@@ -14210,7 +14544,7 @@ bluetooth.startIOPinService()</pre>
                 chart.data.datasets = [];
 
                 for (const varIdx of config.yVars) {
-                    chart.data.datasets.push(createStreamingDatasetConfig(varIdx));
+                    chart.data.datasets.push(createStreamingDatasetConfig(varIdx, chartIdx));
                 }
 
                 // Si ya hay datos previos, rellenar SOLO con la ventana deslizante
@@ -16512,7 +16846,7 @@ bluetooth.startIOPinService()</pre>
                     borderWidth: 2.5,
                     borderCapStyle: 'round',
                     borderJoinStyle: 'round',
-                    showLine: state.showLines,
+                    showLine: graphShowsLines(index),
                     tension: 0.35,
                     cubicInterpolationMode: 'monotone',
                     // Puntos reales con estilización
@@ -16689,7 +17023,7 @@ bluetooth.startIOPinService()</pre>
                         borderWidth: 2,
                         borderDash: dashPattern,
                         borderCapStyle: 'round',
-                        showLine: state.showLines,
+                        showLine: graphShowsLines(index),
                         tension: 0.3,
                         cubicInterpolationMode: 'monotone',
                         pointRadius: 1.8,
@@ -17499,6 +17833,11 @@ bluetooth.startIOPinService()</pre>
             // El multiplicador del eje X solo aplica si hay columna de tiempo
             const xMultWrap = document.getElementById('mtXMultWrap');
             if (xMultWrap) xMultWrap.style.display = hasTime ? 'flex' : 'none';
+            // Sin columna de tiempo el eje X es la primera variable: la fila
+            // "Etiqueta del eje X" (que solo aplica al tiempo) se oculta entera.
+            const xLabelEl = document.getElementById('mtXLabel');
+            const xLabelRow = xLabelEl ? xLabelEl.parentElement : null;
+            if (xLabelRow) xLabelRow.style.display = hasTime ? '' : 'none';
         }
 
         // Añade listeners de paste (CSV/TSV) y navegación con teclado a las celdas
@@ -17683,7 +18022,7 @@ bluetooth.startIOPinService()</pre>
                 const nameField = document.getElementById(`var${i+1}Name`);
                 if (nameField) nameField.value = varNames[i];
             }
-            applyVariableConfiguration();
+            applyVariableConfiguration(true);
 
             // Parse rows
             const imported = [];
@@ -19911,7 +20250,7 @@ bluetooth.startIOPinService()</pre>
                 if (typeof onTimestampToggle === 'function') onTimestampToggle();
             }
 
-            applyVariableConfiguration();
+            applyVariableConfiguration(true);
 
             // Si el CSV incluye una columna de tiempo con un nombre propio (p. ej.
             // "t(s)", "Distancia (m)", "Duración (min)"), usarlo como etiqueta del eje X
@@ -22064,8 +22403,8 @@ bluetooth.startIOPinService()</pre>
                 }
             }
 
-            // Apply config and exit
-            applyVariableConfiguration();
+            // Apply config and exit (sin cartel: ya se vuelve a la vista principal con los datos)
+            applyVariableConfiguration(true);
             updateGraphsDisplay();
             updateDisplay();
             exitSensorMode(true);
@@ -26561,6 +26900,11 @@ bluetooth.startIOPinService()</pre>
         <button class="inf-dd-item" id="sess-cache" style="display:none;"><span class="inf-ic" data-ic="undo"></span><span id="sess-cache-txt">Retomar mi último trabajo</span></button>
         <button class="inf-dd-item" id="sess-openfile"><span class="inf-ic" data-ic="folder"></span>Abrir un trabajo guardado…</button>
         <div class="inf-dd-sep"></div>
+        <div class="inf-dd-group">Historial de versiones</div>
+        <button class="inf-dd-item" id="sess-history"><span class="inf-ic" data-ic="clock"></span><span id="sess-history-txt">Ver versiones anteriores…</span></button>
+        <button class="inf-dd-item" id="sess-save-version"><span class="inf-ic" data-ic="tag"></span>Guardar una versión con nombre…</button>
+        <div class="inf-dd-status inf-hint">Se guardan versiones automáticas en este navegador (y en Drive si estás conectado). Ctrl+Z / Ctrl+Y deshacen y rehacen cambios en los datos.</div>
+        <div class="inf-dd-sep"></div>
         <div class="inf-dd-group">Google Drive · en la nube (opcional)</div>
         <div id="sess-gdrive-disc">
             <button class="inf-dd-item" id="sess-google-connect"><span class="inf-ic" data-ic="cloud"></span>Conectar con Google</button>
@@ -27247,6 +27591,8 @@ bluetooth.startIOPinService()</pre>
         'cloud': '<polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>',
         'save': '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
         'folder': '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+        'clock': '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+        'tag': '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>',
         'archive': '<polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>',
         'trash': '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
         'file': '<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>',
@@ -29353,7 +29699,10 @@ bluetooth.startIOPinService()</pre>
         return f;
       }
 
-      function serialize() {
+      // Estado de DATOS del espacio de trabajo activo (datos, variables, gráficas,
+      // ajustes, conjuntos extra, fotos). Lo usan el autoguardado, el historial de
+      // versiones, deshacer/rehacer y los espacios de trabajo.
+      function serializeApp() {
         var st = state;
         var app = {
           rawData: st.rawData || [],
@@ -29367,6 +29716,13 @@ bluetooth.startIOPinService()</pre>
           sensorPhotos: st.sensorPhotos || [], extraDataSets: st.extraDataSets || [],
           timeUnit: (el('timeUnit') || {}).value
         };
+        return app;
+      }
+      function serialize() {
+        var app = serializeApp();
+        // Espacios de trabajo: los demás espacios (inactivos) viajan dentro del proyecto.
+        var WS = window.FbitWorkspaces;
+        if (WS && WS.exportForProject) { try { Object.assign(app, WS.exportForProject()); } catch (e) {} }
         var report = {
           meta: I.meta, notes: I.notesText, drawing: I.drawingDataURL(),
           devicePhotos: I.devicePhotos, selected: I.selected,
@@ -29377,9 +29733,10 @@ bluetooth.startIOPinService()</pre>
 
       function setInputVal(id, v) { var e = el(id); if (e != null && v != null && v !== undefined) e.value = v; }
 
-      function restore(blob) {
-        if (!blob || !blob.app) { toast('Proyecto vacío o inválido.'); return; }
-        var a = blob.app, st = state;
+      // Restaura SOLO el estado de datos (ver serializeApp) y reconstruye la interfaz.
+      function restoreApp(a) {
+        if (!a) return;
+        var st = state;
         try {
           if (Array.isArray(a.rawData)) st.rawData = a.rawData;
           st.selectedPoints = new Set(a.selectedPoints || []);
@@ -29402,7 +29759,11 @@ bluetooth.startIOPinService()</pre>
           setInputVal('timeUnit', a.timeUnit);
           setInputVal('numVariables', String(st.numVariables));
           setInputVal('numGraphs', String(st.numGraphs));
+          // Mostrar/ocultar las tarjetas de variables y gráficas según la cantidad restaurada
+          ['numVariables', 'numGraphs'].forEach(function (id) { var sel = el(id); if (sel) { try { sel.dispatchEvent(new Event('change')); } catch (e) {} } });
           var mt = el('microbitTimestamp'); if (mt && typeof st.microbitTimestamp === 'boolean') mt.checked = st.microbitTimestamp;
+          // Controles que dependen del modo con/sin marca de tiempo (misma configuración: no reinicia las gráficas)
+          if (fn('onTimestampToggle')) { try { onTimestampToggle(); } catch (e) {} }
           var spk = el('spikeFilter'); if (spk && typeof st.spikeFilter === 'boolean') spk.checked = st.spikeFilter;
           for (var v = 0; v < 3; v++) {
             var nmEl = el('var' + (v + 1) + 'Name'); if (nmEl && st.variables[v]) nmEl.value = st.variables[v].name;
@@ -29429,11 +29790,22 @@ bluetooth.startIOPinService()</pre>
             var fp = el('fitPoints'); if (fp) fp.textContent = st.fitResult.dataPoints || (st.rawData || []).length;
           }
           if (fn('updateCurveFitButtons')) updateCurveFitButtons();
-          if (st.segmentFits && st.segmentFits.length && fn('renderSegmentFitResults')) renderSegmentFitResults();
+          if (fn('renderSegmentFitResults')) renderSegmentFitResults();
+          if (fn('_renderExtraDataSetsPanel')) _renderExtraDataSetsPanel();
+          if (fn('clearIntegralResultUI')) clearIntegralResultUI();
+          if (fn('updateDebugButtons')) updateDebugButtons();
         } catch (e) {
           // Un problema al redibujar la interfaz de datos no debe impedir recuperar el informe escrito.
           console.error('[INFORME] Error reconstruyendo la interfaz de datos:', e);
         }
+      }
+      function restore(blob) {
+        if (!blob || !blob.app) { toast('Proyecto vacío o inválido.'); return; }
+        var a = blob.app;
+        // Primero los espacios de trabajo (así el activo queda en «state») y luego el estado de datos.
+        var WS = window.FbitWorkspaces;
+        if (WS && WS.importFromProject) { try { WS.importFromProject(a); } catch (e) { console.error('[INFORME] espacios de trabajo:', e); } }
+        restoreApp(a);
         try {
           // Restaurar el informe
           var rep = blob.report || {};
@@ -29478,14 +29850,17 @@ bluetooth.startIOPinService()</pre>
           (st.segmentFits || []).length, (st.sensorPhotos || []).length,
           I.meta.title, I.meta.student, I.meta.course, I.meta.institution, I.meta.date,
           I.notesText.length, (I.drawingData ? I.drawingData.length : 0), I.devicePhotos.length,
-          JSON.stringify(I.selected), JSON.stringify(I.imgOpts), JSON.stringify(I.sections), JSON.stringify(I.doc)].join('|');
+          JSON.stringify(I.selected), JSON.stringify(I.imgOpts), JSON.stringify(I.sections), JSON.stringify(I.doc),
+          (window.FbitWorkspaces && window.FbitWorkspaces.sig) ? window.FbitWorkspaces.sig() : ''].join('|');
       }
       async function autosaveNow() {
         var st = state || {};
         var has = (st.rawData && st.rawData.length) || I.notesText.trim() || I.hasDrawing() || I.devicePhotos.length || (I.meta.title || I.meta.student);
         if (!has) return;
+        var blob = null;
         try {
-          await idbSet(AUTOSAVE_KEY, serialize());
+          blob = serialize();
+          await idbSet(AUTOSAVE_KEY, blob);
           setStatus('Autoguardado ✓ · ' + timeAgoStr(Date.now()));
         } catch (e) {
           // Respaldo en localStorage sin imágenes pesadas (evita superar la cuota)
@@ -29501,6 +29876,8 @@ bluetooth.startIOPinService()</pre>
           }
         }
         _lastSavedAt = Date.now();
+        // Historial de versiones local (automático): recibe el mismo proyecto ya serializado.
+        if (I.onAutosaved) { try { I.onAutosaved(blob || serialize()); } catch (e) {} }
         gSyncPush(false);   // además, subir toda la sesión a Google Drive si está conectado
       }
       function schedule() { if (saveTimer) clearTimeout(saveTimer); saveTimer = setTimeout(function () { lastSig = sig(); autosaveNow(); }, 1500); }
@@ -29528,7 +29905,7 @@ bluetooth.startIOPinService()</pre>
       }
       function restoreFromCache() {
         if (!_cachedBlob) { toast('No hay trabajo guardado en este navegador.'); return; }
-        var go = function () { track('retomar_cache', 'guardar'); closeSessionMenu(); restore(_cachedBlob); _lastSavedAt = _cachedAt || Date.now(); toast('Tu último trabajo fue restaurado ✓'); schedule(); };
+        var go = function () { track('retomar_cache', 'guardar'); closeSessionMenu(); beforeReplace('Antes de retomar el último trabajo'); restore(_cachedBlob); _lastSavedAt = _cachedAt || Date.now(); toast('Tu último trabajo fue restaurado ✓'); schedule(); };
         if (_sessionHasContent()) uiConfirm('Esto reemplazará lo que tenés abierto ahora.\n\n¿Retomar tu último trabajo guardado en este navegador?').then(function (ok) { if (ok) go(); });
         else go();
       }
@@ -29547,7 +29924,7 @@ bluetooth.startIOPinService()</pre>
       }
       function applyOpenedBlob(blob, fromZip) {
         if (!blob || !blob.app) { toast('El archivo no es un proyecto de fisicabit.'); return; }
-        var go = function () { restore(blob); toast(fromZip ? 'Proyecto abierto desde ZIP ✓' : 'Proyecto abierto ✓'); schedule(); };
+        var go = function () { beforeReplace('Antes de abrir otro proyecto'); restore(blob); toast(fromZip ? 'Proyecto abierto desde ZIP ✓' : 'Proyecto abierto ✓'); schedule(); };
         if ((state.rawData || []).length) uiConfirm('Abrir este proyecto reemplazará los datos actuales. ¿Continuar?').then(function (ok) { if (ok) go(); });
         else go();
       }
@@ -29834,7 +30211,7 @@ bluetooth.startIOPinService()</pre>
           try { blob = JSON.parse(txt); } catch (er) { toast('El proyecto de Drive está dañado.'); return; }
           var modal = el('inf-drive-modal'); if (modal) modal.classList.remove('open');
           _gSessionFileId = fileId; _gSessionName = fileName || null;
-          applyOpenedBlob(blob, false);
+          applyOpenedBlob(blob, false);   // (guarda una versión local «Antes de abrir otro proyecto» si había algo abierto)
           _gSyncOn = true; updateProjectBadge(); gUpdateDriveUI();
         } catch (e) { console.error(e); toast('No se pudo abrir el proyecto de Drive.'); }
       }
@@ -29922,7 +30299,7 @@ bluetooth.startIOPinService()</pre>
         var n = ((cloud.app && cloud.app.rawData) || []).length;
         var msg = 'Tu último experimento en Google Drive es «' + nm + '»' + (savedAt ? (' (' + timeAgoStr(savedAt) + ')') : '') + (n ? (' · ' + n + ' puntos') : '') + '. ¿Retomarlo?';
         var enable = function () { _gSyncOn = true; gUpdateDriveUI(); };
-        var doResume = function () { _gSessionFileId = f.id; _gSessionName = f.name; restore(cloud); _lastSavedAt = savedAt; enable(); updateProjectBadge(); toast('«' + nm + '» restaurado de Drive ✓'); };
+        var doResume = function () { _gSessionFileId = f.id; _gSessionName = f.name; beforeReplace('Antes de retomar desde Drive'); restore(cloud); _lastSavedAt = savedAt; enable(); updateProjectBadge(); toast('«' + nm + '» restaurado de Drive ✓'); };
         var banner = el('inf-restore');
         if (!banner) { if (await uiConfirm(msg)) doResume(); else enable(); return; }
         el('inf-restore-msg').textContent = msg; banner.classList.add('show');
@@ -29965,8 +30342,24 @@ bluetooth.startIOPinService()</pre>
       I.renameExperiment = renameExperiment;
       I.buildDocxBlob = buildDocxBlob;
       I.serialize = serialize; I.restore = restore; I.applyTemplate = applyTemplate; I.openPreview = openPreview;
+      // Puente para los módulos de historial de versiones, deshacer/rehacer y espacios de trabajo.
+      I.serializeApp = serializeApp; I.restoreApp = restoreApp;
+      I.scheduleSave = schedule; I.autosaveNow = autosaveNow; I.sessionHasContent = _sessionHasContent;
+      I.toast = toast; I.timeAgoStr = timeAgoStr; I.closeSessionMenu = closeSessionMenu; I.projectName = gProjectDisplayName;
+      I.drive = {
+        configured: gConfigured, connected: gConnected, ensureToken: gEnsureToken, connect: gConnect, api: gApi,
+        fileId: function () { return _gSessionFileId; }, fileName: gProjectFileName, projectName: gProjectDisplayName,
+        folderId: gGetFolderId, writeProject: gWriteProject, uploadBlob: gUploadBlob,
+        markSynced: function () { _gSyncOn = true; _gLastPush = Date.now(); gSetSyncStatus(); updateProjectBadge(); gUpdateDriveUI(); }
+      };
       // Limpia toda la sesión en memoria (opcionalmente con un título nuevo). No toca la conexión de Drive.
+      // Guarda una versión local «de seguridad» antes de reemplazar/limpiar lo abierto (si hay algo).
+      function beforeReplace(label) {
+        try { if (_sessionHasContent() && window.FbitHistorial && window.FbitHistorial.saveSafety) window.FbitHistorial.saveSafety(label, serialize()); } catch (e) {}
+      }
       function _clearSession(newTitle) {
+        beforeReplace(newTitle ? 'Antes de empezar «' + newTitle + '»' : 'Antes de reiniciar todo');
+        if (window.FbitWorkspaces && window.FbitWorkspaces.reset) { try { window.FbitWorkspaces.reset(); } catch (e) {} }
         var st = state;
         st.rawData = [];
         if (st.selectedPoints && st.selectedPoints.clear) st.selectedPoints.clear();
@@ -30045,6 +30438,9 @@ bluetooth.startIOPinService()</pre>
         if (el('sess-openfile')) el('sess-openfile').addEventListener('click', function () { var i = el('sess-open-input'); if (i) i.click(); });
         if (el('sess-open-input')) el('sess-open-input').addEventListener('change', function (e) { if (e.target.files && e.target.files[0]) openProjectFile(e.target.files[0]); e.target.value = ''; closeSessionMenu(); });
         if (el('sess-google-connect')) el('sess-google-connect').addEventListener('click', driveConnect);
+        // Historial de versiones (módulo FbitHistorial)
+        if (el('sess-history')) el('sess-history').addEventListener('click', function () { closeSessionMenu(); if (window.FbitHistorial) window.FbitHistorial.openModal(); });
+        if (el('sess-save-version')) el('sess-save-version').addEventListener('click', function () { closeSessionMenu(); if (window.FbitHistorial) window.FbitHistorial.saveNamed(); });
         // Google Drive (dentro del menú, cuando estás conectado)
         if (el('inf-gdrive-save')) el('inf-gdrive-save').addEventListener('click', gSaveToDrive);
         if (el('inf-gdrive-open')) el('inf-gdrive-open').addEventListener('click', gOpenFromDrive);
@@ -30167,6 +30563,658 @@ bluetooth.startIOPinService()</pre>
 
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
       else init();
+    })();
+    </script>
+    <style id="hist-style">
+        /* ===== Espacios de trabajo (barra de pestañas sobre las gráficas) ===== */
+        .ws-bar { display:flex; align-items:center; gap:6px; margin:0 0 10px; padding:0 0 8px; border-bottom:2px solid #000; min-height:34px; }
+        .ws-bar-label { font-size:0.62rem; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:#555; white-space:nowrap; margin-right:2px; }
+        .ws-tabs { display:flex; gap:4px; overflow-x:auto; flex:1; min-width:0; scrollbar-width:thin; padding:2px 0; }
+        .ws-tab { display:inline-flex; align-items:center; gap:6px; background:#fff; border:2px solid #000; padding:4px 10px; font-size:0.74rem; font-weight:700; cursor:pointer; white-space:nowrap; font-family:inherit; color:#000; max-width:260px; }
+        .ws-tab:hover { background:#f0f0f0; }
+        .ws-tab.active { background:#000; color:#fff; }
+        .ws-tab .ws-tab-name { overflow:hidden; text-overflow:ellipsis; }
+        .ws-tab .ws-tab-n { font-weight:500; font-size:0.64rem; opacity:0.75; }
+        .ws-tab .ws-tab-tools { display:none; gap:2px; margin-left:2px; }
+        .ws-tab.active .ws-tab-tools { display:inline-flex; }
+        .ws-tab .ws-tab-tools span { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border:1px solid rgba(255,255,255,0.55); font-size:0.68rem; line-height:1; border-radius:2px; }
+        .ws-tab .ws-tab-tools span:hover { background:#fff; color:#000; }
+        .ws-add { background:#fff; border:2px solid #000; width:30px; height:30px; font-size:1.05rem; font-weight:800; cursor:pointer; line-height:1; flex-shrink:0; font-family:inherit; }
+        .ws-add:hover { background:#000; color:#fff; }
+        .ws-hint { font-size:0.64rem; color:#777; white-space:nowrap; }
+        @media (max-width: 900px) { .ws-bar-label, .ws-hint { display:none; } .ws-tab { padding:4px 8px; } }
+
+        /* ===== Botones deshacer / rehacer de la barra superior ===== */
+        #undoBtn, #redoBtn { font-size:0.95rem; line-height:1; padding-left:8px; padding-right:8px; }
+
+        /* ===== Modal de historial de versiones ===== */
+        .hist-modal { display:none; position:fixed; inset:0; z-index:9730; background:rgba(0,0,0,.5); align-items:center; justify-content:center; padding:16px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+        .hist-modal.open { display:flex; }
+        .hist-box { background:#fff; color:#000; border:2px solid #000; width:640px; max-width:100%; max-height:86vh; display:flex; flex-direction:column; overflow:hidden; }
+        .hist-head { display:flex; align-items:center; gap:10px; padding:10px 14px; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:11.5px; border-bottom:2px solid #000; }
+        .hist-head .hist-x { margin-left:auto; background:transparent; border:none; font-size:16px; cursor:pointer; line-height:1; color:#000; }
+        .hist-head .hist-x:hover { background:#000; color:#fff; }
+        .hist-tabs { display:flex; border-bottom:1px solid #ccc; }
+        .hist-tab { flex:1; background:#fff; border:none; border-bottom:3px solid transparent; padding:9px 8px; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; cursor:pointer; color:#555; font-family:inherit; }
+        .hist-tab.active { color:#000; border-bottom-color:#000; }
+        .hist-tab:hover { background:#f3f3f3; }
+        .hist-actions { display:flex; gap:8px; flex-wrap:wrap; padding:10px 14px; border-bottom:1px solid #e3e3e3; align-items:center; }
+        .hist-btn { background:#fff; border:2px solid #000; color:#000; padding:6px 12px; font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; cursor:pointer; font-family:inherit; }
+        .hist-btn:hover:not(:disabled) { background:#000; color:#fff; }
+        .hist-btn:disabled { opacity:.35; cursor:not-allowed; }
+        .hist-btn.danger { border-color:#b71c1c; color:#b71c1c; }
+        .hist-btn.danger:hover:not(:disabled) { background:#b71c1c; color:#fff; }
+        .hist-note { font-size:11px; color:#666; padding:0 14px 8px; line-height:1.4; }
+        .hist-list { overflow-y:auto; padding:6px; flex:1; }
+        .hist-row { display:flex; align-items:center; gap:10px; padding:9px 10px; border-bottom:1px solid #e3e3e3; }
+        .hist-row:last-child { border-bottom:none; }
+        .hist-info { flex:1; min-width:0; }
+        .hist-when { font-size:12.5px; font-weight:700; }
+        .hist-what { font-size:11px; color:#444; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .hist-kind { display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:1px; text-transform:uppercase; padding:1px 6px; border:1px solid #000; margin-right:6px; }
+        .hist-kind.auto { border-color:#999; color:#666; }
+        .hist-kind.named { background:#000; color:#fff; }
+        .hist-kind.safety { border-color:#8a6d1f; color:#8a6d1f; }
+        .hist-kind.drive { border-color:#1f9d55; color:#1f9d55; }
+        .hist-empty { color:#777; text-align:center; padding:26px 12px; font-size:12.5px; }
+        .hist-row .hist-btn { padding:5px 10px; }
+    </style>
+    <script>
+    /* =========================================================================
+       HISTORIAL DE VERSIONES + DESHACER/REHACER + ESPACIOS DE TRABAJO
+       -------------------------------------------------------------------------
+       · FbitHistorial: pila de deshacer/rehacer (Ctrl+Z / Ctrl+Y) sobre los
+         DATOS y su procesamiento (puntos, variables, gráficas, ajustes,
+         conjuntos extra), versiones guardadas en este navegador (IndexedDB:
+         automáticas, de seguridad y con nombre) y versiones en Google Drive
+         (las revisiones que Drive guarda solas del archivo del experimento +
+         versiones con nombre en la carpeta fisicabit / Versiones).
+       · FbitWorkspaces: varios espacios de trabajo independientes (cada uno con
+         sus datos, variables, gráficas y ajustes) dentro del mismo proyecto,
+         con una barra de pestañas sobre las gráficas.
+       Se apoya en Informe.serializeApp / Informe.restoreApp (estado de datos).
+       ========================================================================= */
+    (function () {
+      'use strict';
+      function el(id) { return document.getElementById(id); }
+      function INF() { return window.Informe || null; }
+      function toast(m) { var I = INF(); if (I && I.toast) I.toast(m); else console.log(m); }
+      function T(key, fallback) {
+        try { var t = translations[currentLanguage]; if (t && t[key]) return t[key]; } catch (e) {}
+        return fallback;
+      }
+      function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+      function deepCopy(o) { try { return (typeof structuredClone === 'function') ? structuredClone(o) : JSON.parse(JSON.stringify(o)); } catch (e) { return JSON.parse(JSON.stringify(o)); } }
+      function fmtDate(ts) { try { var d = new Date(ts); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+      function fmtSize(n) { if (!n && n !== 0) return ''; if (n < 1024) return n + ' B'; if (n < 1048576) return (n / 1024).toFixed(0) + ' KB'; return (n / 1048576).toFixed(1) + ' MB'; }
+      function capturing() { try { return !!state.isCollecting; } catch (e) { return false; } }
+      // ¿Hay otro panel/modo a pantalla completa capturando el teclado?
+      function overlayOpen() {
+        return !!(document.querySelector('.vm-panel.open, .mapeo-panel.open, .informe-panel.open, .s3d-panel.open, .trk-panel.open, .mk-panel.open, .gan-panel.open, .mapeo-modal.open, .inf-drive-modal.open, .inf-dialog.open, .hist-modal.open') ||
+          (el('experimentMode') && el('experimentMode').classList.contains('active')) ||
+          (el('sensorMode') && el('sensorMode').classList.contains('active')) ||
+          (el('smFrameViewer') && el('smFrameViewer').classList.contains('active')) ||
+          document.querySelector('.modal-overlay.active, .modal.active'));
+      }
+
+      /* ======================= ESPACIOS DE TRABAJO ======================= */
+      var WS = { list: [], active: null, saved: {}, seq: 1 };
+      function wsId() { return 'ws_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+      function wsDefaultName(n) { return (T('wsDefaultName', 'Espacio {n}')).replace('{n}', n); }
+      function wsFind(id) { for (var i = 0; i < WS.list.length; i++) if (WS.list[i].id === id) return WS.list[i]; return null; }
+      function wsPoints(w) {
+        if (w.id === WS.active) { try { return (state.rawData || []).length; } catch (e) { return 0; } }
+        var s = WS.saved[w.id]; return s && s.rawData ? s.rawData.length : 0;
+      }
+      function wsEnsure() {
+        if (!WS.list.length) { var id = wsId(); WS.list = [{ id: id, name: wsDefaultName(1) }]; WS.active = id; WS.saved = {}; WS.seq = 1; }
+        if (!wsFind(WS.active)) WS.active = WS.list[0].id;
+      }
+      // Estado de datos «en blanco» para un espacio nuevo: conserva las preferencias
+      // generales (unidad de tiempo, formato numérico, marca de tiempo) pero sin datos.
+      var _defaultApp = null;
+      function captureDefault() { var I = INF(); if (!_defaultApp && I && I.serializeApp) { try { _defaultApp = JSON.stringify(I.serializeApp()); } catch (e) {} } }
+      function freshApp() {
+        var a = _defaultApp ? JSON.parse(_defaultApp) : {};
+        a.rawData = []; a.selectedPoints = []; a.fitResult = null; a.segmentFits = []; a.sensorPhotos = []; a.extraDataSets = []; a.timeZeroOffset = 0;
+        try {
+          a.numberFormat = deepCopy(state.numberFormat); a.microbitTimestamp = !!state.microbitTimestamp;
+          a.showLines = !!state.showLines; a.spikeFilter = !!state.spikeFilter; a.timeUnit = (el('timeUnit') || {}).value;
+          if (Array.isArray(a.graphs)) a.graphs.forEach(function (g) { if (g) { delete g.showLine; g.annotations = []; g.xLabelCustom = false; g.yLabelCustom = false; g.autoTitle = true; } });
+        } catch (e) {}
+        return a;
+      }
+      function relabelAuto() {
+        try {
+          for (var g = 0; g < state.graphs.length; g++) {
+            var gg = state.graphs[g]; if (!gg) continue;
+            if (!gg.xLabelCustom && typeof getXAxisLabel === 'function') gg.xLabel = getXAxisLabel(gg.xAxis);
+            if (!gg.yLabelCustom && typeof getYAxisLabel === 'function') gg.yLabel = getYAxisLabel(g);
+            var xi = el('graph' + (g + 1) + 'XLabel'); if (xi) xi.value = gg.xLabel || '';
+            var yi = el('graph' + (g + 1) + 'YLabel'); if (yi) yi.value = gg.yLabel || '';
+          }
+          if (typeof syncChartLabelsAndTitles === 'function') syncChartLabelsAndTitles();
+        } catch (e) {}
+      }
+      function wsSaveActive() { var I = INF(); if (!I || !I.serializeApp || !WS.active) return; WS.saved[WS.active] = deepCopy(I.serializeApp()); }
+      function wsApply(app) {
+        var I = INF(); if (!I || !I.restoreApp) return;
+        I.restoreApp(app);
+        if (typeof updateDisplay === 'function') updateDisplay();
+      }
+      function wsAfterChange() {
+        wsRender();
+        H.setContext(WS.active);
+        var I = INF(); if (I && I.scheduleSave) I.scheduleSave();
+      }
+      function wsSwitch(id) {
+        if (!wsFind(id) || id === WS.active) return;
+        if (capturing()) { toast(T('wsStopCapture', 'Detené la captura antes de cambiar de espacio de trabajo.')); return; }
+        wsSaveActive();
+        var target = WS.saved[id]; delete WS.saved[id];
+        WS.active = id;
+        wsApply(target || freshApp());
+        wsAfterChange();
+      }
+      function wsAdd(fromCopy) {
+        if (capturing()) { toast(T('wsStopCapture', 'Detené la captura antes de cambiar de espacio de trabajo.')); return; }
+        var I = INF(); if (!I) return;
+        wsSaveActive();
+        var id = wsId(); WS.seq = WS.list.length + 1;
+        var cur = wsFind(WS.active);
+        var name = fromCopy && cur ? (cur.name + ' ' + T('wsCopySuffix', '(copia)')) : wsDefaultName(WS.seq);
+        WS.list.push({ id: id, name: name });
+        WS.active = id;
+        wsApply(fromCopy ? deepCopy(WS.saved[cur.id]) : freshApp());
+        if (!fromCopy) relabelAuto();
+        wsAfterChange();
+        toast(fromCopy ? T('wsDuplicated', 'Espacio duplicado ✓') : T('wsCreated', 'Nuevo espacio de trabajo en blanco ✓'));
+      }
+      function wsRename(id) {
+        var w = wsFind(id); if (!w) return;
+        var ask = (window.uiPrompt || function (m, d) { return Promise.resolve(window.prompt(m, d)); });
+        ask(T('wsRenamePrompt', 'Nombre de este espacio de trabajo:'), w.name).then(function (nm) {
+          if (nm === null || nm === undefined) return;
+          nm = String(nm).trim(); if (!nm) return;
+          w.name = nm; wsAfterChange();
+        });
+      }
+      function wsDelete(id) {
+        var w = wsFind(id); if (!w || WS.list.length <= 1) return;
+        if (capturing()) { toast(T('wsStopCapture', 'Detené la captura antes de cambiar de espacio de trabajo.')); return; }
+        var pts = wsPoints(w);
+        var ask = (window.uiConfirm || function (m) { return Promise.resolve(window.confirm(m)); });
+        var msg = T('wsDeleteConfirm', '¿Cerrar el espacio «{name}»? Se borran sus {n} puntos y sus gráficas (podés recuperarlos con Deshacer o desde el historial de versiones).').replace('{name}', w.name).replace('{n}', pts);
+        ask(msg).then(function (ok) {
+          if (!ok) return;
+          var idx = WS.list.indexOf(w);
+          if (id === WS.active) {
+            H.push('ws-delete');
+            var I = INF(); if (I && I.serialize && pts > 0 && window.FbitHistorial) { try { window.FbitHistorial.saveSafety(T('wsSafetyBeforeClose', 'Antes de cerrar el espacio') + ' «' + w.name + '»', I.serialize()); } catch (e) {} }
+            WS.list.splice(idx, 1);
+            var next = WS.list[Math.max(0, idx - 1)];
+            WS.active = next.id;
+            var target = WS.saved[next.id]; delete WS.saved[next.id];
+            wsApply(target || freshApp());
+          } else {
+            WS.list.splice(idx, 1); delete WS.saved[id];
+          }
+          H.dropContext(id);
+          wsAfterChange();
+        });
+      }
+      function wsBarEl() {
+        var bar = el('wsBar');
+        if (bar) return bar;
+        var panel = document.querySelector('.graph-panel');
+        if (!panel) return null;
+        bar = document.createElement('div'); bar.className = 'ws-bar'; bar.id = 'wsBar';
+        panel.insertBefore(bar, panel.firstChild);
+        bar.addEventListener('click', function (e) {
+          var t = e.target;
+          var tool = t.closest && t.closest('[data-ws-tool]');
+          if (tool) { e.stopPropagation(); var act = tool.getAttribute('data-ws-tool'), wid = tool.getAttribute('data-ws-id'); if (act === 'rename') wsRename(wid); else if (act === 'dup') wsAdd(true); else if (act === 'close') wsDelete(wid); return; }
+          var tab = t.closest && t.closest('.ws-tab');
+          if (tab) { wsSwitch(tab.getAttribute('data-ws-id')); return; }
+          if (t.closest && t.closest('.ws-add')) wsAdd(false);
+        });
+        bar.addEventListener('dblclick', function (e) { var tab = e.target.closest && e.target.closest('.ws-tab'); if (tab && tab.getAttribute('data-ws-id') === WS.active) wsRename(WS.active); });
+        return bar;
+      }
+      function wsRender() {
+        wsEnsure();
+        var bar = wsBarEl(); if (!bar) return;
+        var html = '<span class="ws-bar-label">' + esc(T('wsLabel', 'Espacios de trabajo')) + '</span><div class="ws-tabs">';
+        WS.list.forEach(function (w) {
+          var act = w.id === WS.active, n = wsPoints(w);
+          html += '<button type="button" class="ws-tab' + (act ? ' active' : '') + '" data-ws-id="' + esc(w.id) + '" title="' + esc(act ? T('wsTipActive', 'Espacio activo · doble clic para renombrar') : T('wsTipSwitch', 'Cambiar a este espacio de trabajo')) + '">' +
+            '<span class="ws-tab-name">' + esc(w.name) + '</span><span class="ws-tab-n">' + n + ' pts</span>';
+          if (act) {
+            html += '<span class="ws-tab-tools">' +
+              '<span data-ws-tool="rename" data-ws-id="' + esc(w.id) + '" title="' + esc(T('wsRename', 'Renombrar')) + '">✎</span>' +
+              '<span data-ws-tool="dup" data-ws-id="' + esc(w.id) + '" title="' + esc(T('wsDuplicate', 'Duplicar este espacio (copia los datos para procesarlos de otra forma)')) + '">⧉</span>' +
+              (WS.list.length > 1 ? '<span data-ws-tool="close" data-ws-id="' + esc(w.id) + '" title="' + esc(T('wsDelete', 'Cerrar este espacio')) + '">✕</span>' : '') +
+              '</span>';
+          }
+          html += '</button>';
+        });
+        html += '</div><button type="button" class="ws-add" title="' + esc(T('wsNewTip', 'Nuevo espacio de trabajo: otro gráfico con sus propios datos, variables y ajustes')) + '">+</button>' +
+          '<span class="ws-hint">' + esc(T('wsHint', 'cada espacio tiene sus propios datos y gráficas')) + '</span>';
+        bar.innerHTML = html;
+      }
+      function wsRefreshCounts() {
+        var bar = el('wsBar'); if (!bar) return;
+        WS.list.forEach(function (w) { var t = bar.querySelector('.ws-tab[data-ws-id="' + w.id + '"] .ws-tab-n'); if (t) t.textContent = wsPoints(w) + ' pts'; });
+      }
+      window.FbitWorkspaces = {
+        list: function () { return WS.list.slice(); },
+        activeId: function () { return WS.active; },
+        activeName: function () { var w = wsFind(WS.active); return w ? w.name : ''; },
+        add: function () { wsAdd(false); }, duplicate: function () { wsAdd(true); },
+        switchTo: wsSwitch, rename: wsRename, remove: wsDelete,
+        render: wsRender, refreshCounts: wsRefreshCounts,
+        sig: function () { return WS.list.map(function (w) { return w.id + ':' + w.name; }).join(',') + '|' + WS.active; },
+        // Para el proyecto guardado: los espacios inactivos con su estado, y cuál está activo.
+        exportForProject: function () {
+          wsEnsure();
+          return {
+            activeWorkspaceId: WS.active,
+            workspaces: WS.list.map(function (w) { return { id: w.id, name: w.name, app: (w.id === WS.active) ? null : (WS.saved[w.id] || null) }; })
+          };
+        },
+        // Al abrir un proyecto: reconstruye las pestañas (los proyectos viejos no traen «workspaces»).
+        importFromProject: function (a) {
+          if (a && Array.isArray(a.workspaces) && a.workspaces.length) {
+            WS.list = a.workspaces.map(function (w) { return { id: w.id || wsId(), name: w.name || wsDefaultName(1) }; });
+            WS.saved = {};
+            a.workspaces.forEach(function (w, i) { if (w.app) WS.saved[WS.list[i].id] = deepCopy(w.app); });
+            WS.active = a.activeWorkspaceId && wsFind(a.activeWorkspaceId) ? a.activeWorkspaceId : WS.list[0].id;
+            delete WS.saved[WS.active];
+          } else {
+            var id = wsId(); WS.list = [{ id: id, name: wsDefaultName(1) }]; WS.active = id; WS.saved = {};
+          }
+          WS.seq = WS.list.length;
+          H.resetAll(); H.setContext(WS.active);
+          wsRender();
+        },
+        reset: function () { var id = wsId(); WS.list = [{ id: id, name: wsDefaultName(1) }]; WS.active = id; WS.saved = {}; WS.seq = 1; H.resetAll(); H.setContext(id); wsRender(); }
+      };
+
+      /* ======================= DESHACER / REHACER ======================= */
+      var H = { stacks: {}, cur: null, MAX: 40, MAX_CHARS: 60 * 1024 * 1024, _depth: 0 };
+      function stk() { var k = H.cur || '_'; return H.stacks[k] || (H.stacks[k] = { undo: [], redo: [] }); }
+      function snap() { var I = INF(); return (I && I.serializeApp) ? JSON.stringify(I.serializeApp()) : null; }
+      function trim(s) {
+        while (s.undo.length > H.MAX) s.undo.shift();
+        var total = 0; for (var i = 0; i < s.undo.length; i++) total += s.undo[i].s.length;
+        while (s.undo.length > 1 && total > H.MAX_CHARS) total -= s.undo.shift().s.length;
+      }
+      H.push = function (label) {
+        if (capturing()) return;
+        var s = snap(); if (!s) return;
+        var st = stk();
+        if (st.undo.length && st.undo[st.undo.length - 1].s === s) return;
+        st.undo.push({ s: s, label: label || '', t: Date.now() });
+        st.redo.length = 0;
+        trim(st);
+        updateUndoButtons();
+      };
+      function applySnap(s) {
+        var I = INF(); if (!I || !I.restoreApp) return;
+        I.restoreApp(JSON.parse(s));
+        if (typeof updateDisplay === 'function') updateDisplay();
+        wsRefreshCounts();
+        if (I.scheduleSave) I.scheduleSave();
+      }
+      H.undo = function () {
+        if (capturing()) { toast(T('undoWhileCapturing', 'No se puede deshacer durante la captura.')); return; }
+        var st = stk(), cur = snap(); if (!cur) return;
+        var top = null;
+        while (st.undo.length) { top = st.undo.pop(); if (top.s !== cur) break; top = null; }
+        if (!top) { updateUndoButtons(); toast(T('undoNothing', 'No hay nada para deshacer.')); return; }
+        st.redo.push({ s: cur, t: Date.now() });
+        applySnap(top.s);
+        updateUndoButtons();
+        toast(T('undoDone', 'Deshecho ✓'));
+      };
+      H.redo = function () {
+        if (capturing()) return;
+        var st = stk(), cur = snap(); if (!cur) return;
+        var top = null;
+        while (st.redo.length) { top = st.redo.pop(); if (top.s !== cur) break; top = null; }
+        if (!top) { updateUndoButtons(); toast(T('redoNothing', 'No hay nada para rehacer.')); return; }
+        st.undo.push({ s: cur, t: Date.now() });
+        applySnap(top.s);
+        updateUndoButtons();
+        toast(T('redoDone', 'Rehecho ✓'));
+      };
+      H.setContext = function (id) { H.cur = id; updateUndoButtons(); };
+      H.dropContext = function (id) { delete H.stacks[id]; };
+      H.resetAll = function () { H.stacks = {}; updateUndoButtons(); };
+      function updateUndoButtons() {
+        var st = stk();
+        ['undoBtn', 'undoBtn2'].forEach(function (id) { var b = el(id); if (b) b.disabled = !st.undo.length; });
+        ['redoBtn', 'redoBtn2'].forEach(function (id) { var b = el(id); if (b) b.disabled = !st.redo.length; });
+      }
+      // Envuelve funciones globales del app para tomar una foto ANTES de cada cambio.
+      var WRAP = ['deleteSelectedPoints', 'deletePoint', 'editValue', 'dlabEditValue', 'dlabDeletePoint', 'resetCaptureData',
+        'importManualTable', '_applyImportedData', '_addExtraDataSet', '_removeExtraDataSet', 'applyVariableConfiguration',
+        'applyGraphConfiguration', 'toggleGraphLines', 'openGraphAnnotator', 'smBuildGraphAndReturn', 'performSegmentFits',
+        '_changeSegmentModel', 'clearAllSelection'];
+      function wrapGlobals() {
+        WRAP.forEach(function (name) {
+          var orig = window[name];
+          if (typeof orig !== 'function' || orig.__fbitWrapped) return;
+          // Solo la llamada más externa toma la foto: una función envuelta que llama
+          // a otra (p. ej. la planilla → applyVariableConfiguration) no deja fotos intermedias.
+          var w = function () {
+            if (H._depth === 0) { try { H.push(name); } catch (e) {} }
+            H._depth++;
+            try { return orig.apply(this, arguments); } finally { H._depth--; }
+          };
+          w.__fbitWrapped = true;
+          try { window[name] = w; } catch (e) {}
+        });
+      }
+      // Botones cuyos listeners fueron registrados con la función original (no pasan por el envoltorio).
+      var BTNS = ['applyVarConfigBtn', 'applyGraphConfigBtn', 'deleteSelectedBtn', 'deleteRangeBtn', 'setZeroBtn', 'performFitBtn',
+        'clearFitBtn', 'detectSegmentsBtn', 'clearSegmentsBtn', 'computeIntegralBtn', 'clearBtn', 'collectBtn', 'importConfirmBtn', 'mtLoadBtn',
+        'showLinesToggle', 'timeUnit', 'numSigFigsInput', 'numScientificToggle', 'fitColorInput'];
+      function wireButtons() {
+        BTNS.forEach(function (id) {
+          var b = el(id); if (!b) return;
+          var ev = (b.tagName === 'INPUT' || b.tagName === 'SELECT') ? 'change' : 'click';
+          b.addEventListener(ev, function () { H.push(id); }, true);
+        });
+        // Edición inline (etiquetas de ejes, títulos, nombres y colores de variables, conjuntos extra): foto al entrar al campo.
+        document.addEventListener('focusin', function (e) {
+          var t = e.target; if (!t || !t.matches) return;
+          if (t.matches('.axis-value, .graph-title, #var1Name, #var2Name, #var3Name, #var1Color, #var2Color, #var3Color, .var-pill-color-input, #_globalVarColorPicker, .extra-set-row input, #graph1TitleInput, #graph2TitleInput, #graph3TitleInput, #graph1XLabel, #graph2XLabel, #graph3XLabel, #graph1YLabel, #graph2YLabel, #graph3YLabel')) H.push('edit:' + (t.id || t.className));
+        });
+        // Atajos de teclado: Ctrl+Z deshace, Ctrl+Y (o Ctrl+Shift+Z) rehace.
+        document.addEventListener('keydown', function (e) {
+          if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+          var k = (e.key || '').toLowerCase();
+          if (k !== 'z' && k !== 'y') return;
+          var t = e.target;
+          if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+          if (overlayOpen()) return;
+          e.preventDefault();
+          if (k === 'z' && !e.shiftKey) H.undo(); else H.redo();
+        });
+        ['undoBtn', 'undoBtn2'].forEach(function (id) { var b = el(id); if (b) b.addEventListener('click', function () { if (typeof closeToolbarMenu === 'function') closeToolbarMenu(); H.undo(); }); });
+        ['redoBtn', 'redoBtn2'].forEach(function (id) { var b = el(id); if (b) b.addEventListener('click', function () { if (typeof closeToolbarMenu === 'function') closeToolbarMenu(); H.redo(); }); });
+      }
+      function localize() {
+        var u = T('tipUndo', 'Deshacer el último cambio en los datos (Ctrl+Z)'), r = T('tipRedo', 'Rehacer (Ctrl+Y)');
+        var b;
+        if ((b = el('undoBtn'))) { b.title = u; b.setAttribute('aria-label', u); b.setAttribute('data-tip', u); }
+        if ((b = el('redoBtn'))) { b.title = r; b.setAttribute('aria-label', r); b.setAttribute('data-tip', r); }
+        if ((b = el('undoBtn2'))) b.textContent = T('undoBtn', 'DESHACER') + ' (Ctrl+Z)';
+        if ((b = el('redoBtn2'))) b.textContent = T('redoBtn', 'REHACER') + ' (Ctrl+Y)';
+        wsRender();
+      }
+
+      /* ======================= VERSIONES LOCALES (IndexedDB) ======================= */
+      var DBN = 'fisicabit_historial', STORE = 'versions';
+      var AUTO_INTERVAL = 3 * 60 * 1000, MAX_AUTO = 40, MAX_SAFETY = 12, MAX_SIZE = 40 * 1024 * 1024;
+      var _lastAutoTs = 0, _lastAutoSig = '';
+      function openDB() {
+        return new Promise(function (res, rej) {
+          try {
+            var rq = indexedDB.open(DBN, 1);
+            rq.onupgradeneeded = function () { try { var s = rq.result.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true }); s.createIndex('ts', 'ts'); } catch (e) {} };
+            rq.onsuccess = function () { res(rq.result); };
+            rq.onerror = function () { rej(rq.error); };
+          } catch (e) { rej(e); }
+        });
+      }
+      function dbAll() {
+        return openDB().then(function (db) {
+          return new Promise(function (res, rej) {
+            var out = [], tx = db.transaction(STORE, 'readonly');
+            var cur = tx.objectStore(STORE).openCursor();
+            cur.onsuccess = function () { var c = cur.result; if (c) { var v = c.value; out.push({ id: v.id, ts: v.ts, label: v.label, kind: v.kind, project: v.project, pts: v.pts, size: v.size, ws: v.ws }); c.continue(); } else res(out); };
+            cur.onerror = function () { rej(cur.error); };
+          });
+        });
+      }
+      function dbGet(id) { return openDB().then(function (db) { return new Promise(function (res, rej) { var r = db.transaction(STORE, 'readonly').objectStore(STORE).get(id); r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); }; }); }); }
+      function dbPut(rec) { return openDB().then(function (db) { return new Promise(function (res, rej) { var tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).add(rec); tx.oncomplete = function () { res(); }; tx.onerror = function () { rej(tx.error); }; }); }); }
+      function dbDel(id) { return openDB().then(function (db) { return new Promise(function (res, rej) { var tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).delete(id); tx.oncomplete = function () { res(); }; tx.onerror = function () { rej(tx.error); }; }); }); }
+      function projectName() { var I = INF(); try { return (I && I.projectName) ? I.projectName() : ''; } catch (e) { return ''; } }
+      function blobPts(blob) { var n = 0; try { n = ((blob.app && blob.app.rawData) || []).length; ((blob.app && blob.app.workspaces) || []).forEach(function (w) { if (w.app && w.app.rawData) n += w.app.rawData.length; }); } catch (e) {} return n; }
+      function saveVersion(kind, label, blob) {
+        var json; try { json = JSON.stringify(blob); } catch (e) { return Promise.resolve(false); }
+        if (json.length > MAX_SIZE) { if (kind === 'named') toast('La versión es demasiado grande para guardarla en el navegador (' + fmtSize(json.length) + ').'); return Promise.resolve(false); }
+        var rec = { ts: Date.now(), kind: kind, label: label || '', project: projectName(), pts: blobPts(blob), size: json.length, ws: (window.FbitWorkspaces ? window.FbitWorkspaces.activeName() : ''), blob: blob };
+        return dbPut(rec).then(function () { return prune(); }).then(function () { return true; }).catch(function (e) { console.warn('[HISTORIAL] no se pudo guardar la versión', e); return false; });
+      }
+      function prune() {
+        return dbAll().then(function (all) {
+          all.sort(function (a, b) { return b.ts - a.ts; });
+          var seen = { auto: 0, safety: 0 }, dels = [];
+          all.forEach(function (v) {
+            if (v.kind === 'auto') { if (++seen.auto > MAX_AUTO) dels.push(v.id); }
+            else if (v.kind === 'safety') { if (++seen.safety > MAX_SAFETY) dels.push(v.id); }
+          });
+          return Promise.all(dels.map(dbDel));
+        }).catch(function () {});
+      }
+      function onAutosaved(blob) {
+        var now = Date.now();
+        if (now - _lastAutoTs < AUTO_INTERVAL) return;
+        var sig; try { sig = blobPts(blob) + '|' + JSON.stringify(blob.app).length + '|' + JSON.stringify(blob.report || {}).length; } catch (e) { return; }
+        if (sig === _lastAutoSig) return;
+        _lastAutoTs = now; _lastAutoSig = sig;
+        saveVersion('auto', T('histAutoLabel', 'Guardado automático'), blob);
+      }
+      function saveSafety(label, blob) { return saveVersion('safety', label || '', blob); }
+      function saveNamed() {
+        var I = INF(); if (!I || !I.serialize) return;
+        if (!I.sessionHasContent || !I.sessionHasContent()) { toast(T('histNothing', 'Todavía no hay nada para guardar en una versión.')); return; }
+        var ask = (window.uiPrompt || function (m, d) { return Promise.resolve(window.prompt(m, d)); });
+        ask(T('histNamePrompt', 'Nombre de esta versión (ej.: «antes de borrar los picos», «datos crudos», «ajuste final»):'), '').then(function (nm) {
+          if (nm === null || nm === undefined) return;
+          nm = String(nm).trim() || fmtDate(Date.now());
+          var blob = I.serialize();
+          saveVersion('named', nm, blob).then(function (ok) {
+            if (ok) toast(T('histSavedLocal', 'Versión «{name}» guardada en este navegador ✓').replace('{name}', nm));
+            if (I.drive && I.drive.connected && I.drive.connected()) driveSaveNamed(nm, blob);
+          });
+        });
+      }
+      function restoreBlob(blob, what) {
+        var I = INF(); if (!I || !I.restore) return;
+        if (!blob || !blob.app) { toast(T('histBad', 'Esa versión está vacía o dañada.')); return; }
+        if (capturing()) { toast(T('undoWhileCapturing', 'No se puede deshacer durante la captura.')); return; }
+        var ask = (window.uiConfirm || function (m) { return Promise.resolve(window.confirm(m)); });
+        ask(T('histRestoreConfirm', '¿Volver a la versión «{what}»?\n\nLo que tenés abierto ahora se guarda primero como versión de seguridad, así no perdés nada.').replace('{what}', what)).then(function (ok) {
+          if (!ok) return;
+          try { if (I.sessionHasContent && I.sessionHasContent()) saveSafety(T('histSafetyBeforeRestore', 'Antes de volver a una versión anterior'), I.serialize()); } catch (e) {}
+          H.resetAll();
+          I.restore(blob);
+          if (I.scheduleSave) I.scheduleSave();
+          closeModal();
+          toast(T('histRestored', 'Versión restaurada ✓'));
+        });
+      }
+
+      /* ======================= VERSIONES EN GOOGLE DRIVE ======================= */
+      var VERS_SUB = 'Versiones', _versFolderId = null;
+      function drive() { var I = INF(); return I && I.drive ? I.drive : null; }
+      function driveReady() { var d = drive(); return !!(d && d.configured && d.configured()); }
+      function driveConnected() { var d = drive(); return !!(d && d.connected && d.connected()); }
+      function fileBase() { var d = drive(); try { return (d.fileName() || 'proyecto').replace(/\.fisicabit\.json$/, '').replace(/\.json$/, ''); } catch (e) { return 'proyecto'; } }
+      function q(s) { return encodeURIComponent(s); }
+      function versFolderId() {
+        var d = drive();
+        if (_versFolderId) return Promise.resolve(_versFolderId);
+        return d.folderId().then(function (rootId) {
+          var qq = "mimeType='application/vnd.google-apps.folder' and name='" + VERS_SUB + "' and '" + rootId + "' in parents and trashed=false";
+          return d.api('drive/v3/files?q=' + q(qq) + '&fields=files(id)&spaces=drive').then(function (r) { return r.json(); }).then(function (j) {
+            if (j.files && j.files.length) { _versFolderId = j.files[0].id; return _versFolderId; }
+            return d.api('drive/v3/files?fields=id', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: VERS_SUB, mimeType: 'application/vnd.google-apps.folder', parents: [rootId] }) })
+              .then(function (r) { return r.json(); }).then(function (cj) { _versFolderId = cj.id; return _versFolderId; });
+          });
+        });
+      }
+      function driveSaveNamed(label, blob) {
+        var d = drive(); if (!d) return Promise.resolve(false);
+        return d.ensureToken().then(function (ok) {
+          if (!ok) return false;
+          return versFolderId().then(function (fid) {
+            var ts = Date.now();
+            var stamp = new Date(ts); var pad = function (n) { return String(n).padStart(2, '0'); };
+            var when = stamp.getFullYear() + pad(stamp.getMonth() + 1) + pad(stamp.getDate()) + '-' + pad(stamp.getHours()) + pad(stamp.getMinutes());
+            var safeLabel = String(label).replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 60);
+            var name = (projectName() || 'Experimento') + ' — ' + safeLabel + ' — ' + when + '.fisicabit.json';
+            var meta = { name: name, mimeType: 'application/json', parents: [fid], description: safeLabel, appProperties: { fbitProject: fileBase(), fbitLabel: safeLabel, fbitTs: String(ts) } };
+            var boundary = 'fbitver' + ts.toString(16);
+            var body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
+              '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + JSON.stringify(blob) + '\r\n--' + boundary + '--';
+            return d.api('upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: body })
+              .then(function (r) { return r.json(); }).then(function (j) {
+                if (j && j.id) { toast(T('histSavedDrive', 'Versión «{name}» guardada también en Google Drive (fisicabit / Versiones) ✓').replace('{name}', label)); return true; }
+                return false;
+              });
+          });
+        }).catch(function (e) { console.warn('[HISTORIAL] Drive versión', e); toast(T('histDriveError', 'No se pudo guardar la versión en Drive.')); return false; });
+      }
+      // Lista unificada: versiones con nombre (carpeta Versiones) + revisiones automáticas del archivo del experimento.
+      function driveList() {
+        var d = drive();
+        return d.ensureToken().then(function (ok) {
+          if (!ok) throw new Error('token');
+          var out = [];
+          var p1 = versFolderId().then(function (fid) {
+            var qq = "'" + fid + "' in parents and trashed=false and appProperties has { key='fbitProject' and value='" + fileBase().replace(/'/g, "\\'") + "' }";
+            return d.api('drive/v3/files?q=' + q(qq) + '&fields=files(id,name,modifiedTime,size,description,appProperties)&orderBy=modifiedTime desc&pageSize=100&spaces=drive').then(function (r) { return r.json(); }).then(function (j) {
+              (j.files || []).forEach(function (f) {
+                var ap = f.appProperties || {};
+                out.push({ kind: 'named', ts: parseInt(ap.fbitTs, 10) || Date.parse(f.modifiedTime) || 0, label: ap.fbitLabel || f.description || f.name, size: parseInt(f.size, 10) || 0, fileId: f.id });
+              });
+            });
+          }).catch(function (e) { console.warn('[HISTORIAL] Drive lista versiones', e); });
+          var fileId = d.fileId();
+          var p2 = !fileId ? Promise.resolve() : d.api('drive/v3/files/' + fileId + '/revisions?fields=revisions(id,modifiedTime,size,keepForever)&pageSize=200').then(function (r) { return r.json(); }).then(function (j) {
+            (j.revisions || []).forEach(function (rv) { out.push({ kind: 'auto', ts: Date.parse(rv.modifiedTime) || 0, label: T('histDriveAuto', 'Guardado automático en Drive'), size: parseInt(rv.size, 10) || 0, fileId: fileId, revId: rv.id }); });
+          }).catch(function (e) { console.warn('[HISTORIAL] Drive revisiones', e); });
+          return Promise.all([p1, p2]).then(function () { out.sort(function (a, b) { return b.ts - a.ts; }); return out; });
+        });
+      }
+      function driveFetch(item) {
+        var d = drive();
+        var path = item.revId ? ('drive/v3/files/' + item.fileId + '/revisions/' + item.revId + '?alt=media') : ('drive/v3/files/' + item.fileId + '?alt=media');
+        return d.ensureToken().then(function () { return d.api(path); }).then(function (r) { return r.text(); }).then(function (t) { return JSON.parse(t); });
+      }
+      function driveTrash(item) { var d = drive(); return d.ensureToken().then(function () { return d.api('drive/v3/files/' + item.fileId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) }); }); }
+
+      /* ======================= MODAL DE HISTORIAL ======================= */
+      var _tab = 'local';
+      function modalEl() {
+        var m = el('hist-modal');
+        if (m) return m;
+        m = document.createElement('div'); m.className = 'hist-modal'; m.id = 'hist-modal';
+        m.innerHTML = '<div class="hist-box">' +
+          '<div class="hist-head"><span id="hist-title">Historial de versiones</span><button type="button" class="hist-x" id="hist-close" aria-label="Cerrar">✕</button></div>' +
+          '<div class="hist-tabs"><button type="button" class="hist-tab active" data-tab="local" id="hist-tab-local">En este navegador</button><button type="button" class="hist-tab" data-tab="drive" id="hist-tab-drive">En Google Drive</button></div>' +
+          '<div class="hist-actions" id="hist-actions"></div><div class="hist-note" id="hist-note"></div>' +
+          '<div class="hist-list" id="hist-list"></div></div>';
+        document.body.appendChild(m);
+        el('hist-close').addEventListener('click', closeModal);
+        m.addEventListener('click', function (e) { if (e.target === m) closeModal(); });
+        m.querySelectorAll('.hist-tab').forEach(function (b) { b.addEventListener('click', function () { _tab = b.getAttribute('data-tab'); renderModal(); }); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && m.classList.contains('open')) { e.stopPropagation(); closeModal(); } }, true);
+        return m;
+      }
+      function openModal() { modalEl().classList.add('open'); renderModal(); }
+      function closeModal() { var m = el('hist-modal'); if (m) m.classList.remove('open'); }
+      function kindLabel(k) { return k === 'named' ? T('histKindNamed', 'Con nombre') : k === 'safety' ? T('histKindSafety', 'Seguridad') : T('histKindAuto', 'Automática'); }
+      function renderModal() {
+        var m = modalEl();
+        el('hist-title').textContent = T('histTitle', 'Historial de versiones');
+        el('hist-tab-local').textContent = T('histTabLocal', 'En este navegador');
+        el('hist-tab-drive').textContent = T('histTabDrive', 'En Google Drive');
+        m.querySelectorAll('.hist-tab').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === _tab); });
+        var acts = el('hist-actions'), note = el('hist-note'), list = el('hist-list');
+        acts.innerHTML = '<button type="button" class="hist-btn" id="hist-save-named">' + esc(T('histSaveNamed', 'Guardar una versión con nombre…')) + '</button>' +
+          '<button type="button" class="hist-btn" id="hist-refresh">' + esc(T('histRefresh', 'Actualizar')) + '</button>';
+        el('hist-save-named').addEventListener('click', function () { closeModal(); saveNamed(); });
+        el('hist-refresh').addEventListener('click', renderModal);
+        if (_tab === 'local') {
+          note.textContent = T('histNoteLocal', 'Se guarda una versión automática cada pocos minutos mientras cambian los datos, además de versiones de seguridad antes de limpiar, abrir otro proyecto o volver atrás. Viven solo en este navegador.');
+          list.innerHTML = '<div class="hist-empty">' + esc(T('histLoading', 'Cargando…')) + '</div>';
+          dbAll().then(function (all) {
+            all.sort(function (a, b) { return b.ts - a.ts; });
+            if (!all.length) { list.innerHTML = '<div class="hist-empty">' + esc(T('histEmptyLocal', 'Todavía no hay versiones guardadas en este navegador.')) + '</div>'; return; }
+            list.innerHTML = '';
+            all.forEach(function (v) {
+              var row = document.createElement('div'); row.className = 'hist-row';
+              row.innerHTML = '<div class="hist-info"><div class="hist-when"><span class="hist-kind ' + esc(v.kind) + '">' + esc(kindLabel(v.kind)) + '</span>' + esc(fmtDate(v.ts)) + '</div>' +
+                '<div class="hist-what">' + esc(v.label || '') + (v.project ? ' · ' + esc(v.project) : '') + ' · ' + v.pts + ' pts · ' + fmtSize(v.size) + '</div></div>';
+              var rb = document.createElement('button'); rb.type = 'button'; rb.className = 'hist-btn'; rb.textContent = T('histRestore', 'Restaurar');
+              rb.addEventListener('click', function () { dbGet(v.id).then(function (rec) { restoreBlob(rec && rec.blob, (v.label || kindLabel(v.kind)) + ' · ' + fmtDate(v.ts)); }); });
+              var db = document.createElement('button'); db.type = 'button'; db.className = 'hist-btn danger'; db.textContent = '✕'; db.title = T('histDelete', 'Borrar esta versión');
+              db.addEventListener('click', function () { dbDel(v.id).then(renderModal); });
+              row.appendChild(rb); row.appendChild(db); list.appendChild(row);
+            });
+          }).catch(function () { list.innerHTML = '<div class="hist-empty">' + esc(T('histErrLocal', 'No se pudo leer el historial de este navegador.')) + '</div>'; });
+        } else {
+          if (!driveReady()) { note.textContent = ''; list.innerHTML = '<div class="hist-empty">' + esc(T('histDriveNotConfigured', 'Google Drive no está configurado en esta copia de la página.')) + '</div>'; return; }
+          if (!driveConnected()) {
+            note.textContent = T('histNoteDriveOff', 'Conectá tu cuenta de Google para ver las versiones guardadas en la nube: Drive conserva las copias automáticas del experimento y las versiones con nombre que guardes.');
+            list.innerHTML = '<div class="hist-empty"><button type="button" class="hist-btn" id="hist-drive-connect">' + esc(T('histDriveConnect', 'Conectar con Google')) + '</button></div>';
+            el('hist-drive-connect').addEventListener('click', function () { var d = drive(); d.connect(true).then(function (ok) { if (ok) { var I = INF(); if (I && I.drive && I.drive.markSynced) { try { I.drive.markSynced(); } catch (e) {} } renderModal(); } else toast(T('histDriveFail', 'No se pudo conectar con Google.')); }); });
+            return;
+          }
+          var fid = drive().fileId();
+          note.textContent = T('histNoteDriveOn', 'Google Drive guarda solo una copia cada vez que el experimento se sincroniza (las conserva unos 30 días). Las versiones con nombre quedan en la carpeta fisicabit / Versiones y no se borran.') + (fid ? '' : ' ' + T('histDriveNoFile', 'Este experimento todavía no se sincronizó con Drive: guardalo con «Guardar ahora en Drive».'));
+          list.innerHTML = '<div class="hist-empty">' + esc(T('histLoading', 'Cargando…')) + '</div>';
+          driveList().then(function (items) {
+            if (!items.length) { list.innerHTML = '<div class="hist-empty">' + esc(T('histEmptyDrive', 'Todavía no hay versiones de este experimento en Drive.')) + '</div>'; return; }
+            list.innerHTML = '';
+            items.forEach(function (v) {
+              var row = document.createElement('div'); row.className = 'hist-row';
+              row.innerHTML = '<div class="hist-info"><div class="hist-when"><span class="hist-kind drive">' + esc(v.kind === 'named' ? T('histKindNamed', 'Con nombre') : T('histKindAuto', 'Automática')) + '</span>' + esc(fmtDate(v.ts)) + '</div>' +
+                '<div class="hist-what">' + esc(v.label || '') + (v.size ? ' · ' + fmtSize(v.size) : '') + '</div></div>';
+              var rb = document.createElement('button'); rb.type = 'button'; rb.className = 'hist-btn'; rb.textContent = T('histRestore', 'Restaurar');
+              rb.addEventListener('click', function () { rb.disabled = true; driveFetch(v).then(function (blob) { rb.disabled = false; restoreBlob(blob, (v.label || '') + ' · ' + fmtDate(v.ts)); }).catch(function () { rb.disabled = false; toast(T('histDriveFetchErr', 'No se pudo descargar esa versión de Drive.')); }); });
+              row.appendChild(rb);
+              if (v.kind === 'named') {
+                var db = document.createElement('button'); db.type = 'button'; db.className = 'hist-btn danger'; db.textContent = '✕'; db.title = T('histDelete', 'Borrar esta versión');
+                db.addEventListener('click', function () { driveTrash(v).then(renderModal).catch(function () { toast(T('histDriveError', 'No se pudo guardar la versión en Drive.')); }); });
+                row.appendChild(db);
+              }
+              list.appendChild(row);
+            });
+          }).catch(function () { list.innerHTML = '<div class="hist-empty">' + esc(T('histErrDrive', 'No se pudieron leer las versiones de Drive.')) + '</div>'; });
+        }
+      }
+
+      window.FbitHistorial = {
+        push: H.push, undo: H.undo, redo: H.redo,
+        canUndo: function () { return stk().undo.length > 0; }, canRedo: function () { return stk().redo.length > 0; },
+        openModal: openModal, closeModal: closeModal, saveNamed: saveNamed, saveSafety: saveSafety, onAutosaved: onAutosaved,
+        listLocal: dbAll, driveList: driveList
+      };
+
+      function init() {
+        var I = INF();
+        captureDefault();
+        wrapGlobals();
+        wireButtons();
+        if (I) { I.onAutosaved = onAutosaved; }
+        // Refrescar los contadores de puntos de las pestañas cada vez que se redibuja la vista
+        if (typeof window.updateDisplay === 'function') {
+          var prev = window.updateDisplay;
+          window.updateDisplay = function () { var r = prev.apply(this, arguments); try { wsRefreshCounts(); } catch (e) {} return r; };
+        }
+        wsEnsure(); H.setContext(WS.active);
+        localize();
+        ['languageSelector', 'languageSelector2'].forEach(function (id) { var s = el(id); if (s) s.addEventListener('change', function () { setTimeout(localize, 0); }); });
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
     })();
     </script>
     <!-- ===== INFORME PANEL END ===== -->
