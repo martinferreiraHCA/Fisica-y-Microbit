@@ -4306,7 +4306,61 @@
         .inf-mini { display:inline-flex; align-items:center; gap:5px; background:#fff; color:#000; border:1px solid #000; padding:3px 9px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; cursor:pointer; }
         .inf-mini:hover { background:#000; color:#fff; }
 
-        /* Portada editable (se completa como un formulario, se ve como en el PDF) */
+        /* Portada: tarjeta con miniatura (se edita aparte, en su propio editor) */
+        .inf-cover-card { display:flex; gap:18px; padding:14px 18px 18px; align-items:flex-start; flex-wrap:wrap; }
+        .inf-cover-thumb { width:286px; height:421px; overflow:hidden; position:relative; border:1px solid #bbb; background:#fff; cursor:pointer; flex-shrink:0; box-shadow:0 2px 10px rgba(0,0,0,.12); }
+        .inf-cover-thumb .rep-doc { width:794px; position:absolute; left:0; top:0; transform:scale(0.36); transform-origin:0 0; pointer-events:none; }
+        .inf-cover-thumb:hover { outline:2px solid #000; }
+        .inf-cover-side { flex:1; min-width:220px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+        .inf-cover-side h4 { margin:4px 0 6px; font-size:15px; font-weight:800; }
+        .inf-cover-side p { margin:0 0 10px; font-size:12px; color:#555; line-height:1.45; }
+        .inf-cover-side .inf-btn { display:inline-block; width:auto; margin:4px 6px 4px 0; padding:8px 14px; }
+        .inf-cover-side .inf-btn.secondary { background:#fff; color:#000; }
+        .inf-cover-side .inf-btn.secondary:hover { background:#000; color:#fff; }
+        .inf-cover-missing { font-size:11px; color:#8a6d1f; }
+
+        /* Editor de portada (pantalla aparte) */
+        .inf-cover-modal { display:none; position:fixed; inset:0; z-index:9260; background:#e6e6e6; flex-direction:column; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color:#000; }
+        .inf-cover-modal.open { display:flex; }
+        .inf-cover-modal-bar { background:#fff; display:flex; align-items:center; gap:10px; padding:6px 12px; border-bottom:2px solid #000; min-height:44px; flex-wrap:wrap; }
+        .inf-cover-modal-bar .ttl { font-weight:800; letter-spacing:1.5px; text-transform:uppercase; font-size:11.5px; }
+        .inf-cover-modal-bar .hint { font-size:11px; color:#666; }
+        .inf-cover-modal-bar .inf-btn { width:auto; margin:0; padding:7px 16px; }
+        .inf-cover-modal-body { flex:1; min-height:0; display:flex; }
+        .inf-cover-form { width:360px; flex-shrink:0; overflow-y:auto; background:#fff; border-right:2px solid #000; padding:12px 14px 40px; }
+        .inf-cover-form .grp { font-size:9.5px; letter-spacing:1.8px; text-transform:uppercase; color:#777; font-weight:800; margin:14px 0 6px; }
+        .inf-cover-form .grp:first-child { margin-top:2px; }
+        .inf-cover-form label.fl { display:block; font-size:10.5px; font-weight:700; color:#333; margin:7px 0 2px; }
+        .inf-cover-form input[type="text"] { width:100%; box-sizing:border-box; border:1px solid #bbb; padding:6px 8px; font-size:13px; font-family:inherit; }
+        .inf-cover-form input[type="text"]:focus { outline:none; border-color:#000; }
+        .inf-cover-form input.big { font-size:16px; font-weight:800; }
+        .inf-cover-form .seg { display:flex; flex-wrap:wrap; gap:4px; }
+        .inf-cover-form .seg button { background:#fff; border:1.5px solid #000; padding:5px 10px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+        .inf-cover-form .seg button.on, .inf-cover-form .seg button:hover { background:#000; color:#fff; }
+        .inf-cover-form .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+        .inf-cover-form .swatches { display:flex; gap:5px; align-items:center; }
+        .inf-cover-form .swatches span { width:22px; height:22px; border:1.5px solid #000; cursor:pointer; display:inline-block; }
+        .inf-cover-form .swatches span:hover { transform:scale(1.12); }
+        .inf-cover-form input[type="color"] { width:34px; height:26px; padding:0; border:1.5px solid #000; background:#fff; cursor:pointer; }
+        .inf-cover-form .chk { display:flex; align-items:center; gap:7px; font-size:12px; margin-top:8px; cursor:pointer; }
+        .inf-cover-form .imgbox { border:1px dashed #999; padding:8px; margin-top:4px; background:#fafafa; }
+        .inf-cover-form .imgbox img { max-width:100%; max-height:120px; display:block; margin:0 auto 6px; border:1px solid #ccc; background:#fff; }
+        .inf-cover-form .imgbox .none { font-size:11.5px; color:#777; text-align:center; padding:10px 0; }
+        .inf-cover-form .inf-mini { margin:3px 3px 3px 0; }
+        .inf-cover-form select { font-size:12px; padding:4px 6px; border:1px solid #bbb; max-width:100%; font-family:inherit; }
+        .inf-cover-prev { flex:1; min-width:0; overflow:auto; padding:18px; display:flex; justify-content:center; align-items:flex-start; }
+        .inf-cover-prev-wrap { position:relative; flex-shrink:0; }
+        .inf-cover-prev-page { width:794px; background:#fff; box-shadow:0 4px 24px rgba(0,0,0,.25); transform-origin:0 0; position:absolute; left:0; top:0; }
+        @media (max-width: 900px) {
+          .inf-cover-modal-body { flex-direction:column; }
+          .inf-cover-form { width:100%; max-height:46%; border-right:none; border-bottom:2px solid #000; }
+          .inf-cover-prev { padding:10px; }
+          .inf-cover-card { padding:10px; }
+          .inf-cover-thumb { width:143px; height:211px; }
+          .inf-cover-thumb .rep-doc { transform:scale(0.18); }
+        }
+
+        /* (estilos heredados de la portada en línea; el editor ahora es aparte) */
         .inf-cover-top { background:#0a0a0a; color:#fff; padding:30px 44px 24px; font-family:'Montserrat',Arial,sans-serif; }
         .inf-cover-kicker { font-size:10px; letter-spacing:4px; color:#9e9e9e; text-transform:uppercase; font-weight:600; }
         .inf-cover-title {
@@ -27095,7 +27149,31 @@ bluetooth.startIOPinService()</pre>
         ".rep-doc .rep-pad{padding:0 46px;}",
         ".rep-doc .rep-band{background:#0a0a0a;color:#fff;text-transform:uppercase;letter-spacing:2.5px;font-weight:700;font-size:12px;padding:10px 46px;display:flex;align-items:center;justify-content:space-between;gap:12px;}",
         ".rep-doc .rep-band .n{font-size:10.5px;color:#bdbdbd;font-weight:600;letter-spacing:1.5px;text-transform:none;}",
-        ".rep-doc .rep-cover-top{background:#0a0a0a;color:#fff;padding:52px 46px 38px;}",
+        ".rep-doc .rep-cover{display:flex;flex-direction:column;overflow:hidden;}",
+        ".rep-doc .rep-cover-page{aspect-ratio:535/782;}",
+        ".rep-doc .rep-cover-top{background:#0a0a0a;color:#fff;padding:52px 46px 38px;flex:0 0 auto;}",
+        ".rep-doc .rep-cover-page:not(.has-img) .rep-cover-top{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;}",
+        ".rep-doc .rep-cover-page .rep-cover-meta{margin-top:auto;}",
+        ".rep-doc .rep-cover-img{flex:1 1 auto;min-height:200px;overflow:hidden;background:#f2f2f2;position:relative;}",
+        ".rep-doc .rep-cover:not(.rep-cover-page) .rep-cover-img{flex:0 0 auto;height:300px;}",
+        ".rep-doc .rep-cover-img img{width:100%;height:100%;display:block;object-fit:cover;}",
+        ".rep-doc .rep-cover-img-contain img{object-fit:contain;}",
+        ".rep-doc .rep-cover-hero{position:relative;flex:1 1 auto;min-height:320px;overflow:hidden;background:#111;}",
+        ".rep-doc .rep-cover:not(.rep-cover-page) .rep-cover-hero{flex:0 0 auto;height:470px;}",
+        ".rep-doc .rep-cover-hero img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;}",
+        ".rep-doc .rep-cover-hero-contain img{object-fit:contain;}",
+        ".rep-doc .rep-cover-hero-txt{position:absolute;left:0;right:0;bottom:0;padding:130px 46px 38px;background:linear-gradient(to bottom,rgba(0,0,0,0) 0%,rgba(0,0,0,.55) 45%,rgba(0,0,0,.82) 100%);color:#fff;}",
+        ".rep-doc .rep-cover-hero-txt .rep-cover-title{font-size:36px;}",
+        ".rep-doc .rep-cover-min{padding:64px 46px 28px;flex:0 0 auto;}",
+        ".rep-doc .rep-cover-page.rep-cover-minimal:not(.has-img) .rep-cover-min{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;}",
+        ".rep-doc .rep-cover-rule{height:8px;width:88px;margin:0 0 26px;}",
+        ".rep-doc .rep-cover-center .rep-cover-rule{margin-left:auto;margin-right:auto;}",
+        ".rep-doc .rep-cover-min .rep-cover-title{color:#161616;font-size:40px;}",
+        ".rep-doc .rep-cover-min .rep-cover-sub{color:#6a6a6a;}",
+        ".rep-doc .rep-cover-minimal .rep-cover-img{margin:0 46px 30px;border:1px solid #e6e6e6;background:#fff;}",
+        ".rep-doc .rep-cover-minimal .rep-cover-meta{border-top-width:1px;}",
+        ".rep-doc .rep-cover-ac .rep-cover-kicker{color:rgba(255,255,255,.72);}",
+        ".rep-doc .rep-cover-ac .rep-cover-sub{color:rgba(255,255,255,.82);}",
         ".rep-doc .rep-cover-kicker{font-size:10.5px;letter-spacing:5px;color:#9e9e9e;text-transform:uppercase;font-weight:600;}",
         ".rep-doc .rep-cover-title{font-size:33px;font-weight:800;line-height:1.08;margin:14px 0 10px;letter-spacing:0.3px;}",
         ".rep-doc .rep-cover-sub{font-size:12.5px;color:#cfcfcf;letter-spacing:0.8px;}",
@@ -27180,6 +27258,7 @@ bluetooth.startIOPinService()</pre>
         _infTab: 'armado', _focusEd: null, _savedRange: null,
         drawTool: 'pen', drawColor: '#111111', drawSize: 4,
         drawingData: null,    // dataURL del dibujo (fuente única de verdad)
+        cover: null,          // diseño de la portada: {style, accent, kicker, sub, image, imageFit, fullPage, align}
         hasDrawing: function () { return !!this.drawingData; },
         drawingDataURL: function () { return this.drawingData; }
       };
@@ -27351,21 +27430,49 @@ bluetooth.startIOPinService()</pre>
       }
       function cell(k, v) { return '<div class="rep-meta-cell"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v || '—') + '</div></div>'; }
 
+      // ---- Portada: diseño propio (estilo, color, imagen, textos) ----
+      var COVER_KICKER = 'Informe de laboratorio · fisicabit', COVER_SUB = 'micro:bit DataLab · datos procesados, gráficos y ajustes';
+      var COVER_STYLES = [['classic', 'Clásica'], ['photo', 'Foto grande'], ['minimal', 'Minimalista']];
+      var COVER_SWATCHES = ['#0a0a0a', '#1565c0', '#1b5e20', '#8e0000', '#4a148c', '#e65100', '#00695c'];
+      function defaultCover() { return { style: 'classic', accent: '#0a0a0a', kicker: COVER_KICKER, sub: COVER_SUB, image: null, imageFit: 'cover', fullPage: true, align: 'left' }; }
+      function normCover(c) {
+        var d = defaultCover(); c = (c && typeof c === 'object') ? c : {};
+        var o = Object.assign(d, c);
+        if (COVER_STYLES.map(function (x) { return x[0]; }).indexOf(o.style) < 0) o.style = 'classic';
+        if (!/^#[0-9a-f]{6}$/i.test(o.accent || '')) o.accent = '#0a0a0a';
+        if (typeof o.kicker !== 'string') o.kicker = COVER_KICKER;
+        if (typeof o.sub !== 'string') o.sub = COVER_SUB;
+        if (typeof o.image !== 'string' || o.image.indexOf('data:image/') !== 0) o.image = null;
+        o.imageFit = o.imageFit === 'contain' ? 'contain' : 'cover';
+        o.fullPage = o.fullPage !== false;
+        o.align = o.align === 'center' ? 'center' : 'left';
+        return o;
+      }
+      function coverCfg() { I.cover = normCover(I.cover); return I.cover; }
       function coverBlock() {
-        var m = I.meta;
+        var m = I.meta, c = coverCfg(), acc = c.accent;
         var cells = [];
         cells.push(cell('Estudiante(s)', m.student));
         cells.push(cell('Curso / Grupo', m.course));
         cells.push(cell('Institución / Docente', m.institution));
         cells.push(cell('Fecha', m.date || todayStr()));
-        return '<div class="rep-block rep-cover">' +
-          '<div class="rep-cover-top">' +
-          '<div class="rep-cover-kicker">Informe de laboratorio · fisicabit</div>' +
+        var meta = '<div class="rep-cover-meta" style="border-top-color:' + acc + ';">' + cells.join('') + '</div>';
+        var texts = (c.kicker ? '<div class="rep-cover-kicker">' + esc(c.kicker) + '</div>' : '') +
           '<div class="rep-cover-title">' + esc(m.title || 'Informe de laboratorio') + '</div>' +
-          '<div class="rep-cover-sub">micro:bit DataLab · datos procesados, gráficos y ajustes</div>' +
-          '</div>' +
-          '<div class="rep-cover-meta">' + cells.join('') + '</div>' +
-          '</div>';
+          (c.sub ? '<div class="rep-cover-sub">' + esc(c.sub) + '</div>' : '');
+        var img = c.image ? '<div class="rep-cover-img rep-cover-img-' + c.imageFit + '"><img src="' + c.image + '" alt=""></div>' : '';
+        var cls = 'rep-block rep-cover rep-cover-' + c.style + (c.fullPage ? ' rep-cover-page' : '') + (c.image ? ' has-img' : '') + (c.align === 'center' ? ' rep-cover-center' : '') + (acc.toLowerCase() !== '#0a0a0a' ? ' rep-cover-ac' : '');
+        var ta = 'text-align:' + c.align + ';';
+        var inner;
+        if (c.style === 'photo' && c.image) {
+          inner = '<div class="rep-cover-hero' + (c.imageFit === 'contain' ? ' rep-cover-hero-contain' : '') + '"><img src="' + c.image + '" alt=""><div class="rep-cover-hero-txt" style="' + ta + '">' + texts + '</div></div>' + meta;
+        } else if (c.style === 'minimal') {
+          inner = '<div class="rep-cover-min" style="' + ta + '"><div class="rep-cover-rule" style="background:' + acc + ';"></div>' +
+            texts.replace('class="rep-cover-kicker"', 'class="rep-cover-kicker" style="color:' + acc + ';"') + '</div>' + img + meta;
+        } else {
+          inner = '<div class="rep-cover-top" style="background:' + acc + ';' + ta + '">' + texts + '</div>' + img + meta;
+        }
+        return '<div class="' + cls + '">' + inner + '</div>';
       }
 
       function dataBlocks() {
@@ -28312,21 +28419,148 @@ bluetooth.startIOPinService()</pre>
         });
         inp.addEventListener('focus', function () { setActivePart('cover'); });
       }
+      // La portada se edita APARTE (pantalla propia con vista previa a página entera).
+      // En la hoja del informe queda solo una miniatura y el botón para editarla.
       function coverEditor() {
-        var box = document.createElement('div'); box.className = 'inf-cover';
-        box.innerHTML = '<div class="inf-cover-top"><div class="inf-cover-kicker">Informe de laboratorio · fisicabit</div>' +
-          '<input class="inf-cover-title" id="inf-title" placeholder="Escribí acá el título del experimento" autocomplete="off">' +
-          '<div class="inf-cover-sub">micro:bit DataLab · datos procesados, gráficos y ajustes</div></div>' +
-          '<div class="inf-cover-meta">' +
-          '<div class="inf-cover-cell"><label>Estudiante(s)</label><input id="inf-student" placeholder="Nombre y apellido" autocomplete="off"></div>' +
-          '<div class="inf-cover-cell"><label>Curso / Grupo</label><input id="inf-course" placeholder="Ej: 5º Física" autocomplete="off"></div>' +
-          '<div class="inf-cover-cell"><label>Institución / Docente</label><input id="inf-institution" placeholder="Liceo / Profesor/a" autocomplete="off"></div>' +
-          '<div class="inf-cover-cell"><label>Fecha</label><input id="inf-date" placeholder="dd/mm/aaaa" autocomplete="off"></div></div>';
-        bindMeta(box.querySelector('#inf-title'), 'title'); bindMeta(box.querySelector('#inf-student'), 'student');
-        bindMeta(box.querySelector('#inf-course'), 'course'); bindMeta(box.querySelector('#inf-institution'), 'institution');
-        bindMeta(box.querySelector('#inf-date'), 'date');
+        var box = document.createElement('div'); box.className = 'inf-cover-card';
+        var thumb = document.createElement('div'); thumb.className = 'inf-cover-thumb inf-tip'; thumb.id = 'inf-cover-thumb'; thumb.setAttribute('data-tip', 'Clic para diseñar la portada');
+        thumb.innerHTML = '<div class="rep-doc" id="inf-cover-thumb-doc"></div>';
+        thumb.addEventListener('click', openCoverModal);
+        var side = document.createElement('div'); side.className = 'inf-cover-side'; side.id = 'inf-cover-side';
+        box.appendChild(thumb); box.appendChild(side);
+        setTimeout(function () { refreshCoverCard(); }, 0);
         return box;
       }
+      function refreshCoverCard() {
+        var doc = el('inf-cover-thumb-doc'); if (doc) doc.innerHTML = coverBlock();
+        var side = el('inf-cover-side'); if (!side) return;
+        var c = coverCfg(), m = I.meta, miss = [];
+        if (!(m.title || '').trim()) miss.push('el título');
+        if (!(m.student || '').trim()) miss.push('el/la estudiante');
+        var styleName = (COVER_STYLES.filter(function (x) { return x[0] === c.style; })[0] || COVER_STYLES[0])[1];
+        side.innerHTML = '<h4>' + esc((m.title || '').trim() || 'Sin título todavía') + '</h4>' +
+          '<p>Estilo <b>' + esc(styleName) + '</b>' + (c.image ? ' · con imagen' : ' · sin imagen') + (c.fullPage ? ' · ocupa toda la primera página' : '') + '.</p>' +
+          '<p>' + esc([m.student, m.course, m.institution, m.date].filter(function (x) { return (x || '').trim(); }).join(' · ') || 'Completá estudiante, curso, institución y fecha en el editor.') + '</p>' +
+          (miss.length ? '<p class="inf-cover-missing">Falta ' + esc(miss.join(' y ')) + '.</p>' : '') +
+          '<button type="button" class="inf-btn" id="inf-cover-edit-btn"><span class="inf-ic">' + ico('pencil') + '</span> Diseñar la portada</button>';
+        var b = el('inf-cover-edit-btn'); if (b) b.addEventListener('click', openCoverModal);
+      }
+      // ---- Editor de portada (pantalla aparte) ----
+      var _coverModalBuilt = false;
+      function buildCoverModal() {
+        if (_coverModalBuilt) return; _coverModalBuilt = true;
+        var m = document.createElement('div'); m.className = 'inf-cover-modal'; m.id = 'inf-cover-modal';
+        m.innerHTML =
+          '<div class="inf-cover-modal-bar"><span class="ttl">Portada del informe</span><span class="hint">Lo que cambies se ve al instante y se guarda solo.</span><span class="inf-spacer"></span>' +
+          '<button type="button" class="inf-btn primary" id="inf-cover-done"><span class="inf-ic">' + ico('check') + '</span> Listo</button></div>' +
+          '<div class="inf-cover-modal-body"><div class="inf-cover-form">' +
+          '<div class="grp">Textos</div>' +
+          '<label class="fl" for="inf-title">Título del experimento</label><input type="text" class="big" id="inf-title" placeholder="Escribí acá el título del experimento" autocomplete="off">' +
+          '<label class="fl" for="inf-cover-sub">Subtítulo</label><input type="text" id="inf-cover-sub" autocomplete="off" placeholder="Ej: Estudio de la caída libre con micro:bit">' +
+          '<label class="fl" for="inf-cover-kicker">Encabezado chico (arriba del título)</label><input type="text" id="inf-cover-kicker" autocomplete="off" placeholder="Ej: Informe de laboratorio · Física">' +
+          '<label class="fl" for="inf-student">Estudiante(s)</label><input type="text" id="inf-student" placeholder="Nombre y apellido" autocomplete="off">' +
+          '<label class="fl" for="inf-course">Curso / Grupo</label><input type="text" id="inf-course" placeholder="Ej: 5º Física" autocomplete="off">' +
+          '<label class="fl" for="inf-institution">Institución / Docente</label><input type="text" id="inf-institution" placeholder="Liceo / Profesor/a" autocomplete="off">' +
+          '<label class="fl" for="inf-date">Fecha</label><input type="text" id="inf-date" placeholder="dd/mm/aaaa" autocomplete="off">' +
+          '<div class="grp">Imagen de portada</div>' +
+          '<div class="imgbox" id="inf-cover-imgbox"></div>' +
+          '<div class="row" style="margin-top:6px;"><button type="button" class="inf-mini" id="inf-cover-img-up"><span class="inf-ic">' + ico('upload') + '</span> Subir imagen</button>' +
+          '<select id="inf-cover-img-pick" title="Usar una foto del informe o una gráfica"><option value="">Usar foto o gráfica…</option></select>' +
+          '<button type="button" class="inf-mini" id="inf-cover-img-rm"><span class="inf-ic">' + ico('trash') + '</span> Quitar</button></div>' +
+          '<input type="file" id="inf-cover-img-input" accept="image/*" style="display:none;">' +
+          '<label class="fl">Encuadre de la imagen</label><div class="seg" id="inf-cover-fit"><button type="button" data-v="cover">Recortar para llenar</button><button type="button" data-v="contain">Mostrar completa</button></div>' +
+          '<div class="grp">Estilo</div>' +
+          '<div class="seg" id="inf-cover-style"></div>' +
+          '<label class="fl">Color</label><div class="row"><div class="swatches" id="inf-cover-swatches"></div><input type="color" id="inf-cover-accent" title="Otro color"></div>' +
+          '<label class="fl">Alineación del título</label><div class="seg" id="inf-cover-align"><button type="button" data-v="left">Izquierda</button><button type="button" data-v="center">Centrado</button></div>' +
+          '<label class="chk"><input type="checkbox" id="inf-cover-fullpage"> La portada ocupa toda la primera página</label>' +
+          '</div><div class="inf-cover-prev" id="inf-cover-prev"><div class="inf-cover-prev-wrap" id="inf-cover-prev-wrap"><div class="inf-cover-prev-page rep-doc" id="inf-cover-prev-doc"></div></div></div></div>';
+        document.body.appendChild(m);
+        // Datos de la portada (los mismos campos de siempre, ahora dentro del editor)
+        bindMeta(el('inf-title'), 'title'); bindMeta(el('inf-student'), 'student');
+        bindMeta(el('inf-course'), 'course'); bindMeta(el('inf-institution'), 'institution'); bindMeta(el('inf-date'), 'date');
+        ['inf-title', 'inf-student', 'inf-course', 'inf-institution', 'inf-date'].forEach(function (id) { var e = el(id); if (e) e.addEventListener('input', coverChanged); });
+        el('inf-cover-sub').addEventListener('input', function () { coverCfg().sub = this.value; coverChanged(); });
+        el('inf-cover-kicker').addEventListener('input', function () { coverCfg().kicker = this.value; coverChanged(); });
+        var styleSeg = el('inf-cover-style');
+        COVER_STYLES.forEach(function (st) { var b = document.createElement('button'); b.type = 'button'; b.dataset.v = st[0]; b.textContent = st[1]; b.addEventListener('click', function () { coverCfg().style = st[0]; coverChanged(); }); styleSeg.appendChild(b); });
+        var sw = el('inf-cover-swatches');
+        COVER_SWATCHES.forEach(function (col) { var sp = document.createElement('span'); sp.style.background = col; sp.title = col; sp.addEventListener('click', function () { coverCfg().accent = col; el('inf-cover-accent').value = col; coverChanged(); }); sw.appendChild(sp); });
+        el('inf-cover-accent').addEventListener('input', function () { coverCfg().accent = this.value; coverChanged(); });
+        el('inf-cover-align').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { coverCfg().align = b.dataset.v; coverChanged(); }); });
+        el('inf-cover-fit').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { coverCfg().imageFit = b.dataset.v; coverChanged(); }); });
+        el('inf-cover-fullpage').addEventListener('change', function () { coverCfg().fullPage = this.checked; coverChanged(); });
+        el('inf-cover-img-up').addEventListener('click', function () { el('inf-cover-img-input').click(); });
+        el('inf-cover-img-input').addEventListener('change', function (e) {
+          var f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+          toast('Cargando imagen…');
+          readImageDataURL(f, function (url) { if (!url) { toast('No se pudo leer la imagen.'); return; } coverCfg().image = url; coverChanged(); toast('Imagen de portada lista ✓'); });
+        });
+        el('inf-cover-img-pick').addEventListener('change', function () {
+          var v = this.value; this.value = ''; if (!v) return;
+          var url = null;
+          if (v.indexOf('photo:') === 0) { var ph = I.devicePhotos[parseInt(v.slice(6))]; url = ph ? ph.dataUrl : null; }
+          else if (v.indexOf('data:') === 0) { var dp = (state.sensorPhotos || []).filter(function (q) { return q && q.photoDataURL; })[parseInt(v.slice(5))]; url = dp ? dp.photoDataURL : null; }
+          else if (v.indexOf('graph:') === 0) { url = chartToDataURL(parseInt(v.slice(6))); }
+          else if (v === 'drawing') { url = I.drawingDataURL(); }
+          if (!url) { toast('No se pudo usar esa imagen.'); return; }
+          coverCfg().image = url; coverChanged();
+        });
+        el('inf-cover-img-rm').addEventListener('click', function () { coverCfg().image = null; coverChanged(); });
+        el('inf-cover-done').addEventListener('click', closeCoverModal);
+        window.addEventListener('resize', function () { if (m.classList.contains('open')) fitCoverPreview(); });
+        fillIcons(m);
+      }
+      function coverChanged() {
+        refreshCoverForm(); renderCoverPreview(); refreshCoverCard();
+        renderPreviewDebounced(); schedule();
+      }
+      function refreshCoverForm() {
+        var c = coverCfg();
+        var sub = el('inf-cover-sub'); if (sub && document.activeElement !== sub) sub.value = c.sub;
+        var kk = el('inf-cover-kicker'); if (kk && document.activeElement !== kk) kk.value = c.kicker;
+        el('inf-cover-style').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === c.style); });
+        el('inf-cover-align').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === c.align); });
+        el('inf-cover-fit').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === c.imageFit); });
+        el('inf-cover-accent').value = c.accent;
+        el('inf-cover-fullpage').checked = !!c.fullPage;
+        var ib = el('inf-cover-imgbox');
+        ib.innerHTML = c.image ? '<img src="' + c.image + '" alt="">' : '<div class="none">Sin imagen. Subí una foto del montaje, elegí una foto del informe o usá una gráfica.</div>';
+        el('inf-cover-img-rm').style.display = c.image ? '' : 'none';
+        el('inf-cover-fit').style.display = c.image ? '' : 'none';
+        // Fuentes disponibles para la imagen: fotos del informe, fotos de datos, gráficas, dibujo
+        var pick = el('inf-cover-img-pick'), opts = '<option value="">Usar foto o gráfica…</option>';
+        (I.devicePhotos || []).forEach(function (p, i) { opts += '<option value="photo:' + i + '">Foto: ' + esc((p.name || ('imagen ' + (i + 1))).slice(0, 40)) + '</option>'; });
+        var dps = (state.sensorPhotos || []).filter(function (q) { return q && q.photoDataURL; });
+        dps.slice(0, 30).forEach(function (q, i) { opts += '<option value="data:' + i + '">Foto de dato ' + (i + 1) + '</option>'; });
+        for (var g = 0; g < (state.numGraphs || 0); g++) { if (state.charts && state.charts[g] && (state.rawData || []).length) opts += '<option value="graph:' + g + '">Gráfica ' + (g + 1) + '</option>'; }
+        if (I.hasDrawing()) opts += '<option value="drawing">Dibujo del informe</option>';
+        pick.innerHTML = opts;
+      }
+      function renderCoverPreview() {
+        var d = el('inf-cover-prev-doc'); if (!d) return;
+        d.innerHTML = coverBlock();
+        fitCoverPreview();
+      }
+      function fitCoverPreview() {
+        var prev = el('inf-cover-prev'), wrap = el('inf-cover-prev-wrap'), page = el('inf-cover-prev-doc'); if (!prev || !wrap || !page) return;
+        var avail = prev.clientWidth - 36, sc = Math.max(0.2, Math.min(1, avail / 794));
+        page.style.transform = 'scale(' + sc + ')';
+        var h = page.offsetHeight || 1160;
+        wrap.style.width = Math.round(794 * sc) + 'px'; wrap.style.height = Math.round(h * sc) + 'px';
+      }
+      function openCoverModal() {
+        buildCoverModal(); closeMenus();
+        var m = el('inf-cover-modal'); if (!m) return;
+        syncReportInputs(); refreshCoverForm(); m.classList.add('open');
+        renderCoverPreview(); setTimeout(fitCoverPreview, 50);
+        setTimeout(function () { var t = el('inf-title'); if (t && !(I.meta.title || '').trim()) t.focus(); }, 80);
+      }
+      function closeCoverModal() {
+        var m = el('inf-cover-modal'); if (m) m.classList.remove('open');
+        refreshCoverCard(); buildOutlineDebounced(); renderPreviewDebounced(); schedule();
+      }
+      I.openCoverModal = openCoverModal;
       function sizeSeg(id, card) {
         var o = imgOpt(id), seg = document.createElement('span'); seg.className = 'inf-seg';
         SIZE_LABELS.forEach(function (s) {
@@ -28381,7 +28615,7 @@ bluetooth.startIOPinService()</pre>
         var grip = document.createElement('span'); grip.className = 'inf-part-grip inf-ic'; if (isCover) grip.innerHTML = ico('file-text'); else grip.textContent = '⠿';
         if (!isCover) { grip.setAttribute('draggable', 'true'); grip.title = 'Arrastrá para mover esta parte'; }
         var name = document.createElement('span'); name.className = 'inf-part-name'; name.textContent = isSec ? 'Parte de texto' : friendlyItemName(id);
-        var tag = document.createElement('span'); tag.className = 'inf-part-tag'; tag.textContent = isSec ? '' : (isCover ? 'completá los datos' : autoTag(id));
+        var tag = document.createElement('span'); tag.className = 'inf-part-tag'; tag.textContent = isSec ? '' : (isCover ? 'se edita aparte · ocupa la primera página' : autoTag(id));
         var acts = document.createElement('span'); acts.className = 'inf-part-acts';
         if (!isCover) {
           var caret = cbtn(isCollapsed ? '▸' : '▾', isCollapsed ? 'Desplegar esta parte' : 'Plegar: ver solo el nombre de esta parte');
@@ -28855,7 +29089,7 @@ bluetooth.startIOPinService()</pre>
         w.document.open();
         w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>' + esc(I.meta.title || 'Informe') + '</title>' +
           '<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">' +
-          '<style>' + REPORT_CSS + ' @page{size:A4;margin:12mm;} body{margin:0;background:#fff;} .rep-doc{width:100%;} .rep-block,.rep-cover,.rep-fit,.rep-photo,.rep-figure{break-inside:avoid;}</style>' +
+          '<style>' + REPORT_CSS + ' @page{size:A4;margin:12mm;} body{margin:0;background:#fff;} .rep-doc{width:100%;} .rep-block,.rep-cover,.rep-fit,.rep-photo,.rep-figure{break-inside:avoid;} .rep-cover-page{aspect-ratio:auto;height:272mm;break-after:page;}</style>' +
           '</head><body><div class="rep-doc">' + html + '</div>' +
           '<scr' + 'ipt>window.onload=function(){setTimeout(function(){window.focus();window.print();},400);};</scr' + 'ipt>' +
           '</body></html>');
@@ -28897,10 +29131,13 @@ bluetooth.startIOPinService()</pre>
           for (var bi = 0; bi < blocks.length; bi++) {
             var canvas = await window.html2canvas(blocks[bi], { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false, imageTimeout: 0 });
             var imgH = canvas.height * (usableW / canvas.width);
+            var isCoverPage = blocks[bi].classList && blocks[bi].classList.contains('rep-cover-page');
+            if (isCoverPage && imgH > usableH) imgH = usableH;   // por redondeo: la portada entera siempre entra en una página
             if (imgH <= usableH) {
               if (y > margin && (y + imgH) > (pageH - margin)) { pdf.addPage(); y = margin; }
               pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, y, usableW, imgH, undefined, 'FAST');
               y += imgH + 12;
+              if (isCoverPage) y = pageH;   // la portada ocupa la primera página: lo demás empieza en la siguiente
             } else {
               if (y > margin) { pdf.addPage(); y = margin; }
               var cctx = null; try { cctx = canvas.getContext('2d'); } catch (e) {}
@@ -29226,9 +29463,21 @@ bluetooth.startIOPinService()</pre>
         function cover(elm, ctx) {
           var st = ctx.st; flush(st);
           var kicker = textOf(elm.querySelector('.rep-cover-kicker')), title = textOf(elm.querySelector('.rep-cover-title')), sub = textOf(elm.querySelector('.rep-cover-sub'));
-          st.out.push(new D.Paragraph(darkBox({ spacing: { before: 0, after: 0 }, children: [new D.TextRun({ text: kicker, font: FONT, size: hp(10.5), color: '9E9E9E', bold: true, allCaps: true, characterSpacing: 80 })] })));
-          st.out.push(new D.Paragraph(darkBox({ heading: D.HeadingLevel.TITLE, spacing: { before: 200, after: 120 }, children: [new D.TextRun({ text: title, font: FONT, size: hp(30), color: 'FFFFFF', bold: true })] })));
-          st.out.push(new D.Paragraph(darkBox({ spacing: { before: 0, after: 0 }, children: [new D.TextRun({ text: sub, font: FONT, size: hp(12.5), color: 'CFCFCF' })] })));
+          var accHex = (coverCfg().accent || '#0a0a0a').replace('#', '').toUpperCase();
+          var minimal = /\brep-cover-minimal\b/.test(elm.className || '');
+          var centered = /\brep-cover-center\b/.test(elm.className || '');
+          var al = centered ? { alignment: D.AlignmentType.CENTER } : {};
+          var box = function (extra) { if (minimal) return Object.assign({}, al, extra || {}); var b = { style: D.BorderStyle.SINGLE, size: 6, color: accHex, space: 6 }; return Object.assign({ shading: { type: D.ShadingType.CLEAR, fill: accHex, color: 'auto' }, border: { top: b, bottom: b, left: b, right: b } }, al, extra || {}); };
+          if (minimal) st.out.push(new D.Paragraph(Object.assign({ spacing: { before: 0, after: 160 }, border: { bottom: { style: D.BorderStyle.SINGLE, size: 48, color: accHex, space: 1 } }, children: [new D.TextRun({ text: ' ' })] }, al)));
+          if (kicker) st.out.push(new D.Paragraph(box({ spacing: { before: 0, after: 0 }, children: [new D.TextRun({ text: kicker, font: FONT, size: hp(10.5), color: minimal ? accHex : 'DDDDDD', bold: true, allCaps: true, characterSpacing: 80 })] })));
+          st.out.push(new D.Paragraph(box({ heading: D.HeadingLevel.TITLE, spacing: { before: 200, after: 120 }, children: [new D.TextRun({ text: title, font: FONT, size: hp(30), color: minimal ? '161616' : 'FFFFFF', bold: true })] })));
+          if (sub) st.out.push(new D.Paragraph(box({ spacing: { before: 0, after: 0 }, children: [new D.TextRun({ text: sub, font: FONT, size: hp(12.5), color: minimal ? '6A6A6A' : 'E6E6E6' })] })));
+          // Imagen de portada (si la hay): centrada, al ancho de la página
+          var cimg = elm.querySelector('.rep-cover-img img, .rep-cover-hero img');
+          if (cimg) {
+            var crun = imageRun(cimg, Math.floor(DOCX_CONTENT_W / 15));
+            if (crun) st.out.push(new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { before: 240, after: 240 }, children: [crun] }));
+          }
           var cells = [].slice.call(elm.querySelectorAll('.rep-meta-cell'));
           if (cells.length) {
             var rows = [], half = Math.floor(DOCX_CONTENT_W / 2);
@@ -29251,7 +29500,9 @@ bluetooth.startIOPinService()</pre>
             }
             st.out.push(new D.Table({ rows: rows, width: { size: DOCX_CONTENT_W, type: D.WidthType.DXA }, columnWidths: [half, half], borders: allBorders(noBorder()) }));
           }
-          st.out.push(new D.Paragraph({ children: [], spacing: { after: 200 } }));
+          // Portada a página entera: el resto del informe empieza en la página siguiente
+          if (elm.classList && elm.classList.contains('rep-cover-page')) st.out.push(new D.Paragraph({ children: [new D.PageBreak()] }));
+          else st.out.push(new D.Paragraph({ children: [], spacing: { after: 200 } }));
         }
         // ---- Banda de sección (título de parte) ----
         function band(elm, ctx) {
@@ -29861,7 +30112,7 @@ bluetooth.startIOPinService()</pre>
         var WS = window.FbitWorkspaces;
         if (WS && WS.exportForProject) { try { Object.assign(app, WS.exportForProject()); } catch (e) {} }
         var report = {
-          meta: I.meta, notes: I.notesText, drawing: I.drawingDataURL(),
+          meta: I.meta, cover: coverCfg(), notes: I.notesText, drawing: I.drawingDataURL(),
           devicePhotos: I.devicePhotos, selected: I.selected,
           imgOpts: I.imgOpts, sections: I.sections, doc: I.doc
         };
@@ -29947,6 +30198,7 @@ bluetooth.startIOPinService()</pre>
           // Restaurar el informe
           var rep = blob.report || {};
           I.meta = Object.assign({ title: '', student: '', course: '', institution: '', date: todayStr() }, rep.meta || {});
+          I.cover = normCover(rep.cover);
           I.notesText = rep.notes || '';
           I.devicePhotos = Array.isArray(rep.devicePhotos) ? rep.devicePhotos : [];
           I.selected = rep.selected || {};
@@ -29986,6 +30238,7 @@ bluetooth.startIOPinService()</pre>
           st.fitResult ? (st.fitResult.type + '' + st.fitResult.r2) : '',
           (st.segmentFits || []).length, (st.sensorPhotos || []).length,
           I.meta.title, I.meta.student, I.meta.course, I.meta.institution, I.meta.date,
+          JSON.stringify(I.cover || {}).length, (I.cover && I.cover.style) || '', (I.cover && I.cover.accent) || '',
           I.notesText.length, (I.drawingData ? I.drawingData.length : 0), I.devicePhotos.length,
           JSON.stringify(I.selected), JSON.stringify(I.imgOpts), JSON.stringify(I.sections), JSON.stringify(I.doc),
           (window.FbitWorkspaces && window.FbitWorkspaces.sig) ? window.FbitWorkspaces.sig() : ''].join('|');
@@ -30478,6 +30731,7 @@ bluetooth.startIOPinService()</pre>
       }
       I.renameExperiment = renameExperiment;
       I.buildDocxBlob = buildDocxBlob;
+      I.buildPdfDoc = buildPdfDoc; I.reportHTML = function () { return buildReportHTML(collect()); };
       I.serialize = serialize; I.restore = restore; I.applyTemplate = applyTemplate; I.openPreview = openPreview;
       // Puente para los módulos de historial de versiones, deshacer/rehacer y espacios de trabajo.
       I.serializeApp = serializeApp; I.restoreApp = restoreApp;
@@ -30503,6 +30757,7 @@ bluetooth.startIOPinService()</pre>
         st.timeZeroOffset = 0; st.sensorPhotos = []; st.videoBlob = null; st.recordedChunks = [];
         st.fitResult = null; st.segmentFits = []; st.extraDataSets = [];
         I.meta = { title: newTitle || '', student: '', course: '', institution: '', date: todayStr() };
+        I.cover = defaultCover();
         I.notesText = ''; I.devicePhotos = []; I.selected = {};
         I.imgOpts = {}; I.sections = []; I._secSeq = 0; I._secActive = 0; I._blkSeq = 0; I.drawingData = null;
         _gSessionFileId = null; _gSessionName = null; _lastSavedAt = 0;
@@ -30658,8 +30913,9 @@ bluetooth.startIOPinService()</pre>
           if (e.key !== 'Escape') return;
           var dlg = el('inf-dialog');
           if (dlg && dlg.classList.contains('open')) { if (_dlgOpts && !_dlgOpts.alert) _dlgCancel(); else _dlgOk(); return; }
-          var eqm = el('inf-eq-modal'), dm = el('inf-draw-modal'), mt = el('inf-material'), sm = el('session-menu'), xm = el('inf-export-menu');
+          var eqm = el('inf-eq-modal'), dm = el('inf-draw-modal'), mt = el('inf-material'), sm = el('session-menu'), xm = el('inf-export-menu'), cvm = el('inf-cover-modal');
           if (sm && sm.classList.contains('open')) { closeSessionMenu(); }
+          else if (cvm && cvm.classList.contains('open')) { closeCoverModal(); }
           else if (xm && xm.classList.contains('open')) { xm.classList.remove('open'); var xb = el('inf-export-btn'); if (xb) xb.classList.remove('on'); }
           else if (document.querySelector('.inf-menu.open')) { closeMenus(); }
           else if (eqm && eqm.classList.contains('open')) { closeEqEditor(); }
@@ -30676,7 +30932,9 @@ bluetooth.startIOPinService()</pre>
         restoreNavState();
         var ns = el('inf-nav-show'); if (ns) ns.addEventListener('click', function () { toggleNav(true); });
         if (!I.doc) I.doc = defaultDoc();
+        I.cover = normCover(I.cover);
         I.meta.date = I.meta.date || todayStr();
+        buildCoverModal();   // los campos de la portada (título, estudiante…) viven en el editor aparte
         wire();
         setupDrawBig();
         renderPhotos();
