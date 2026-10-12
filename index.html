@@ -825,6 +825,20 @@
             margin: 0 2px;
         }
 
+        /* Tabla de valores: encabezados editables (nombre de cada variable) */
+        .mt-table th { vertical-align: bottom; }
+        .mt-table .mt-role { display:block; font-size:0.58rem; letter-spacing:1px; color:#777; font-weight:800; margin-bottom:2px; }
+        .mt-table .mt-role.x { color:#1565c0; }
+        .mt-table .mt-head { width:100%; min-width:110px; box-sizing:border-box; border:1.5px solid #bbb; background:#fff; padding:3px 5px; font-size:0.78rem; font-weight:700; text-transform:none; letter-spacing:0; font-family:inherit; }
+        .mt-table .mt-head:focus { outline:none; border-color:#000; }
+        .mt-table .mt-mult-row th { padding-top:2px; padding-bottom:4px; font-weight:500; color:#666; text-transform:none; letter-spacing:0; border-bottom:2px solid #000; }
+        .mt-table .mt-mult-row input { width:52px; font-size:0.72rem; padding:2px 3px; }
+        /* Tabla DATOS: encabezados editables (clic para renombrar la variable) */
+        .data-table th .th-edit { display:inline-block; min-width:2ch; padding:0 3px; border-bottom:1px dashed transparent; cursor:text; }
+        .data-table th .th-edit:hover { border-bottom-color:#555; }
+        .data-table th .th-edit:focus { outline:none; border-bottom:1px solid #000; background:#fff8e1; text-transform:none; }
+        .table-add-btn { padding:4px 10px !important; font-size:0.95rem !important; line-height:1; flex-shrink:0; }
+
         /* Botón "unir los puntos con una línea" (por gráfica). Apagado: solo
            puntos, la línea del ícono se dibuja punteada y gris. Encendido: negro. */
         .graph-controls button.line-toggle-btn svg { display: block; }
@@ -5598,6 +5612,7 @@
                 </div>
                 <div class="section-content collapsed" style="padding: 0;">
                 <div class="table-controls">
+                    <button type="button" id="addDataBtn" class="toolbar-btn table-add-btn" onclick="openManualTableModal()" title="Agregar datos a mano (abre la tabla de valores)" aria-label="Agregar datos a mano">+</button>
                     <input type="text" id="tableSearch" class="table-search" placeholder="Buscar...">
                     <select id="tableFilter" class="table-filter">
                         <option value="all">Todos</option>
@@ -5661,23 +5676,23 @@
                     <input type="number" id="mtTimeStep" value="1" step="any" style="font-size:0.75rem; width:70px;">
                     <button class="toolbar-btn" onclick="mtAutoFillTime()" style="font-size:0.75rem; padding: 3px 10px;" id="mtAutoFillBtn">APLICAR</button>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-                    <label style="font-size:0.75rem; font-weight:bold; min-width:140px;" id="mtXLabelLabel">Etiqueta del eje X:</label>
-                    <input type="text" id="mtXLabel" value="Tiempo (s)" style="font-size:0.75rem; flex:1;" placeholder="Ej: Tiempo (s), Distancia (m), Frecuencia (Hz)">
-                    <span id="mtXMultWrap" style="display:flex; gap:4px; align-items:center; white-space:nowrap;">
-                        <span style="font-size:0.72rem; color:#666;">×10^</span>
-                        <input type="number" step="1" id="mt_mult_t" placeholder="0" style="width:48px; font-size:0.72rem; padding:2px 3px;">
-                    </span>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; padding: 6px 8px; background: #fff8e1; border-radius: 4px; border: 1px solid #ffe082;">
+                    <label style="font-size:0.75rem; font-weight:bold;" id="mtXModeLabel" for="mtXMode">Eje X de la tabla:</label>
+                    <select id="mtXMode" style="font-size:0.78rem; max-width:100%;">
+                        <option value="time">Tiempo (la primera columna son tiempos)</option>
+                        <option value="var">Otra magnitud (masa, distancia, ángulo…)</option>
+                    </select>
+                    <span id="mtXModeHint" style="font-size:0.7rem; color:#666; flex-basis:100%;"></span>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;" id="mtVarNames"></div>
                 <div id="mtPasteHint" style="font-size: 0.7rem; color: #666; margin-bottom: 4px;">
-                    💡 Tip: pegá (Ctrl+V) desde Excel/CSV, navegá con Enter/flechas, usá notación científica (6e-6) y el ×10^ junto a cada etiqueta multiplica toda la columna al cargar.
+                    💡 Tip: escribí los nombres de las variables en los encabezados (van directo a la gráfica), pegá (Ctrl+V) desde Excel/CSV, navegá con Enter/flechas, usá notación científica (6e-6) y el ×10^ de cada columna multiplica todos sus valores al cargar.
                 </div>
             </div>
             <div style="max-height: 45vh; overflow: auto; border: 1px solid #ccc; border-radius: 4px;">
-                <table class="data-table" style="font-size: 0.78rem;">
+                <table class="data-table mt-table" style="font-size: 0.78rem;">
                     <thead>
                         <tr id="mtTableHeader"><th>#</th><th>Tiempo (s)</th><th>Var 1</th></tr>
+                        <tr id="mtTableMult" class="mt-mult-row"></tr>
                     </thead>
                     <tbody id="mtTableBody">
                     </tbody>
@@ -6714,11 +6729,23 @@ basic.forever(function () {
                 mtAutoTime: 'Auto-rellenar tiempo:',
                 mtApply: 'APLICAR',
                 mtLoadData: 'CARGAR DATOS',
-                mtPasteHint: 'Tip: pegá (Ctrl+V) desde Excel/CSV, navegá con Enter/flechas, usá notación científica (6e-6) y el ×10^ junto a cada etiqueta multiplica toda la columna al cargar.',
+                mtPasteHint: 'Tip: escribí los nombres de las variables en los encabezados (van directo a la gráfica), pegá (Ctrl+V) desde Excel/CSV, navegá con Enter/flechas, usá notación científica (6e-6) y el ×10^ de cada columna multiplica todos sus valores al cargar.',
                 mtMultTitle: 'Multiplicador de columna: al cargar, cada valor se multiplica por 10 elevado a este exponente (ej: -6 si los datos están en micro-unidades).',
-                mtAutoFillDisabled: 'La columna de tiempo está desactivada (desmarcá "Micro:bit envía timestamp" para modo sin tiempo).',
+                mtAutoFillDisabled: 'Esta tabla no tiene columna de tiempo (en "Eje X de la tabla" elegí "Tiempo").',
                 mtXLabelLabel: 'Etiqueta del eje X:',
                 mtYLabelLabel: 'Etiqueta del eje Y:',
+                mtXModeLabel: 'Eje X de la tabla:',
+                mtXModeTime: 'Tiempo (la primera columna son tiempos)',
+                mtXModeVar: 'Otra magnitud (masa, distancia, ángulo…)',
+                mtXModeTimeHint: 'La primera columna es el tiempo; podés auto-rellenarla. Las demás columnas son las variables medidas (eje Y).',
+                mtXModeVarHint: 'La primera variable es el eje X (por ejemplo masa) y las siguientes van al eje Y (por ejemplo fuerza). No hay columna de tiempo.',
+                mtXModeLocked: 'Ya hay {n} puntos cargados: los valores nuevos se agregan con el mismo eje X. Usá LIMPIAR si querés cambiarlo.',
+                mtRoleX: 'EJE X',
+                mtRoleY: 'EJE Y',
+                mtHeadTip: 'Escribí acá el nombre de la variable (con su unidad): va directo a la gráfica',
+                mtAppendInfo: 'Los valores se agregan a los {n} puntos ya cargados.',
+                addDataTip: 'Agregar datos a mano (abre la tabla de valores)',
+                thEditTip: 'clic para cambiar el nombre; va directo a la gráfica',
                 autoTitleLabel: 'Título automático (Y vs X)',
                 graphTitleFieldLabel: 'Título:',
                 xLabelResetTitle: 'Auto-generar etiqueta',
@@ -7170,11 +7197,23 @@ basic.forever(function () {
                 mtAutoTime: 'Auto-fill time:',
                 mtApply: 'APPLY',
                 mtLoadData: 'LOAD DATA',
-                mtPasteHint: 'Tip: paste (Ctrl+V) from Excel/CSV, navigate with Enter/arrow keys, use scientific notation (6e-6), and the ×10^ next to each label multiplies the whole column on load.',
+                mtPasteHint: 'Tip: type the variable names in the headers (they go straight to the graph), paste (Ctrl+V) from Excel/CSV, navigate with Enter/arrow keys, use scientific notation (6e-6), and the ×10^ of each column multiplies all its values on load.',
                 mtMultTitle: 'Column multiplier: on load, each value is multiplied by 10 raised to this exponent (e.g. -6 if your data is in micro-units).',
-                mtAutoFillDisabled: 'Time column is disabled (uncheck "Micro:bit sends timestamp" for variables-only mode).',
+                mtAutoFillDisabled: 'This table has no time column (choose "Time" in "X axis of the table").',
                 mtXLabelLabel: 'X-axis label:',
                 mtYLabelLabel: 'Y-axis label:',
+                mtXModeLabel: 'X axis of the table:',
+                mtXModeTime: 'Time (the first column holds times)',
+                mtXModeVar: 'Another quantity (mass, distance, angle…)',
+                mtXModeTimeHint: 'The first column is time; you can auto-fill it. The other columns are the measured variables (Y axis).',
+                mtXModeVarHint: 'The first variable is the X axis (e.g. mass) and the next ones go to the Y axis (e.g. force). There is no time column.',
+                mtXModeLocked: 'There are already {n} points loaded: new values are added with the same X axis. Use CLEAR to change it.',
+                mtRoleX: 'X AXIS',
+                mtRoleY: 'Y AXIS',
+                mtHeadTip: 'Type the variable name here (with its unit): it goes straight to the graph',
+                mtAppendInfo: 'The values are added to the {n} points already loaded.',
+                addDataTip: 'Add data by hand (opens the data table)',
+                thEditTip: 'click to rename; goes straight to the graph',
                 autoTitleLabel: 'Auto title (Y vs X)',
                 graphTitleFieldLabel: 'Title:',
                 xLabelResetTitle: 'Auto-generate label',
@@ -7626,11 +7665,23 @@ basic.forever(function () {
                 mtAutoTime: 'Auto-preencher tempo:',
                 mtApply: 'APLICAR',
                 mtLoadData: 'CARREGAR DADOS',
-                mtPasteHint: 'Dica: cole (Ctrl+V) do Excel/CSV, navegue com Enter/setas, use notação científica (6e-6) e o ×10^ ao lado de cada rótulo multiplica toda a coluna ao carregar.',
+                mtPasteHint: 'Dica: escreva os nomes das variáveis nos cabeçalhos (vão direto ao gráfico), cole (Ctrl+V) do Excel/CSV, navegue com Enter/setas, use notação científica (6e-6) e o ×10^ de cada coluna multiplica todos os seus valores ao carregar.',
                 mtMultTitle: 'Multiplicador de coluna: ao carregar, cada valor é multiplicado por 10 elevado a este expoente (ex: -6 se os dados estão em micro-unidades).',
-                mtAutoFillDisabled: 'A coluna de tempo está desativada (desmarque "Micro:bit envia timestamp" para modo somente variáveis).',
+                mtAutoFillDisabled: 'Esta tabela não tem coluna de tempo (em "Eixo X da tabela" escolha "Tempo").',
                 mtXLabelLabel: 'Rótulo do eixo X:',
                 mtYLabelLabel: 'Rótulo do eixo Y:',
+                mtXModeLabel: 'Eixo X da tabela:',
+                mtXModeTime: 'Tempo (a primeira coluna são tempos)',
+                mtXModeVar: 'Outra grandeza (massa, distância, ângulo…)',
+                mtXModeTimeHint: 'A primeira coluna é o tempo; você pode preenchê-la automaticamente. As outras colunas são as variáveis medidas (eixo Y).',
+                mtXModeVarHint: 'A primeira variável é o eixo X (por exemplo massa) e as seguintes vão ao eixo Y (por exemplo força). Não há coluna de tempo.',
+                mtXModeLocked: 'Já há {n} pontos carregados: os valores novos são adicionados com o mesmo eixo X. Use LIMPAR se quiser mudá-lo.',
+                mtRoleX: 'EIXO X',
+                mtRoleY: 'EIXO Y',
+                mtHeadTip: 'Escreva aqui o nome da variável (com a unidade): vai direto ao gráfico',
+                mtAppendInfo: 'Os valores são adicionados aos {n} pontos já carregados.',
+                addDataTip: 'Adicionar dados à mão (abre a tabela de valores)',
+                thEditTip: 'clique para renomear; vai direto ao gráfico',
                 autoTitleLabel: 'Título automático (Y vs X)',
                 graphTitleFieldLabel: 'Título:',
                 xLabelResetTitle: 'Gerar rótulo automático',
@@ -7923,6 +7974,9 @@ basic.forever(function () {
 
             const setZeroBtn = document.getElementById('setZeroBtn');
             if (setZeroBtn) setZeroBtn.textContent = t.setZero;
+
+            const addDataBtn = document.getElementById('addDataBtn');
+            if (addDataBtn && t.addDataTip) { addDataBtn.title = t.addDataTip; addDataBtn.setAttribute('aria-label', t.addDataTip); }
 
             // Casilla general "Unir los puntos con una línea" (está en una checkbox-row, no en input-row)
             const showLinesLbl = document.querySelector('label[for="showLinesToggle"]');
@@ -11168,7 +11222,9 @@ bluetooth.startIOPinService()</pre>
             if (id === 'dlabAxisValueX') return 'Eje X (LAB)';
             if (id === 'dlabAxisValueY') return 'Eje Y (LAB)';
             if (/^smVarName(\d)$/.test(id)) return `Variable ${parseInt(id.match(/\d/)[0]) + 1} (Sensores)`;
-            if (id === 'mtXLabel') return 'Etiqueta X (Tabla manual)';
+            if (id === 'mtHead_t') return 'Eje X (Tabla de valores)';
+            if (/^mtHead_v(\d)$/.test(id)) return `Variable ${parseInt(id.match(/\d/)[0]) + 1} (Tabla de valores)`;
+            if (el.classList && el.classList.contains('th-edit')) return el.getAttribute('data-axis') === 'time' ? 'Eje X (tabla de datos)' : `Variable ${parseInt(el.getAttribute('data-var')) + 1} (tabla de datos)`;
             // Fallback genérico
             const placeholder = el.getAttribute && el.getAttribute('placeholder');
             return placeholder || (id ? id : 'campo de texto');
@@ -12259,17 +12315,69 @@ bluetooth.startIOPinService()</pre>
                 }
                 if (!fullTimeLabel) fullTimeLabel = getXAxisLabel('time');
                 const shortTimeLabel = fullTimeLabel.length > 14 ? fullTimeLabel.slice(0, 12) + '…' : fullTimeLabel;
-                html += `<th title="${_escHtml(fullTimeLabel)}">${_escHtml(shortTimeLabel)}</th>`;
+                html += `<th title="${_escHtml(fullTimeLabel)} · ${_escHtml(tr('thEditTip'))}"><span class="th-edit" contenteditable="true" spellcheck="false" data-axis="time" data-full="${_escHtml(fullTimeLabel)}">${_escHtml(shortTimeLabel)}</span></th>`;
             }
 
             for (let i = 0; i < state.numVariables; i++) {
                 const full = state.variables[i].name;
-                // Mostrar nombre completo; añadir title para tooltip cuando se trunque visualmente
-                html += `<th title="${_escHtml(full)}">${_escHtml(full)}</th>`;
+                // Nombre editable: clic → escribir → Enter. Va directo a gráficas, selects y leyendas.
+                html += `<th title="${_escHtml(full)} · ${_escHtml(tr('thEditTip'))}"><span class="th-edit" contenteditable="true" spellcheck="false" data-var="${i}">${_escHtml(full)}</span></th>`;
             }
 
             html += '<th>📹</th><th></th>';
             header.innerHTML = html;
+            _bindDataTableHeaderEditing();
+        }
+
+        // Edición de nombres desde los encabezados de la tabla DATOS (delegado, una sola vez).
+        function _bindDataTableHeaderEditing() {
+            const header = document.getElementById('dataTableHeader');
+            if (!header || header.dataset.editBound === '1') return;
+            header.dataset.editBound = '1';
+            const commit = (el) => {
+                const raw = (el.textContent || '').replace(/\s+/g, ' ').trim();
+                if (el.hasAttribute('data-var')) {
+                    const idx = parseInt(el.getAttribute('data-var'));
+                    if (isNaN(idx) || !state.variables[idx]) return;
+                    const newName = raw || state.variables[idx].name;
+                    if (newName === state.variables[idx].name) { el.textContent = newName; return; }
+                    // Reutiliza la propagación en vivo del campo "Nombre" del panel de variables
+                    const inp = document.getElementById(`var${idx + 1}Name`);
+                    if (inp) { inp.value = newName; inp.dispatchEvent(new Event('input')); }
+                    else { state.variables[idx].name = newName; syncChartLabelsAndTitles(); }
+                    updateDataTableHeader();
+                    if (typeof updateAllCharts === 'function' && !state.isCollecting) updateAllCharts();
+                } else {
+                    // Columna de tiempo: etiqueta del eje X de las gráficas con eje tiempo
+                    const auto = getXAxisLabel('time');
+                    const newLabel = raw || auto;
+                    for (let g = 0; g < 3; g++) {
+                        const gg = state.graphs[g];
+                        if (!gg || gg.xAxis !== 'time') continue;
+                        gg.xLabel = newLabel;
+                        gg.xLabelCustom = (newLabel !== auto);
+                        const xi = document.getElementById(`graph${g + 1}XLabel`); if (xi) xi.value = newLabel;
+                    }
+                    syncChartLabelsAndTitles();
+                }
+            };
+            header.addEventListener('focusin', (e) => {
+                const el = e.target;
+                if (!el.classList || !el.classList.contains('th-edit')) return;
+                // Mostrar el nombre completo (la cabecera de tiempo se muestra recortada)
+                if (el.getAttribute('data-full')) el.textContent = el.getAttribute('data-full');
+                try { const r = document.createRange(); r.selectNodeContents(el); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch (_) {}
+            });
+            header.addEventListener('keydown', (e) => {
+                const el = e.target;
+                if (!el.classList || !el.classList.contains('th-edit')) return;
+                if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+                else if (e.key === 'Escape') { e.preventDefault(); el.textContent = el.getAttribute('data-full') || (state.variables[parseInt(el.getAttribute('data-var'))] || {}).name || ''; el.blur(); }
+            });
+            header.addEventListener('focusout', (e) => {
+                const el = e.target;
+                if (el.classList && el.classList.contains('th-edit')) commit(el);
+            });
         }
 
         // ========== CONEXIÓN MICRO:BIT ==========
@@ -17686,23 +17794,46 @@ bluetooth.startIOPinService()</pre>
             track('tabla_manual', 'datos');
             const modal = document.getElementById('manualTableModal');
             modal.classList.add('active');
-            // Sync current variable count
-            document.getElementById('mtNumVars').value = state.numVariables;
-            updateMtVarNameInputs();
+            // El eje X de la tabla sigue al modo actual (tiempo u otra magnitud). Con datos
+            // ya cargados queda fijo: los valores nuevos se agregan con el mismo eje X.
+            const xMode = document.getElementById('mtXMode');
+            const hasData = state.rawData && state.rawData.length > 0;
+            xMode.value = state.microbitTimestamp ? 'time' : 'var';
+            xMode.disabled = hasData;
+            // Sync current variable count (sin tiempo, la primera variable es el eje X: mínimo 2)
+            const nv = Math.max(state.numVariables, state.microbitTimestamp ? 1 : 2);
+            document.getElementById('mtNumVars').value = nv;
+            // Encabezados nuevos a partir de los nombres actuales de las variables
+            document.getElementById('mtTableHeader').innerHTML = '';
+            document.getElementById('mtTableMult').innerHTML = '';
             buildManualTable();
-            // Precargar el input de etiqueta X con la etiqueta actual de la primera gráfica
-            // que use tiempo (o con la auto-generada)
-            const mtXLabelEl = document.getElementById('mtXLabel');
-            if (mtXLabelEl) {
-                const g0 = state.graphs[0];
-                if (g0 && g0.xAxis === 'time') {
-                    mtXLabelEl.value = g0.xLabelCustom ? g0.xLabel : getXAxisLabel('time');
-                } else {
-                    mtXLabelEl.value = getXAxisLabel('time');
-                }
-            }
             localizeManualTableModal();
+            // Con datos cargados, los valores nuevos se AGREGAN a los existentes
+            const info = document.getElementById('mtInfoBox');
+            if (info && hasData) info.textContent = tr('mtInfo') + ' ' + tr('mtAppendInfo').replace('{n}', state.rawData.length);
+            _mtUpdateXModeHint();
         }
+
+        // ¿La tabla de valores tiene columna de tiempo? (selector "Eje X de la tabla")
+        function mtHasTime() {
+            const sel = document.getElementById('mtXMode');
+            return sel ? sel.value !== 'var' : !!state.microbitTimestamp;
+        }
+        function _mtUpdateXModeHint() {
+            const hint = document.getElementById('mtXModeHint');
+            const sel = document.getElementById('mtXMode');
+            if (!hint || !sel) return;
+            const n = (state.rawData || []).length;
+            if (sel.disabled && n > 0) hint.textContent = tr('mtXModeLocked').replace('{n}', n);
+            else hint.textContent = mtHasTime() ? tr('mtXModeTimeHint') : tr('mtXModeVarHint');
+        }
+        document.getElementById('mtXMode').addEventListener('change', () => {
+            // Sin tiempo hacen falta al menos 2 columnas de variables (X e Y)
+            const nv = document.getElementById('mtNumVars');
+            if (!mtHasTime() && parseInt(nv.value) < 2) nv.value = '2';
+            buildManualTable(true);
+            _mtUpdateXModeHint();
+        });
 
         function closeManualTableModal() {
             document.getElementById('manualTableModal').classList.remove('active');
@@ -17720,47 +17851,37 @@ bluetooth.startIOPinService()</pre>
             setTxt('mtClearBtn', 'mtClear');
             setTxt('mtAutoTimeLabel', 'mtAutoTime');
             setTxt('mtAutoFillBtn', 'mtApply');
-            setTxt('mtXLabelLabel', 'mtXLabelLabel');
+            setTxt('mtXModeLabel', 'mtXModeLabel');
+            const xm = document.getElementById('mtXMode');
+            if (xm && xm.options.length >= 2) { xm.options[0].textContent = tr('mtXModeTime'); xm.options[1].textContent = tr('mtXModeVar'); }
             setTxt('mtCancelBtn', 'btPairingCancel');
             setTxt('mtLoadBtn', 'mtLoadData');
             const hint = document.getElementById('mtPasteHint');
             if (hint && tr('mtPasteHint') !== 'mtPasteHint') hint.textContent = '💡 ' + tr('mtPasteHint');
-            const multT = document.getElementById('mt_mult_t');
-            if (multT && tr('mtMultTitle') !== 'mtMultTitle') multT.title = tr('mtMultTitle');
+            document.querySelectorAll('#mtTableMult input').forEach(inp => { if (tr('mtMultTitle') !== 'mtMultTitle') inp.title = tr('mtMultTitle'); });
         }
 
-        function updateMtVarNameInputs() {
-            const numVars = parseInt(document.getElementById('mtNumVars').value);
-            const container = document.getElementById('mtVarNames');
-            // Preservar los exponentes ×10^ ya ingresados antes de reconstruir
-            const prevMults = [];
-            for (let i = 0; i < 3; i++) {
-                const m = document.getElementById(`mt_mult_v${i}`);
-                prevMults.push(m ? m.value : '');
+        // Nombres de las columnas de la tabla de valores: viven en los encabezados
+        // editables (mtHead_t, mtHead_v0…). Al reconstruir la tabla se conservan.
+        function _mtReadHeaderNames() {
+            const out = { t: '', vars: [], mults: { t: '', vars: [] } };
+            const tEl = document.getElementById('mtHead_t'); out.t = tEl ? tEl.value : '';
+            const mt = document.getElementById('mt_mult_t'); out.mults.t = mt ? mt.value : '';
+            for (let v = 0; v < 3; v++) {
+                const e = document.getElementById(`mtHead_v${v}`); out.vars.push(e ? e.value : null);
+                const m = document.getElementById(`mt_mult_v${v}`); out.mults.vars.push(m ? m.value : '');
             }
-            const multTitle = tr('mtMultTitle');
-            const yBase = tr('mtYLabelLabel');
-            let html = '';
-            for (let i = 0; i < numVars; i++) {
-                const name = i < state.numVariables ? state.variables[i].name : `Variable ${i + 1}`;
-                const yLabel = numVars === 1 ? yBase : yBase.replace(/:\s*$/, '') + ` ${i + 1}:`;
-                html += `
-                    <div style="display:flex; gap:8px; align-items:center;">
-                        <label style="font-size:0.75rem; font-weight:bold; min-width:140px;">${yLabel}</label>
-                        <input type="text" id="mtVar${i}Name" value="${name}" style="font-size:0.75rem; flex:1;">
-                        <span style="display:flex; gap:4px; align-items:center; white-space:nowrap;" title="${multTitle}">
-                            <span style="font-size:0.72rem; color:#666;">×10^</span>
-                            <input type="number" step="1" id="mt_mult_v${i}" value="${prevMults[i]}" placeholder="0" title="${multTitle}" style="width:48px; font-size:0.72rem; padding:2px 3px;">
-                        </span>
-                    </div>
-                `;
-            }
-            container.innerHTML = html;
+            return out;
+        }
+        function _mtDefaultTimeLabel() {
+            const g0 = state.graphs[0];
+            if (g0 && g0.xAxis === 'time' && g0.xLabelCustom) return g0.xLabel;
+            return getXAxisLabel('time');
         }
 
         document.getElementById('mtNumVars').addEventListener('change', () => {
-            updateMtVarNameInputs();
-            buildManualTable();
+            if (!mtHasTime() && parseInt(document.getElementById('mtNumVars').value) < 2) document.getElementById('mtNumVars').value = '2';
+            buildManualTable(true);
         });
 
         // Preserva los valores actuales antes de reconstruir la tabla
@@ -17796,19 +17917,31 @@ bluetooth.startIOPinService()</pre>
 
         function buildManualTable(preserve) {
             const snap = preserve ? _mtSnapshotCells() : null;
+            // Los nombres escritos en los encabezados y los ×10^ se conservan siempre
+            const prev = (preserve || document.getElementById('mtHead_v0')) ? _mtReadHeaderNames() : null;
             const numVars = parseInt(document.getElementById('mtNumVars').value);
             const numRows = parseInt(document.getElementById('mtNumRows').value) || 10;
-            const hasTime = state.microbitTimestamp;
+            const hasTime = mtHasTime();
+            const multTitle = _escHtml(tr('mtMultTitle'));
+            const headTip = _escHtml(tr('mtHeadTip'));
 
-            // Build header
+            // Build header: fila de nombres (editables) + fila de multiplicadores ×10^
             let headerHtml = '<th style="width:30px;">#</th>';
-            if (hasTime) headerHtml += `<th>${tr('timeSeconds') || 'Tiempo (s)'}</th>`;
+            let multHtml = '<th style="width:30px;"><span title="' + multTitle + '">×10^</span></th>';
+            if (hasTime) {
+                const tName = (prev && prev.t) ? prev.t : _mtDefaultTimeLabel();
+                headerHtml += `<th><span class="mt-role x">${_escHtml(tr('mtRoleX'))}</span><input type="text" class="mt-head" id="mtHead_t" value="${_escHtml(tName)}" title="${headTip}" placeholder="${_escHtml(tr('timeSeconds') || 'Tiempo (s)')}" autocomplete="off" spellcheck="false"></th>`;
+                multHtml += `<th><input type="number" step="1" id="mt_mult_t" value="${_escHtml(prev ? prev.mults.t : '')}" placeholder="0" title="${multTitle}"></th>`;
+            }
             for (let v = 0; v < numVars; v++) {
-                const nameInput = document.getElementById(`mtVar${v}Name`);
-                const name = nameInput ? nameInput.value : `Var ${v + 1}`;
-                headerHtml += `<th>${name}</th>`;
+                let name = prev && prev.vars[v] != null ? prev.vars[v] : null;
+                if (name == null) name = (v < state.numVariables) ? state.variables[v].name : `Variable ${v + 1}`;
+                const isX = !hasTime && v === 0;
+                headerHtml += `<th><span class="mt-role${isX ? ' x' : ''}">${_escHtml(isX ? tr('mtRoleX') : tr('mtRoleY'))}</span><input type="text" class="mt-head" id="mtHead_v${v}" value="${_escHtml(name)}" title="${headTip}" placeholder="Variable ${v + 1}" autocomplete="off" spellcheck="false"></th>`;
+                multHtml += `<th><input type="number" step="1" id="mt_mult_v${v}" value="${_escHtml(prev ? (prev.mults.vars[v] || '') : '')}" placeholder="0" title="${multTitle}"></th>`;
             }
             document.getElementById('mtTableHeader').innerHTML = headerHtml;
+            document.getElementById('mtTableMult').innerHTML = multHtml;
 
             // Build body with editable cells
             let bodyHtml = '';
@@ -17830,14 +17963,10 @@ bluetooth.startIOPinService()</pre>
             // Mostrar/ocultar fila de auto-rellenado de tiempo según haya columna de tiempo
             const tfRow = document.getElementById('mtTimeFillRow');
             if (tfRow) tfRow.style.display = hasTime ? '' : 'none';
-            // El multiplicador del eje X solo aplica si hay columna de tiempo
-            const xMultWrap = document.getElementById('mtXMultWrap');
-            if (xMultWrap) xMultWrap.style.display = hasTime ? 'flex' : 'none';
-            // Sin columna de tiempo el eje X es la primera variable: la fila
-            // "Etiqueta del eje X" (que solo aplica al tiempo) se oculta entera.
-            const xLabelEl = document.getElementById('mtXLabel');
-            const xLabelRow = xLabelEl ? xLabelEl.parentElement : null;
-            if (xLabelRow) xLabelRow.style.display = hasTime ? '' : 'none';
+            // Sin tiempo, "1 variable" no tiene sentido (X e Y son variables)
+            const nvSel = document.getElementById('mtNumVars');
+            if (nvSel && nvSel.options[0]) nvSel.options[0].disabled = !hasTime;
+            _mtUpdateXModeHint();
         }
 
         // Añade listeners de paste (CSV/TSV) y navegación con teclado a las celdas
@@ -17920,7 +18049,7 @@ bluetooth.startIOPinService()</pre>
             const startColKey = target.getAttribute('data-mt-col');
 
             // Orden de columnas visibles
-            const hasTime = state.microbitTimestamp;
+            const hasTime = mtHasTime();
             const numVars = parseInt(document.getElementById('mtNumVars').value);
             const colOrder = [];
             if (hasTime) colOrder.push('t');
@@ -17981,7 +18110,7 @@ bluetooth.startIOPinService()</pre>
         }
 
         function mtAutoFillTime() {
-            const hasTime = state.microbitTimestamp;
+            const hasTime = mtHasTime();
             if (!hasTime) {
                 uiAlert(tr('mtAutoFillDisabled'));
                 return;
@@ -18004,14 +18133,20 @@ bluetooth.startIOPinService()</pre>
             const numVars = parseInt(document.getElementById('mtNumVars').value);
             const numRows = parseInt(document.getElementById('mtNumRows').value) || 10;
             const timeUnitValue = parseFloat(document.getElementById('timeUnit').value);
-            const hasTime = state.microbitTimestamp;
+            const hasTime = mtHasTime();
 
-            // Read variable names
+            // Read variable names (encabezados editables de la tabla)
             const varNames = [];
             for (let v = 0; v < numVars; v++) {
-                const nameInput = document.getElementById(`mtVar${v}Name`);
-                varNames.push(nameInput ? nameInput.value : `Variable ${v + 1}`);
+                const nameInput = document.getElementById(`mtHead_v${v}`);
+                const nm = nameInput ? nameInput.value.trim() : '';
+                varNames.push(nm || `Variable ${v + 1}`);
             }
+
+            // Eje X de la tabla distinto del modo actual (tiempo ↔ otra magnitud):
+            // cambiar el modo de la app. Eso reconfigura las gráficas (X = tiempo o
+            // X = primera variable) antes de aplicar los nombres.
+            if (hasTime !== !!state.microbitTimestamp) setMicrobitTimestamp(hasTime);
 
             // Apply variable configuration if different
             if (numVars !== state.numVariables) {
@@ -18073,9 +18208,9 @@ bluetooth.startIOPinService()</pre>
             state.rawData = state.rawData.concat(imported);
             state.rawData.sort((a, b) => a.time - b.time);
 
-            // Aplicar etiqueta personalizada del eje X al eje tiempo de las gráficas,
-            // si el usuario la modificó respecto al valor auto.
-            const mtXLabelEl = document.getElementById('mtXLabel');
+            // Aplicar etiqueta personalizada del eje X (encabezado de la columna de
+            // tiempo) a las gráficas con eje tiempo, si difiere del valor auto.
+            const mtXLabelEl = document.getElementById('mtHead_t');
             if (mtXLabelEl && hasTime) {
                 const userXLabel = mtXLabelEl.value.trim();
                 const autoXLabel = getXAxisLabel('time');
@@ -18088,6 +18223,8 @@ bluetooth.startIOPinService()</pre>
                             if (input) input.value = userXLabel;
                         }
                     }
+                    // Llevar la etiqueta nueva a las gráficas ya dibujadas y a la tabla
+                    if (typeof syncChartLabelsAndTitles === 'function') syncChartLabelsAndTitles();
                 }
             }
 
@@ -30929,7 +31066,7 @@ bluetooth.startIOPinService()</pre>
         // Edición inline (etiquetas de ejes, títulos, nombres y colores de variables, conjuntos extra): foto al entrar al campo.
         document.addEventListener('focusin', function (e) {
           var t = e.target; if (!t || !t.matches) return;
-          if (t.matches('.axis-value, .graph-title, #var1Name, #var2Name, #var3Name, #var1Color, #var2Color, #var3Color, .var-pill-color-input, #_globalVarColorPicker, .extra-set-row input, #graph1TitleInput, #graph2TitleInput, #graph3TitleInput, #graph1XLabel, #graph2XLabel, #graph3XLabel, #graph1YLabel, #graph2YLabel, #graph3YLabel')) H.push('edit:' + (t.id || t.className));
+          if (t.matches('.th-edit, .axis-value, .graph-title, #var1Name, #var2Name, #var3Name, #var1Color, #var2Color, #var3Color, .var-pill-color-input, #_globalVarColorPicker, .extra-set-row input, #graph1TitleInput, #graph2TitleInput, #graph3TitleInput, #graph1XLabel, #graph2XLabel, #graph3XLabel, #graph1YLabel, #graph2YLabel, #graph3YLabel')) H.push('edit:' + (t.id || t.className));
         });
         // Atajos de teclado: Ctrl+Z deshace, Ctrl+Y (o Ctrl+Shift+Z) rehace.
         document.addEventListener('keydown', function (e) {
