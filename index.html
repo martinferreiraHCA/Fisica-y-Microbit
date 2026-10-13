@@ -14729,37 +14729,40 @@ bluetooth.startIOPinService()</pre>
                     chart.data.datasets.push(createStreamingDatasetConfig(varIdx, chartIdx));
                 }
 
-                // Si ya hay datos previos, rellenar SOLO con la ventana deslizante
-                // (últimos LIVE_WINDOW_MAX_POINTS). Antes se volcaba todo rawData:
-                // con una captura rápida (decenas de miles de puntos) cualquier
-                // click en la tabla o cambio de T=0 en plena captura congelaba la
-                // página al redibujar todo. Se siembra además el min/max
-                // incremental que usa applySmoothScale.
+                // Serie completa de cada curva (historial entero de la captura)
+                // y min/max incremental que usa applyLiveScale. Lo que se DIBUJA
+                // sale de syncLiveDataset: la serie entera mientras es corta y
+                // una versión decimada (min/max por tramos) cuando crece, así la
+                // gráfica muestra toda la captura construyéndose sin que el
+                // redibujo a 30 fps pese con decenas de miles de puntos.
+                liveSeries[chartIdx] = {};
+                datasetYMin[chartIdx] = {};
+                datasetYMax[chartIdx] = {};
                 const total = state.rawData.length;
-                if (total > 0) {
-                    const startIdx = Math.max(0, total - LIVE_WINDOW_MAX_POINTS);
-                    if (!datasetYMin[chartIdx]) { datasetYMin[chartIdx] = {}; datasetYMax[chartIdx] = {}; }
-                    for (let dsIdx = 0; dsIdx < config.yVars.length; dsIdx++) {
-                        const varIdx = config.yVars[dsIdx];
-                        const dsData = chart.data.datasets[dsIdx].data;
-                        let yMin = Infinity, yMax = -Infinity;
-                        for (let i = startIdx; i < total; i++) {
-                            const d = state.rawData[i];
-                            let xVal;
-                            if (config.xAxis === 'time') {
-                                xVal = (d.time - state.timeZeroOffset) / timeUnitValue;
-                            } else {
-                                const xVarIdx = parseInt(config.xAxis.replace('var', ''));
-                                xVal = d.values[xVarIdx];
-                            }
-                            const yVal = d.values[varIdx];
-                            dsData.push({ x: xVal, y: yVal, id: d.id });
-                            if (yVal < yMin) yMin = yVal;
-                            if (yVal > yMax) yMax = yVal;
+                for (let dsIdx = 0; dsIdx < config.yVars.length; dsIdx++) {
+                    const varIdx = config.yVars[dsIdx];
+                    const full = [];
+                    let yMin = Infinity, yMax = -Infinity;
+                    for (let i = 0; i < total; i++) {
+                        const d = state.rawData[i];
+                        let xVal;
+                        if (config.xAxis === 'time') {
+                            xVal = (d.time - state.timeZeroOffset) / timeUnitValue;
+                        } else {
+                            const xVarIdx = parseInt(config.xAxis.replace('var', ''));
+                            xVal = d.values[xVarIdx];
                         }
+                        const yVal = d.values[varIdx];
+                        full.push({ x: xVal, y: yVal, id: d.id });
+                        if (yVal < yMin) yMin = yVal;
+                        if (yVal > yMax) yMax = yVal;
+                    }
+                    liveSeries[chartIdx][dsIdx] = full;
+                    if (total > 0) {
                         datasetYMin[chartIdx][dsIdx] = yMin;
                         datasetYMax[chartIdx][dsIdx] = yMax;
                     }
+                    syncLiveDataset(chart, chartIdx, dsIdx);
                 }
 
                 chart.update('none');
@@ -14767,30 +14770,82 @@ bluetooth.startIOPinService()</pre>
         }
 
         // ========== MOTOR DE RENDERIZADO EN TIEMPO REAL ==========
-        // Arquitectura inspirada en Smoothie.js (usada por MakeCode):
         // - Loop de datos DESACOPLADO del loop de renderizado
-        // - Render loop a 60fps via requestAnimationFrame (siempre corre)
-        // - Ventana deslizante: solo muestra últimos N puntos en el chart
-        // - Scale smoothing exponencial en eje Y (como Smoothie scaleSmoothing=0.125)
-        // - Datos completos siempre en state.rawData para análisis posterior
+        // - Render loop via requestAnimationFrame (~30 fps) mientras se captura
+        // - Se muestra TODA la captura desde el inicio, construyéndose: el eje X
+        //   crece con el tiempo y la escala Y sigue a los datos en el acto.
+        //   (Antes: ventana deslizante de 600 puntos + escala Y suavizada, que
+        //   hacía que el principio desapareciera y la escala llegara tarde.)
+        // - Para que el redibujo no pese con capturas largas y rápidas, por
+        //   encima de LIVE_MAX_DRAW_POINTS se dibuja una decimación min/max por
+        //   tramos (conserva picos y forma); los datos completos siguen en
+        //   state.rawData y en liveSeries.
+        // - Con muchos puntos se dejan de dibujar los marcadores (solo línea).
 
-        const LIVE_WINDOW_MAX_POINTS = 600;  // Máx puntos visibles en chart durante streaming
-        const SCALE_SMOOTHING = 0.15;        // Factor de suavizado exponencial para eje Y
+        const LIVE_MAX_DRAW_POINTS = 1500;   // Máx puntos DIBUJADOS por curva durante la captura
+        const LIVE_POINT_MARKERS_MAX = 600;  // Con más puntos que esto, sin marcadores (solo línea)
         const RENDER_INTERVAL = 33;          // ~30fps en vez de 60fps para menor carga de CPU
         const EXP_LIVE_INTERVAL = 250;       // ms entre refrescos de la gráfica del modo experimento
         let renderLoopId = null;             // ID del requestAnimationFrame
         let lastRenderTime = 0;              // Timestamp del último render efectivo
         let lastExpChartUpdate = 0;          // Último refresco de la gráfica del modo experimento
-        let currentYMin = {};                // {chartIdx: currentMin} - escala Y suavizada
-        let currentYMax = {};                // {chartIdx: currentMax} - escala Y suavizada
+        let currentYMin = {};                // {chartIdx: currentMin} - escala Y en vivo
+        let currentYMax = {};                // {chartIdx: currentMax} - escala Y en vivo
         let scaleInitialized = {};           // {chartIdx: bool}
         let chartDirty = false;              // Flag: hay datos nuevos que renderizar
         // Tracking incremental de min/max por dataset para evitar O(n) cada frame
         let datasetYMin = {};                // {chartIdx: {dsIdx: min}}
         let datasetYMax = {};                // {chartIdx: {dsIdx: max}}
+        // Serie completa de cada curva durante la captura: {chartIdx: {dsIdx: [{x,y,id}]}}
+        let liveSeries = {};
 
-        // Push incremental de nuevos puntos con ventana deslizante
-        // Mantiene máximo LIVE_WINDOW_MAX_POINTS en el chart para rendimiento constante
+        // Decimación min/max por tramos: reparte los puntos en ~maxPoints/2
+        // tramos (en orden de llegada) y de cada tramo conserva el mínimo y el
+        // máximo de Y (en su orden), más el primer y el último punto. Mantiene
+        // picos, valles y la forma general con un número acotado de puntos.
+        // Si la serie ya entra, devuelve el MISMO arreglo (sin copiar).
+        function decimateMinMax(src, maxPoints) {
+            const n = src.length;
+            if (n <= maxPoints) return src;
+            const buckets = Math.max(1, Math.floor(maxPoints / 2) - 1);
+            const span = (n - 2) / buckets;
+            const out = [src[0]];
+            for (let b = 0; b < buckets; b++) {
+                const start = 1 + Math.floor(b * span);
+                const end = Math.min(n - 1, 1 + Math.floor((b + 1) * span));
+                if (start >= end) continue;
+                let minI = start, maxI = start;
+                for (let i = start + 1; i < end; i++) {
+                    const y = src[i].y;
+                    if (y < src[minI].y) minI = i;
+                    if (y > src[maxI].y) maxI = i;
+                }
+                if (minI === maxI) out.push(src[minI]);
+                else if (minI < maxI) { out.push(src[minI]); out.push(src[maxI]); }
+                else { out.push(src[maxI]); out.push(src[minI]); }
+            }
+            out.push(src[n - 1]);
+            return out;
+        }
+
+        // Vuelca al dataset de Chart.js lo que hay que dibujar de una curva en
+        // vivo: la serie completa mientras es corta, decimada cuando crece.
+        function syncLiveDataset(chart, chartIdx, dsIdx) {
+            const full = liveSeries[chartIdx] && liveSeries[chartIdx][dsIdx];
+            const ds = chart && chart.data.datasets[dsIdx];
+            if (!full || !ds) return;
+            const drawn = decimateMinMax(full, LIVE_MAX_DRAW_POINTS);
+            if (ds.data !== drawn) ds.data = drawn;
+            // Con muchos puntos los marcadores cuestan más que la línea y se
+            // amontonan: se dejan de dibujar (si no hay línea, quedan chiquitos).
+            const many = full.length > LIVE_POINT_MARKERS_MAX;
+            const withLine = graphShowsLines(chartIdx);
+            ds.pointRadius = many ? (withLine ? 0 : 1.5) : 2.5;
+            ds.pointBorderWidth = many ? 0 : 1;
+        }
+
+        // Push incremental de nuevos puntos: se agregan a la serie completa de
+        // cada curva y se sincroniza lo dibujado (nada se descarta).
         function pushNewDataToCharts(newPoints) {
             if (newPoints.length === 0) return;
 
@@ -14802,9 +14857,13 @@ bluetooth.startIOPinService()</pre>
 
                 if (!chart || chart.data.datasets.length === 0) continue;
 
+                if (!liveSeries[chartIdx]) liveSeries[chartIdx] = {};
+                if (!datasetYMin[chartIdx]) { datasetYMin[chartIdx] = {}; datasetYMax[chartIdx] = {}; }
+
                 for (let dsIdx = 0; dsIdx < config.yVars.length; dsIdx++) {
                     const varIdx = config.yVars[dsIdx];
-                    const dataset = chart.data.datasets[dsIdx];
+                    let full = liveSeries[chartIdx][dsIdx];
+                    if (!full) full = liveSeries[chartIdx][dsIdx] = [];
 
                     for (const d of newPoints) {
                         let xVal;
@@ -14815,13 +14874,8 @@ bluetooth.startIOPinService()</pre>
                             xVal = d.values[xVarIdx];
                         }
                         const yVal = d.values[varIdx];
-                        dataset.data.push({
-                            x: xVal,
-                            y: yVal,
-                            id: d.id
-                        });
-                        // Tracking incremental de min/max
-                        if (!datasetYMin[chartIdx]) { datasetYMin[chartIdx] = {}; datasetYMax[chartIdx] = {}; }
+                        full.push({ x: xVal, y: yVal, id: d.id });
+                        // Tracking incremental de min/max (sobre toda la captura)
                         if (datasetYMin[chartIdx][dsIdx] === undefined || yVal < datasetYMin[chartIdx][dsIdx]) {
                             datasetYMin[chartIdx][dsIdx] = yVal;
                         }
@@ -14830,27 +14884,17 @@ bluetooth.startIOPinService()</pre>
                         }
                     }
 
-                    // Ventana deslizante: podar puntos antiguos para rendimiento constante
-                    if (dataset.data.length > LIVE_WINDOW_MAX_POINTS) {
-                        const excess = dataset.data.length - LIVE_WINDOW_MAX_POINTS;
-                        dataset.data.splice(0, excess);
-                        // Recalcular min/max solo cuando se podan puntos (infrecuente vs cada frame)
-                        let yMin = Infinity, yMax = -Infinity;
-                        for (const pt of dataset.data) {
-                            if (pt.y < yMin) yMin = pt.y;
-                            if (pt.y > yMax) yMax = pt.y;
-                        }
-                        datasetYMin[chartIdx][dsIdx] = yMin;
-                        datasetYMax[chartIdx][dsIdx] = yMax;
-                    }
+                    syncLiveDataset(chart, chartIdx, dsIdx);
                 }
             }
         }
 
-        // Suavizado exponencial del eje Y (inspirado en Smoothie.js scaleSmoothing)
-        // Evita saltos bruscos cuando el rango de datos cambia
+        // Escala Y en vivo: encuadra TODA la captura (min/max de todas las curvas
+        // de la gráfica, con 5% de margen) y se actualiza en el acto, sin
+        // suavizado: así el último punto nunca queda afuera ni la escala "llega
+        // tarde". Como el rango abarca la captura entera, solo crece.
         // OPTIMIZADO: usa min/max pre-calculados incrementalmente en pushNewDataToCharts
-        function applySmoothScale(chartIdx, chart) {
+        function applyLiveScale(chartIdx, chart) {
             let targetMin = Infinity;
             let targetMax = -Infinity;
 
@@ -14871,25 +14915,20 @@ bluetooth.startIOPinService()</pre>
             targetMin -= range * 0.05;
             targetMax += range * 0.05;
 
-            if (!scaleInitialized[chartIdx]) {
-                // Primera vez: set inmediato
-                currentYMin[chartIdx] = targetMin;
-                currentYMax[chartIdx] = targetMax;
-                scaleInitialized[chartIdx] = true;
-            } else {
-                // Suavizado exponencial: mover 15% hacia el objetivo cada frame
-                currentYMin[chartIdx] += SCALE_SMOOTHING * (targetMin - currentYMin[chartIdx]);
-                currentYMax[chartIdx] += SCALE_SMOOTHING * (targetMax - currentYMax[chartIdx]);
-            }
+            if (scaleInitialized[chartIdx] &&
+                currentYMin[chartIdx] === targetMin && currentYMax[chartIdx] === targetMax) return;
+            currentYMin[chartIdx] = targetMin;
+            currentYMax[chartIdx] = targetMax;
+            scaleInitialized[chartIdx] = true;
 
-            chart.options.scales.y.min = currentYMin[chartIdx];
-            chart.options.scales.y.max = currentYMax[chartIdx];
+            chart.options.scales.y.min = targetMin;
+            chart.options.scales.y.max = targetMax;
         }
 
         // Loop de renderizado a 60fps - DESACOPLADO de la llegada de datos
         // Corre continuamente durante la captura. Cada frame:
-        //   1. Flush puntos pendientes al chart (ventana deslizante)
-        //   2. Aplicar scale smoothing
+        //   1. Flush puntos pendientes al chart (serie completa, decimada si es larga)
+        //   2. Encuadrar el eje Y a toda la captura
         //   3. chart.update('none') - repintar canvas
         //   4. Actualizar tabla cada 500ms
         function startRenderLoop() {
@@ -14921,7 +14960,7 @@ bluetooth.startIOPinService()</pre>
                     for (let i = 0; i < state.numGraphs; i++) {
                         const chart = state.charts[i];
                         if (!chart) continue;
-                        applySmoothScale(i, chart);
+                        applyLiveScale(i, chart);
                         chart.update('none');
                     }
                     chartDirty = false;
@@ -21477,16 +21516,16 @@ bluetooth.startIOPinService()</pre>
             const varIdx = expSelectedVar;
             const color = '#1976d2'; // blue per Rule 6
 
-            // En captura: ventana deslizante (como las gráficas principales) para
-            // no re-mapear ni redibujar todo rawData en cada refresco
-            const src = (state.isCollecting && state.rawData.length > LIVE_WINDOW_MAX_POINTS)
-                ? state.rawData.slice(-LIVE_WINDOW_MAX_POINTS)
-                : state.rawData;
-            const data = src.map(d => ({
+            // En captura se muestra TODA la captura construyéndose (como las
+            // gráficas principales); si es larga, decimada min/max para que el
+            // refresco periódico no pese.
+            let data = state.rawData.map(d => ({
                 x: (d.time - state.timeZeroOffset) / timeUnitValue,
                 y: d.values[varIdx],
                 id: d.id
             }));
+            const liveMany = state.isCollecting && data.length > LIVE_POINT_MARKERS_MAX;
+            if (state.isCollecting) data = decimateMinMax(data, LIVE_MAX_DRAW_POINTS);
 
             const datasets = [{
                 label: state.variables[varIdx].name,
@@ -21498,12 +21537,12 @@ bluetooth.startIOPinService()</pre>
                 showLine: state.showLines,
                 tension: 0.3,
                 cubicInterpolationMode: 'monotone',
-                pointRadius: 2,
+                pointRadius: liveMany ? (state.showLines ? 0 : 1.5) : 2,
                 pointHoverRadius: 7,
                 pointHitRadius: 12,
                 pointBackgroundColor: color,
                 pointBorderColor: '#fff',
-                pointBorderWidth: 1,
+                pointBorderWidth: liveMany ? 0 : 1,
                 pointHoverBorderWidth: 2,
                 pointHoverBorderColor: '#fff'
             }];
