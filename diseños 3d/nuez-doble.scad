@@ -7,9 +7,9 @@
 // cualquier cosa que entre en la U (se engancha de costado, sin enhebrar).
 // La sujeción sigue la misma idea que la base trípode: el agujero del
 // tornillo atraviesa el brazo y la rosca la pone una TUERCA metálica
-// cautiva, que se mete por una ranura (con una punta hacia abajo) desde la
-// cara de arriba (alojamiento superior) o desde la de abajo (inferior). El
-// plástico no lleva rosca y el apriete no se desgasta.
+// cautiva, que se mete por una ranura: desde la cara de arriba (con una
+// punta hacia abajo) en el alojamiento superior, y desde la cara lateral en
+// el inferior. El plástico no lleva rosca y el apriete no se desgasta.
 // Se imprime parada tal cual sale, sin soportes: la U de abajo tiene techo
 // en gota a 45° y los alojamientos de las tuercas son hexágonos con la
 // punta hacia arriba o abajo. Con «tipo = cerrada» los alojamientos son
@@ -20,8 +20,8 @@
 // miniaturas: pieza="nuez" | pieza="conjunto" | tipo="cerrada"
 
 /* [Qué imprimir] */
-// nuez: la pieza; conjunto: con dos varillas puestas; corte: media nuez para ver tornillos y tuercas
-pieza = "nuez"; // [nuez, conjunto, corte]
+// nuez: la pieza; conjunto: con varillas, tornillos y tuercas; corte_superior / corte_inferior: media nuez cortada por el eje de cada tornillo
+pieza = "nuez"; // [nuez, conjunto, corte_superior, corte_inferior]
 
 /* [Alojamientos] */
 // abierta: en U, sujeta varillas y también placas o tubos; cerrada: agujeros completos
@@ -95,15 +95,29 @@ module gota_x(d, Lg, techo_max = 100) { rotate([90, 0, 90]) linear_extrude(Lg) g
 module bloque() {
     linear_extrude(H) offset(r = redondeo) offset(delta = -redondeo) square(L, center = true);
 }
-// Tornillo y tuerca cautiva de un agujero: eje de la varilla en el origen, varilla a lo largo de Y,
-// tornillo hacia +X, ranura de la tuerca hacia arriba (hacia_arriba) o hacia abajo
-module sujecion(hacia_arriba) {
+// Tornillo y tuerca cautiva de un alojamiento: eje de la varilla en el origen, varilla a lo largo de Y,
+// tornillo hacia +X. La tuerca entra por una ranura desde la cara de arriba (desde_arriba) o,
+// en el alojamiento de abajo, desde la cara lateral (ranura horizontal hacia -Y local)
+module sujecion(desde_arriba) {
     // paso del tornillo (gota, punta arriba) desde el eje hasta fuera de la cara
     gota_x(d_tor + holgura_tornillo, L);
-    // alojamiento hexagonal de la tuerca, con una punta hacia abajo y otra hacia arriba
-    translate([x_tue, 0, 0]) rotate([0, 90, 0]) cylinder(d = af / cos(30), h = e_tue, $fn = 6);
-    // ranura para meter la tuerca desde la cara de arriba o de abajo
-    translate([x_tue, -af / 2, hacia_arriba ? 0 : -Hs]) cube([e_tue, af, Hs + eps]);
+    if (desde_arriba) {
+        // hexágono con una punta hacia abajo (se imprime sin soporte) y ranura hasta la cara de arriba
+        translate([x_tue, 0, 0]) rotate([0, 90, 0]) cylinder(d = af / cos(30), h = e_tue, $fn = 6);
+        translate([x_tue, -af / 2, 0]) cube([e_tue, af, Hs + eps]);
+    } else {
+        // hexágono con las caras arriba y abajo (techo plano corto) y ranura horizontal hasta la cara lateral
+        translate([x_tue, 0, 0]) rotate([30, 0, 0]) rotate([0, 90, 0]) cylinder(d = af / cos(30), h = e_tue, $fn = 6);
+        translate([x_tue, -L, -af / 2]) cube([e_tue, L, af]);
+    }
+}
+// Tuerca y tornillo puestos (para la vista «conjunto»), en el mismo marco que sujecion()
+module tornilleria(desde_arriba) {
+    x_cara = L / 2 - c;                               // distancia del eje de la varilla a la cara del tornillo
+    translate([x_tue + holgura_tuerca / 2, 0, 0]) rotate([desde_arriba ? 0 : 30, 0, 0]) rotate([0, 90, 0])
+        cylinder(d = (af - holgura_tuerca) / cos(30), h = e_tue - holgura_tuerca, $fn = 6);
+    translate([r - 0.5, 0, 0]) rotate([0, 90, 0]) cylinder(d = d_tor, h = x_cara - r + 0.5 + 2);
+    translate([x_cara + 2, 0, 0]) rotate([0, 90, 0]) cylinder(d = 1.7 * d_tor, h = 0.7 * d_tor);
 }
 // Alojamiento de la varilla (eje en el origen, a lo largo de Y): agujero completo o U abierta hacia +Z
 module alojamiento(abierto_arriba) {
@@ -123,8 +137,8 @@ module alojamiento(abierto_arriba) {
 module nuez() {
     difference() {
         bloque();
-        // alojamiento inferior: varilla a lo largo de X, tornillo hacia +Y, tuerca por abajo, U abierta hacia abajo
-        translate([0, c, z1]) rotate([0, 0, -90]) { alojamiento(false); sujecion(false); }
+        // alojamiento inferior: varilla a lo largo de X, tornillo hacia +Y (pared gruesa), tuerca por la cara +X, U abierta hacia abajo
+        translate([0, c, z1]) rotate([0, 0, 90]) { alojamiento(false); sujecion(false); }
         // alojamiento superior: varilla a lo largo de Y, tornillo hacia +X, tuerca por arriba, U abierta hacia arriba
         translate([c, 0, z2]) { alojamiento(true); sujecion(true); }
     }
@@ -132,7 +146,10 @@ module nuez() {
 module varillas() {
     translate([0, c, z1]) rotate([0, 90, 0]) cylinder(d = diametro_varilla, h = L + 90, center = true);
     translate([c, 0, z2]) rotate([90, 0, 0]) cylinder(d = diametro_varilla, h = L + 90, center = true);
+    translate([0, c, z1]) rotate([0, 0, 90]) tornilleria(false);
+    translate([c, 0, z2]) tornilleria(true);
 }
 if (pieza == "conjunto") { nuez(); color("silver") varillas(); }
-else if (pieza == "corte") intersection() { nuez(); translate([-L, -L, -1]) cube([2 * L, L, H + 2]); }
+else if (pieza == "corte_superior") intersection() { nuez(); translate([-L, -L, -1]) cube([2 * L, L, H + 2]); }
+else if (pieza == "corte_inferior") intersection() { nuez(); translate([0, -L, -1]) cube([L, 2 * L, H + 2]); }
 else nuez();
