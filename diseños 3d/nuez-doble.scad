@@ -44,6 +44,10 @@ redondeo = 3; // [0:0.5:8]
 tornillo = "M6"; // [M4, M5, M6, M8]
 // Holgura del agujero de paso del tornillo (mm)
 holgura_tornillo = 0.6; // [0.2:0.1:1.2]
+// Medida de la tuerca entre caras, medida con calibre (mm; 0 = la de la tabla según la rosca). Si medís el lado del hexágono, multiplicalo por 1,73
+tuerca_entre_caras = 0; // [0:0.1:30]
+// Espesor de la tuerca (mm; 0 = el de la tabla según la rosca)
+tuerca_espesor = 0; // [0:0.1:20]
 // Holgura del alojamiento de la tuerca (mm, entre caras y espesor)
 holgura_tuerca = 0.4; // [0:0.1:1]
 // Pared entre la varilla y la tuerca (mm)
@@ -57,8 +61,8 @@ eps = 0.02;
 _T = ["M4", "M5", "M6", "M8"];
 _i = search([tornillo], _T)[0];
 d_tor = [4, 5, 6, 8][_i];
-af    = [7, 8, 10, 13][_i] + holgura_tuerca;      // tuerca entre caras, con holgura
-e_tue = [3.2, 4.7, 5.2, 6.8][_i] + holgura_tuerca; // espesor de la tuerca, con holgura
+af    = (tuerca_entre_caras > 0 ? tuerca_entre_caras : [7, 8, 10, 13][_i]) + holgura_tuerca;   // tuerca entre caras, con holgura
+e_tue = (tuerca_espesor > 0 ? tuerca_espesor : [3.2, 4.7, 5.2, 6.8][_i]) + holgura_tuerca;      // espesor de la tuerca, con holgura
 agujero = diametro_varilla + holgura_diametral;
 r = agujero / 2;
 techo = 1.6;                                        // altura extra del techo en gota del agujero de la varilla
@@ -73,7 +77,7 @@ x_tue = r + pared_tuerca;                           // cara interior de la tuerc
 assert(lado == 0 || lado >= agujero + pared + pared_tor, str("El lado tiene que ser de al menos ", ceil(agujero + pared + pared_tor), " mm para que entre la tuerca"));
 assert(af < Hs - 2, "La tuerca es muy grande para la altura de la sección: subí «pared» o «labio»");
 assert(tipo == "cerrada" || af / 2 < r + labio - 0.8, "Abierta: la tuerca asoma por el borde del brazo: subí «labio»");
-echo(str("Nuez doble para varillas de ", diametro_varilla, " mm, tornillos ", tornillo, ": bloque ", L, " × ", L, " × ", H, " mm"));
+echo(str("Nuez doble para varillas de ", diametro_varilla, " mm, tornillos ", tornillo, ", tuerca de ", af - holgura_tuerca, " mm entre caras y ", e_tue - holgura_tuerca, " mm de espesor: bloque ", L, " × ", L, " × ", H, " mm"));
 
 // ---- Perfiles ----
 // Gota 2D (punta hacia +Y) con el techo recortado a «techo» mm por encima del círculo
