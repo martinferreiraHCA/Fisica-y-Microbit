@@ -17,5 +17,5 @@ ranuras = 5; // [3:1:9]
 // Diferencia de ancho entre ranuras vecinas (mm)
 paso = 0.2; // [0.1:0.05:0.5]
 
-module plano() peine_ajuste(ranuras, paso, 18);
+module plano() pieza("peine") peine_ajuste(ranuras, paso, 18);
 module armado() laja() peine_ajuste(ranuras, paso, 18);

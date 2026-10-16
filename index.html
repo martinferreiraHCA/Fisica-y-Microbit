@@ -32991,6 +32991,22 @@ bluetooth.startIOPinService()</pre>
     .s3d-cv-row input[type="range"] { accent-color:#fff; width:100%; }
     .s3d-cv-row select { background:#101216; color:#e0e0e0; border:1px solid #444; padding:5px; font-size:11px; }
     .s3d-cv-row .v { text-align:right; font-variant-numeric:tabular-nums; color:#ffca28; }
+    .s3d-lz-row { display:flex; align-items:center; gap:6px; font-size:11px; color:#cfd4dd; margin-bottom:6px; flex-wrap:wrap; }
+    .s3d-lz-row input[type="number"] { width:64px; background:#101216; color:#e0e0e0; border:1px solid #444; padding:4px; font-size:11px; }
+    .s3d-lz-del { background:none; border:1px solid #444; color:#aaa; cursor:pointer; padding:2px 7px; font-size:11px; }
+    .s3d-lz-del:disabled { opacity:.3; cursor:default; }
+    .s3d-lz-presets { display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:11px; color:#8a90a0; margin:6px 0 10px; }
+    .s3d-lz-preset-btn { background:#1b1e25; border:1px solid #444; color:#e0e0e0; cursor:pointer; padding:4px 9px; font-size:11px; }
+    .s3d-lz-preset-btn:hover { border-color:#ffca28; }
+    .s3d-lz-opts { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:11px; color:#cfd4dd; margin-bottom:8px; }
+    .s3d-lz-opts input[type="number"] { width:52px; background:#101216; color:#e0e0e0; border:1px solid #444; padding:3px; font-size:11px; }
+    .s3d-lz-preview { display:flex; flex-wrap:wrap; gap:10px; margin:10px 0; max-height:320px; overflow:auto; }
+    .s3d-lz-hoja { background:#15171c; border:1px solid #2a2e36; padding:6px; }
+    .s3d-lz-cap { font-size:10px; color:#8a90a0; margin-bottom:4px; }
+    .s3d-lz-thumb { width:220px; height:auto; display:block; background:#fff; }
+    .s3d-lz-warn { color:#ff8a65 !important; }
+    .s3d-lz-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+    .s3d-lz-actions .s3d-btn { width:auto; flex:1 1 200px; }
     .s3d-recursos a { color:#8ab4ff; text-decoration:none; }
     .s3d-recursos a:hover { text-decoration:underline; }
     @media (max-width: 820px) {
@@ -33046,7 +33062,7 @@ bluetooth.startIOPinService()</pre>
                     <button id="s3d-print" class="s3d-btn primary s3d-only-carton" title="Abre las hojas A4 listas para imprimir al 100 % o guardar como PDF">🖨 Imprimir en A4 / PDF</button>
                     <button id="s3d-save" class="s3d-btn">💾 Guardar pieza…</button>
                     <button id="s3d-dl-svg" class="s3d-btn s3d-only-carton" title="Todas las hojas A4 en un solo archivo SVG en milímetros (las piezas grandes van partidas en mosaico, como al imprimir)">Descargar SVG (hojas A4)</button>
-                    <button id="s3d-dl-svg-piezas" class="s3d-btn s3d-only-carton" title="Un SVG en milímetros con todas las piezas enteras y separadas, cada una en su propio grupo, sin hojas ni mosaico: para cortadora láser o plóter (negro: cortar · azul: tinta)">Descargar SVG (piezas enteras · láser)</button>
+                    <button id="s3d-dl-svg-piezas" class="s3d-btn s3d-only-carton" title="Piezas enteras y separadas, acomodadas en los pedazos de cartón que indiques (zona de corte), en SVG en milímetros para cortadora láser o plóter (negro: cortar · azul: tinta)">Descargar SVG para láser (zona de corte)…</button>
                     <button id="s3d-dl-zip-piezas" class="s3d-btn s3d-only-carton" title="Un archivo ZIP con un SVG por pieza, cada una entera y en milímetros">Descargar ZIP (un SVG por pieza)</button>
                     <button id="s3d-dl-stl-plano" class="s3d-btn s3d-only-carton" title="Las piezas planas extruidas al espesor, en un STL, para imprimirlas en 3D (poné material = impresion3d)">STL de piezas planas (3D)</button>
                     <button id="s3d-dl-stl" class="s3d-btn" disabled>Descargar STL</button>
@@ -33089,7 +33105,7 @@ bluetooth.startIOPinService()</pre>
                         <div class="s3d-sheets-bar">
                             <button id="s3d-sheets-print" class="primary">🖨 Imprimir / PDF</button>
                             <button id="s3d-sheets-svg" title="Las hojas A4 en un SVG (piezas grandes en mosaico)">SVG hojas A4</button>
-                            <button id="s3d-sheets-svg-piezas" title="Todas las piezas enteras y separadas en un SVG en milímetros, para láser o plóter">SVG piezas enteras</button>
+                            <button id="s3d-sheets-svg-piezas" title="Piezas enteras acomodadas en los pedazos de cartón que indiques, en SVG para láser o plóter">SVG para láser…</button>
                             <button id="s3d-sheets-zip" title="ZIP con un SVG por pieza">ZIP por pieza</button>
                             <label class="s3d-check"><input type="checkbox" id="s3d-numerar" checked> Numerar las piezas</label>
                             <span id="s3d-sheets-info"></span>
@@ -33183,6 +33199,40 @@ bluetooth.startIOPinService()</pre>
                     <button id="s3d-cv-ok" class="s3d-btn primary" style="margin-top:12px">Crear el diseño de cartón</button>
                     <div id="s3d-cv-msg" class="s3d-wiz-msg"></div>
                     <div class="s3d-folder-note">Consejo: pocas láminas (3 a 5 por eje) dan piezas fáciles de cortar; más láminas copian mejor la forma. Las piezas muy chicas conviene escalarlas. Si una sección queda demasiado angosta o cortada, cambiá la cantidad de láminas o el eje vertical.</div>
+                </div>
+            </div>
+        </div>
+        <div id="s3d-laser-modal" class="s3d-wizard" aria-hidden="true">
+            <div class="s3d-wizard-card" style="max-width:720px">
+                <div class="s3d-wizard-head">
+                    <h3>SVG para corte láser · zona de corte</h3>
+                    <button id="s3d-lz-close" class="s3d-close" title="Cerrar">✕</button>
+                </div>
+                <div class="s3d-wizard-body">
+                    <div class="s3d-wiz-msg" style="margin:0 0 10px">Indicá el tamaño de la zona de corte de tu láser o de los <b>pedazos de cartón</b> que tengas (podés poner varios, de distintas medidas). Las piezas se acomodan enteras, aprovechando el espacio, y se descarga <b>un SVG por pedazo</b> en milímetros: negro = cortar, azul = tinta (grabar).</div>
+                    <div id="s3d-lz-pedazos"></div>
+                    <div class="s3d-lz-presets">
+                        <button type="button" id="s3d-lz-add" class="s3d-lz-preset-btn">+ pedazo</button>
+                        <span>o agregar:</span>
+                        <button type="button" class="s3d-lz-preset s3d-lz-preset-btn" data-w="210" data-h="297">A4</button>
+                        <button type="button" class="s3d-lz-preset s3d-lz-preset-btn" data-w="297" data-h="420">A3</button>
+                        <button type="button" class="s3d-lz-preset s3d-lz-preset-btn" data-w="300" data-h="200">300 × 200</button>
+                        <button type="button" class="s3d-lz-preset s3d-lz-preset-btn" data-w="400" data-h="300">400 × 300</button>
+                        <button type="button" class="s3d-lz-preset s3d-lz-preset-btn" data-w="600" data-h="400">600 × 400</button>
+                        <button type="button" class="s3d-lz-preset s3d-lz-preset-btn" data-w="900" data-h="600">900 × 600</button>
+                    </div>
+                    <div class="s3d-lz-opts">
+                        <label>Margen al borde <input type="number" id="s3d-lz-margen" min="0" max="50" step="1" value="5"> mm</label>
+                        <label>Separación entre piezas <input type="number" id="s3d-lz-sep" min="0" max="50" step="1" value="6"> mm</label>
+                        <label><input type="checkbox" id="s3d-lz-girar" checked> girar piezas 90° si conviene</label>
+                        <label><input type="checkbox" id="s3d-lz-chicos"> usar primero los pedazos chicos</label>
+                    </div>
+                    <div id="s3d-lz-info" class="s3d-folder-note"></div>
+                    <div id="s3d-lz-preview" class="s3d-lz-preview"></div>
+                    <div class="s3d-lz-actions">
+                        <button id="s3d-lz-ok" class="s3d-btn primary">Descargar SVG por pedazo</button>
+                        <button id="s3d-lz-todo" class="s3d-btn" title="Sin límite de zona: todas las piezas en un solo SVG, en filas">Todo en un solo SVG (sin zona)</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -35560,8 +35610,10 @@ bluetooth.startIOPinService()</pre>
         ensureCartonLib().then(function () {
             var files = cartonFiles(piece);
             var full = cartonCode(code);
-            return scadJob({ code: full, files: files, out: 'svg', defs: ['vista="plano"'] }).then(function (r) {
-                res.plano = r.text; res.logs = res.logs.concat(r.logs);
+            return scadJob({ code: full, files: files, out: 'svg', defs: ['vista="plano"', '$pieza_listar=true'] }).then(function (r) {
+                res.plano = r.text;
+                res.nombres = pieceNamesFromLogs(r.logs);
+                res.logs = res.logs.concat(r.logs.filter(function (l) { return !/PIEZA:/.test(l); }));
                 setStatus('Plano listo; dibujando las marcas…', 'busy');
                 return scadJob({ code: full, files: files, out: 'svg', defs: ['vista="marcas"'] })
                     .then(function (r2) { res.marcas = r2.text; }, function () { res.marcas = null; });
@@ -35584,6 +35636,7 @@ bluetooth.startIOPinService()</pre>
             lastStl = res.stl;
             el('s3d-dl-stl').disabled = !lastStl;
             var info = buildSheets(res.plano, res.marcas, currentName());
+            sheets.naming = namePieces(sheets, cartonCode(code), cartonFiles(piece), res.nombres);
             var secs = ((performance.now() - t0) / 1000).toFixed(1);
             var msg = 'Cartón listo en ' + secs + ' s · ' + info.pieces + ' pieza' + (info.pieces === 1 ? '' : 's') +
                       ' · ' + info.pages + ' hoja' + (info.pages === 1 ? '' : 's') + ' A4';
@@ -35874,11 +35927,52 @@ bluetooth.startIOPinService()</pre>
                   '<title>' + escXml(sheets.name) + ' · hojas A4 · fisicabit</title>\n' + inner + '\n</svg>';
         download(slug(sheets.name) + '-hojas-a4.svg', svg, 'image/svg+xml');
     }
-    // SVG de una pieza entera, en su propio grupo: origen en (ox, oy) dentro del dibujo
-    function wholePieceSvg(p, num, ox, oy, numerar) {
-        var b = p.bbox;
+    /* ---------- Nombres de las piezas (pieza("…") en el diseño) ---------- */
+    function pieceNamesFromLogs(logs) {
+        var names = [];
+        (logs || []).forEach(function (l) {
+            var m = /PIEZA:(.*?)"?\s*$/.exec(String(l));
+            if (m) { var n = m[1].replace(/^"/, '').trim(); if (n && names.indexOf(n) < 0) names.push(n); }
+        });
+        return names;
+    }
+    function sameBox(a, b) { for (var i = 0; i < 4; i++) if (Math.abs(a[i] - b[i]) > 0.05) return false; return true; }
+    // Dibuja el plano una vez por nombre (solo esa pieza) y asigna el nombre a las piezas que coinciden
+    function namePieces(sh, full, files, names) {
+        sh.pieces.forEach(function (p) { p.nombre = null; });
+        if (!names || !names.length) { labelPieces(sh); return Promise.resolve(); }
+        var p = Promise.resolve();
+        names.forEach(function (n) {
+            p = p.then(function () {
+                return scadJob({ code: full, files: files, out: 'svg', defs: ['vista="plano"', '$pieza_sel="' + n.replace(/"/g, '') + '"'] }).then(function (r) {
+                    groupPieces(parseScadSvg(r.text)).forEach(function (q) {
+                        sh.pieces.forEach(function (pp) { if (!pp.nombre && sameBox(pp.bbox, q.bbox)) pp.nombre = n; });
+                    });
+                }, function () {});
+            });
+        });
+        return p.then(function () { labelPieces(sh); });
+    }
+    // Etiqueta de cada pieza: su nombre (numerado si hay varias iguales) o «pieza N»
+    function labelPieces(sh) {
+        var count = {}, seen = {};
+        sh.pieces.forEach(function (p) { if (p.nombre) count[p.nombre] = (count[p.nombre] || 0) + 1; });
+        sh.pieces.forEach(function (p, i) {
+            if (p.nombre) {
+                seen[p.nombre] = (seen[p.nombre] || 0) + 1;
+                p.etiqueta = count[p.nombre] > 1 ? p.nombre + ' ' + seen[p.nombre] : p.nombre;
+            } else p.etiqueta = 'pieza ' + (i + 1);
+        });
+    }
+    function pieceLabel(p, i) { return p.etiqueta || ('pieza ' + (i + 1)); }
+    function whenNamed(sh) { return sh && sh.naming ? sh.naming.then(function () { return sh; }) : Promise.resolve(sh); }
+
+    // SVG de una pieza entera, en su propio grupo: origen en (ox, oy) dentro del dibujo (rot = 0 o 90)
+    function wholePieceSvg(p, num, ox, oy, numerar, rot) {
+        var b = p.bbox, label = pieceLabel(p, num - 1);
         var cut = contourPath(p.outer) + p.holes.map(contourPath).join('');
-        var s = '<g id="pieza-' + num + '" transform="translate(' + fmtMm(ox - b[0]) + ',' + fmtMm(oy - b[1]) + ')"><title>pieza ' + num + '</title>';
+        var tr = rot ? 'translate(' + fmtMm(ox + b[3]) + ',' + fmtMm(oy - b[0]) + ') rotate(90)' : 'translate(' + fmtMm(ox - b[0]) + ',' + fmtMm(oy - b[1]) + ')';
+        var s = '<g id="' + escXml(slug(label)) + '" transform="' + tr + '"><title>' + escXml(label) + ' · pieza ' + num + '</title>';
         s += '<path class="corte" d="' + cut + '" fill="none" stroke="#000" stroke-width="0.1" stroke-linejoin="round" fill-rule="evenodd"/>';
         if (p.marks.length) s += '<path class="tinta" d="' + p.marks.map(contourPath).join('') + '" fill="#1f3f8f" stroke="none" fill-rule="evenodd"/>';
         if (numerar) s += '<text class="tinta" x="' + fmtMm(b[0] + 3) + '" y="' + fmtMm(b[3] - 3) + '" font-family="Arial, Helvetica, sans-serif" font-size="3.2" font-weight="700" fill="#1f3f8f">' + num + '</text>';
@@ -35897,6 +35991,9 @@ bluetooth.startIOPinService()</pre>
     // Un solo SVG con todas las piezas enteras (sin hojas ni mosaico), para láser o plóter
     function downloadPiecesSvg() {
         if (!sheets || !sheets.pieces.length) { setStatus('No hay piezas para descargar: renderizá el diseño primero.', 'error'); return; }
+        whenNamed(sheets).then(downloadPiecesSvgNow);
+    }
+    function downloadPiecesSvgNow() {
         var pieces = sheets.pieces, margin = 5, gap = 6, head = 18;
         var maxW = 0;
         pieces.forEach(function (p) { maxW = Math.max(maxW, p.bbox[2] - p.bbox[0]); });
@@ -35943,25 +36040,164 @@ bluetooth.startIOPinService()</pre>
         var end = new Uint8Array([].concat([0x50, 0x4B, 5, 6], u16(0), u16(0), u16(files.length), u16(files.length), u32(cdSize), u32(offset), u16(0)));
         return new Blob(parts.concat(central, [end]), { type: 'application/zip' });
     }
-    function downloadPiecesZip() {
-        if (!sheets || !sheets.pieces.length) { setStatus('No hay piezas para descargar: renderizá el diseño primero.', 'error'); return; }
-        var base = slug(sheets.name), margin = 2, files = [];
-        sheets.pieces.forEach(function (p, i) {
-            var b = p.bbox, w = b[2] - b[0] + 2 * margin, h = b[3] - b[1] + 2 * margin, num = i + 1;
-            var svg = '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="' + fmtMm(w) + 'mm" height="' + fmtMm(h) + 'mm" viewBox="0 0 ' + fmtMm(w) + ' ' + fmtMm(h) + '">\n' +
-                '<title>' + escXml(sheets.name) + ' · pieza ' + num + ' de ' + sheets.pieces.length + ' · milímetros · fisicabit</title>\n' +
-                wholePieceSvg(p, num, margin, margin, numerarOn()) + '\n</svg>';
-            files.push({ name: base + '-pieza-' + (num < 10 ? '0' : '') + num + '.svg', text: svg });
-        });
-        var blob = makeZip(files);
+    function downloadBlob(filename, blob) {
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = base + '-piezas-svg.zip';
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
-        if (window.track) window.track('carton_zip_piezas', 'carton');
-        setStatus('ZIP con ' + files.length + ' SVG (una pieza por archivo) descargado.', '');
+    }
+    function downloadPiecesZip() {
+        if (!sheets || !sheets.pieces.length) { setStatus('No hay piezas para descargar: renderizá el diseño primero.', 'error'); return; }
+        setStatus('Preparando el ZIP…', 'busy');
+        whenNamed(sheets).then(function (sh) {
+            var base = slug(sh.name), margin = 2, files = [];
+            sh.pieces.forEach(function (p, i) {
+                var b = p.bbox, w = b[2] - b[0] + 2 * margin, h = b[3] - b[1] + 2 * margin, num = i + 1;
+                var svg = '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="' + fmtMm(w) + 'mm" height="' + fmtMm(h) + 'mm" viewBox="0 0 ' + fmtMm(w) + ' ' + fmtMm(h) + '">\n' +
+                    '<title>' + escXml(sh.name) + ' · ' + escXml(pieceLabel(p, i)) + ' (pieza ' + num + ' de ' + sh.pieces.length + ') · milímetros · fisicabit</title>\n' +
+                    wholePieceSvg(p, num, margin, margin, numerarOn()) + '\n</svg>';
+                files.push({ name: base + '-' + (num < 10 ? '0' : '') + num + '-' + slug(pieceLabel(p, i)) + '.svg', text: svg });
+            });
+            downloadBlob(base + '-piezas-svg.zip', makeZip(files));
+            if (window.track) window.track('carton_zip_piezas', 'carton');
+            setStatus('ZIP con ' + files.length + ' SVG (una pieza por archivo, con su nombre) descargado.', '');
+        });
+    }
+
+    /* ---------- Zona de corte láser: acomodar las piezas en pedazos de cartón ---------- */
+    var LASER_KEY = 's3d_laser_zona';
+    var laser = { pedazos: [{ w: 600, h: 400, n: 1 }], margen: 5, sep: 6, girar: true, chicos: false };
+    function laserLoad() { try { var s = JSON.parse(localStorage.getItem(LASER_KEY)); if (s && s.pedazos && s.pedazos.length) laser = s; } catch (e) {} }
+    function laserSave() { try { localStorage.setItem(LASER_KEY, JSON.stringify(laser)); } catch (e) {} }
+    // Empaquetado «maxrects» (mejor ajuste del lado corto) de items {w,h} en un rectángulo W×H
+    function packRect(items, W, H, gap, girar) {
+        var free = [{ x: 0, y: 0, w: W + gap, h: H + gap }], placed = [], rest = [];
+        items.forEach(function (it) {
+            var best = null, opts = [[it.w + gap, it.h + gap, 0]];
+            if (girar && Math.abs(it.w - it.h) > 1e-6) opts.push([it.h + gap, it.w + gap, 90]);
+            free.forEach(function (f) {
+                opts.forEach(function (o) {
+                    if (o[0] > f.w + 1e-6 || o[1] > f.h + 1e-6) return;
+                    var s1 = Math.min(f.w - o[0], f.h - o[1]), s2 = Math.max(f.w - o[0], f.h - o[1]);
+                    if (!best || s1 < best.s1 || (s1 === best.s1 && s2 < best.s2)) best = { f: f, w: o[0], h: o[1], rot: o[2], s1: s1, s2: s2 };
+                });
+            });
+            if (!best) { rest.push(it); return; }
+            var r = { x: best.f.x, y: best.f.y, w: best.w, h: best.h };
+            placed.push({ it: it, x: r.x, y: r.y, rot: best.rot, w: best.w - gap, h: best.h - gap });
+            var nf = [];
+            free.forEach(function (f) {
+                if (r.x >= f.x + f.w || r.x + r.w <= f.x || r.y >= f.y + f.h || r.y + r.h <= f.y) { nf.push(f); return; }
+                if (r.x > f.x) nf.push({ x: f.x, y: f.y, w: r.x - f.x, h: f.h });
+                if (r.x + r.w < f.x + f.w) nf.push({ x: r.x + r.w, y: f.y, w: f.x + f.w - r.x - r.w, h: f.h });
+                if (r.y > f.y) nf.push({ x: f.x, y: f.y, w: f.w, h: r.y - f.y });
+                if (r.y + r.h < f.y + f.h) nf.push({ x: f.x, y: r.y + r.h, w: f.w, h: f.y + f.h - r.y - r.h });
+            });
+            free = nf.filter(function (a, i) {
+                if (a.w < 0.01 || a.h < 0.01) return false;
+                return !nf.some(function (b, j) {
+                    if (i === j) return false;
+                    var contains = b.x <= a.x + 1e-9 && b.y <= a.y + 1e-9 && b.x + b.w >= a.x + a.w - 1e-9 && b.y + b.h >= a.y + a.h - 1e-9;
+                    var same = contains && a.x <= b.x + 1e-9 && a.y <= b.y + 1e-9 && a.x + a.w >= b.x + b.w - 1e-9 && a.y + a.h >= b.y + b.h - 1e-9;
+                    return contains && (!same || j < i);
+                });
+            });
+        });
+        return { placed: placed, rest: rest };
+    }
+    function laserPack(sh) {
+        var m = laser.margen, g = laser.sep;
+        var items = sh.pieces.map(function (p, i) { return { p: p, num: i + 1, w: p.bbox[2] - p.bbox[0], h: p.bbox[3] - p.bbox[1] }; });
+        items.sort(function (a, b) { return (b.w * b.h - a.w * a.h) || (Math.max(b.w, b.h) - Math.max(a.w, a.h)); });
+        var pedazos = [];
+        laser.pedazos.forEach(function (pz, k) { for (var i = 0; i < Math.max(1, Math.min(50, pz.n | 0)); i++) pedazos.push({ w: pz.w, h: pz.h, k: k }); });
+        if (laser.chicos) pedazos.sort(function (a, b) { return a.w * a.h - b.w * b.h; });
+        var hojas = [], rest = items, areaPiezas = 0, areaHojas = 0;
+        pedazos.forEach(function (pz) {
+            if (!rest.length) return;
+            var r = packRect(rest, pz.w - 2 * m, pz.h - 2 * m, g, laser.girar);
+            if (!r.placed.length) return;
+            hojas.push({ w: pz.w, h: pz.h, k: pz.k, placed: r.placed });
+            r.placed.forEach(function (pl) { areaPiezas += pl.it.w * pl.it.h; });
+            areaHojas += pz.w * pz.h;
+            rest = r.rest;
+        });
+        return { hojas: hojas, rest: rest, uso: areaHojas ? areaPiezas / areaHojas : 0 };
+    }
+    function laserSheetSvg(sh, hoja, idx, total, numerar, preview) {
+        var m = laser.margen;
+        var inner = hoja.placed.map(function (pl) { return wholePieceSvg(pl.it.p, pl.it.num, m + pl.x, m + pl.y, numerar, pl.rot); }).join('\n');
+        var head = preview ? '' : '<?xml version="1.0" encoding="UTF-8"?>\n';
+        return head + '<svg xmlns="http://www.w3.org/2000/svg" width="' + fmtMm(hoja.w) + 'mm" height="' + fmtMm(hoja.h) + 'mm" viewBox="0 0 ' + fmtMm(hoja.w) + ' ' + fmtMm(hoja.h) + '"' + (preview ? ' class="s3d-lz-thumb"' : '') + '>\n' +
+            '<title>' + escXml(sh.name) + ' · pedazo ' + (idx + 1) + ' de ' + total + ' · ' + fmtNum(hoja.w) + ' × ' + fmtNum(hoja.h) + ' mm · negro: cortar · azul: tinta · fisicabit</title>\n' +
+            (preview ? '<rect width="' + fmtMm(hoja.w) + '" height="' + fmtMm(hoja.h) + '" fill="#fff" stroke="#888" stroke-width="' + fmtMm(hoja.w / 300) + '"/>' : '') +
+            inner + '\n</svg>';
+    }
+    function laserRenderForm() {
+        var box = el('s3d-lz-pedazos');
+        box.innerHTML = '';
+        laser.pedazos.forEach(function (pz, i) {
+            var row = document.createElement('div');
+            row.className = 's3d-lz-row';
+            row.innerHTML = '<input type="number" min="20" max="3000" step="1" value="' + pz.w + '" data-k="w" title="Ancho (mm)"> × ' +
+                '<input type="number" min="20" max="3000" step="1" value="' + pz.h + '" data-k="h" title="Alto (mm)"> mm · ' +
+                '<input type="number" min="1" max="50" step="1" value="' + pz.n + '" data-k="n" title="Cantidad de pedazos iguales"> pedazo(s) ' +
+                '<button type="button" class="s3d-lz-del" title="Quitar este pedazo"' + (laser.pedazos.length < 2 ? ' disabled' : '') + '>✕</button>';
+            row.querySelectorAll('input').forEach(function (inp) {
+                inp.addEventListener('change', function () { pz[inp.getAttribute('data-k')] = Math.max(1, parseFloat(inp.value) || 1); laserSave(); laserPreview(); });
+            });
+            row.querySelector('.s3d-lz-del').addEventListener('click', function () { laser.pedazos.splice(i, 1); laserSave(); laserRenderForm(); laserPreview(); });
+            box.appendChild(row);
+        });
+        el('s3d-lz-margen').value = laser.margen;
+        el('s3d-lz-sep').value = laser.sep;
+        el('s3d-lz-girar').checked = !!laser.girar;
+        el('s3d-lz-chicos').checked = !!laser.chicos;
+    }
+    var laserResult = null;
+    function laserPreview() {
+        var box = el('s3d-lz-preview'), info = el('s3d-lz-info');
+        if (!sheets || !sheets.pieces.length) { box.innerHTML = ''; info.textContent = 'No hay piezas: renderizá el diseño primero.'; return; }
+        var res = laserPack(sheets);
+        laserResult = res;
+        box.innerHTML = res.hojas.map(function (h, i) {
+            return '<div class="s3d-lz-hoja"><div class="s3d-lz-cap">pedazo ' + (i + 1) + ' · ' + fmtNum(h.w) + ' × ' + fmtNum(h.h) + ' mm · ' + h.placed.length + ' pieza' + (h.placed.length === 1 ? '' : 's') + '</div>' +
+                   laserSheetSvg(sheets, h, i, res.hojas.length, numerarOn(), true) + '</div>';
+        }).join('');
+        var n = sheets.pieces.length - res.rest.length;
+        var txt = n + ' de ' + sheets.pieces.length + ' piezas en ' + res.hojas.length + ' pedazo' + (res.hojas.length === 1 ? '' : 's') + ' · aprovechamiento ' + Math.round(res.uso * 100) + ' %';
+        if (res.rest.length) txt += ' · NO ENTRAN: ' + res.rest.map(function (it) { return pieceLabel(it.p, it.num - 1) + ' (' + fmtNum(it.w) + ' × ' + fmtNum(it.h) + ' mm)'; }).join(', ') + ' — agregá un pedazo más grande o usá las hojas A4 en mosaico';
+        info.textContent = txt;
+        info.classList.toggle('s3d-lz-warn', !!res.rest.length);
+    }
+    function openLaserModal() {
+        if (!sheets || !sheets.pieces.length) { setStatus('No hay piezas para descargar: renderizá el diseño primero.', 'error'); return; }
+        laserLoad();
+        laserRenderForm();
+        el('s3d-laser-modal').classList.add('open');
+        el('s3d-laser-modal').setAttribute('aria-hidden', 'false');
+        el('s3d-lz-preview').innerHTML = '';
+        el('s3d-lz-info').textContent = 'Acomodando las piezas…';
+        whenNamed(sheets).then(laserPreview);
+    }
+    function closeLaserModal() {
+        el('s3d-laser-modal').classList.remove('open');
+        el('s3d-laser-modal').setAttribute('aria-hidden', 'true');
+    }
+    function downloadLaser() {
+        if (!sheets || !sheets.pieces.length) return;
+        whenNamed(sheets).then(function (sh) {
+            var res = laserPack(sh);
+            if (!res.hojas.length) { setStatus('Ninguna pieza entra en los pedazos indicados.', 'error'); return; }
+            var base = slug(sh.name);
+            var svgs = res.hojas.map(function (h, i) { return laserSheetSvg(sh, h, i, res.hojas.length, numerarOn(), false); });
+            if (svgs.length === 1) download(base + '-laser-' + fmtNum(res.hojas[0].w) + 'x' + fmtNum(res.hojas[0].h) + '.svg', svgs[0], 'image/svg+xml');
+            else downloadBlob(base + '-laser-pedazos.zip', makeZip(svgs.map(function (t, i) { return { name: base + '-pedazo-' + (i + 1 < 10 ? '0' : '') + (i + 1) + '-' + fmtNum(res.hojas[i].w) + 'x' + fmtNum(res.hojas[i].h) + '.svg', text: t }; })));
+            if (window.track) window.track('carton_svg_laser', 'carton');
+            setStatus(res.hojas.length + ' pedazo' + (res.hojas.length === 1 ? '' : 's') + ' descargado' + (res.hojas.length === 1 ? '' : 's') + (res.rest.length ? ' · ' + res.rest.length + ' pieza(s) quedaron afuera' : '') + '.', res.rest.length ? 'error' : '');
+        });
     }
 
     /* ---------- Cambio de modo ---------- */
@@ -36305,11 +36541,20 @@ bluetooth.startIOPinService()</pre>
         el('s3d-print').addEventListener('click', printSheets);
         el('s3d-sheets-print').addEventListener('click', printSheets);
         el('s3d-dl-svg').addEventListener('click', downloadSheetsSvg);
-        el('s3d-dl-svg-piezas').addEventListener('click', downloadPiecesSvg);
+        el('s3d-dl-svg-piezas').addEventListener('click', openLaserModal);
         el('s3d-dl-zip-piezas').addEventListener('click', downloadPiecesZip);
         el('s3d-dl-stl-plano').addEventListener('click', downloadFlatStl);
         el('s3d-sheets-svg').addEventListener('click', downloadSheetsSvg);
-        el('s3d-sheets-svg-piezas').addEventListener('click', downloadPiecesSvg);
+        el('s3d-sheets-svg-piezas').addEventListener('click', openLaserModal);
+        el('s3d-lz-close').addEventListener('click', closeLaserModal);
+        el('s3d-laser-modal').addEventListener('click', function (e) { if (e.target === el('s3d-laser-modal')) closeLaserModal(); });
+        el('s3d-lz-add').addEventListener('click', function () { laser.pedazos.push({ w: 300, h: 200, n: 1 }); laserSave(); laserRenderForm(); laserPreview(); });
+        document.querySelectorAll('#s3d-laser-modal .s3d-lz-preset').forEach(function (b) { b.addEventListener('click', function () { laser.pedazos.push({ w: +b.getAttribute('data-w'), h: +b.getAttribute('data-h'), n: 1 }); laserSave(); laserRenderForm(); laserPreview(); }); });
+        ['s3d-lz-margen', 's3d-lz-sep'].forEach(function (id) { el(id).addEventListener('change', function () { laser[id === 's3d-lz-margen' ? 'margen' : 'sep'] = Math.max(0, parseFloat(el(id).value) || 0); laserSave(); laserPreview(); }); });
+        el('s3d-lz-girar').addEventListener('change', function () { laser.girar = el('s3d-lz-girar').checked; laserSave(); laserPreview(); });
+        el('s3d-lz-chicos').addEventListener('change', function () { laser.chicos = el('s3d-lz-chicos').checked; laserSave(); laserPreview(); });
+        el('s3d-lz-ok').addEventListener('click', downloadLaser);
+        el('s3d-lz-todo').addEventListener('click', function () { closeLaserModal(); downloadPiecesSvg(); });
         el('s3d-sheets-zip').addEventListener('click', downloadPiecesZip);
         ['s3d-numerar', 's3d-numerar-side'].forEach(function (id) {
             el(id).addEventListener('change', function () { setNumerar(this.checked, this); });

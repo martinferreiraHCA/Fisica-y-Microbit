@@ -165,25 +165,22 @@ module guia() difference() {
 
 // ---------- Plano de corte ----------
 module plano() {
-    rampa();
+    pieza("rampa") rampa();
     y1 = ancho + gap;
     if (usa_triangulos) {
-        translate([0, y1]) triangulo();
-        translate([2 * base + 12, y1 + h]) rotate(180) triangulo();
-        translate([2 * base + 20 + (ancho + 16) / 2, y1 + ht / 2 + 2]) travesano();
+        pieza("triangulo") { translate([0, y1]) triangulo(); translate([2 * base + 12, y1 + h]) rotate(180) triangulo(); }
+        pieza("travesano") translate([2 * base + 20 + (ancho + 16) / 2, y1 + ht / 2 + 2]) travesano();
     } else {
-        translate([0, y1]) larguero();
-        translate([0, y1 + hr + gap]) larguero();
-        for (j = [0 : n_cost - 1]) translate([j * (ancho + gap), y1 + 2 * (hr + gap)]) costilla(j);
+        pieza("larguero") { translate([0, y1]) larguero(); translate([0, y1 + hr + gap]) larguero(); }
+        for (j = [0 : n_cost - 1]) pieza(str("costilla ", j + 1)) translate([j * (ancho + gap), y1 + 2 * (hr + gap)]) costilla(j);
     }
     y2 = y1 + (usa_triangulos ? h + gap : 2 * (hr + gap) + z_cost(0) + gap + e + fb_sobrante());
     if (sensor_ultrasonico) {
-        translate([0, y2]) frente();
-        translate([wf + gap + fr, y2]) escuadra();
-        translate([wf + gap + fr + be + fr + 8, y2]) escuadra();
+        pieza("frente del sensor") translate([0, y2]) frente();
+        pieza("escuadra") { translate([wf + gap + fr, y2]) escuadra(); translate([wf + gap + fr + be + fr + 8, y2]) escuadra(); }
     }
     y3 = y2 + (sensor_ultrasonico ? hf + gap : 0);
-    if (guias) for (k = [0, 1]) translate([0, y3 + k * (alto_guias + gap)]) guia();
+    if (guias) pieza("guia") for (k = [0, 1]) translate([0, y3 + k * (alto_guias + gap)]) guia();
 }
 
 // ---------- Armado ----------

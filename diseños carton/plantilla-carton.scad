@@ -36,8 +36,8 @@ module pieza_b() difference() {
 
 // Plano de corte: todas las piezas, sin superponerse
 module plano() {
-    pieza_a();
-    translate([0, alto + 8]) pieza_b();
+    pieza("pieza A") pieza_a();
+    pieza("pieza B") translate([0, alto + 8]) pieza_b();
 }
 
 // Vista armada en 3D

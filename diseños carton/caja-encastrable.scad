@@ -43,13 +43,11 @@ module base() difference() {
     translate([0, -2]) texto("CAJA", h = 4, centrado = true);
 }
 module plano() {
-    base();
+    pieza("base") base();
     gap = e + fb_sobrante() + 10;
     y0 = (ancho + e + 10) / 2 + gap;
-    translate([-(largo + e) / 2, y0]) pared(largo);
-    translate([-(largo + e) / 2, y0 + alto + gap]) pared(largo);
-    translate([-(largo + e) / 2, y0 + 2 * (alto + gap)]) pared(ancho);
-    translate([-(largo + e) / 2 + ancho + e + 10, y0 + 2 * (alto + gap)]) pared(ancho);
+    pieza("pared larga") { translate([-(largo + e) / 2, y0]) pared(largo); translate([-(largo + e) / 2, y0 + alto + gap]) pared(largo); }
+    pieza("pared corta") { translate([-(largo + e) / 2, y0 + 2 * (alto + gap)]) pared(ancho); translate([-(largo + e) / 2 + ancho + e + 10, y0 + 2 * (alto + gap)]) pared(ancho); }
 }
 module armado() {
     translate([0, 0, -e / 2]) laja() base();

@@ -50,10 +50,9 @@ module base() difference() {
 }
 
 module plano() {
-    lateral();
     paso = h + e + fb_sobrante() + 6;
-    translate([0, paso]) lateral();
-    translate([B[0] / 2, 2 * paso + B[1] / 2]) base();
+    pieza("lateral") { lateral(); translate([0, paso]) lateral(); }
+    pieza("base") translate([B[0] / 2, 2 * paso + B[1] / 2]) base();
 }
 
 module armado() {

@@ -74,11 +74,10 @@ module placa() difference() {
 }
 
 module plano() {
-    pantalla();
+    pieza("pantalla") pantalla();
     gap = e + fb_sobrante() + 8;
-    translate([0, alto + gap]) translate([fr, 0]) escuadra();
-    translate([p + fr + 10, alto + gap]) translate([fr, 0]) escuadra();
-    if (con_placa) translate([(ancho + 10) / 2, alto + gap + he + gap + bp / 2]) placa();
+    pieza("escuadra") { translate([0, alto + gap]) translate([fr, 0]) escuadra(); translate([p + fr + 10, alto + gap]) translate([fr, 0]) escuadra(); }
+    if (con_placa) pieza("placa de base") translate([(ancho + 10) / 2, alto + gap + he + gap + bp / 2]) placa();
 }
 module armado() {
     if (con_placa) translate([0, 0, -e / 2]) laja() placa();
