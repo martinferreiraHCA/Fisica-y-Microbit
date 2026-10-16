@@ -28,7 +28,7 @@ piezas del modo cartón, con su miniatura (vista armada en 3D).
 | `peine-de-ajuste.scad` | 1 | **Imprimilo primero**: ranuras de distinto ancho para elegir la `holgura` que encastra justo con tu cartón. |
 | `plantilla-carton.scad` | 2 | Punto de partida: dos piezas cruzadas con regla y rótulos. |
 | `pie-para-varilla.scad` | 6 (2 distintas) | Pie para sostener una varilla vertical (soportes de laboratorio). |
-| `plano-inclinado.scad` | 4 (3 distintas) | Rampa con ángulo ajustable, regla de recorrido y ángulo impreso. |
+| `plano-inclinado.scad` | 4 a 12 | Rampa o pista inclinada: el largo es la hipotenusa de los soportes, ángulo de 10° a 80°, soportes en triángulos (rampa corta) o caballetes con largueros (pistas largas de hasta 1,5 m), sensor HC-SR04 opcional en lo más alto al ras de la superficie con regla de distancia, y guías laterales opcionales. |
 | `soporte-de-pendulo.scad` | 6 (5 distintas) | Soporte sobre placa de base con pies trapezoidales, escala de amplitud (0° abajo) y regla del largo del hilo. |
 | `polea-con-horquilla.scad` | 6 (3 distintas) | Polea de tres discos sobre un palito de brochette, con horquilla y base (máquina de Atwood, cambio de dirección de una cuerda). |
 | `carro-para-microbit.scad` | 9 (4 distintas) | Carro con marco rígido (laterales y travesaños en cruz), ruedas de cartón sobre ejes de brochette y ranura para parar la micro:bit (acelerómetro, Tracker). |
