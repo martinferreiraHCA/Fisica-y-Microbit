@@ -33045,7 +33045,9 @@ bluetooth.startIOPinService()</pre>
                     <button id="s3d-render" class="s3d-btn primary">Renderizar</button>
                     <button id="s3d-print" class="s3d-btn primary s3d-only-carton" title="Abre las hojas A4 listas para imprimir al 100 % o guardar como PDF">🖨 Imprimir en A4 / PDF</button>
                     <button id="s3d-save" class="s3d-btn">💾 Guardar pieza…</button>
-                    <button id="s3d-dl-svg" class="s3d-btn s3d-only-carton" title="Todas las hojas en un solo archivo SVG en milímetros (sirve también para cortadora láser)">Descargar SVG (hojas)</button>
+                    <button id="s3d-dl-svg" class="s3d-btn s3d-only-carton" title="Todas las hojas A4 en un solo archivo SVG en milímetros (las piezas grandes van partidas en mosaico, como al imprimir)">Descargar SVG (hojas A4)</button>
+                    <button id="s3d-dl-svg-piezas" class="s3d-btn s3d-only-carton" title="Un SVG en milímetros con todas las piezas enteras y separadas, cada una en su propio grupo, sin hojas ni mosaico: para cortadora láser o plóter (negro: cortar · azul: tinta)">Descargar SVG (piezas enteras · láser)</button>
+                    <button id="s3d-dl-zip-piezas" class="s3d-btn s3d-only-carton" title="Un archivo ZIP con un SVG por pieza, cada una entera y en milímetros">Descargar ZIP (un SVG por pieza)</button>
                     <button id="s3d-dl-stl-plano" class="s3d-btn s3d-only-carton" title="Las piezas planas extruidas al espesor, en un STL, para imprimirlas en 3D (poné material = impresion3d)">STL de piezas planas (3D)</button>
                     <button id="s3d-dl-stl" class="s3d-btn" disabled>Descargar STL</button>
                     <button id="s3d-dl-scad" class="s3d-btn">Descargar código .scad</button>
@@ -33086,7 +33088,9 @@ bluetooth.startIOPinService()</pre>
                     <div class="s3d-sheets" id="s3d-sheets">
                         <div class="s3d-sheets-bar">
                             <button id="s3d-sheets-print" class="primary">🖨 Imprimir / PDF</button>
-                            <button id="s3d-sheets-svg">Descargar SVG</button>
+                            <button id="s3d-sheets-svg" title="Las hojas A4 en un SVG (piezas grandes en mosaico)">SVG hojas A4</button>
+                            <button id="s3d-sheets-svg-piezas" title="Todas las piezas enteras y separadas en un SVG en milímetros, para láser o plóter">SVG piezas enteras</button>
+                            <button id="s3d-sheets-zip" title="ZIP con un SVG por pieza">ZIP por pieza</button>
                             <label class="s3d-check"><input type="checkbox" id="s3d-numerar" checked> Numerar las piezas</label>
                             <span id="s3d-sheets-info"></span>
                         </div>
@@ -35870,6 +35874,95 @@ bluetooth.startIOPinService()</pre>
                   '<title>' + escXml(sheets.name) + ' · hojas A4 · fisicabit</title>\n' + inner + '\n</svg>';
         download(slug(sheets.name) + '-hojas-a4.svg', svg, 'image/svg+xml');
     }
+    // SVG de una pieza entera, en su propio grupo: origen en (ox, oy) dentro del dibujo
+    function wholePieceSvg(p, num, ox, oy, numerar) {
+        var b = p.bbox;
+        var cut = contourPath(p.outer) + p.holes.map(contourPath).join('');
+        var s = '<g id="pieza-' + num + '" transform="translate(' + fmtMm(ox - b[0]) + ',' + fmtMm(oy - b[1]) + ')"><title>pieza ' + num + '</title>';
+        s += '<path class="corte" d="' + cut + '" fill="none" stroke="#000" stroke-width="0.1" stroke-linejoin="round" fill-rule="evenodd"/>';
+        if (p.marks.length) s += '<path class="tinta" d="' + p.marks.map(contourPath).join('') + '" fill="#1f3f8f" stroke="none" fill-rule="evenodd"/>';
+        if (numerar) s += '<text class="tinta" x="' + fmtMm(b[0] + 3) + '" y="' + fmtMm(b[3] - 3) + '" font-family="Arial, Helvetica, sans-serif" font-size="3.2" font-weight="700" fill="#1f3f8f">' + num + '</text>';
+        return s + '</g>';
+    }
+    function piecesHeaderSvg(name, pieces, x, y) {
+        var vals = valuesMap();
+        var esp = vals.espesor != null ? vals.espesor : null;
+        var matTxt = { carton: 'cartón', laser: 'corte láser', impresion3d: 'impresión 3D' }[vals.material] || null;
+        return '<g id="referencia" fill="#1f3f8f" font-family="Arial, Helvetica, sans-serif">' +
+            '<text x="' + x + '" y="' + (y + 3.5) + '" font-size="3.4" font-weight="700">' + escXml(name) + ' · ' + pieces.length + ' pieza' + (pieces.length === 1 ? '' : 's') + ' enteras · milímetros</text>' +
+            '<text x="' + x + '" y="' + (y + 7.5) + '" font-size="2.5">' + (esp != null ? (matTxt || 'cartón') + ' de ' + fmtNum(esp) + ' mm · ' : '') + 'negro: cortar · azul: tinta (grabar o imprimir) · este bloque es de referencia, no se corta</text>' +
+            '<g stroke="#1f3f8f" stroke-width="0.3" fill="none"><line x1="' + x + '" y1="' + (y + 12) + '" x2="' + (x + 100) + '" y2="' + (y + 12) + '"/><line x1="' + x + '" y1="' + (y + 10) + '" x2="' + x + '" y2="' + (y + 14) + '"/><line x1="' + (x + 100) + '" y1="' + (y + 10) + '" x2="' + (x + 100) + '" y2="' + (y + 14) + '"/></g>' +
+            '<text x="' + (x + 104) + '" y="' + (y + 13) + '" font-size="2.6">100 mm</text></g>';
+    }
+    // Un solo SVG con todas las piezas enteras (sin hojas ni mosaico), para láser o plóter
+    function downloadPiecesSvg() {
+        if (!sheets || !sheets.pieces.length) { setStatus('No hay piezas para descargar: renderizá el diseño primero.', 'error'); return; }
+        var pieces = sheets.pieces, margin = 5, gap = 6, head = 18;
+        var maxW = 0;
+        pieces.forEach(function (p) { maxW = Math.max(maxW, p.bbox[2] - p.bbox[0]); });
+        var W = Math.max(500, maxW);
+        var order = pieces.map(function (p, i) { return { p: p, num: i + 1, w: p.bbox[2] - p.bbox[0], h: p.bbox[3] - p.bbox[1] }; });
+        order.sort(function (a, b) { return (b.h - a.h) || (b.w - a.w); });
+        var cx = 0, cy = head + margin, rowH = 0, placed = [];
+        order.forEach(function (it) {
+            if (cx + it.w > W + 1e-6) { cy += rowH + gap; cx = 0; rowH = 0; }
+            placed.push({ it: it, x: margin + cx, y: cy });
+            cx += it.w + gap; rowH = Math.max(rowH, it.h);
+        });
+        var totalW = W + 2 * margin, totalH = cy + rowH + margin;
+        var inner = piecesHeaderSvg(sheets.name, pieces, margin, margin) +
+            placed.map(function (pl) { return wholePieceSvg(pl.it.p, pl.it.num, pl.x, pl.y, numerarOn()); }).join('\n');
+        var svg = '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="' + fmtMm(totalW) + 'mm" height="' + fmtMm(totalH) + 'mm" viewBox="0 0 ' + fmtMm(totalW) + ' ' + fmtMm(totalH) + '">\n' +
+                  '<title>' + escXml(sheets.name) + ' · piezas enteras · fisicabit</title>\n' + inner + '\n</svg>';
+        download(slug(sheets.name) + '-piezas.svg', svg, 'image/svg+xml');
+        if (window.track) window.track('carton_svg_piezas', 'carton');
+        setStatus('SVG con ' + pieces.length + ' piezas enteras descargado (' + slug(sheets.name) + '-piezas.svg).', '');
+    }
+    // ZIP (sin comprimir) con un SVG por pieza
+    function crc32(bytes) {
+        var c, crc = 0xFFFFFFFF;
+        for (var i = 0; i < bytes.length; i++) {
+            c = (crc ^ bytes[i]) & 0xFF;
+            for (var k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xEDB88320 : c >>> 1;
+            crc = (crc >>> 8) ^ c;
+        }
+        return (crc ^ 0xFFFFFFFF) >>> 0;
+    }
+    function makeZip(files) {
+        var enc = new TextEncoder(), parts = [], central = [], offset = 0;
+        function u16(n) { return [n & 255, (n >>> 8) & 255]; }
+        function u32(n) { return [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]; }
+        files.forEach(function (f) {
+            var name = enc.encode(f.name), data = enc.encode(f.text), crc = crc32(data);
+            var local = new Uint8Array([].concat([0x50, 0x4B, 3, 4], u16(20), u16(0x800), u16(0), u16(0), u16(0), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0)));
+            parts.push(local, name, data);
+            central.push(new Uint8Array([].concat([0x50, 0x4B, 1, 2], u16(20), u16(20), u16(0x800), u16(0), u16(0), u16(0), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset))), name);
+            offset += local.length + name.length + data.length;
+        });
+        var cdSize = 0; central.forEach(function (c) { cdSize += c.length; });
+        var end = new Uint8Array([].concat([0x50, 0x4B, 5, 6], u16(0), u16(0), u16(files.length), u16(files.length), u32(cdSize), u32(offset), u16(0)));
+        return new Blob(parts.concat(central, [end]), { type: 'application/zip' });
+    }
+    function downloadPiecesZip() {
+        if (!sheets || !sheets.pieces.length) { setStatus('No hay piezas para descargar: renderizá el diseño primero.', 'error'); return; }
+        var base = slug(sheets.name), margin = 2, files = [];
+        sheets.pieces.forEach(function (p, i) {
+            var b = p.bbox, w = b[2] - b[0] + 2 * margin, h = b[3] - b[1] + 2 * margin, num = i + 1;
+            var svg = '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="' + fmtMm(w) + 'mm" height="' + fmtMm(h) + 'mm" viewBox="0 0 ' + fmtMm(w) + ' ' + fmtMm(h) + '">\n' +
+                '<title>' + escXml(sheets.name) + ' · pieza ' + num + ' de ' + sheets.pieces.length + ' · milímetros · fisicabit</title>\n' +
+                wholePieceSvg(p, num, margin, margin, numerarOn()) + '\n</svg>';
+            files.push({ name: base + '-pieza-' + (num < 10 ? '0' : '') + num + '.svg', text: svg });
+        });
+        var blob = makeZip(files);
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = base + '-piezas-svg.zip';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+        if (window.track) window.track('carton_zip_piezas', 'carton');
+        setStatus('ZIP con ' + files.length + ' SVG (una pieza por archivo) descargado.', '');
+    }
 
     /* ---------- Cambio de modo ---------- */
     // opts.sinPieza: el que llama va a cargar su propia pieza a continuación
@@ -36212,8 +36305,12 @@ bluetooth.startIOPinService()</pre>
         el('s3d-print').addEventListener('click', printSheets);
         el('s3d-sheets-print').addEventListener('click', printSheets);
         el('s3d-dl-svg').addEventListener('click', downloadSheetsSvg);
+        el('s3d-dl-svg-piezas').addEventListener('click', downloadPiecesSvg);
+        el('s3d-dl-zip-piezas').addEventListener('click', downloadPiecesZip);
         el('s3d-dl-stl-plano').addEventListener('click', downloadFlatStl);
         el('s3d-sheets-svg').addEventListener('click', downloadSheetsSvg);
+        el('s3d-sheets-svg-piezas').addEventListener('click', downloadPiecesSvg);
+        el('s3d-sheets-zip').addEventListener('click', downloadPiecesZip);
         ['s3d-numerar', 's3d-numerar-side'].forEach(function (id) {
             el(id).addEventListener('change', function () { setNumerar(this.checked, this); });
         });

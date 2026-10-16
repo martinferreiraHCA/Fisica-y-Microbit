@@ -15,8 +15,10 @@ piezas del modo cartón, con su miniatura (vista armada en 3D).
 - Reparte las piezas en **hojas A4** con una **barra de calibración de
   100 mm** en cada hoja. Las piezas más grandes que una hoja salen en varias,
   con franjas de superposición.
-- **Imprime / guarda en PDF** al 100 % y **descarga un SVG** en milímetros
-  (sirve también para una cortadora láser).
+- **Imprime / guarda en PDF** al 100 % y descarga **SVG en milímetros**: las
+  hojas A4 (con las piezas grandes en mosaico), un SVG con **todas las piezas
+  enteras y separadas** (cada una en su grupo, negro = cortar, azul = tinta,
+  para cortadora láser o plóter) o un **ZIP con un SVG por pieza**.
 - Las variables del inicio se convierten en deslizadores, como en las piezas
   3D: `espesor` (grosor del cartón) y `holgura` (ancho extra de las ranuras)
   están en todos los diseños.
