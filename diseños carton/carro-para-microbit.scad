@@ -74,13 +74,11 @@ module rueda_pieza() difference() {
 }
 
 module plano() {
-    chasis();
+    pieza("chasis") chasis();
     paso = hl + e + fb_sobrante() + 8;
-    translate([0, ancho + 8]) lateral();
-    translate([0, ancho + 8 + paso]) lateral();
-    translate([0, ancho + 8 + 2 * paso]) travesano();
-    translate([lt + 8, ancho + 8 + 2 * paso]) travesano();
-    for (i = [0 : 3]) translate([largo + 10 + rueda / 2 + (i % 2) * (rueda + 6), rueda / 2 + floor(i / 2) * (rueda + 6)]) rueda_pieza();
+    pieza("lateral") { translate([0, ancho + 8]) lateral(); translate([0, ancho + 8 + paso]) lateral(); }
+    pieza("travesano") { translate([0, ancho + 8 + 2 * paso]) travesano(); translate([lt + 8, ancho + 8 + 2 * paso]) travesano(); }
+    pieza("rueda") for (i = [0 : 3]) translate([largo + 10 + rueda / 2 + (i % 2) * (rueda + 6), rueda / 2 + floor(i / 2) * (rueda + 6)]) rueda_pieza();
 }
 module armado() {
     translate([0, 0, 8 + hl + e / 2]) laja() chasis();

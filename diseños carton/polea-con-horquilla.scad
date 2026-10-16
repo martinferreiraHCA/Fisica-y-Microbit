@@ -49,13 +49,11 @@ module base() difference() {
     translate([-base_l / 2 + 8, -base_w / 2 + 4]) texto("POLEA", h = 3.5);
 }
 module plano() {
-    disco(diametro);
-    translate([diametro + 6, 0]) disco(diametro);
-    translate([2 * diametro + 12, 0]) disco(diametro - 2 * garganta);
+    pieza("disco exterior") { disco(diametro); translate([diametro + 6, 0]) disco(diametro); }
+    pieza("disco interior") translate([2 * diametro + 12, 0]) disco(diametro - 2 * garganta);
     yb = diametro / 2 + 10 + e + fb_sobrante();
-    translate([-diametro / 2, yb]) brazo();
-    translate([-diametro / 2 + bw + 8, yb]) brazo();
-    translate([base_l / 2 - diametro / 2, yb + altura + 12 + base_w / 2 + 8]) base();
+    pieza("brazo") { translate([-diametro / 2, yb]) brazo(); translate([-diametro / 2 + bw + 8, yb]) brazo(); }
+    pieza("base") translate([base_l / 2 - diametro / 2, yb + altura + 12 + base_w / 2 + 8]) base();
 }
 module armado() {
     translate([0, 0, -e / 2]) laja() base();

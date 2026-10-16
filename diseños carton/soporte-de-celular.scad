@@ -47,9 +47,8 @@ module base() difference() {
     translate([B[0] / 2 - 6, B[1] / 2]) rotate(180) regla(B[0] - 12, alto = 3, h_num = 2, unidad = "");
 }
 module plano() {
-    lateral();
-    translate([0, h + e + 14]) lateral();
-    translate([B[0] / 2, 2 * (h + e + 14) + B[1] / 2]) base();
+    pieza("lateral") { lateral(); translate([0, h + e + 14]) lateral(); }
+    pieza("base") translate([B[0] / 2, 2 * (h + e + 14) + B[1] / 2]) base();
 }
 module armado() {
     translate([0, 0, -e / 2]) laja() base();

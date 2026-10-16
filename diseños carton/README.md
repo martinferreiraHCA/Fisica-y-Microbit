@@ -16,9 +16,11 @@ piezas del modo cartón, con su miniatura (vista armada en 3D).
   100 mm** en cada hoja. Las piezas más grandes que una hoja salen en varias,
   con franjas de superposición.
 - **Imprime / guarda en PDF** al 100 % y descarga **SVG en milímetros**: las
-  hojas A4 (con las piezas grandes en mosaico), un SVG con **todas las piezas
-  enteras y separadas** (cada una en su grupo, negro = cortar, azul = tinta,
-  para cortadora láser o plóter) o un **ZIP con un SVG por pieza**.
+  hojas A4 (con las piezas grandes en mosaico), el **SVG para láser** (indicás
+  la zona de corte o los pedazos de cartón que tenés, con sus medidas y
+  cantidad, y las piezas se acomodan enteras aprovechando el espacio: un SVG
+  por pedazo, negro = cortar, azul = tinta; o todo en un solo SVG sin zona) o
+  un **ZIP con un SVG por pieza**, cada archivo con el nombre de su pieza.
 - Las variables del inicio se convierten en deslizadores, como en las piezas
   3D: `espesor` (grosor del cartón) y `holgura` (ancho extra de las ranuras)
   están en todos los diseños.
@@ -71,9 +73,13 @@ holgura = 0;  // [-0.6:0.1:0.8]
 module a() difference() { rect(100, 50, 2); translate([50, 0]) ranura(25); translate([5, 0]) regla(90); }
 module b() difference() { rect(100, 50, 2); translate([50, 50]) rotate(180) ranura(25); }
 
-module plano()  { a(); translate([0, 58]) b(); }                    // piezas a cortar (separadas)
+module plano()  { pieza("a") a(); pieza("b") translate([0, 58]) b(); }   // piezas a cortar (separadas), con nombre
 module armado() { translate([-50, 0, 0]) laja_xz() a(); translate([0, -50, 0]) laja_yz() b(); }
 ```
+
+`pieza("nombre")` envuelve cada pieza (o un grupo de piezas iguales) del
+plano: con eso el sitio nombra los archivos SVG que descargás (`rampa`,
+`triangulo 1`, `triangulo 2`…). Sin `pieza()` se numeran.
 
 Módulos disponibles: `ranura(prof)`, `ranura_interior(largo)`,
 `pestana(largo, ancho)`, `agujero(d)`, `rect(ancho, alto, r)`,

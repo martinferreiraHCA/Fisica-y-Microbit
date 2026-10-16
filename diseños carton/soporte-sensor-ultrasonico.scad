@@ -45,7 +45,7 @@ module base() difference() {
     translate([bw / 2, largo_base / 2]) rotate(90) texto("DISTANCIA AL SENSOR (MM)", h = 3, centrado = true);
     translate([bw / 2, largo_base - 8]) flecha(0.1);
 }
-module plano() { frente(); translate([fw + 8, 0]) base(); }
+module plano() { pieza("frente") frente(); pieza("base") translate([fw + 8, 0]) base(); }
 module armado() {
     translate([-bw / 2, 0, -e / 2]) laja() base();
     translate([-fw / 2, 10, 0]) laja_xz() frente();
