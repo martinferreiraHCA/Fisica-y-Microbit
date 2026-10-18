@@ -6466,9 +6466,6 @@ basic.forever(function () {
                 formatHintDisable: ' Desactiva "Micro:bit envía timestamp"',
                 formatHintVars: ' Elegí {n} variable(s)',
                 formatHintTooMany: ' Llegan demasiadas columnas: revisá el bloque de envío',
-                autoFormatToast: 'Formato detectado: {desc}. Variables y gráfica adaptadas solas.',
-                autoFormatTime: 'tiempo + {n} variable(s)',
-                autoFormatNoTime: '{n} variable(s), sin marca de tiempo',
                 formatFixTap: 'Tocá para corregir',
                 // Panel lateral
                 varConfig: 'CONFIGURACIÓN DE VARIABLES',
@@ -6937,9 +6934,6 @@ basic.forever(function () {
                 formatHintDisable: ' Disable "Micro:bit sends timestamp"',
                 formatHintVars: ' Choose {n} variable(s)',
                 formatHintTooMany: ' Too many columns arriving: check the send block',
-                autoFormatToast: 'Format detected: {desc}. Variables and graph adapted automatically.',
-                autoFormatTime: 'time + {n} variable(s)',
-                autoFormatNoTime: '{n} variable(s), no timestamp',
                 formatFixTap: 'Tap to fix',
                 // Side panel
                 varConfig: 'VARIABLE CONFIGURATION',
@@ -7408,9 +7402,6 @@ basic.forever(function () {
                 formatHintDisable: ' Desative "Micro:bit envia timestamp"',
                 formatHintVars: ' Escolha {n} variável(is)',
                 formatHintTooMany: ' Chegam colunas demais: verifique o bloco de envio',
-                autoFormatToast: 'Formato detectado: {desc}. Variáveis e gráfico adaptados sozinhos.',
-                autoFormatTime: 'tempo + {n} variável(is)',
-                autoFormatNoTime: '{n} variável(is), sem marca de tempo',
                 formatFixTap: 'Toque para corrigir',
                 // Painel lateral
                 varConfig: 'CONFIGURAÇÃO DE VARIÁVEIS',
@@ -8606,7 +8597,6 @@ basic.forever(function () {
 </div>
 <div class="help-accordion-content collapsed">
     <p>Configura hasta 3 variables simultáneas con nombres y colores personalizados:</p>
-    <p><strong>Se adapta sola:</strong> apenas llegan datos de la micro:bit (por USB o Bluetooth, incluso antes de tocar CAPTURAR), el sistema cuenta las columnas, detecta si la primera es la marca de tiempo y ajusta la cantidad de variables y la gráfica. Solo lo hace cuando todavía no hay datos cargados; si ya hay, muestra el aviso naranja para corregir con un toque.</p>
     <ul>
         <li><strong>Número de Variables:</strong> Selecciona 1, 2 o 3 variables</li>
         <li><strong>Nombre:</strong> Personaliza el nombre de cada variable</li>
@@ -9217,7 +9207,6 @@ bluetooth.startIOPinService()</pre>
 </div>
 <div class="help-accordion-content collapsed">
     <p>Configure up to 3 simultaneous variables with custom names and colors:</p>
-    <p><strong>Adapts by itself:</strong> as soon as data arrives from the micro:bit (USB or Bluetooth, even before pressing CAPTURE), the system counts the columns, detects whether the first one is the timestamp and adjusts the number of variables and the graph. It only does so while no data is loaded yet; otherwise the orange warning lets you fix it with one tap.</p>
     <ul>
         <li><strong>Number of Variables:</strong> Select 1, 2 or 3 variables</li>
         <li><strong>Name:</strong> Customize each variable's name</li>
@@ -9828,7 +9817,6 @@ bluetooth.startIOPinService()</pre>
 </div>
 <div class="help-accordion-content collapsed">
     <p>Configure até 3 variáveis simultâneas com nomes e cores personalizadas:</p>
-    <p><strong>Adapta-se sozinho:</strong> assim que chegam dados da micro:bit (por USB ou Bluetooth, mesmo antes de tocar CAPTURAR), o sistema conta as colunas, detecta se a primeira é a marca de tempo e ajusta a quantidade de variáveis e o gráfico. Só faz isso enquanto ainda não há dados carregados; se já houver, mostra o aviso laranja para corrigir com um toque.</p>
     <ul>
         <li><strong>Número de Variáveis:</strong> Selecione 1, 2 ou 3 variáveis</li>
         <li><strong>Nome:</strong> Personalize o nome de cada variável</li>
@@ -10508,10 +10496,6 @@ bluetooth.startIOPinService()</pre>
         });
 
         // ========== CONFIGURACIÓN DE VARIABLES ==========
-
-        // Cambios hechos a mano (no por programa): la autodetección de formato deja de discutir el modo
-        document.getElementById('numVariables').addEventListener('change', function (e) { if (e.isTrusted) _afUserOverride = true; });
-        document.getElementById('microbitTimestamp').addEventListener('change', function (e) { if (e.isTrusted) _afUserOverride = true; });
 
         document.getElementById('numVariables').addEventListener('change', function() {
             const num = parseInt(this.value);
@@ -13771,8 +13755,6 @@ bluetooth.startIOPinService()</pre>
                     // más abajo NO contaminamos state.rawData ni los buffers
                     // de la gráfica principal cuando solo MAPEO está activo.
                     const _mapeoActive = !!(window.__mapeoCtrl && window.__mapeoCtrl.isCapturing && window.__mapeoCtrl.panel && window.__mapeoCtrl.panel.classList.contains('open'));
-                    // Autodetección del formato (también antes de CAPTURAR)
-                    for (let ai = 0; ai < lines.length; ai++) _autoFormatObserve(lines[ai]);
                     if (!state.isCollecting && !_mapeoActive) return;
 
                     const numVars = state.numVariables;
@@ -14439,7 +14421,6 @@ bluetooth.startIOPinService()</pre>
         });
 
         async function connectBluetooth() {
-            _afUserOverride = false; _afRows = [];   // conexión nueva: la autodetección vuelve a estar activa
             // Ignorar si ya hay una conexión en progreso
             if (microbitBT && microbitBT.connecting) {
                 console.log('[BT] Conexión ya en progreso, ignorando click');
@@ -14560,7 +14541,6 @@ bluetooth.startIOPinService()</pre>
             lastSamplingRateUpdate = 0;
             _formatMismatchCount = 0;
             _lastMismatchParts = 0;
-            _afRows = [];
             _serialLastDataTime = Date.now();
             _backwardsRun = 0;
             _backwardsPrevRaw = -1;
@@ -14729,37 +14709,40 @@ bluetooth.startIOPinService()</pre>
                     chart.data.datasets.push(createStreamingDatasetConfig(varIdx, chartIdx));
                 }
 
-                // Si ya hay datos previos, rellenar SOLO con la ventana deslizante
-                // (últimos LIVE_WINDOW_MAX_POINTS). Antes se volcaba todo rawData:
-                // con una captura rápida (decenas de miles de puntos) cualquier
-                // click en la tabla o cambio de T=0 en plena captura congelaba la
-                // página al redibujar todo. Se siembra además el min/max
-                // incremental que usa applySmoothScale.
+                // Serie completa de cada curva (historial entero de la captura)
+                // y min/max incremental que usa applyLiveScale. Lo que se DIBUJA
+                // sale de syncLiveDataset: la serie entera mientras es corta y
+                // una versión decimada (min/max por tramos) cuando crece, así la
+                // gráfica muestra toda la captura construyéndose sin que el
+                // redibujo a 30 fps pese con decenas de miles de puntos.
+                liveSeries[chartIdx] = {};
+                datasetYMin[chartIdx] = {};
+                datasetYMax[chartIdx] = {};
                 const total = state.rawData.length;
-                if (total > 0) {
-                    const startIdx = Math.max(0, total - LIVE_WINDOW_MAX_POINTS);
-                    if (!datasetYMin[chartIdx]) { datasetYMin[chartIdx] = {}; datasetYMax[chartIdx] = {}; }
-                    for (let dsIdx = 0; dsIdx < config.yVars.length; dsIdx++) {
-                        const varIdx = config.yVars[dsIdx];
-                        const dsData = chart.data.datasets[dsIdx].data;
-                        let yMin = Infinity, yMax = -Infinity;
-                        for (let i = startIdx; i < total; i++) {
-                            const d = state.rawData[i];
-                            let xVal;
-                            if (config.xAxis === 'time') {
-                                xVal = (d.time - state.timeZeroOffset) / timeUnitValue;
-                            } else {
-                                const xVarIdx = parseInt(config.xAxis.replace('var', ''));
-                                xVal = d.values[xVarIdx];
-                            }
-                            const yVal = d.values[varIdx];
-                            dsData.push({ x: xVal, y: yVal, id: d.id });
-                            if (yVal < yMin) yMin = yVal;
-                            if (yVal > yMax) yMax = yVal;
+                for (let dsIdx = 0; dsIdx < config.yVars.length; dsIdx++) {
+                    const varIdx = config.yVars[dsIdx];
+                    const full = [];
+                    let yMin = Infinity, yMax = -Infinity;
+                    for (let i = 0; i < total; i++) {
+                        const d = state.rawData[i];
+                        let xVal;
+                        if (config.xAxis === 'time') {
+                            xVal = (d.time - state.timeZeroOffset) / timeUnitValue;
+                        } else {
+                            const xVarIdx = parseInt(config.xAxis.replace('var', ''));
+                            xVal = d.values[xVarIdx];
                         }
+                        const yVal = d.values[varIdx];
+                        full.push({ x: xVal, y: yVal, id: d.id });
+                        if (yVal < yMin) yMin = yVal;
+                        if (yVal > yMax) yMax = yVal;
+                    }
+                    liveSeries[chartIdx][dsIdx] = full;
+                    if (total > 0) {
                         datasetYMin[chartIdx][dsIdx] = yMin;
                         datasetYMax[chartIdx][dsIdx] = yMax;
                     }
+                    syncLiveDataset(chart, chartIdx, dsIdx);
                 }
 
                 chart.update('none');
@@ -14767,30 +14750,82 @@ bluetooth.startIOPinService()</pre>
         }
 
         // ========== MOTOR DE RENDERIZADO EN TIEMPO REAL ==========
-        // Arquitectura inspirada en Smoothie.js (usada por MakeCode):
         // - Loop de datos DESACOPLADO del loop de renderizado
-        // - Render loop a 60fps via requestAnimationFrame (siempre corre)
-        // - Ventana deslizante: solo muestra últimos N puntos en el chart
-        // - Scale smoothing exponencial en eje Y (como Smoothie scaleSmoothing=0.125)
-        // - Datos completos siempre en state.rawData para análisis posterior
+        // - Render loop via requestAnimationFrame (~30 fps) mientras se captura
+        // - Se muestra TODA la captura desde el inicio, construyéndose: el eje X
+        //   crece con el tiempo y la escala Y sigue a los datos en el acto.
+        //   (Antes: ventana deslizante de 600 puntos + escala Y suavizada, que
+        //   hacía que el principio desapareciera y la escala llegara tarde.)
+        // - Para que el redibujo no pese con capturas largas y rápidas, por
+        //   encima de LIVE_MAX_DRAW_POINTS se dibuja una decimación min/max por
+        //   tramos (conserva picos y forma); los datos completos siguen en
+        //   state.rawData y en liveSeries.
+        // - Con muchos puntos se dejan de dibujar los marcadores (solo línea).
 
-        const LIVE_WINDOW_MAX_POINTS = 600;  // Máx puntos visibles en chart durante streaming
-        const SCALE_SMOOTHING = 0.15;        // Factor de suavizado exponencial para eje Y
+        const LIVE_MAX_DRAW_POINTS = 1500;   // Máx puntos DIBUJADOS por curva durante la captura
+        const LIVE_POINT_MARKERS_MAX = 600;  // Con más puntos que esto, sin marcadores (solo línea)
         const RENDER_INTERVAL = 33;          // ~30fps en vez de 60fps para menor carga de CPU
         const EXP_LIVE_INTERVAL = 250;       // ms entre refrescos de la gráfica del modo experimento
         let renderLoopId = null;             // ID del requestAnimationFrame
         let lastRenderTime = 0;              // Timestamp del último render efectivo
         let lastExpChartUpdate = 0;          // Último refresco de la gráfica del modo experimento
-        let currentYMin = {};                // {chartIdx: currentMin} - escala Y suavizada
-        let currentYMax = {};                // {chartIdx: currentMax} - escala Y suavizada
+        let currentYMin = {};                // {chartIdx: currentMin} - escala Y en vivo
+        let currentYMax = {};                // {chartIdx: currentMax} - escala Y en vivo
         let scaleInitialized = {};           // {chartIdx: bool}
         let chartDirty = false;              // Flag: hay datos nuevos que renderizar
         // Tracking incremental de min/max por dataset para evitar O(n) cada frame
         let datasetYMin = {};                // {chartIdx: {dsIdx: min}}
         let datasetYMax = {};                // {chartIdx: {dsIdx: max}}
+        // Serie completa de cada curva durante la captura: {chartIdx: {dsIdx: [{x,y,id}]}}
+        let liveSeries = {};
 
-        // Push incremental de nuevos puntos con ventana deslizante
-        // Mantiene máximo LIVE_WINDOW_MAX_POINTS en el chart para rendimiento constante
+        // Decimación min/max por tramos: reparte los puntos en ~maxPoints/2
+        // tramos (en orden de llegada) y de cada tramo conserva el mínimo y el
+        // máximo de Y (en su orden), más el primer y el último punto. Mantiene
+        // picos, valles y la forma general con un número acotado de puntos.
+        // Si la serie ya entra, devuelve el MISMO arreglo (sin copiar).
+        function decimateMinMax(src, maxPoints) {
+            const n = src.length;
+            if (n <= maxPoints) return src;
+            const buckets = Math.max(1, Math.floor(maxPoints / 2) - 1);
+            const span = (n - 2) / buckets;
+            const out = [src[0]];
+            for (let b = 0; b < buckets; b++) {
+                const start = 1 + Math.floor(b * span);
+                const end = Math.min(n - 1, 1 + Math.floor((b + 1) * span));
+                if (start >= end) continue;
+                let minI = start, maxI = start;
+                for (let i = start + 1; i < end; i++) {
+                    const y = src[i].y;
+                    if (y < src[minI].y) minI = i;
+                    if (y > src[maxI].y) maxI = i;
+                }
+                if (minI === maxI) out.push(src[minI]);
+                else if (minI < maxI) { out.push(src[minI]); out.push(src[maxI]); }
+                else { out.push(src[maxI]); out.push(src[minI]); }
+            }
+            out.push(src[n - 1]);
+            return out;
+        }
+
+        // Vuelca al dataset de Chart.js lo que hay que dibujar de una curva en
+        // vivo: la serie completa mientras es corta, decimada cuando crece.
+        function syncLiveDataset(chart, chartIdx, dsIdx) {
+            const full = liveSeries[chartIdx] && liveSeries[chartIdx][dsIdx];
+            const ds = chart && chart.data.datasets[dsIdx];
+            if (!full || !ds) return;
+            const drawn = decimateMinMax(full, LIVE_MAX_DRAW_POINTS);
+            if (ds.data !== drawn) ds.data = drawn;
+            // Con muchos puntos los marcadores cuestan más que la línea y se
+            // amontonan: se dejan de dibujar (si no hay línea, quedan chiquitos).
+            const many = full.length > LIVE_POINT_MARKERS_MAX;
+            const withLine = graphShowsLines(chartIdx);
+            ds.pointRadius = many ? (withLine ? 0 : 1.5) : 2.5;
+            ds.pointBorderWidth = many ? 0 : 1;
+        }
+
+        // Push incremental de nuevos puntos: se agregan a la serie completa de
+        // cada curva y se sincroniza lo dibujado (nada se descarta).
         function pushNewDataToCharts(newPoints) {
             if (newPoints.length === 0) return;
 
@@ -14802,9 +14837,13 @@ bluetooth.startIOPinService()</pre>
 
                 if (!chart || chart.data.datasets.length === 0) continue;
 
+                if (!liveSeries[chartIdx]) liveSeries[chartIdx] = {};
+                if (!datasetYMin[chartIdx]) { datasetYMin[chartIdx] = {}; datasetYMax[chartIdx] = {}; }
+
                 for (let dsIdx = 0; dsIdx < config.yVars.length; dsIdx++) {
                     const varIdx = config.yVars[dsIdx];
-                    const dataset = chart.data.datasets[dsIdx];
+                    let full = liveSeries[chartIdx][dsIdx];
+                    if (!full) full = liveSeries[chartIdx][dsIdx] = [];
 
                     for (const d of newPoints) {
                         let xVal;
@@ -14815,13 +14854,8 @@ bluetooth.startIOPinService()</pre>
                             xVal = d.values[xVarIdx];
                         }
                         const yVal = d.values[varIdx];
-                        dataset.data.push({
-                            x: xVal,
-                            y: yVal,
-                            id: d.id
-                        });
-                        // Tracking incremental de min/max
-                        if (!datasetYMin[chartIdx]) { datasetYMin[chartIdx] = {}; datasetYMax[chartIdx] = {}; }
+                        full.push({ x: xVal, y: yVal, id: d.id });
+                        // Tracking incremental de min/max (sobre toda la captura)
                         if (datasetYMin[chartIdx][dsIdx] === undefined || yVal < datasetYMin[chartIdx][dsIdx]) {
                             datasetYMin[chartIdx][dsIdx] = yVal;
                         }
@@ -14830,27 +14864,17 @@ bluetooth.startIOPinService()</pre>
                         }
                     }
 
-                    // Ventana deslizante: podar puntos antiguos para rendimiento constante
-                    if (dataset.data.length > LIVE_WINDOW_MAX_POINTS) {
-                        const excess = dataset.data.length - LIVE_WINDOW_MAX_POINTS;
-                        dataset.data.splice(0, excess);
-                        // Recalcular min/max solo cuando se podan puntos (infrecuente vs cada frame)
-                        let yMin = Infinity, yMax = -Infinity;
-                        for (const pt of dataset.data) {
-                            if (pt.y < yMin) yMin = pt.y;
-                            if (pt.y > yMax) yMax = pt.y;
-                        }
-                        datasetYMin[chartIdx][dsIdx] = yMin;
-                        datasetYMax[chartIdx][dsIdx] = yMax;
-                    }
+                    syncLiveDataset(chart, chartIdx, dsIdx);
                 }
             }
         }
 
-        // Suavizado exponencial del eje Y (inspirado en Smoothie.js scaleSmoothing)
-        // Evita saltos bruscos cuando el rango de datos cambia
+        // Escala Y en vivo: encuadra TODA la captura (min/max de todas las curvas
+        // de la gráfica, con 5% de margen) y se actualiza en el acto, sin
+        // suavizado: así el último punto nunca queda afuera ni la escala "llega
+        // tarde". Como el rango abarca la captura entera, solo crece.
         // OPTIMIZADO: usa min/max pre-calculados incrementalmente en pushNewDataToCharts
-        function applySmoothScale(chartIdx, chart) {
+        function applyLiveScale(chartIdx, chart) {
             let targetMin = Infinity;
             let targetMax = -Infinity;
 
@@ -14871,25 +14895,20 @@ bluetooth.startIOPinService()</pre>
             targetMin -= range * 0.05;
             targetMax += range * 0.05;
 
-            if (!scaleInitialized[chartIdx]) {
-                // Primera vez: set inmediato
-                currentYMin[chartIdx] = targetMin;
-                currentYMax[chartIdx] = targetMax;
-                scaleInitialized[chartIdx] = true;
-            } else {
-                // Suavizado exponencial: mover 15% hacia el objetivo cada frame
-                currentYMin[chartIdx] += SCALE_SMOOTHING * (targetMin - currentYMin[chartIdx]);
-                currentYMax[chartIdx] += SCALE_SMOOTHING * (targetMax - currentYMax[chartIdx]);
-            }
+            if (scaleInitialized[chartIdx] &&
+                currentYMin[chartIdx] === targetMin && currentYMax[chartIdx] === targetMax) return;
+            currentYMin[chartIdx] = targetMin;
+            currentYMax[chartIdx] = targetMax;
+            scaleInitialized[chartIdx] = true;
 
-            chart.options.scales.y.min = currentYMin[chartIdx];
-            chart.options.scales.y.max = currentYMax[chartIdx];
+            chart.options.scales.y.min = targetMin;
+            chart.options.scales.y.max = targetMax;
         }
 
         // Loop de renderizado a 60fps - DESACOPLADO de la llegada de datos
         // Corre continuamente durante la captura. Cada frame:
-        //   1. Flush puntos pendientes al chart (ventana deslizante)
-        //   2. Aplicar scale smoothing
+        //   1. Flush puntos pendientes al chart (serie completa, decimada si es larga)
+        //   2. Encuadrar el eje Y a toda la captura
         //   3. chart.update('none') - repintar canvas
         //   4. Actualizar tabla cada 500ms
         function startRenderLoop() {
@@ -14921,7 +14940,7 @@ bluetooth.startIOPinService()</pre>
                     for (let i = 0; i < state.numGraphs; i++) {
                         const chart = state.charts[i];
                         if (!chart) continue;
-                        applySmoothScale(i, chart);
+                        applyLiveScale(i, chart);
                         chart.update('none');
                     }
                     chartDirty = false;
@@ -15111,105 +15130,6 @@ bluetooth.startIOPinService()</pre>
         let _dataPointCounter = 0;
         let _formatMismatchCount = 0;   // Líneas descartadas por formato incorrecto
         let _lastMismatchParts = 0;     // Número de columnas de la última línea descartada
-
-        // ========== AUTODETECCIÓN DEL FORMATO DE LOS DATOS ==========
-        // Mira las líneas que llegan (por USB o Bluetooth, incluso antes de
-        // CAPTURAR) y, cuando varias seguidas traen la misma cantidad de
-        // columnas distinta de la configurada, adapta solo la cantidad de
-        // variables y si la primera columna es la marca de tiempo. Así no hay
-        // que tocar "Número de variables" ni la casilla de timestamp a mano.
-        // Solo actúa cuando todavía no hay datos cargados (con datos, cambiar
-        // la cantidad de variables los dejaría incompletos): ahí queda el aviso
-        // de siempre para corregir con un toque.
-        const AUTOFMT_NEED = 4;          // líneas seguidas iguales para decidir
-        const AUTOFMT_COOLDOWN = 3000;   // ms entre adaptaciones
-        let _afRows = [];                // últimas filas numéricas {n, first, firstTok}
-        let _afLastApply = 0;
-        let _afUserOverride = false;     // el usuario tocó a mano el modo/cantidad en esta conexión: no discutirle
-        function _autoFormatObserve(rawLine) {
-            const line = (rawLine || '').trim();
-            if (!line || line.length > SERIAL_MAX_LINE_LEN || SERIAL_INVALID_CHAR.test(line)) return;
-            const parts = line.split(',');
-            const nums = [];
-            for (let i = 0; i < parts.length; i++) {
-                const tk = parts[i].trim(); if (!tk) return;
-                const v = +tk; if (v !== v || !isFinite(v)) return;
-                nums.push(v);
-            }
-            _afRows.push({ n: nums.length, first: nums[0], firstTok: parts[0].trim() });
-            if (_afRows.length > 8) _afRows.shift();
-            const expected = state.numVariables + (state.microbitTimestamp ? 1 : 0);
-            if (state.rawData.length > 0) return;                       // con datos cargados no se toca la configuración
-            if (Date.now() - _afLastApply < AUTOFMT_COOLDOWN) return;
-            if (_afRows.length < AUTOFMT_NEED) return;
-            const last = _afRows.slice(-AUTOFMT_NEED);
-            if (!last.every(r => r.n === nums.length)) return;         // todavía no es estable
-            const n = nums.length;
-            const looksTime = _afLooksLikeTime(last);
-            let ts, vars;
-            if (n === expected) {
-                // La cantidad coincide, pero ¿la primera columna es lo que dice la casilla?
-                // Solo si el usuario no la fijó a mano en esta conexión.
-                if (_afUserOverride) return;
-                const firstIsInt = last.every(r => /^\d+$/.test(r.firstTok));
-                if (state.microbitTimestamp && !firstIsInt && n <= 3) { _autoFormatApply(false, n); }           // "1.5,2.5": decimales, no es runningTime()
-                else if (!state.microbitTimestamp && n >= 2 && looksTime && last[last.length - 1].first >= 1000) { _autoFormatApply(true, n - 1); }   // "12345,3.4": ms desde el encendido
-                return;
-            }
-            if (_afUserOverride) { ts = !!state.microbitTimestamp; }    // el usuario fijó el modo a mano: se respeta y solo se ajusta la cantidad
-            else if (state.microbitTimestamp) { ts = looksTime; }
-            else { ts = looksTime && last[last.length - 1].first >= 1000; }   // sin timestamp configurado: solo si parece "ms desde el encendido"
-            vars = ts ? n - 1 : n;
-            if (vars < 1 || vars > 3) return;                           // fuera de rango: queda el aviso manual
-            _autoFormatApply(ts, vars);
-        }
-        // ¿La primera columna parece input.runningTime() (entero ≥ 0, creciente, saltos ≤ 60 s)?
-        function _afLooksLikeTime(rows) {
-            if (!rows.length || rows[0].n < 2) return false;
-            for (let i = 0; i < rows.length; i++) {
-                if (!/^\d+$/.test(rows[i].firstTok)) return false;
-                if (i > 0) { const d = rows[i].first - rows[i - 1].first; if (d < 0 || d > 60000) return false; }
-            }
-            return rows[rows.length - 1].first > rows[0].first;
-        }
-        function _autoFormatApply(ts, vars) {
-            _afLastApply = Date.now(); _afRows = [];
-            const prevVars = state.numVariables;
-            const cb = document.getElementById('microbitTimestamp');
-            if (cb) cb.checked = !!ts;                                   // onTimestampToggle (dentro de applyVariableConfiguration) ve el cambio de modo
-            const sel = document.getElementById('numVariables');
-            if (sel) { sel.value = String(vars); sel.dispatchEvent(new Event('change')); }
-            applyVariableConfiguration(true);
-            // Una sola gráfica con una sola variable: mostrar todas las que llegan
-            if (state.numGraphs === 1 && vars > prevVars) {
-                const g = state.graphs[0];
-                const xv = g.xAxis === 'time' ? -1 : parseInt(g.xAxis.replace('var', ''));
-                const all = []; for (let i = 0; i < vars; i++) if (i !== xv) all.push(i);
-                if ((g.yVars || []).length <= 1 && all.length > 1) {
-                    g.yVars = all;
-                    if (!g.yLabelCustom) g.yLabel = getYAxisLabel(0);
-                    updateGraphConfiguration();
-                    const yl = document.getElementById('graph1YLabel'); if (yl) yl.value = g.yLabel;
-                    updateGraphsDisplay();
-                }
-            }
-            // En plena captura las gráficas reciben puntos por streaming: rearmar sus datasets
-            if (state.isCollecting && chartDatasetsInitialized) initializeChartDatasets();
-            _formatMismatchCount = 0; _lastMismatchParts = 0;
-            const fw = document.getElementById('formatWarning'); if (fw) fw.style.display = 'none';
-            if (typeof btConnUI !== 'undefined') btConnUI.syncStrip();
-            // Modos que arman sus propios controles a partir de las variables
-            try {
-                if (typeof smState !== 'undefined' && smState.active && typeof smBuildSensorCards === 'function') smBuildSensorCards();
-                const em = document.getElementById('experimentMode'); if (em && em.classList.contains('active') && typeof buildMagnitudeSelector === 'function') buildMagnitudeSelector();
-                const dm = document.getElementById('desktopLabMode'); if (dm && dm.classList.contains('active') && typeof dlabBuildMagSelector === 'function') dlabBuildMagSelector();
-            } catch (_) {}
-            const t = translations[currentLanguage] || {};
-            const desc = (ts ? (t.autoFormatTime || 'tiempo + {n} variable(s)') : (t.autoFormatNoTime || '{n} variable(s) sin tiempo')).replace('{n}', vars);
-            const msg = (t.autoFormatToast || 'Formato detectado: {desc}. Variables y gráfica adaptadas.').replace('{desc}', desc);
-            if (window.Informe && Informe.toast) Informe.toast(msg); else exToast(msg);
-            console.info('[AUTOFORMATO]', msg);
-        }
         let _lastValidTimestamp = -1;   // Último timestamp válido (mapeado) para detectar reinicios o columnas invertidas
         let _serialLastDataTime = 0;    // Último timestamp con datos recibidos (para health check)
         let _lastBatchWallTime = 0;     // Wall time del último batch procesado (para verificar resets)
@@ -15485,7 +15405,6 @@ bluetooth.startIOPinService()</pre>
             if (serialLoopRunning) return;
             serialLoopRunning = true;
             _serialLastDataTime = Date.now();
-            _afUserOverride = false; _afRows = [];   // conexión nueva: la autodetección vuelve a estar activa
 
             try {
                 const textDecoder = new TextDecoderStream();
@@ -15517,8 +15436,6 @@ bluetooth.startIOPinService()</pre>
                     // más abajo NO contaminamos state.rawData ni los buffers
                     // de la gráfica principal cuando solo MAPEO está activo.
                     const _mapeoActive = !!(window.__mapeoCtrl && window.__mapeoCtrl.isCapturing && window.__mapeoCtrl.panel && window.__mapeoCtrl.panel.classList.contains('open'));
-                    // Autodetección del formato (también en modo drain, antes de CAPTURAR)
-                    for (let ai = 0; ai < lines.length; ai++) _autoFormatObserve(lines[ai]);
                     // Modo drain: si nadie captura, leer y descartar para vaciar buffer serial
                     if (!state.isCollecting && !_mapeoActive) continue;
 
@@ -20664,7 +20581,6 @@ bluetooth.startIOPinService()</pre>
                 _lastBrowserPointTime = 0;
                 _browserTimeShift = 0;
                 _resumeAnchor = null;
-                _afRows = [];
                 state.sensorPhotos = [];
                 state.videoBlob = null;
                 state.recordedChunks = [];
@@ -21477,16 +21393,16 @@ bluetooth.startIOPinService()</pre>
             const varIdx = expSelectedVar;
             const color = '#1976d2'; // blue per Rule 6
 
-            // En captura: ventana deslizante (como las gráficas principales) para
-            // no re-mapear ni redibujar todo rawData en cada refresco
-            const src = (state.isCollecting && state.rawData.length > LIVE_WINDOW_MAX_POINTS)
-                ? state.rawData.slice(-LIVE_WINDOW_MAX_POINTS)
-                : state.rawData;
-            const data = src.map(d => ({
+            // En captura se muestra TODA la captura construyéndose (como las
+            // gráficas principales); si es larga, decimada min/max para que el
+            // refresco periódico no pese.
+            let data = state.rawData.map(d => ({
                 x: (d.time - state.timeZeroOffset) / timeUnitValue,
                 y: d.values[varIdx],
                 id: d.id
             }));
+            const liveMany = state.isCollecting && data.length > LIVE_POINT_MARKERS_MAX;
+            if (state.isCollecting) data = decimateMinMax(data, LIVE_MAX_DRAW_POINTS);
 
             const datasets = [{
                 label: state.variables[varIdx].name,
@@ -21498,12 +21414,12 @@ bluetooth.startIOPinService()</pre>
                 showLine: state.showLines,
                 tension: 0.3,
                 cubicInterpolationMode: 'monotone',
-                pointRadius: 2,
+                pointRadius: liveMany ? (state.showLines ? 0 : 1.5) : 2,
                 pointHoverRadius: 7,
                 pointHitRadius: 12,
                 pointBackgroundColor: color,
                 pointBorderColor: '#fff',
-                pointBorderWidth: 1,
+                pointBorderWidth: liveMany ? 0 : 1,
                 pointHoverBorderWidth: 2,
                 pointHoverBorderColor: '#fff'
             }];
