@@ -92,12 +92,11 @@ module escala() difference() {
 
 module plano() {
     paso = hp + e + fb_sobrante() + 8;
-    translate([0, e + fb_sobrante() + 2]) columna();
-    translate([ancho_columna + 8, e + fb_sobrante() + 2]) pie_pieza();
-    translate([ancho_columna + 8, e + fb_sobrante() + 2 + paso]) pie_pieza();
-    translate([ancho_columna + 8, e + fb_sobrante() + 2 + 2 * paso]) brazo_pieza();
-    translate([ancho_columna + 8 + rs, e + fb_sobrante() + 2 + 2 * paso + hb + 8 + rs]) escala();
-    translate([ancho_columna + 8 + PL[0] / 2, e + fb_sobrante() + 2 + 2 * paso + hb + 8 + 2 * rs + 12 + PL[1] / 2]) placa_base();
+    pieza("columna") translate([0, e + fb_sobrante() + 2]) columna();
+    pieza("pie") { translate([ancho_columna + 8, e + fb_sobrante() + 2]) pie_pieza(); translate([ancho_columna + 8, e + fb_sobrante() + 2 + paso]) pie_pieza(); }
+    pieza("brazo") translate([ancho_columna + 8, e + fb_sobrante() + 2 + 2 * paso]) brazo_pieza();
+    pieza("escala") translate([ancho_columna + 8 + rs, e + fb_sobrante() + 2 + 2 * paso + hb + 8 + rs]) escala();
+    pieza("placa de base") translate([ancho_columna + 8 + PL[0] / 2, e + fb_sobrante() + 2 + 2 * paso + hb + 8 + 2 * rs + 12 + PL[1] / 2]) placa_base();
 }
 
 module armado() {

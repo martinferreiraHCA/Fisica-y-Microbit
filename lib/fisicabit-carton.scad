@@ -248,6 +248,17 @@ module peine_ajuste(n = 5, paso = 0.2, prof = 15) {
 }
 
 /* ---------- Despachador de vistas (lo usa la página) ---------- */
+// Nombre de una pieza (o de un grupo de piezas iguales) dentro de plano():
+//   pieza("rampa") rampa();   pieza("rueda") for (i = [0:3]) ... rueda();
+// El sitio lo usa para nombrar los archivos SVG de cada pieza. Con
+// $pieza_sel = "rampa" (desde la línea de comando) solo se dibuja esa.
+$pieza_sel = undef;
+$pieza_listar = false;     // true: anuncia cada nombre por echo ("PIEZA:nombre"), para el sitio
+module pieza(nombre) {
+    if ($pieza_listar) echo(str("PIEZA:", nombre));
+    if (is_undef($pieza_sel) || $pieza_sel == nombre) children();
+}
+
 module _fb_con_marcas() { $marcas = true; plano(); }
 module _fb_sin_marcas() { $marcas = false; plano(); }
 if (vista == "plano") _fb_sin_marcas();

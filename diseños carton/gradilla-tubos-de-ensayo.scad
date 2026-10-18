@@ -46,10 +46,9 @@ module lateral() difference() {
 }
 
 module plano() {
-    placa(true);
-    translate([0, ancho + 8]) placa(false);
-    translate([-largo / 2, 2 * ancho + 16]) lateral();
-    translate([-largo / 2 + ancho + 8, 2 * ancho + 16]) lateral();
+    pieza("placa superior") placa(true);
+    pieza("placa inferior") translate([0, ancho + 8]) placa(false);
+    pieza("lateral") { translate([-largo / 2, 2 * ancho + 16]) lateral(); translate([-largo / 2 + ancho + 8, 2 * ancho + 16]) lateral(); }
 }
 module armado() {
     translate([0, 0, e / 2]) laja() placa(false);

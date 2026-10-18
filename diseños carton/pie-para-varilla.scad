@@ -55,9 +55,8 @@ module placa() difference() {
 
 module plano() {
     paso = altura + 2 * (e + fb_sobrante()) + 6;
-    for (i = [0 : 3]) translate([0, i * paso]) pared();
-    translate([P / 2, 4 * paso + P / 2]) placa();
-    translate([P / 2 + P + 8, 4 * paso + P / 2]) placa();
+    pieza("pared") for (i = [0 : 3]) translate([0, i * paso]) pared();
+    pieza("placa") { translate([P / 2, 4 * paso + P / 2]) placa(); translate([P / 2 + P + 8, 4 * paso + P / 2]) placa(); }
 }
 
 module armado() {

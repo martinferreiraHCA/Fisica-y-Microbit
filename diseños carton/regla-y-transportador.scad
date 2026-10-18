@@ -39,8 +39,8 @@ module transportador_pieza() difference() {
 }
 
 module plano() {
-    regla_pieza();
-    translate([radio, alto_regla + 16]) transportador_pieza();
+    pieza("regla") regla_pieza();
+    pieza("transportador") translate([radio, alto_regla + 16]) transportador_pieza();
 }
 
 module armado() {

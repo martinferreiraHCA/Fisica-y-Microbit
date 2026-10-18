@@ -15,8 +15,12 @@ piezas del modo cartón, con su miniatura (vista armada en 3D).
 - Reparte las piezas en **hojas A4** con una **barra de calibración de
   100 mm** en cada hoja. Las piezas más grandes que una hoja salen en varias,
   con franjas de superposición.
-- **Imprime / guarda en PDF** al 100 % y **descarga un SVG** en milímetros
-  (sirve también para una cortadora láser).
+- **Imprime / guarda en PDF** al 100 % y descarga **SVG en milímetros**: las
+  hojas A4 (con las piezas grandes en mosaico), el **SVG para láser** (indicás
+  la zona de corte o los pedazos de cartón que tenés, con sus medidas y
+  cantidad, y las piezas se acomodan enteras aprovechando el espacio: un SVG
+  por pedazo, negro = cortar, azul = tinta; o todo en un solo SVG sin zona) o
+  un **ZIP con un SVG por pieza**, cada archivo con el nombre de su pieza.
 - Las variables del inicio se convierten en deslizadores, como en las piezas
   3D: `espesor` (grosor del cartón) y `holgura` (ancho extra de las ranuras)
   están en todos los diseños.
@@ -28,7 +32,7 @@ piezas del modo cartón, con su miniatura (vista armada en 3D).
 | `peine-de-ajuste.scad` | 1 | **Imprimilo primero**: ranuras de distinto ancho para elegir la `holgura` que encastra justo con tu cartón. |
 | `plantilla-carton.scad` | 2 | Punto de partida: dos piezas cruzadas con regla y rótulos. |
 | `pie-para-varilla.scad` | 6 (2 distintas) | Pie para sostener una varilla vertical (soportes de laboratorio). |
-| `plano-inclinado.scad` | 4 (3 distintas) | Rampa con ángulo ajustable, regla de recorrido y ángulo impreso. |
+| `plano-inclinado.scad` | 4 a 12 | Rampa o pista inclinada: el largo es la hipotenusa de los soportes, ángulo de 10° a 80°, soportes en triángulos (rampa corta) o caballetes con largueros (pistas largas de hasta 1,5 m), sensor HC-SR04 opcional en lo más alto al ras de la superficie con regla de distancia, y guías laterales opcionales. |
 | `soporte-de-pendulo.scad` | 6 (5 distintas) | Soporte sobre placa de base con pies trapezoidales, escala de amplitud (0° abajo) y regla del largo del hilo. |
 | `polea-con-horquilla.scad` | 6 (3 distintas) | Polea de tres discos sobre un palito de brochette, con horquilla y base (máquina de Atwood, cambio de dirección de una cuerda). |
 | `carro-para-microbit.scad` | 9 (4 distintas) | Carro con marco rígido (laterales y travesaños en cruz), ruedas de cartón sobre ejes de brochette y ranura para parar la micro:bit (acelerómetro, Tracker). |
@@ -69,9 +73,13 @@ holgura = 0;  // [-0.6:0.1:0.8]
 module a() difference() { rect(100, 50, 2); translate([50, 0]) ranura(25); translate([5, 0]) regla(90); }
 module b() difference() { rect(100, 50, 2); translate([50, 50]) rotate(180) ranura(25); }
 
-module plano()  { a(); translate([0, 58]) b(); }                    // piezas a cortar (separadas)
+module plano()  { pieza("a") a(); pieza("b") translate([0, 58]) b(); }   // piezas a cortar (separadas), con nombre
 module armado() { translate([-50, 0, 0]) laja_xz() a(); translate([0, -50, 0]) laja_yz() b(); }
 ```
+
+`pieza("nombre")` envuelve cada pieza (o un grupo de piezas iguales) del
+plano: con eso el sitio nombra los archivos SVG que descargás (`rampa`,
+`triangulo 1`, `triangulo 2`…). Sin `pieza()` se numeran.
 
 Módulos disponibles: `ranura(prof)`, `ranura_interior(largo)`,
 `pestana(largo, ancho)`, `agujero(d)`, `rect(ancho, alto, r)`,
