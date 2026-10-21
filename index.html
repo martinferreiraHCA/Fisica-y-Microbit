@@ -35667,43 +35667,99 @@ bluetooth.startIOPinService()</pre>
     function escXml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
     /* ---------- Distribución en hojas A4 ---------- */
+    /* ---------- Empaquetado «maxrects» (mejor ajuste del lado corto) ---------- */
+    // Las medidas de los rectángulos incluyen la separación (gap) a derecha y abajo.
+    function mrNew(W, H, gap) { return { free: [{ x: 0, y: 0, w: W + gap, h: H + gap }] }; }
+    function mrFind(page, w, h) {
+        var best = null;
+        page.free.forEach(function (f) {
+            if (w > f.w + 1e-6 || h > f.h + 1e-6) return;
+            var s1 = Math.min(f.w - w, f.h - h), s2 = Math.max(f.w - w, f.h - h);
+            if (!best || s1 < best.s1 || (s1 === best.s1 && s2 < best.s2)) best = { x: f.x, y: f.y, s1: s1, s2: s2 };
+        });
+        return best;
+    }
+    function mrPlace(page, r) {
+        var nf = [];
+        page.free.forEach(function (f) {
+            if (r.x >= f.x + f.w || r.x + r.w <= f.x || r.y >= f.y + f.h || r.y + r.h <= f.y) { nf.push(f); return; }
+            if (r.x > f.x) nf.push({ x: f.x, y: f.y, w: r.x - f.x, h: f.h });
+            if (r.x + r.w < f.x + f.w) nf.push({ x: r.x + r.w, y: f.y, w: f.x + f.w - r.x - r.w, h: f.h });
+            if (r.y > f.y) nf.push({ x: f.x, y: f.y, w: f.w, h: r.y - f.y });
+            if (r.y + r.h < f.y + f.h) nf.push({ x: f.x, y: r.y + r.h, w: f.w, h: f.y + f.h - r.y - r.h });
+        });
+        page.free = nf.filter(function (a, i) {
+            if (a.w < 0.01 || a.h < 0.01) return false;
+            return !nf.some(function (b, j) {
+                if (i === j) return false;
+                var contains = b.x <= a.x + 1e-9 && b.y <= a.y + 1e-9 && b.x + b.w >= a.x + a.w - 1e-9 && b.y + b.h >= a.y + a.h - 1e-9;
+                var same = contains && a.x <= b.x + 1e-9 && a.y <= b.y + 1e-9 && a.x + a.w >= b.x + b.w - 1e-9 && a.y + a.h >= b.y + b.h - 1e-9;
+                return contains && (!same || j < i);
+            });
+        });
+    }
+    // Mejor ubicación de un item (con o sin giro de 90°) en una página; null si no entra
+    function mrBest(page, it, gap, girar) {
+        var opts = [[it.w + gap, it.h + gap, 0]];
+        if (girar && Math.abs(it.w - it.h) > 1e-6) opts.push([it.h + gap, it.w + gap, 90]);
+        var best = null;
+        opts.forEach(function (o) {
+            var f = mrFind(page, o[0], o[1]);
+            if (f && (!best || f.s1 < best.s1 || (f.s1 === best.s1 && f.s2 < best.s2))) best = { x: f.x, y: f.y, w: o[0], h: o[1], rot: o[2], s1: f.s1, s2: f.s2 };
+        });
+        return best;
+    }
+
+    /* ---------- Distribución en hojas A4 ---------- */
+    // Las piezas que entran en una hoja (derechas o giradas 90°) se acomodan con maxrects,
+    // llenando cada hoja antes de abrir otra. Las más grandes que la hoja van en mosaico
+    // (varias hojas con franjas de superposición) y el espacio libre de esas hojas también se usa.
     function packPieces(pieces) {
-        var W = A4.w - 2 * A4.margin, H = A4.h - 2 * A4.margin - A4.header;
-        var items = pieces.map(function (p, i) {
-            var w = p.bbox[2] - p.bbox[0], h = p.bbox[3] - p.bbox[1];
-            var rot = 0;
-            if ((w > W || h > H) && h <= W && w <= H) rot = 90;          // girada entra en la hoja
-            else if (w <= W && h <= H && w > h && h <= W && w <= H && w > W * 0.6 && h < w * 0.5) rot = 0;
-            return { piece: p, num: i + 1, w: w, h: h, rot: rot, ew: rot ? h : w, eh: rot ? w : h };
+        var W = A4.w - 2 * A4.margin, H = A4.h - 2 * A4.margin - A4.header, gap = A4.gap;
+        var items = pieces.map(function (p, i) { return { piece: p, num: i + 1, w: p.bbox[2] - p.bbox[0], h: p.bbox[3] - p.bbox[1] }; });
+        var normal = [], tiled = [];
+        items.forEach(function (it) {
+            var cabe = (it.w <= W + 1e-6 && it.h <= H + 1e-6) || (it.h <= W + 1e-6 && it.w <= H + 1e-6);
+            (cabe ? normal : tiled).push(it);
         });
-        var pages = [], normal = [], tiled = [];
-        items.forEach(function (it) { (it.ew > W + 1e-6 || it.eh > H + 1e-6 ? tiled : normal).push(it); });
-        normal.sort(function (a, b) { return (b.eh - a.eh) || (b.ew - a.ew); });
-        var page = null, cx = 0, cy = 0, rowH = 0;
-        function newPage() { page = { items: [], tile: null }; pages.push(page); cx = 0; cy = 0; rowH = 0; }
-        normal.forEach(function (it) {
-            if (!page) newPage();
-            if (cx + it.ew > W + 1e-6) { cy += rowH + A4.gap; cx = 0; rowH = 0; }
-            if (cy + it.eh > H + 1e-6) newPage();
-            page.items.push({ it: it, x: cx, y: cy });
-            cx += it.ew + A4.gap;
-            rowH = Math.max(rowH, it.eh);
-        });
+        var pages = [];
+        function newPage() { var pg = { items: [], tile: null, mr: mrNew(W, H, gap) }; pages.push(pg); return pg; }
+        // Piezas en mosaico: orientación con menos hojas; cada parte en su hoja, con el resto libre
+        function tilesFor(ew, eh) {
+            return { cols: Math.max(1, Math.ceil((ew - A4.overlap) / (W - A4.overlap))), rows: Math.max(1, Math.ceil((eh - A4.overlap) / (H - A4.overlap))) };
+        }
+        tiled.sort(function (a, b) { return b.w * b.h - a.w * a.h; });
         tiled.forEach(function (it) {
-            var cols = Math.max(1, Math.ceil((it.ew - A4.overlap) / (W - A4.overlap)));
-            var rows = Math.max(1, Math.ceil((it.eh - A4.overlap) / (H - A4.overlap)));
-            for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
-                pages.push({ items: [{ it: it, x: -c * (W - A4.overlap), y: -r * (H - A4.overlap) }],
-                             tile: { r: r, c: c, rows: rows, cols: cols, num: it.num } });
+            var t0 = tilesFor(it.w, it.h), t90 = tilesFor(it.h, it.w);
+            var rot = (t90.cols * t90.rows < t0.cols * t0.rows) ? 90 : 0;
+            var ew = rot ? it.h : it.w, eh = rot ? it.w : it.h, t = rot ? t90 : t0;
+            for (var r = 0; r < t.rows; r++) for (var c = 0; c < t.cols; c++) {
+                var pg = newPage();
+                var tw = Math.min(W, ew - c * (W - A4.overlap)), th = Math.min(H, eh - r * (H - A4.overlap));
+                pg.tile = { r: r, c: c, rows: t.rows, cols: t.cols, num: it.num, w: tw, h: th };
+                pg.items.push({ it: it, x: -c * (W - A4.overlap), y: -r * (H - A4.overlap), rot: rot, ew: ew, eh: eh, tile: true });
+                mrPlace(pg.mr, { x: 0, y: 0, w: tw + gap, h: th + gap });
             }
         });
+        // Piezas normales: de mayor a menor área, en la primera hoja donde entren (mejor ajuste)
+        normal.sort(function (a, b) { return (b.w * b.h - a.w * a.h) || (Math.max(b.w, b.h) - Math.max(a.w, a.h)); });
+        normal.forEach(function (it) {
+            var pg = null, best = null;
+            for (var k = 0; k < pages.length && !best; k++) { best = mrBest(pages[k].mr, it, gap, true); if (best) pg = pages[k]; }
+            if (!best) { pg = newPage(); best = mrBest(pg.mr, it, gap, true); }
+            if (!best) return;
+            pg.items.push({ it: it, x: best.x, y: best.y, rot: best.rot, ew: best.w - gap, eh: best.h - gap });
+            mrPlace(pg.mr, { x: best.x, y: best.y, w: best.w, h: best.h });
+        });
+        // Hojas sin mosaico primero (las piezas chicas), después las partes grandes
+        pages.sort(function (a, b) { return (a.tile ? 1 : 0) - (b.tile ? 1 : 0); });
         return { pages: pages, W: W, H: H };
     }
 
     function pieceGroupSvg(placed, numerar) {
         var it = placed.it, p = it.piece, b = p.bbox;
         var ox = A4.margin, oy = A4.margin + A4.header;
-        var tr = it.rot
+        var tr = placed.rot
             ? 'translate(' + fmtMm(ox + placed.x + b[3]) + ',' + fmtMm(oy + placed.y - b[0]) + ') rotate(90)'
             : 'translate(' + fmtMm(ox + placed.x - b[0]) + ',' + fmtMm(oy + placed.y - b[1]) + ')';
         var cut = contourPath(p.outer) + p.holes.map(contourPath).join('');
@@ -35712,7 +35768,7 @@ bluetooth.startIOPinService()</pre>
         if (p.marks.length) s += '<path d="' + p.marks.map(contourPath).join('') + '" fill="#1f3f8f" stroke="none" fill-rule="evenodd"/>';
         s += '</g>';
         if (numerar) {
-            var cxp = ox + placed.x + it.ew / 2, cyp = oy + placed.y + it.eh / 2;
+            var cxp = ox + placed.x + placed.ew / 2, cyp = oy + placed.y + placed.eh / 2;
             s += '<g transform="translate(' + fmtMm(cxp) + ',' + fmtMm(cyp) + ')"><circle r="3.4" fill="#fff" fill-opacity="0.85" stroke="#1f3f8f" stroke-width="0.25"/>' +
                  '<text font-family="Arial, Helvetica, sans-serif" font-size="3.8" font-weight="700" fill="#1f3f8f" text-anchor="middle" dominant-baseline="central">' + it.num + '</text></g>';
         }
@@ -35741,20 +35797,22 @@ bluetooth.startIOPinService()</pre>
         // Área útil (recortada para las piezas en varias hojas)
         var ox = m, oy = m + A4.header;
         if (page.tile) {
-            var id = 'clip' + idx;
-            s += '<clipPath id="' + id + '"><rect x="' + ox + '" y="' + oy + '" width="' + W + '" height="' + H + '"/></clipPath>';
+            var tw = page.tile.w, th = page.tile.h, id = 'clip' + idx;
+            s += '<clipPath id="' + id + '"><rect x="' + ox + '" y="' + oy + '" width="' + fmtMm(tw) + '" height="' + fmtMm(th) + '"/></clipPath>';
             s += '<g clip-path="url(#' + id + ')">';
-            s += page.items.map(function (pl) { return pieceGroupSvg(pl, false); }).join('');
+            s += page.items.filter(function (pl) { return pl.tile; }).map(function (pl) { return pieceGroupSvg(pl, false); }).join('');
             s += '</g>';
-            // Franjas de superposición y marcas de registro
+            // Franjas de superposición y marcas de registro (solo en la zona de la parte)
             var dash = 'stroke="#1f3f8f" stroke-width="0.25" stroke-dasharray="2,1.5" fill="none"';
-            if (page.tile.c + 1 < page.tile.cols) s += '<rect x="' + (ox + W - A4.overlap) + '" y="' + oy + '" width="' + A4.overlap + '" height="' + H + '" ' + dash + '/>' +
-                '<text x="' + (ox + W - A4.overlap / 2) + '" y="' + (oy + H / 2) + '" font-family="Arial, Helvetica, sans-serif" font-size="2.4" fill="#1f3f8f" text-anchor="middle" transform="rotate(-90 ' + (ox + W - A4.overlap / 2) + ' ' + (oy + H / 2) + ')">superponer con la hoja de la derecha</text>';
-            if (page.tile.c > 0) s += '<rect x="' + ox + '" y="' + oy + '" width="' + A4.overlap + '" height="' + H + '" ' + dash + '/>';
-            if (page.tile.r + 1 < page.tile.rows) s += '<rect x="' + ox + '" y="' + (oy + H - A4.overlap) + '" width="' + W + '" height="' + A4.overlap + '" ' + dash + '/>' +
-                '<text x="' + (ox + W / 2) + '" y="' + (oy + H - A4.overlap / 2) + '" font-family="Arial, Helvetica, sans-serif" font-size="2.4" fill="#1f3f8f" text-anchor="middle">superponer con la hoja de abajo</text>';
-            if (page.tile.r > 0) s += '<rect x="' + ox + '" y="' + oy + '" width="' + W + '" height="' + A4.overlap + '" ' + dash + '/>';
-            s += '<rect x="' + ox + '" y="' + oy + '" width="' + W + '" height="' + H + '" fill="none" stroke="#999" stroke-width="0.2"/>';
+            if (page.tile.c + 1 < page.tile.cols) s += '<rect x="' + fmtMm(ox + tw - A4.overlap) + '" y="' + oy + '" width="' + A4.overlap + '" height="' + fmtMm(th) + '" ' + dash + '/>' +
+                '<text x="' + fmtMm(ox + tw - A4.overlap / 2) + '" y="' + fmtMm(oy + th / 2) + '" font-family="Arial, Helvetica, sans-serif" font-size="2.4" fill="#1f3f8f" text-anchor="middle" transform="rotate(-90 ' + fmtMm(ox + tw - A4.overlap / 2) + ' ' + fmtMm(oy + th / 2) + ')">superponer con la hoja de la derecha</text>';
+            if (page.tile.c > 0) s += '<rect x="' + ox + '" y="' + oy + '" width="' + A4.overlap + '" height="' + fmtMm(th) + '" ' + dash + '/>';
+            if (page.tile.r + 1 < page.tile.rows) s += '<rect x="' + ox + '" y="' + fmtMm(oy + th - A4.overlap) + '" width="' + fmtMm(tw) + '" height="' + A4.overlap + '" ' + dash + '/>' +
+                '<text x="' + fmtMm(ox + tw / 2) + '" y="' + fmtMm(oy + th - A4.overlap / 2) + '" font-family="Arial, Helvetica, sans-serif" font-size="2.4" fill="#1f3f8f" text-anchor="middle">superponer con la hoja de abajo</text>';
+            if (page.tile.r > 0) s += '<rect x="' + ox + '" y="' + oy + '" width="' + fmtMm(tw) + '" height="' + A4.overlap + '" ' + dash + '/>';
+            s += '<rect x="' + ox + '" y="' + oy + '" width="' + fmtMm(tw) + '" height="' + fmtMm(th) + '" fill="none" stroke="#999" stroke-width="0.2"/>';
+            // Piezas chicas que aprovechan el resto de la hoja
+            s += page.items.filter(function (pl) { return !pl.tile; }).map(function (pl) { return pieceGroupSvg(pl, numerar); }).join('');
         } else {
             s += page.items.map(function (pl) { return pieceGroupSvg(pl, numerar); }).join('');
         }
@@ -35989,37 +36047,12 @@ bluetooth.startIOPinService()</pre>
     function laserSave() { try { localStorage.setItem(LASER_KEY, JSON.stringify(laser)); } catch (e) {} }
     // Empaquetado «maxrects» (mejor ajuste del lado corto) de items {w,h} en un rectángulo W×H
     function packRect(items, W, H, gap, girar) {
-        var free = [{ x: 0, y: 0, w: W + gap, h: H + gap }], placed = [], rest = [];
+        var page = mrNew(W, H, gap), placed = [], rest = [];
         items.forEach(function (it) {
-            var best = null, opts = [[it.w + gap, it.h + gap, 0]];
-            if (girar && Math.abs(it.w - it.h) > 1e-6) opts.push([it.h + gap, it.w + gap, 90]);
-            free.forEach(function (f) {
-                opts.forEach(function (o) {
-                    if (o[0] > f.w + 1e-6 || o[1] > f.h + 1e-6) return;
-                    var s1 = Math.min(f.w - o[0], f.h - o[1]), s2 = Math.max(f.w - o[0], f.h - o[1]);
-                    if (!best || s1 < best.s1 || (s1 === best.s1 && s2 < best.s2)) best = { f: f, w: o[0], h: o[1], rot: o[2], s1: s1, s2: s2 };
-                });
-            });
+            var best = mrBest(page, it, gap, girar);
             if (!best) { rest.push(it); return; }
-            var r = { x: best.f.x, y: best.f.y, w: best.w, h: best.h };
-            placed.push({ it: it, x: r.x, y: r.y, rot: best.rot, w: best.w - gap, h: best.h - gap });
-            var nf = [];
-            free.forEach(function (f) {
-                if (r.x >= f.x + f.w || r.x + r.w <= f.x || r.y >= f.y + f.h || r.y + r.h <= f.y) { nf.push(f); return; }
-                if (r.x > f.x) nf.push({ x: f.x, y: f.y, w: r.x - f.x, h: f.h });
-                if (r.x + r.w < f.x + f.w) nf.push({ x: r.x + r.w, y: f.y, w: f.x + f.w - r.x - r.w, h: f.h });
-                if (r.y > f.y) nf.push({ x: f.x, y: f.y, w: f.w, h: r.y - f.y });
-                if (r.y + r.h < f.y + f.h) nf.push({ x: f.x, y: r.y + r.h, w: f.w, h: f.y + f.h - r.y - r.h });
-            });
-            free = nf.filter(function (a, i) {
-                if (a.w < 0.01 || a.h < 0.01) return false;
-                return !nf.some(function (b, j) {
-                    if (i === j) return false;
-                    var contains = b.x <= a.x + 1e-9 && b.y <= a.y + 1e-9 && b.x + b.w >= a.x + a.w - 1e-9 && b.y + b.h >= a.y + a.h - 1e-9;
-                    var same = contains && a.x <= b.x + 1e-9 && a.y <= b.y + 1e-9 && a.x + a.w >= b.x + b.w - 1e-9 && a.y + a.h >= b.y + b.h - 1e-9;
-                    return contains && (!same || j < i);
-                });
-            });
+            placed.push({ it: it, x: best.x, y: best.y, rot: best.rot, w: best.w - gap, h: best.h - gap });
+            mrPlace(page, { x: best.x, y: best.y, w: best.w, h: best.h });
         });
         return { placed: placed, rest: rest };
     }
