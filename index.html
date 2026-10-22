@@ -14668,6 +14668,16 @@ bluetooth.startIOPinService()</pre>
             }
         });
 
+        // Pedir confirmación SIEMPRE antes de recargar o cerrar la pestaña: al
+        // recargar se pierde la captura en curso y los datos que están en memoria.
+        // El navegador muestra su propio cartel genérico (el texto no se puede
+        // personalizar) y solo lo hace si la persona ya interactuó con la página.
+        window.addEventListener('beforeunload', (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        });
+
         document.getElementById('collectBtn').addEventListener('click', () => {
             if (state.isCollecting) return;
             if (state.rawData.length === 0) { beginCapture(false); return; }
