@@ -867,6 +867,17 @@
             margin-bottom: 0;
         }
 
+        /* Tarjeta de derivadas (v(t) / a(t)) con pestañas */
+        .deriv-tabs { display:flex; gap:0; border:1.5px solid #999; }
+        .deriv-tabs button {
+            background:#fff; border:none; border-right:1.5px solid #999; padding:3px 12px;
+            font-size:clamp(11px, 2vw, 13px); font-weight:700; cursor:pointer; color:#555;
+            font-family:inherit; letter-spacing:0.3px;
+        }
+        .deriv-tabs button:last-child { border-right:none; }
+        .deriv-tabs button.active { background:#000; color:#fff; }
+        .deriv-note { font-size:0.72rem; color:#546e7a; margin:-8px 0 6px; }
+
         /* Panel lateral */
         .side-panel {
             background: white;
@@ -4996,6 +5007,40 @@
             <div class="graphs-container" id="graphsContainer">
                 <!-- Las gráficas se generan dinámicamente aquí -->
             </div>
+            <!-- Derivadas (opcional, ANÁLISIS DE DATOS → Derivadas): v(t) y a(t) en pestañas -->
+            <div class="graphs-container" id="derivContainer" style="display:none; flex:0 0 auto; margin-top:20px;">
+                <div class="graph-wrapper single" id="derivWrapper">
+                    <div class="graph-title-bar">
+                        <div class="graph-title" id="derivGraphTitle">DERIVADAS</div>
+                        <div class="deriv-tabs" role="tablist">
+                            <button type="button" id="derivTabV" class="active" onclick="derivSetTab('v')" role="tab" aria-selected="true">v(t)</button>
+                            <button type="button" id="derivTabA" onclick="derivSetTab('a')" role="tab" aria-selected="false">a(t)</button>
+                        </div>
+                        <div class="graph-controls">
+                            <button onclick="derivZoom('in')" data-tip="Acercar" aria-label="Acercar">+</button>
+                            <button onclick="derivZoom('out')" data-tip="Alejar" aria-label="Alejar">&minus;</button>
+                            <button onclick="derivResetZoom()" data-tip="Restablecer zoom" aria-label="Restablecer zoom">&#8634;</button>
+                            <button onclick="derivSaveImage()" data-tip="Guardar como imagen" aria-label="Guardar como imagen">&#128190;</button>
+                        </div>
+                    </div>
+                    <div class="deriv-note" id="derivNote"></div>
+                    <div class="chart-axis-row">
+                        <div class="chart-axis-y">
+                            <div class="chart-axis-y-inner">
+                                <span class="axis-value" id="derivAxisY"></span>
+                                <span class="axis-role" id="derivAxisYRole">Eje Y</span>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="derivChartCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-axis-x">
+                        <span class="axis-value" id="derivAxisX"></span>
+                        <span class="axis-role" id="derivAxisXRole">Eje X</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Panel lateral -->
@@ -5611,6 +5656,41 @@
                         </div>
                     </div>
 
+                    <div style="border-top: 1px solid #e0e0e0; margin: 8px 0;"></div>
+
+                    <!-- Derivadas: v(t) y a(t) a partir de x(t) (opcional) -->
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-weight:700; font-size:0.8rem; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px;" id="derivTitle">Derivadas: v(t) y a(t)</div>
+                        <div class="info-box" style="font-size:0.75rem; margin-bottom:6px;" id="derivInfo">
+                            A partir de una posición x(t) genera la velocidad v = dx/dt y la aceleración a = d²x/dt², en dos pestañas debajo de las gráficas. Se derivan con un ajuste local (parábola por mínimos cuadrados en una ventana de puntos, como Tracker): no modifica los datos medidos. Más puntos de suavizado = curvas más limpias pero menos detalle.
+                        </div>
+                        <div class="checkbox-row">
+                            <input type="checkbox" id="derivEnable">
+                            <label for="derivEnable" id="derivEnableLabel">Mostrar gráficas de derivadas</label>
+                        </div>
+                        <div id="derivOptions" style="display:none; margin-top:6px;">
+                            <div class="input-row">
+                                <label style="font-size:0.78rem;" id="derivVarLabel">Posición x(t)</label>
+                                <select id="derivVarSelect" style="font-size:0.78rem;">
+                                    <option value="0">Variable 1</option>
+                                </select>
+                            </div>
+                            <div class="input-row">
+                                <label style="font-size:0.78rem;" id="derivWinLabel">Suavizado (puntos)</label>
+                                <select id="derivWinSelect" style="font-size:0.78rem;">
+                                    <option value="3">3 (mínimo)</option>
+                                    <option value="5" selected>5</option>
+                                    <option value="7">7</option>
+                                    <option value="9">9</option>
+                                    <option value="11">11</option>
+                                    <option value="15">15</option>
+                                    <option value="21">21</option>
+                                </select>
+                            </div>
+                            <button class="toolbar-btn btn-full" id="derivExportBtn" disabled>EXPORTAR CSV (t, x, v, a)</button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -5656,6 +5736,20 @@
                     <button class="toolbar-btn btn-full" id="deleteSelectedBtn" disabled style="margin-top: 8px;">
                         ELIMINAR SELECCIONADOS
                     </button>
+
+                    <!-- TIEMPO CERO: desde dónde se cuenta el tiempo -->
+                    <div id="tzeroBlock" style="margin-top:14px; padding:10px; background:#eef5ff; border:1px solid #c5d8f0; border-radius:5px;">
+                        <div style="font-weight:700; font-size:11px; color:#1565c0; margin-bottom:4px;" id="tzeroTitle">TIEMPO CERO (t = 0)</div>
+                        <div id="tzeroHint" style="font-size:0.72rem; color:#546e7a; margin-bottom:7px;">Elegí desde dónde se cuenta el tiempo. No borra datos: solo corre el eje de tiempo de las gráficas y la tabla (los puntos anteriores quedan con tiempo negativo).</div>
+                        <button class="toolbar-btn btn-full" id="tzeroFirstBtn" disabled>t = 0 EN EL PRIMER PUNTO</button>
+                        <button class="toolbar-btn btn-full" id="tzeroSelectedBtn" disabled style="margin-top:6px;">t = 0 EN EL PUNTO SELECCIONADO</button>
+                        <div class="input-row" style="margin-top:8px;">
+                            <label id="tzeroAtLabel">t = 0 donde ahora t =</label>
+                            <input type="number" id="tzeroAtValue" step="any" placeholder="Ej: 2.5" style="font-size:12px;">
+                        </div>
+                        <button class="toolbar-btn btn-full" id="tzeroAtBtn" disabled>APLICAR</button>
+                        <div id="tzeroStatus" style="font-size:0.72rem; color:#455a64; margin-top:6px;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -6493,6 +6587,26 @@ basic.forever(function () {
                 showLines: 'Unir los puntos con una línea',
                 applyGraphConfig: 'APLICAR CONFIGURACIÓN',
                 setZero: 'ESTABLECER T=0',
+                tzeroTitle: 'TIEMPO CERO (t = 0)',
+                tzeroHint: 'Elegí desde dónde se cuenta el tiempo. No borra datos: solo corre el eje de tiempo de las gráficas y la tabla (los puntos anteriores quedan con tiempo negativo).',
+                tzeroFirst: 't = 0 EN EL PRIMER PUNTO',
+                tzeroSelected: 't = 0 EN EL PUNTO SELECCIONADO',
+                tzeroAtLabel: 't = 0 donde ahora t =',
+                tzeroApply: 'APLICAR',
+                tzeroStatusAt: 't = 0 está en el punto #{n}',
+                tzeroStatusShift: 't = 0 corrido {v} {u} respecto del primer punto',
+                tzeroDone: 'Tiempo cero aplicado',
+                derivTitle: 'Derivadas: v(t) y a(t)',
+                derivInfo: 'A partir de una posición x(t) genera la velocidad v = dx/dt y la aceleración a = d²x/dt², en dos pestañas debajo de las gráficas. Se derivan con un ajuste local (parábola por mínimos cuadrados en una ventana de puntos, como Tracker): no modifica los datos medidos. Más puntos de suavizado = curvas más limpias pero menos detalle.',
+                derivEnable: 'Mostrar gráficas de derivadas',
+                derivVar: 'Posición x(t)',
+                derivWin: 'Suavizado (puntos)',
+                derivExport: 'EXPORTAR CSV (t, x, v, a)',
+                derivVel: 'VELOCIDAD',
+                derivAcc: 'ACELERACIÓN',
+                derivNote: 'Derivada de {x} con ajuste local de {w} puntos · {n} puntos',
+                derivNoData: 'Sin datos: capturá o cargá datos para ver las derivadas.',
+                derivFew: 'Hacen falta al menos 3 puntos para derivar.',
                 curveFit: 'AJUSTE DE CURVA',
                 curveFitInfo: 'Ajusta una función matemática a tus datos experimentales.',
                 fitType: 'Tipo de Ajuste',
@@ -6961,6 +7075,26 @@ basic.forever(function () {
                 showLines: 'Join the points with a line',
                 applyGraphConfig: 'APPLY CONFIGURATION',
                 setZero: 'SET T=0',
+                tzeroTitle: 'TIME ZERO (t = 0)',
+                tzeroHint: 'Choose where time starts counting. Nothing is deleted: it only shifts the time axis of the graphs and table (earlier points get negative times).',
+                tzeroFirst: 't = 0 AT THE FIRST POINT',
+                tzeroSelected: 't = 0 AT THE SELECTED POINT',
+                tzeroAtLabel: 't = 0 where now t =',
+                tzeroApply: 'APPLY',
+                tzeroStatusAt: 't = 0 is at point #{n}',
+                tzeroStatusShift: 't = 0 shifted {v} {u} from the first point',
+                tzeroDone: 'Time zero applied',
+                derivTitle: 'Derivatives: v(t) and a(t)',
+                derivInfo: 'From a position x(t) it generates the velocity v = dx/dt and the acceleration a = d²x/dt², in two tabs below the graphs. They are derived with a local fit (least-squares parabola over a window of points, like Tracker): the measured data is not modified. More smoothing points = cleaner curves but less detail.',
+                derivEnable: 'Show derivative graphs',
+                derivVar: 'Position x(t)',
+                derivWin: 'Smoothing (points)',
+                derivExport: 'EXPORT CSV (t, x, v, a)',
+                derivVel: 'VELOCITY',
+                derivAcc: 'ACCELERATION',
+                derivNote: 'Derivative of {x} with a {w}-point local fit · {n} points',
+                derivNoData: 'No data: capture or load data to see the derivatives.',
+                derivFew: 'At least 3 points are needed to differentiate.',
                 curveFit: 'CURVE FITTING',
                 curveFitInfo: 'Fit a mathematical function to your experimental data.',
                 fitType: 'Fit Type',
@@ -7429,6 +7563,26 @@ basic.forever(function () {
                 showLines: 'Unir os pontos com uma linha',
                 applyGraphConfig: 'APLICAR CONFIGURAÇÃO',
                 setZero: 'DEFINIR T=0',
+                tzeroTitle: 'TEMPO ZERO (t = 0)',
+                tzeroHint: 'Escolha a partir de onde o tempo é contado. Não apaga dados: só desloca o eixo de tempo dos gráficos e da tabela (os pontos anteriores ficam com tempo negativo).',
+                tzeroFirst: 't = 0 NO PRIMEIRO PONTO',
+                tzeroSelected: 't = 0 NO PONTO SELECIONADO',
+                tzeroAtLabel: 't = 0 onde agora t =',
+                tzeroApply: 'APLICAR',
+                tzeroStatusAt: 't = 0 está no ponto #{n}',
+                tzeroStatusShift: 't = 0 deslocado {v} {u} em relação ao primeiro ponto',
+                tzeroDone: 'Tempo zero aplicado',
+                derivTitle: 'Derivadas: v(t) e a(t)',
+                derivInfo: 'A partir de uma posição x(t) gera a velocidade v = dx/dt e a aceleração a = d²x/dt², em duas abas abaixo dos gráficos. São derivadas com um ajuste local (parábola por mínimos quadrados numa janela de pontos, como o Tracker): não modifica os dados medidos. Mais pontos de suavização = curvas mais limpas, porém com menos detalhe.',
+                derivEnable: 'Mostrar gráficos de derivadas',
+                derivVar: 'Posição x(t)',
+                derivWin: 'Suavização (pontos)',
+                derivExport: 'EXPORTAR CSV (t, x, v, a)',
+                derivVel: 'VELOCIDADE',
+                derivAcc: 'ACELERAÇÃO',
+                derivNote: 'Derivada de {x} com ajuste local de {w} pontos · {n} pontos',
+                derivNoData: 'Sem dados: capture ou carregue dados para ver as derivadas.',
+                derivFew: 'São necessários pelo menos 3 pontos para derivar.',
                 curveFit: 'AJUSTE DE CURVA',
                 curveFitInfo: 'Ajuste uma função matemática aos seus dados experimentais.',
                 fitType: 'Tipo de Ajuste',
@@ -8028,6 +8182,18 @@ basic.forever(function () {
 
             const setZeroBtn = document.getElementById('setZeroBtn');
             if (setZeroBtn) setZeroBtn.textContent = t.setZero;
+
+            // Tiempo cero (Depuración de datos) y Derivadas (Análisis de datos)
+            const _setTxt = (id, txt) => { const el = document.getElementById(id); if (el && txt) el.textContent = txt; };
+            _setTxt('tzeroTitle', t.tzeroTitle); _setTxt('tzeroHint', t.tzeroHint);
+            _setTxt('tzeroFirstBtn', t.tzeroFirst); _setTxt('tzeroSelectedBtn', t.tzeroSelected);
+            _setTxt('tzeroAtLabel', t.tzeroAtLabel); _setTxt('tzeroAtBtn', t.tzeroApply);
+            _setTxt('derivTitle', t.derivTitle); _setTxt('derivInfo', t.derivInfo);
+            _setTxt('derivEnableLabel', t.derivEnable); _setTxt('derivVarLabel', t.derivVar);
+            _setTxt('derivWinLabel', t.derivWin); _setTxt('derivExportBtn', t.derivExport);
+            _setTxt('derivAxisYRole', t.axisYPrefix); _setTxt('derivAxisXRole', t.axisXPrefix);
+            if (typeof updateTzeroStatus === 'function') updateTzeroStatus();
+            if (typeof updateDerivCharts === 'function') updateDerivCharts();
 
             const addDataBtn = document.getElementById('addDataBtn');
             if (addDataBtn && t.addDataTip) { addDataBtn.title = t.addDataTip; addDataBtn.setAttribute('aria-label', t.addDataTip); }
@@ -10971,6 +11137,8 @@ bluetooth.startIOPinService()</pre>
             if (timeUnitRow) timeUnitRow.style.display = isVarsOnly ? 'none' : '';
             const setZeroBtn = document.getElementById('setZeroBtn');
             if (setZeroBtn) setZeroBtn.style.display = isVarsOnly ? 'none' : '';
+            const tzeroBlock = document.getElementById('tzeroBlock');
+            if (tzeroBlock) tzeroBlock.style.display = isVarsOnly ? 'none' : '';
 
             // Auto-configure graphs based on timestamp mode.
             // Respeta etiquetas personalizadas por el usuario (xLabelCustom / yLabelCustom).
@@ -11090,6 +11258,7 @@ bluetooth.startIOPinService()</pre>
             updateFitVariableOptions();
             updateIntegralVarOptions();
             updateIntegralGraphOptions();
+            if (typeof updateDerivVarOptions === 'function') updateDerivVarOptions();
 
             if (quiet !== true) uiAlert(tr('alertConfigApplied', {num}));
         }
@@ -14986,6 +15155,7 @@ bluetooth.startIOPinService()</pre>
                     }
                     document.getElementById('exportBtn').disabled = state.rawData.length === 0;
                     document.getElementById('setZeroBtn').disabled = state.selectedPoints.size !== 1;
+                if (typeof updateTzeroButtons === 'function') updateTzeroButtons();
 
                     // Mostrar advertencia si hay datos llegando con formato incorrecto
                     const fwEl = document.getElementById('formatWarning');
@@ -16954,6 +17124,7 @@ bluetooth.startIOPinService()</pre>
 
                 document.getElementById('exportBtn').disabled = state.rawData.length === 0;
                 document.getElementById('setZeroBtn').disabled = state.selectedPoints.size !== 1;
+                if (typeof updateTzeroButtons === 'function') updateTzeroButtons();
 
                 // Show/hide FOTOS button
                 const photoBtn = document.getElementById('photoFrameBtn');
@@ -16969,6 +17140,8 @@ bluetooth.startIOPinService()</pre>
             for (let i = 0; i < state.numGraphs; i++) {
                 updateChart(i, timeUnitValue);
             }
+            if (typeof updateDerivCharts === 'function') updateDerivCharts();
+            if (typeof updateTzeroStatus === 'function') updateTzeroStatus();
         }
 
         function updateChart(index, timeUnitValue) {
@@ -17733,6 +17906,316 @@ bluetooth.startIOPinService()</pre>
             syncChartLabelsAndTitles();
         });
 
+        // ========== TIEMPO CERO (Depuración de datos) ==========
+        // Tres maneras de decir desde dónde se cuenta el tiempo: el primer
+        // punto, el punto seleccionado (igual que el botón de la barra) o un
+        // instante dado en la unidad de tiempo actual ("t = 0 donde ahora
+        // t = 2.5"). Solo mueve state.timeZeroOffset: no toca los datos.
+        function _tzeroApply(newOffset) {
+            if (!isFinite(newOffset)) return;
+            state.timeZeroOffset = newOffset;
+            document.getElementById('tzeroAtValue').value = '';
+            updateDisplay();
+            updateTzeroButtons();
+            const t = translations[currentLanguage] || {};
+            exToast(t.tzeroDone || 'Tiempo cero aplicado');
+        }
+        function updateTzeroButtons() {
+            const hasData = state.rawData.length > 0;
+            const b1 = document.getElementById('tzeroFirstBtn');
+            const b2 = document.getElementById('tzeroSelectedBtn');
+            const b3 = document.getElementById('tzeroAtBtn');
+            const v = parseFloat(document.getElementById('tzeroAtValue').value);
+            if (b1) b1.disabled = !hasData;
+            if (b2) b2.disabled = state.selectedPoints.size !== 1;
+            if (b3) b3.disabled = !hasData || !isFinite(v);
+        }
+        // Texto de estado: en qué punto está el cero (o cuánto está corrido).
+        function updateTzeroStatus() {
+            const el = document.getElementById('tzeroStatus');
+            if (!el) return;
+            if (!state.rawData.length) { el.textContent = ''; return; }
+            const t = translations[currentLanguage] || {};
+            let idx = -1, first = Infinity;
+            for (let i = 0; i < state.rawData.length; i++) {
+                const tm = state.rawData[i].time;
+                if (tm < first) first = tm;
+                if (idx < 0 && Math.abs(tm - state.timeZeroOffset) < 1e-6) idx = i;
+            }
+            if (idx >= 0) {
+                el.textContent = (t.tzeroStatusAt || 't = 0 está en el punto #{n}').replace('{n}', idx + 1);
+            } else {
+                const unitVal = parseFloat(document.getElementById('timeUnit').value) || 1000;
+                const unitName = unitVal === 1 ? 'ms' : unitVal === 60000 ? 'min' : 's';
+                const shift = (state.timeZeroOffset - first) / unitVal;
+                el.textContent = (t.tzeroStatusShift || 't = 0 corrido {v} {u} respecto del primer punto')
+                    .replace('{v}', fmtNum(shift)).replace('{u}', unitName);
+            }
+        }
+        document.getElementById('tzeroFirstBtn').addEventListener('click', () => {
+            if (!state.rawData.length) return;
+            let first = Infinity;
+            for (const d of state.rawData) if (d.time < first) first = d.time;
+            _tzeroApply(first);
+        });
+        document.getElementById('tzeroSelectedBtn').addEventListener('click', () => {
+            if (state.selectedPoints.size !== 1) return;
+            const selectedId = Array.from(state.selectedPoints)[0];
+            const point = state.rawData.find(d => d.id === selectedId);
+            if (point) _tzeroApply(point.time);
+        });
+        document.getElementById('tzeroAtValue').addEventListener('input', updateTzeroButtons);
+        document.getElementById('tzeroAtValue').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('tzeroAtBtn').click(); }
+        });
+        document.getElementById('tzeroAtBtn').addEventListener('click', () => {
+            const v = parseFloat(document.getElementById('tzeroAtValue').value);
+            if (!isFinite(v) || !state.rawData.length) return;
+            const unitVal = parseFloat(document.getElementById('timeUnit').value) || 1000;
+            // El instante que hoy se lee como t = v pasa a ser t = 0
+            _tzeroApply(state.timeZeroOffset + v * unitVal);
+        });
+
+        // ========== DERIVADAS: v(t) y a(t) a partir de x(t) (Análisis de datos) ==========
+        // Opcional: una tarjeta debajo de las gráficas con dos pestañas, v(t)
+        // y a(t), calculadas a partir de la variable elegida como posición.
+        // Derivación por ajuste local: en cada punto se ajusta una parábola por
+        // mínimos cuadrados a una ventana de W puntos centrada en él (como
+        // Tracker); v es la pendiente y a la curvatura en ese punto. No se
+        // modifican los datos medidos. En los bordes la ventana se recorta.
+        var derivState = { enabled: false, varIdx: 0, win: 5, tab: 'v', data: [] };
+        var derivChart = null;
+
+        // Ajuste y = c0 + c1·τ + c2·τ² (τ = t − t[jc]) sobre [j0, j1] → {v: c1, a: 2·c2}
+        function _derivLocalFit(ts, xs, jc, j0, j1) {
+            let S0 = 0, S1 = 0, S2 = 0, S3 = 0, S4 = 0, Sy = 0, Sty = 0, St2y = 0;
+            for (let k = j0; k <= j1; k++) {
+                const T = ts[k] - ts[jc], y = xs[k], T2 = T * T;
+                S0++; S1 += T; S2 += T2; S3 += T2 * T; S4 += T2 * T2;
+                Sy += y; Sty += T * y; St2y += T2 * y;
+            }
+            const D = S0 * (S2 * S4 - S3 * S3) - S1 * (S1 * S4 - S2 * S3) + S2 * (S1 * S3 - S2 * S2);
+            if (!isFinite(D) || Math.abs(D) < 1e-18) return null;
+            const c1 = (S0 * (Sty * S4 - S3 * St2y) - Sy * (S1 * S4 - S2 * S3) + S2 * (S1 * St2y - Sty * S2)) / D;
+            const c2 = (S0 * (S2 * St2y - Sty * S3) - S1 * (S1 * St2y - Sty * S2) + Sy * (S1 * S3 - S2 * S2)) / D;
+            if (!isFinite(c1) || !isFinite(c2)) return null;
+            return { v: c1, a: 2 * c2 };
+        }
+        // Devuelve [{id, t, x, v, a}] en la unidad de tiempo actual (v en x/unidad, a en x/unidad²)
+        function computeDerivatives(varIdx, win) {
+            const unit = parseFloat(document.getElementById('timeUnit').value) || 1000;
+            const pts = state.rawData
+                .filter(d => isFinite(d.values[varIdx]))
+                .slice().sort((p, q) => p.time - q.time);
+            const n = pts.length;
+            if (n < 3) return [];
+            const ts = new Array(n), xs = new Array(n);
+            for (let i = 0; i < n; i++) { ts[i] = (pts[i].time - state.timeZeroOffset) / unit; xs[i] = pts[i].values[varIdx]; }
+            const half = Math.max(1, Math.floor(win / 2));
+            const out = [];
+            for (let i = 0; i < n; i++) {
+                let j0 = Math.max(0, i - half), j1 = Math.min(n - 1, i + half);
+                if (j1 - j0 < 2) { j0 = Math.max(0, Math.min(j0, n - 3)); j1 = Math.min(n - 1, j0 + 2); }
+                const r = _derivLocalFit(ts, xs, i, j0, j1);
+                if (!r) continue;
+                out.push({ id: pts[i].id, t: ts[i], x: xs[i], v: r.v, a: r.a });
+            }
+            return out;
+        }
+        function updateDerivVarOptions() {
+            const select = document.getElementById('derivVarSelect');
+            if (!select) return;
+            const prev = parseInt(select.value);
+            select.innerHTML = '';
+            for (let i = 0; i < state.numVariables; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = state.variables[i].name;
+                select.appendChild(opt);
+            }
+            select.value = String((prev >= 0 && prev < state.numVariables) ? prev : 0);
+            derivState.varIdx = parseInt(select.value) || 0;
+        }
+        function _derivTimeLabel() {
+            return getXAxisLabel('time');
+        }
+        function _derivUnitName() {
+            const unitVal = parseFloat(document.getElementById('timeUnit').value) || 1000;
+            return unitVal === 1 ? 'ms' : unitVal === 60000 ? 'min' : 's';
+        }
+        function createDerivChart() {
+            const canvas = document.getElementById('derivChartCanvas');
+            if (!canvas || derivChart) return;
+            derivChart = new Chart(canvas.getContext('2d'), {
+                type: 'scatter',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    layout: { padding: { top: 12, right: 14 } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(0, 0, 0, 0.82)',
+                            titleFont: { size: 11, weight: 'bold' },
+                            bodyFont: { size: 11 },
+                            padding: 10,
+                            cornerRadius: 4,
+                            callbacks: {
+                                label: (c) => `${c.dataset.label}: (${fmtTime(c.parsed.x)}, ${fmtNum(c.parsed.y)})`
+                            }
+                        },
+                        zoom: {
+                            pan: { enabled: true, mode: 'xy', modifierKey: null },
+                            zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: true }, mode: 'xy' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: false, text: '', font: { size: 11, weight: 'bold' }, padding: { top: 4 } },
+                            grid: { color: 'rgba(0, 0, 0, 0.08)', lineWidth: 1 },
+                            border: { color: '#333', width: 2 },
+                            ticks: { font: { size: 10 }, maxRotation: 0, autoSkipPadding: 10 }
+                        },
+                        y: {
+                            type: 'linear',
+                            title: { display: false, text: '', font: { size: 11, weight: 'bold' }, padding: { bottom: 4 } },
+                            grid: { color: 'rgba(0, 0, 0, 0.08)', lineWidth: 1 },
+                            border: { color: '#333', width: 2 },
+                            ticks: { font: { size: 10 }, autoSkipPadding: 6, callback: _yTickFmt }
+                        }
+                    },
+                    interaction: { mode: 'nearest', intersect: false, axis: 'x' }
+                }
+            });
+        }
+        // Recalcula y redibuja la pestaña activa. Se llama desde updateAllCharts
+        // (cada vez que cambian datos, T=0, unidad o variables) y al tocar opciones.
+        function updateDerivCharts() {
+            if (!derivState || !derivState.enabled) return;
+            const container = document.getElementById('derivContainer');
+            if (!container) return;
+            createDerivChart();
+            const t = translations[currentLanguage] || {};
+            const varIdx = derivState.varIdx;
+            const varDef = state.variables[varIdx] || { name: 'x', color: '#000' };
+            const xName = varDef.name || 'x';
+            const data = computeDerivatives(varIdx, derivState.win);
+            derivState.data = data;
+            const isV = derivState.tab === 'v';
+            const unitName = _derivUnitName();
+            // Textos de la tarjeta
+            const title = document.getElementById('derivGraphTitle');
+            if (title) title.textContent = (isV ? (t.derivVel || 'VELOCIDAD') : (t.derivAcc || 'ACELERACIÓN')) +
+                (isV ? ` · v = d(${xName})/dt` : ` · a = d²(${xName})/dt²`);
+            const yLab = isV ? `v = d(${xName})/dt  [${xName} / ${unitName}]` : `a = d²(${xName})/dt²  [${xName} / ${unitName}²]`;
+            const ay = document.getElementById('derivAxisY'); if (ay) ay.textContent = yLab;
+            const ax = document.getElementById('derivAxisX'); if (ax) ax.textContent = _derivTimeLabel();
+            const note = document.getElementById('derivNote');
+            if (note) {
+                if (!state.rawData.length) note.textContent = t.derivNoData || 'Sin datos: capturá o cargá datos para ver las derivadas.';
+                else if (data.length < 1) note.textContent = t.derivFew || 'Hacen falta al menos 3 puntos para derivar.';
+                else note.textContent = (t.derivNote || 'Derivada de {x} con ajuste local de {w} puntos · {n} puntos')
+                    .replace('{x}', xName).replace('{w}', derivState.win).replace('{n}', data.length);
+            }
+            const exp = document.getElementById('derivExportBtn'); if (exp) exp.disabled = data.length === 0;
+            if (!derivChart) return;
+            const color = isV ? '#1976d2' : '#d32f2f';
+            let series = data.map(d => ({ x: d.t, y: isV ? d.v : d.a, id: d.id }));
+            // En captura: decimar lo dibujado (como las gráficas principales)
+            if (state.isCollecting && typeof decimateMinMax === 'function') series = decimateMinMax(series, LIVE_MAX_DRAW_POINTS);
+            const many = series.length > 600;
+            derivChart.data.datasets = [{
+                label: isV ? 'v' : 'a',
+                data: series,
+                borderColor: color,
+                backgroundColor: 'transparent',
+                fill: false,
+                borderWidth: 2.5,
+                borderCapStyle: 'round',
+                borderJoinStyle: 'round',
+                showLine: !!state.showLines,
+                tension: 0.35,
+                cubicInterpolationMode: 'monotone',
+                pointRadius: many ? (state.showLines ? 0 : 1.5) : 2.5,
+                pointHoverRadius: 6,
+                pointHitRadius: 8,
+                pointBackgroundColor: color,
+                pointBorderColor: '#fff',
+                pointBorderWidth: many ? 0 : 1
+            }];
+            derivChart.options.scales.x.title.text = _derivTimeLabel().toUpperCase();
+            derivChart.options.scales.y.title.text = yLab.toUpperCase();
+            derivChart.update('none');
+        }
+        function derivSetTab(tab) {
+            derivState.tab = tab === 'a' ? 'a' : 'v';
+            const bv = document.getElementById('derivTabV'), ba = document.getElementById('derivTabA');
+            if (bv) { bv.classList.toggle('active', derivState.tab === 'v'); bv.setAttribute('aria-selected', derivState.tab === 'v' ? 'true' : 'false'); }
+            if (ba) { ba.classList.toggle('active', derivState.tab === 'a'); ba.setAttribute('aria-selected', derivState.tab === 'a' ? 'true' : 'false'); }
+            if (derivChart) derivChart.resetZoom();
+            updateDerivCharts();
+        }
+        function derivZoom(direction) { if (derivChart) derivChart.zoom(direction === 'in' ? 1.3 : 0.7); }
+        function derivResetZoom() { if (derivChart) derivChart.resetZoom(); }
+        function derivSaveImage() {
+            if (!derivChart) return;
+            // Mostrar títulos de ejes solo para la imagen (en pantalla están las etiquetas HTML)
+            derivChart.options.scales.x.title.display = true;
+            derivChart.options.scales.y.title.display = true;
+            derivChart.update('none');
+            const link = document.createElement('a');
+            link.download = (derivState.tab === 'v' ? 'velocidad' : 'aceleracion') + '.png';
+            link.href = derivChart.toBase64Image();
+            link.click();
+            derivChart.options.scales.x.title.display = false;
+            derivChart.options.scales.y.title.display = false;
+            derivChart.update('none');
+        }
+        function _derivSetEnabled(on) {
+            derivState.enabled = !!on;
+            const container = document.getElementById('derivContainer');
+            const opts = document.getElementById('derivOptions');
+            if (container) container.style.display = on ? '' : 'none';
+            if (opts) opts.style.display = on ? '' : 'none';
+            if (on) {
+                updateDerivVarOptions();
+                derivState.varIdx = parseInt(document.getElementById('derivVarSelect').value) || 0;
+                derivState.win = parseInt(document.getElementById('derivWinSelect').value) || 5;
+                updateDerivCharts();
+                const c = document.getElementById('derivWrapper');
+                if (c && c.scrollIntoView) { try { c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {} }
+            }
+        }
+        document.getElementById('derivEnable').addEventListener('change', function () { _derivSetEnabled(this.checked); });
+        document.getElementById('derivVarSelect').addEventListener('change', function () {
+            derivState.varIdx = parseInt(this.value) || 0;
+            if (derivChart) derivChart.resetZoom();
+            updateDerivCharts();
+        });
+        document.getElementById('derivWinSelect').addEventListener('change', function () {
+            derivState.win = parseInt(this.value) || 5;
+            updateDerivCharts();
+        });
+        document.getElementById('derivExportBtn').addEventListener('click', () => {
+            const data = derivState.data || [];
+            if (!data.length) return;
+            const xName = (state.variables[derivState.varIdx] || {}).name || 'x';
+            const u = _derivUnitName();
+            const rows = [`t (${u}),${xName},v (${xName}/${u}),a (${xName}/${u}²)`];
+            for (const d of data) rows.push(`${d.t},${d.x},${d.v},${d.a}`);
+            const blob = new Blob(['\ufeff' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'derivadas.csv';
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+        });
+        updateDerivVarOptions();
+
         // ========== DEPURACIÓN DE DATOS ==========
 
         // Habilitar/deshabilitar botones según datos disponibles
@@ -17745,6 +18228,7 @@ bluetooth.startIOPinService()</pre>
 
             document.getElementById('deleteRangeBtn').disabled = !hasData || !hasValidRange;
             document.getElementById('deleteSelectedBtn').disabled = !hasSelection;
+            updateTzeroButtons();
         }
 
         // Actualizar botones cuando cambien los inputs
