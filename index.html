@@ -5435,6 +5435,8 @@
                             <option value="auto" selected>✨ Automático (detectar el mejor modelo)</option>
                             <option value="linear">Lineal (y = mx + b)</option>
                             <option value="quadratic">Cuadrático (y = ax² + bx + c)</option>
+                            <option value="quadraticNoC">Cuadrático sin c (y = ax² + bx)</option>
+                            <option value="quadraticNoB">Cuadrático sin b (y = ax² + c)</option>
                             <option value="cubic">Cúbico (y = ax³ + bx² + cx + d)</option>
                             <option value="exponential">Exponencial (y = a·e^(bx))</option>
                             <option value="power">Potencia (y = a·x^b)</option>
@@ -6612,6 +6614,8 @@ basic.forever(function () {
                 fitType: 'Tipo de Ajuste',
                 fitLinear: 'Lineal (y = mx + b)',
                 fitQuadratic: 'Cuadrático (y = ax² + bx + c)',
+                fitQuadraticNoC: 'Cuadrático sin c (y = ax² + bx)',
+                fitQuadraticNoB: 'Cuadrático sin b (y = ax² + c)',
                 fitCubic: 'Cúbico (y = ax³ + bx² + cx + d)',
                 fitExponential: 'Exponencial (y = a·e^(bx))',
                 fitPower: 'Potencia (y = a·x^b)',
@@ -7100,6 +7104,8 @@ basic.forever(function () {
                 fitType: 'Fit Type',
                 fitLinear: 'Linear (y = mx + b)',
                 fitQuadratic: 'Quadratic (y = ax² + bx + c)',
+                fitQuadraticNoC: 'Quadratic without c (y = ax² + bx)',
+                fitQuadraticNoB: 'Quadratic without b (y = ax² + c)',
                 fitCubic: 'Cubic (y = ax³ + bx² + cx + d)',
                 fitExponential: 'Exponential (y = a·e^(bx))',
                 fitPower: 'Power (y = a·x^b)',
@@ -7588,6 +7594,8 @@ basic.forever(function () {
                 fitType: 'Tipo de Ajuste',
                 fitLinear: 'Linear (y = mx + b)',
                 fitQuadratic: 'Quadrático (y = ax² + bx + c)',
+                fitQuadraticNoC: 'Quadrático sem c (y = ax² + bx)',
+                fitQuadraticNoB: 'Quadrático sem b (y = ax² + c)',
                 fitCubic: 'Cúbico (y = ax³ + bx² + cx + d)',
                 fitExponential: 'Exponencial (y = a·e^(bx))',
                 fitPower: 'Potência (y = a·x^b)',
@@ -8295,6 +8303,7 @@ basic.forever(function () {
             if (fitTypeSelect) {
                 const fitOptionLabels = {
                     auto: t.fitAuto, linear: t.fitLinear, quadratic: t.fitQuadratic,
+                    quadraticNoC: t.fitQuadraticNoC, quadraticNoB: t.fitQuadraticNoB,
                     cubic: t.fitCubic, exponential: t.fitExponential, power: t.fitPower,
                     logarithmic: t.fitLogarithmic, inverse: t.fitInverse,
                     sinusoidal: t.fitSinusoidal, saturating: t.fitSaturating, custom: t.fitCustom
@@ -8799,6 +8808,8 @@ basic.forever(function () {
                 <li>✨ Automático: prueba todos los modelos y elige el mejor (criterio AICc: premia el buen ajuste y castiga la complejidad de más). Reconoce oscilaciones sinusoidales de verdad y muestra la comparación de modelos probados.</li>
                 <li>Lineal: y = mx + b</li>
                 <li>Cuadrático: y = ax² + bx + c</li>
+                <li>Cuadrático sin c: y = ax² + bx (pasa por el origen)</li>
+                <li>Cuadrático sin b: y = ax² + c (simétrico respecto de x = 0, ej.: caída libre desde el reposo)</li>
                 <li>Cúbico: y = ax³ + bx² + cx + d</li>
                 <li>Exponencial: y = a·e^(bx)</li>
                 <li>Potencia: y = a·x^b</li>
@@ -9409,6 +9420,8 @@ bluetooth.startIOPinService()</pre>
                 <li>✨ Automatic: tries every model and picks the best one (AICc criterion: rewards a good fit and penalizes unnecessary complexity). Recognizes true sinusoidal oscillations and shows the comparison of tried models.</li>
                 <li>Linear: y = mx + b</li>
                 <li>Quadratic: y = ax² + bx + c</li>
+                <li>Quadratic without c: y = ax² + bx (passes through the origin)</li>
+                <li>Quadratic without b: y = ax² + c (symmetric about x = 0, e.g. free fall from rest)</li>
                 <li>Cubic: y = ax³ + bx² + cx + d</li>
                 <li>Exponential: y = a·e^(bx)</li>
                 <li>Power: y = a·x^b</li>
@@ -10019,6 +10032,8 @@ bluetooth.startIOPinService()</pre>
                 <li>✨ Automático: testa todos os modelos e escolhe o melhor (critério AICc: premia o bom ajuste e penaliza a complexidade desnecessária). Reconhece oscilações sinusoidais de verdade e mostra a comparação dos modelos testados.</li>
                 <li>Linear: y = mx + b</li>
                 <li>Quadrático: y = ax² + bx + c</li>
+                <li>Quadrático sem c: y = ax² + bx (passa pela origem)</li>
+                <li>Quadrático sem b: y = ax² + c (simétrico em relação a x = 0, ex.: queda livre a partir do repouso)</li>
                 <li>Cúbico: y = ax³ + bx² + cx + d</li>
                 <li>Exponencial: y = a·e^(bx)</li>
                 <li>Potência: y = a·x^b</li>
@@ -15853,6 +15868,12 @@ bluetooth.startIOPinService()</pre>
                 case 'quadratic':
                     // y = ax² + bx + c
                     return (x) => coeffs[0] * x * x + coeffs[1] * x + coeffs[2];
+                case 'quadraticNoC':
+                    // y = ax² + bx
+                    return (x) => coeffs[0] * x * x + coeffs[1] * x;
+                case 'quadraticNoB':
+                    // y = ax² + c
+                    return (x) => coeffs[0] * x * x + coeffs[1];
                 case 'cubic':
                     // y = ax³ + bx² + cx + d
                     return (x) => coeffs[0] * x * x * x + coeffs[1] * x * x + coeffs[2] * x + coeffs[3];
@@ -15971,6 +15992,44 @@ bluetooth.startIOPinService()</pre>
             const equation = `y = ${fmtNum(a)}x² ${b >= 0 ? '+' : ''} ${fmtNum(b)}x ${c >= 0 ? '+' : ''} ${fmtNum(c)}`;
 
             return { coeffs: [a, b, c], equation, r2: result.r2, predict };
+        }
+
+        // Variantes restringidas del cuadrático (mínimos cuadrados lineales por
+        // ecuaciones normales, sin el término que se fija en cero):
+        //   y = ax² + bx  (sin c: la parábola pasa por el origen)
+        //   y = ax² + c   (sin b: parábola centrada en x = 0, p. ej. caída libre
+        //                  desde el reposo, x = ½·g·t² + x₀)
+        function fitQuadraticNoC(xData, yData) {
+            console.log('=== AJUSTE CUADRÁTICO SIN c (y = ax² + bx) ===');
+            let sx2 = 0, sx3 = 0, sx4 = 0, sxy = 0, sx2y = 0;
+            for (let i = 0; i < xData.length; i++) {
+                const x = xData[i], y = yData[i], x2 = x * x;
+                sx2 += x2; sx3 += x2 * x; sx4 += x2 * x2; sxy += x * y; sx2y += x2 * y;
+            }
+            const [a, b] = matrixSolve([[sx4, sx3], [sx3, sx2]], [sx2y, sxy]);
+            if (!isFinite(a) || !isFinite(b)) throw new Error('No se pudo resolver el ajuste (datos degenerados)');
+            const predict = (x) => a * x * x + b * x;
+            const r2 = calculateR2(xData, yData, predict);
+            console.log('Coeficientes:', { a, b }, 'R² =', r2);
+            const equation = `y = ${fmtNum(a)}x² ${b >= 0 ? '+' : ''} ${fmtNum(b)}x`;
+            return { coeffs: [a, b], equation, r2, predict };
+        }
+
+        function fitQuadraticNoB(xData, yData) {
+            console.log('=== AJUSTE CUADRÁTICO SIN b (y = ax² + c) ===');
+            const n = xData.length;
+            let sx2 = 0, sx4 = 0, sy = 0, sx2y = 0;
+            for (let i = 0; i < n; i++) {
+                const x = xData[i], y = yData[i], x2 = x * x;
+                sx2 += x2; sx4 += x2 * x2; sy += y; sx2y += x2 * y;
+            }
+            const [a, c] = matrixSolve([[sx4, sx2], [sx2, n]], [sx2y, sy]);
+            if (!isFinite(a) || !isFinite(c)) throw new Error('No se pudo resolver el ajuste (datos degenerados)');
+            const predict = (x) => a * x * x + c;
+            const r2 = calculateR2(xData, yData, predict);
+            console.log('Coeficientes:', { a, c }, 'R² =', r2);
+            const equation = `y = ${fmtNum(a)}x² ${c >= 0 ? '+' : ''} ${fmtNum(c)}`;
+            return { coeffs: [a, c], equation, r2, predict };
         }
 
         function fitCubic(xData, yData) {
@@ -16876,6 +16935,8 @@ bluetooth.startIOPinService()</pre>
             switch (fitType) {
                 case 'linear': return ['m (pendiente)', 'b (ordenada)'];
                 case 'quadratic': return ['a (x²)', 'b (x)', 'c (constante)'];
+                case 'quadraticNoC': return ['a (x²)', 'b (x)'];
+                case 'quadraticNoB': return ['a (x²)', 'c (constante)'];
                 case 'cubic': return ['a (x³)', 'b (x²)', 'c (x)', 'd (constante)'];
                 case 'exponential': return ['a (amplitud)', 'b (exponente)'];
                 case 'power': return ['a (coeficiente)', 'b (exponente)'];
@@ -16897,6 +16958,8 @@ bluetooth.startIOPinService()</pre>
             switch (type) {
                 case 'linear': model = '<b>y = m·x + b</b> &nbsp;(m: pendiente, b: ordenada al origen)'; break;
                 case 'quadratic': model = '<b>y = a·x² + b·x + c</b>'; break;
+                case 'quadraticNoC': model = '<b>y = a·x² + b·x</b> &nbsp;(sin término independiente: la parábola pasa por el origen)'; break;
+                case 'quadraticNoB': model = '<b>y = a·x² + c</b> &nbsp;(sin término lineal: parábola centrada en x = 0, como x = ½·g·t² + x₀ en caída libre desde el reposo)'; break;
                 case 'cubic': model = '<b>y = a·x³ + b·x² + c·x + d</b>'; break;
                 case 'exponential': model = '<b>y = a·e^(b·x)</b> &nbsp;(crecimiento/decaimiento exponencial)'; break;
                 case 'power': model = '<b>y = a·x^b</b> &nbsp;(ley de potencias)'; break;
@@ -17042,6 +17105,12 @@ bluetooth.startIOPinService()</pre>
                     break;
                 case 'quadratic':
                     result = fitQuadratic(xData, yData);
+                    break;
+                case 'quadraticNoC':
+                    result = fitQuadraticNoC(xData, yData);
+                    break;
+                case 'quadraticNoB':
+                    result = fitQuadraticNoB(xData, yData);
                     break;
                 case 'cubic':
                     result = fitCubic(xData, yData);
@@ -19909,6 +19978,7 @@ bluetooth.startIOPinService()</pre>
             const modelOpts = [
                 ['auto', t.segAuto || 'Automático (mejor)'],
                 ['linear', t.fitLinear || 'Lineal'], ['quadratic', t.fitQuadratic || 'Cuadrático'],
+                ['quadraticNoC', t.fitQuadraticNoC || 'Cuadrático sin c'], ['quadraticNoB', t.fitQuadraticNoB || 'Cuadrático sin b'],
                 ['cubic', t.fitCubic || 'Cúbico'], ['exponential', t.fitExponential || 'Exponencial'],
                 ['power', t.fitPower || 'Potencia'], ['logarithmic', t.fitLogarithmic || 'Logarítmico'],
                 ['inverse', t.fitInverse || 'Inverso'], ['sinusoidal', t.fitSinusoidal || 'Sinusoidal'],
@@ -27849,7 +27919,7 @@ bluetooth.startIOPinService()</pre>
         var d = Math.floor(h / 24); return 'hace ' + d + (d > 1 ? ' días' : ' día');
       }
       var FIT_LABELS = {
-        linear: 'Lineal', quadratic: 'Cuadrático', cubic: 'Cúbico', exponential: 'Exponencial',
+        linear: 'Lineal', quadratic: 'Cuadrático', quadraticNoC: 'Cuadrático sin c', quadraticNoB: 'Cuadrático sin b', cubic: 'Cúbico', exponential: 'Exponencial',
         power: 'Potencia', logarithmic: 'Logarítmico', inverse: 'Inverso', sinusoidal: 'Sinusoidal',
         saturating: 'Saturación', custom: 'Personalizado'
       };
