@@ -5448,6 +5448,13 @@
                             <option value="custom">Personalizada (tu propia ecuación)</option>
                         </select>
 
+                        <!-- Parámetros del modelo: valor inicial y/o fijo (modelos incorporados) -->
+                        <div id="fitParamPanel" style="margin-top:8px; display:none; padding:8px; background:#f9f9f9; border-radius:4px;">
+                            <div style="font-size:0.7rem; color:#1565c0; font-weight:700;" id="fitParamPanelTitle">Parámetros del modelo (opcional): valor inicial y/o fijar</div>
+                            <div id="fitParamPanelHint" style="font-size:0.7rem; color:#546e7a; margin:2px 0 6px;">Dejá vacío para que la app lo estime. Con "Fijar", ese parámetro queda en el valor que escribiste y se ajusta solo el resto (p. ej. c = 0 si el movimiento arranca en el origen, o b = 0 si parte del reposo).</div>
+                            <div id="fitParamRows"></div>
+                        </div>
+
                         <!-- Editor de ecuación propia (visible solo si Tipo = Personalizada) -->
                         <div id="customFitInputs" style="margin-top: 8px; display: none;">
                             <label id="customFitExprLabel" style="display:block; font-size:12px; margin-bottom:3px;">Tu ecuación: y =</label>
@@ -5661,24 +5668,23 @@
 
                     <div style="border-top: 1px solid #e0e0e0; margin: 8px 0;"></div>
 
-                    <!-- Derivadas: v(t) y a(t) a partir de x(t) (opcional) -->
+                    <!-- Derivadas del ajuste: v(t) y a(t) (opcional; requiere un ajuste cuadrático) -->
                     <div style="margin-bottom: 12px;">
-                        <div style="font-weight:700; font-size:0.8rem; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px;" id="derivTitle">Derivadas: v(t) y a(t)</div>
+                        <div style="font-weight:700; font-size:0.8rem; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px;" id="derivTitle">Derivadas del ajuste: v(t) y a(t)</div>
                         <div class="info-box" style="font-size:0.75rem; margin-bottom:6px;" id="derivInfo">
-                            A partir de una posición x(t) genera la velocidad v = dx/dt y la aceleración a = d²x/dt², en dos pestañas debajo de las gráficas. Se derivan con un ajuste local (parábola por mínimos cuadrados en una ventana de puntos, como Tracker): no modifica los datos medidos. Más puntos de suavizado = curvas más limpias pero menos detalle.
+                            Con un ajuste cuadrático de la posición, x(t) = a·t² + b·t + c (único o por tramos), deriva el modelo ajustado: v(t) = 2a·t + b y a(t) = 2a, en dos pestañas debajo de las gráficas. Como se deriva la curva ajustada y no los puntos medidos, las gráficas salen limpias. Pensado para estudiar movimientos (caída libre, plano inclinado, MRUV).
                         </div>
                         <div class="checkbox-row">
-                            <input type="checkbox" id="derivEnable">
+                            <input type="checkbox" id="derivEnable" disabled>
                             <label for="derivEnable" id="derivEnableLabel">Mostrar gráficas de derivadas</label>
                         </div>
+                        <div id="derivHint" style="font-size:0.72rem; color:#546e7a; margin:2px 0 6px;"></div>
                         <div id="derivOptions" style="display:none; margin-top:6px;">
-                            <div class="input-row">
-                                <label style="font-size:0.78rem;" id="derivVarLabel">Posición x(t)</label>
-                                <select id="derivVarSelect" style="font-size:0.78rem;">
-                                    <option value="0">Variable 1</option>
-                                </select>
+                            <div class="checkbox-row">
+                                <input type="checkbox" id="derivCompare">
+                                <label for="derivCompare" id="derivCompareLabel" style="font-size:0.78rem;">Comparar con la derivada numérica de los datos</label>
                             </div>
-                            <div class="input-row">
+                            <div class="input-row" id="derivWinRow" style="display:none;">
                                 <label style="font-size:0.78rem;" id="derivWinLabel">Suavizado (puntos)</label>
                                 <select id="derivWinSelect" style="font-size:0.78rem;">
                                     <option value="3">3 (mínimo)</option>
@@ -6599,17 +6605,28 @@ basic.forever(function () {
                 tzeroStatusAt: 't = 0 está en el punto #{n}',
                 tzeroStatusShift: 't = 0 corrido {v} {u} respecto del primer punto',
                 tzeroDone: 'Tiempo cero aplicado',
-                derivTitle: 'Derivadas: v(t) y a(t)',
-                derivInfo: 'A partir de una posición x(t) genera la velocidad v = dx/dt y la aceleración a = d²x/dt², en dos pestañas debajo de las gráficas. Se derivan con un ajuste local (parábola por mínimos cuadrados en una ventana de puntos, como Tracker): no modifica los datos medidos. Más puntos de suavizado = curvas más limpias pero menos detalle.',
+                derivTitle: 'Derivadas del ajuste: v(t) y a(t)',
+                derivInfo: 'Con un ajuste cuadrático de la posición, x(t) = a·t² + b·t + c (único o por tramos), deriva el modelo ajustado: v(t) = 2a·t + b y a(t) = 2a, en dos pestañas debajo de las gráficas. Como se deriva la curva ajustada y no los puntos medidos, las gráficas salen limpias. Pensado para estudiar movimientos (caída libre, plano inclinado, MRUV).',
                 derivEnable: 'Mostrar gráficas de derivadas',
-                derivVar: 'Posición x(t)',
+                derivNeedFit: 'Primero realizá un ajuste cuadrático (Ajuste de curva → Cuadrático, o Automático si lo elige) sobre la posición. Las derivadas salen de ese ajuste.',
+                derivReady: 'Se derivará el ajuste de {y}: {eq}',
+                derivReadySeg: 'Se derivarán {n} tramos cuadráticos del ajuste de {y}.',
+                derivCompare: 'Comparar con la derivada numérica de los datos',
                 derivWin: 'Suavizado (puntos)',
                 derivExport: 'EXPORTAR CSV (t, x, v, a)',
                 derivVel: 'VELOCIDAD',
                 derivAcc: 'ACELERACIÓN',
-                derivNote: 'Derivada de {x} con ajuste local de {w} puntos · {n} puntos',
-                derivNoData: 'Sin datos: capturá o cargá datos para ver las derivadas.',
-                derivFew: 'Hacen falta al menos 3 puntos para derivar.',
+                derivNoteSingle: 'Derivada del ajuste {eq}  →  {deq}',
+                derivNumericLabel: 'datos',
+                fitParamPanelTitle: 'Parámetros del modelo (opcional): valor inicial y/o fijar',
+                fitParamPanelHint: 'Dejá vacío para que la app lo estime. Con "Fijar", ese parámetro queda en el valor que escribiste y se ajusta solo el resto (p. ej. c = 0 si el movimiento arranca en el origen, o b = 0 si parte del reposo).',
+                fitParamAuto: 'auto',
+                fitParamFix: 'Fijar',
+                fitParamFixed: 'fijo',
+                fitParamFixedBy: 'Parámetros fijados por vos:',
+                fitParamFixedNote: 'Se ajustaron solo los demás; el R² corresponde a ese modelo restringido.',
+                alertFixNoValue: 'Para fijar {p} tenés que escribir su valor.',
+                alertFitNoConverge: 'El ajuste con esos valores no converge: probá otros valores iniciales.',
                 curveFit: 'AJUSTE DE CURVA',
                 curveFitInfo: 'Ajusta una función matemática a tus datos experimentales.',
                 fitType: 'Tipo de Ajuste',
@@ -7090,17 +7107,28 @@ basic.forever(function () {
                 tzeroStatusAt: 't = 0 is at point #{n}',
                 tzeroStatusShift: 't = 0 shifted {v} {u} from the first point',
                 tzeroDone: 'Time zero applied',
-                derivTitle: 'Derivatives: v(t) and a(t)',
-                derivInfo: 'From a position x(t) it generates the velocity v = dx/dt and the acceleration a = d²x/dt², in two tabs below the graphs. They are derived with a local fit (least-squares parabola over a window of points, like Tracker): the measured data is not modified. More smoothing points = cleaner curves but less detail.',
+                derivTitle: 'Derivatives of the fit: v(t) and a(t)',
+                derivInfo: 'With a quadratic fit of the position, x(t) = a·t² + b·t + c (single or by segments), it differentiates the fitted model: v(t) = 2a·t + b and a(t) = 2a, in two tabs below the graphs. Since the fitted curve is differentiated rather than the measured points, the graphs come out clean. Meant for studying motion (free fall, inclined plane, uniformly accelerated motion).',
                 derivEnable: 'Show derivative graphs',
-                derivVar: 'Position x(t)',
+                derivNeedFit: 'First perform a quadratic fit (Curve fitting → Quadratic, or Automatic if it picks it) on the position. The derivatives come from that fit.',
+                derivReady: 'The fit of {y} will be differentiated: {eq}',
+                derivReadySeg: '{n} quadratic segments of the fit of {y} will be differentiated.',
+                derivCompare: 'Compare with the numerical derivative of the data',
                 derivWin: 'Smoothing (points)',
                 derivExport: 'EXPORT CSV (t, x, v, a)',
                 derivVel: 'VELOCITY',
                 derivAcc: 'ACCELERATION',
-                derivNote: 'Derivative of {x} with a {w}-point local fit · {n} points',
-                derivNoData: 'No data: capture or load data to see the derivatives.',
-                derivFew: 'At least 3 points are needed to differentiate.',
+                derivNoteSingle: 'Derivative of the fit {eq}  →  {deq}',
+                derivNumericLabel: 'data',
+                fitParamPanelTitle: 'Model parameters (optional): initial value and/or fix',
+                fitParamPanelHint: 'Leave empty to let the app estimate it. With "Fix", that parameter stays at the value you typed and only the rest are fitted (e.g. c = 0 if the motion starts at the origin, or b = 0 if it starts from rest).',
+                fitParamAuto: 'auto',
+                fitParamFix: 'Fix',
+                fitParamFixed: 'fixed',
+                fitParamFixedBy: 'Parameters fixed by you:',
+                fitParamFixedNote: 'Only the others were fitted; R² refers to that constrained model.',
+                alertFixNoValue: 'To fix {p} you must type its value.',
+                alertFitNoConverge: 'The fit with those values does not converge: try other initial values.',
                 curveFit: 'CURVE FITTING',
                 curveFitInfo: 'Fit a mathematical function to your experimental data.',
                 fitType: 'Fit Type',
@@ -7581,17 +7609,28 @@ basic.forever(function () {
                 tzeroStatusAt: 't = 0 está no ponto #{n}',
                 tzeroStatusShift: 't = 0 deslocado {v} {u} em relação ao primeiro ponto',
                 tzeroDone: 'Tempo zero aplicado',
-                derivTitle: 'Derivadas: v(t) e a(t)',
-                derivInfo: 'A partir de uma posição x(t) gera a velocidade v = dx/dt e a aceleração a = d²x/dt², em duas abas abaixo dos gráficos. São derivadas com um ajuste local (parábola por mínimos quadrados numa janela de pontos, como o Tracker): não modifica os dados medidos. Mais pontos de suavização = curvas mais limpas, porém com menos detalhe.',
+                derivTitle: 'Derivadas do ajuste: v(t) e a(t)',
+                derivInfo: 'Com um ajuste quadrático da posição, x(t) = a·t² + b·t + c (único ou por trechos), deriva o modelo ajustado: v(t) = 2a·t + b e a(t) = 2a, em duas abas abaixo dos gráficos. Como se deriva a curva ajustada e não os pontos medidos, os gráficos saem limpos. Pensado para estudar movimentos (queda livre, plano inclinado, MRUV).',
                 derivEnable: 'Mostrar gráficos de derivadas',
-                derivVar: 'Posição x(t)',
+                derivNeedFit: 'Primeiro faça um ajuste quadrático (Ajuste de curva → Quadrático, ou Automático se ele o escolher) sobre a posição. As derivadas saem desse ajuste.',
+                derivReady: 'Será derivado o ajuste de {y}: {eq}',
+                derivReadySeg: 'Serão derivados {n} trechos quadráticos do ajuste de {y}.',
+                derivCompare: 'Comparar com a derivada numérica dos dados',
                 derivWin: 'Suavização (pontos)',
                 derivExport: 'EXPORTAR CSV (t, x, v, a)',
                 derivVel: 'VELOCIDADE',
                 derivAcc: 'ACELERAÇÃO',
-                derivNote: 'Derivada de {x} com ajuste local de {w} pontos · {n} pontos',
-                derivNoData: 'Sem dados: capture ou carregue dados para ver as derivadas.',
-                derivFew: 'São necessários pelo menos 3 pontos para derivar.',
+                derivNoteSingle: 'Derivada do ajuste {eq}  →  {deq}',
+                derivNumericLabel: 'dados',
+                fitParamPanelTitle: 'Parâmetros do modelo (opcional): valor inicial e/ou fixar',
+                fitParamPanelHint: 'Deixe vazio para o app estimar. Com "Fixar", esse parâmetro fica no valor digitado e só os demais são ajustados (ex.: c = 0 se o movimento começa na origem, ou b = 0 se parte do repouso).',
+                fitParamAuto: 'auto',
+                fitParamFix: 'Fixar',
+                fitParamFixed: 'fixo',
+                fitParamFixedBy: 'Parâmetros fixados por você:',
+                fitParamFixedNote: 'Só os demais foram ajustados; o R² corresponde a esse modelo restrito.',
+                alertFixNoValue: 'Para fixar {p} é preciso digitar o seu valor.',
+                alertFitNoConverge: 'O ajuste com esses valores não converge: tente outros valores iniciais.',
                 curveFit: 'AJUSTE DE CURVA',
                 curveFitInfo: 'Ajuste uma função matemática aos seus dados experimentais.',
                 fitType: 'Tipo de Ajuste',
@@ -8201,8 +8240,11 @@ basic.forever(function () {
             _setTxt('tzeroFirstBtn', t.tzeroFirst); _setTxt('tzeroSelectedBtn', t.tzeroSelected);
             _setTxt('tzeroAtLabel', t.tzeroAtLabel); _setTxt('tzeroAtBtn', t.tzeroApply);
             _setTxt('derivTitle', t.derivTitle); _setTxt('derivInfo', t.derivInfo);
-            _setTxt('derivEnableLabel', t.derivEnable); _setTxt('derivVarLabel', t.derivVar);
+            _setTxt('derivEnableLabel', t.derivEnable); _setTxt('derivCompareLabel', t.derivCompare);
             _setTxt('derivWinLabel', t.derivWin); _setTxt('derivExportBtn', t.derivExport);
+            _setTxt('fitParamPanelTitle', t.fitParamPanelTitle); _setTxt('fitParamPanelHint', t.fitParamPanelHint);
+            if (typeof _renderFitParamPanel === 'function') _renderFitParamPanel();
+            if (typeof updateDerivAvailability === 'function') updateDerivAvailability();
             _setTxt('derivAxisYRole', t.axisYPrefix); _setTxt('derivAxisXRole', t.axisXPrefix);
             if (typeof updateTzeroStatus === 'function') updateTzeroStatus();
             if (typeof updateDerivCharts === 'function') updateDerivCharts();
@@ -11280,7 +11322,6 @@ bluetooth.startIOPinService()</pre>
             updateFitVariableOptions();
             updateIntegralVarOptions();
             updateIntegralGraphOptions();
-            if (typeof updateDerivVarOptions === 'function') updateDerivVarOptions();
 
             if (quiet !== true) uiAlert(tr('alertConfigApplied', {num}));
         }
@@ -17252,6 +17293,7 @@ bluetooth.startIOPinService()</pre>
             for (let i = 0; i < state.numGraphs; i++) {
                 updateChart(i, timeUnitValue);
             }
+            if (typeof updateDerivAvailability === 'function') updateDerivAvailability();
             if (typeof updateDerivCharts === 'function') updateDerivCharts();
             if (typeof updateTzeroStatus === 'function') updateTzeroStatus();
         }
@@ -18088,15 +18130,17 @@ bluetooth.startIOPinService()</pre>
             _tzeroApply(state.timeZeroOffset + v * unitVal);
         });
 
-        // ========== DERIVADAS: v(t) y a(t) a partir de x(t) (Análisis de datos) ==========
-        // Opcional: una tarjeta debajo de las gráficas con dos pestañas, v(t)
-        // y a(t), calculadas a partir de la variable elegida como posición.
-        // Derivación por ajuste local: en cada punto se ajusta una parábola por
-        // mínimos cuadrados a una ventana de W puntos centrada en él (como
-        // Tracker); v es la pendiente y a la curvatura en ese punto. No se
-        // modifican los datos medidos. En los bordes la ventana se recorta.
-        var derivState = { enabled: false, varIdx: 0, win: 5, tab: 'v', data: [] };
+        // ========== DERIVADAS DEL AJUSTE: v(t) y a(t) (Análisis de datos) ==========
+        // Opcional. Se habilita solo cuando hay un ajuste CUADRÁTICO (único o
+        // por tramos) de la variable que hace de posición. En vez de derivar
+        // los puntos medidos (ruidoso), se deriva el modelo ajustado:
+        //   x(t) = a·t² + b·t + c  →  v(t) = 2a·t + b  →  a(t) = 2a
+        // Así las gráficas de v y a salen limpias, que es lo que se busca para
+        // estudiar movimientos. Como opción se superpone la derivada numérica
+        // de los datos (ajuste local, como Tracker) para comparar.
+        var derivState = { enabled: false, win: 5, tab: 'v', compare: false, data: [], fits: [] };
         var derivChart = null;
+        const _DERIV_QUAD_TYPES = { quadratic: 1, quadraticNoC: 1, quadraticNoB: 1, quadraticOnlyA: 1 };
 
         // Ajuste y = c0 + c1·τ + c2·τ² (τ = t − t[jc]) sobre [j0, j1] → {v: c1, a: 2·c2}
         function _derivLocalFit(ts, xs, jc, j0, j1) {
@@ -18113,16 +18157,20 @@ bluetooth.startIOPinService()</pre>
             if (!isFinite(c1) || !isFinite(c2)) return null;
             return { v: c1, a: 2 * c2 };
         }
-        // Devuelve [{id, t, x, v, a}] en la unidad de tiempo actual (v en x/unidad, a en x/unidad²)
-        function computeDerivatives(varIdx, win) {
+        // Derivada numérica de los datos: [{id, t, x, v, a}] con x = eje X del
+        // ajuste (tiempo en la unidad actual u otra variable) e y = variable.
+        function computeDerivatives(varIdx, win, xAxis) {
             const unit = parseFloat(document.getElementById('timeUnit').value) || 1000;
+            const isTime = !xAxis || xAxis === 'time';
+            const xVar = isTime ? -1 : parseInt(xAxis.replace('var', ''));
+            const xOf = (d) => isTime ? (d.time - state.timeZeroOffset) / unit : d.values[xVar];
             const pts = state.rawData
-                .filter(d => isFinite(d.values[varIdx]))
-                .slice().sort((p, q) => p.time - q.time);
+                .filter(d => isFinite(d.values[varIdx]) && isFinite(xOf(d)))
+                .slice().sort((p, q) => xOf(p) - xOf(q));
             const n = pts.length;
             if (n < 3) return [];
             const ts = new Array(n), xs = new Array(n);
-            for (let i = 0; i < n; i++) { ts[i] = (pts[i].time - state.timeZeroOffset) / unit; xs[i] = pts[i].values[varIdx]; }
+            for (let i = 0; i < n; i++) { ts[i] = xOf(pts[i]); xs[i] = pts[i].values[varIdx]; }
             const half = Math.max(1, Math.floor(win / 2));
             const out = [];
             for (let i = 0; i < n; i++) {
@@ -18134,26 +18182,54 @@ bluetooth.startIOPinService()</pre>
             }
             return out;
         }
-        function updateDerivVarOptions() {
-            const select = document.getElementById('derivVarSelect');
-            if (!select) return;
-            const prev = parseInt(select.value);
-            select.innerHTML = '';
-            for (let i = 0; i < state.numVariables; i++) {
-                const opt = document.createElement('option');
-                opt.value = i;
-                opt.textContent = state.variables[i].name;
-                select.appendChild(opt);
+        // Coeficientes [a, b, c] del polinomio completo según la variante cuadrática
+        function _derivQuadCoeffs(fit) {
+            const c = fit.coeffs || [];
+            switch (fit.type) {
+                case 'quadratic': return [c[0], c[1], c[2]];
+                case 'quadraticNoC': return [c[0], c[1], 0];
+                case 'quadraticNoB': return [c[0], 0, c[1]];
+                case 'quadraticOnlyA': return [c[0], 0, 0];
+                default: return null;
             }
-            select.value = String((prev >= 0 && prev < state.numVariables) ? prev : 0);
-            derivState.varIdx = parseInt(select.value) || 0;
         }
-        function _derivTimeLabel() {
-            return getXAxisLabel('time');
+        // Ajustes cuadráticos disponibles: el ajuste único, o los tramos cuadráticos.
+        function _derivFits() {
+            const fr = state.fitResult;
+            if (fr && _DERIV_QUAD_TYPES[fr.type] && isFinite(fr.fitXMin) && isFinite(fr.fitXMax)) return [fr];
+            return (state.segmentFits || []).filter(sf => !sf.error && _DERIV_QUAD_TYPES[sf.type] && isFinite(sf.fitXMin) && isFinite(sf.fitXMax));
         }
         function _derivUnitName() {
             const unitVal = parseFloat(document.getElementById('timeUnit').value) || 1000;
             return unitVal === 1 ? 'ms' : unitVal === 60000 ? 'min' : 's';
+        }
+        // Eje X del ajuste: tiempo (símbolo t, unidad actual) u otra variable
+        function _derivXInfo(fit) {
+            const xAxis = (fit && fit.xAxis) || 'time';
+            if (xAxis === 'time') return { xAxis, sym: 't', label: getXAxisLabel('time'), unit: _derivUnitName() };
+            const name = getXAxisLabel(xAxis);
+            return { xAxis, sym: 'x', label: name, unit: name };
+        }
+        // Habilita la opción solo si hay un ajuste cuadrático; si se pierde el
+        // ajuste con la opción activa, la apaga y oculta la tarjeta.
+        function updateDerivAvailability() {
+            const cb = document.getElementById('derivEnable');
+            const hint = document.getElementById('derivHint');
+            if (!cb) return;
+            const fits = _derivFits();
+            const t = translations[currentLanguage] || {};
+            const ok = fits.length > 0;
+            cb.disabled = !ok;
+            if (!ok) {
+                if (hint) hint.textContent = t.derivNeedFit || 'Primero realizá un ajuste cuadrático (Ajuste de curva → Cuadrático, o Automático si lo elige) sobre la posición. Las derivadas salen de ese ajuste.';
+                if (derivState && derivState.enabled) { cb.checked = false; _derivSetEnabled(false); }
+                return;
+            }
+            const f = fits[0];
+            const yName = (state.variables[f.varIndex] || {}).name || 'y';
+            if (hint) hint.textContent = fits.length === 1
+                ? (t.derivReady || 'Se derivará el ajuste de {y}: {eq}').replace('{y}', yName).replace('{eq}', f.equation || '')
+                : (t.derivReadySeg || 'Se derivarán {n} tramos cuadráticos del ajuste de {y}.').replace('{n}', fits.length).replace('{y}', yName);
         }
         function createDerivChart() {
             const canvas = document.getElementById('derivChartCanvas');
@@ -18176,7 +18252,7 @@ bluetooth.startIOPinService()</pre>
                             padding: 10,
                             cornerRadius: 4,
                             callbacks: {
-                                label: (c) => `${c.dataset.label}: (${fmtTime(c.parsed.x)}, ${fmtNum(c.parsed.y)})`
+                                label: (c) => `${c.dataset.label}: (${fmtNum(c.parsed.x)}, ${fmtNum(c.parsed.y)})`
                             }
                         },
                         zoom: {
@@ -18204,62 +18280,94 @@ bluetooth.startIOPinService()</pre>
                 }
             });
         }
+        // Texto de la derivada de un ajuste: v(t) = 2a·t + b = …  /  a(t) = 2a = …
+        function _derivEqText(fit, which, sym) {
+            const [a, b] = _derivQuadCoeffs(fit);
+            const sgn = (v) => (v >= 0 ? '+' : '');
+            if (which === 'v') return `v(${sym}) = 2a·${sym} + b = ${fmtNum(2 * a)}·${sym} ${sgn(b)} ${fmtNum(b)}`;
+            return `a(${sym}) = 2a = ${fmtNum(2 * a)}`;
+        }
         // Recalcula y redibuja la pestaña activa. Se llama desde updateAllCharts
-        // (cada vez que cambian datos, T=0, unidad o variables) y al tocar opciones.
+        // (cada vez que cambian datos, ajustes, T=0, unidad o variables).
         function updateDerivCharts() {
             if (!derivState || !derivState.enabled) return;
             const container = document.getElementById('derivContainer');
             if (!container) return;
             createDerivChart();
             const t = translations[currentLanguage] || {};
-            const varIdx = derivState.varIdx;
-            const varDef = state.variables[varIdx] || { name: 'x', color: '#000' };
-            const xName = varDef.name || 'x';
-            const data = computeDerivatives(varIdx, derivState.win);
-            derivState.data = data;
+            const fits = _derivFits();
+            derivState.fits = fits;
             const isV = derivState.tab === 'v';
-            const unitName = _derivUnitName();
+            const f0 = fits[0];
+            const varIdx = f0 ? f0.varIndex : 0;
+            const yName = (state.variables[varIdx] || {}).name || 'x';
+            const xi = _derivXInfo(f0);
+            const sym = xi.sym;
             // Textos de la tarjeta
             const title = document.getElementById('derivGraphTitle');
             if (title) title.textContent = (isV ? (t.derivVel || 'VELOCIDAD') : (t.derivAcc || 'ACELERACIÓN')) +
-                (isV ? ` · v = d(${xName})/dt` : ` · a = d²(${xName})/dt²`);
-            const yLab = isV ? `v = d(${xName})/dt  [${xName} / ${unitName}]` : `a = d²(${xName})/dt²  [${xName} / ${unitName}²]`;
+                (isV ? ` · v = d(${yName})/d${sym}` : ` · a = d²(${yName})/d${sym}²`);
+            const yLab = isV ? `v = d(${yName})/d${sym}  [${yName} / ${xi.unit}]` : `a = d²(${yName})/d${sym}²  [${yName} / ${xi.unit}²]`;
             const ay = document.getElementById('derivAxisY'); if (ay) ay.textContent = yLab;
-            const ax = document.getElementById('derivAxisX'); if (ax) ax.textContent = _derivTimeLabel();
+            const ax = document.getElementById('derivAxisX'); if (ax) ax.textContent = xi.label;
             const note = document.getElementById('derivNote');
             if (note) {
-                if (!state.rawData.length) note.textContent = t.derivNoData || 'Sin datos: capturá o cargá datos para ver las derivadas.';
-                else if (data.length < 1) note.textContent = t.derivFew || 'Hacen falta al menos 3 puntos para derivar.';
-                else note.textContent = (t.derivNote || 'Derivada de {x} con ajuste local de {w} puntos · {n} puntos')
-                    .replace('{x}', xName).replace('{w}', derivState.win).replace('{n}', data.length);
+                if (!fits.length) note.textContent = t.derivNeedFit || 'Primero realizá un ajuste cuadrático.';
+                else if (fits.length === 1) note.textContent = (t.derivNoteSingle || 'Derivada del ajuste {eq}  →  {deq}')
+                    .replace('{eq}', f0.equation || '').replace('{deq}', _derivEqText(f0, isV ? 'v' : 'a', sym));
+                else note.textContent = fits.map((f, i) => `${t.segLabel || 'Tramo'} ${i + 1}: ${_derivEqText(f, isV ? 'v' : 'a', sym)}`).join('   ·   ');
             }
-            const exp = document.getElementById('derivExportBtn'); if (exp) exp.disabled = data.length === 0;
+            // Series: una curva por ajuste (modelo derivado, suave)
+            const datasets = [];
+            const single = fits.length === 1;
+            fits.forEach((f, i) => {
+                const [a, b] = _derivQuadCoeffs(f);
+                const lo = Math.min(f.fitXMin, f.fitXMax), hi = Math.max(f.fitXMin, f.fitXMax);
+                const N = 60, pts = [];
+                for (let k = 0; k <= N; k++) { const x = lo + (hi - lo) * k / N; pts.push({ x, y: isV ? 2 * a * x + b : 2 * a }); }
+                const color = single ? (isV ? '#1976d2' : '#d32f2f') : (f.color || '#d32f2f');
+                datasets.push({
+                    label: (isV ? 'v' : 'a') + (single ? '' : ` (${t.segLabel || 'Tramo'} ${i + 1})`),
+                    isFitCurve: true,
+                    data: pts,
+                    borderColor: color, backgroundColor: 'transparent', fill: false,
+                    borderWidth: 2.5, showLine: true, tension: 0,
+                    pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 6
+                });
+            });
+            // Opcional: derivada numérica de los datos, para comparar
+            let numeric = [];
+            if (derivState.compare && f0) {
+                numeric = computeDerivatives(varIdx, derivState.win, xi.xAxis);
+                if (numeric.length) datasets.push({
+                    label: (isV ? 'v' : 'a') + ' (' + (t.derivNumericLabel || 'datos') + ')',
+                    data: numeric.map(d => ({ x: d.t, y: isV ? d.v : d.a, id: d.id })),
+                    borderColor: 'rgba(0,0,0,0.35)', backgroundColor: 'rgba(0,0,0,0.35)', fill: false,
+                    showLine: false, pointRadius: 2.5, pointHoverRadius: 5, pointHitRadius: 8,
+                    pointBackgroundColor: 'rgba(0,0,0,0.35)', pointBorderColor: 'rgba(0,0,0,0.35)', pointBorderWidth: 0
+                });
+            }
+            // Tabla para exportar: en los x de los datos cubiertos por algún ajuste
+            const rows = [];
+            if (f0) {
+                const unit = parseFloat(document.getElementById('timeUnit').value) || 1000;
+                const isTime = xi.xAxis === 'time';
+                const xVar = isTime ? -1 : parseInt(xi.xAxis.replace('var', ''));
+                const numById = {}; numeric.forEach(d => { numById[d.id] = d; });
+                for (const d of state.rawData) {
+                    const x = isTime ? (d.time - state.timeZeroOffset) / unit : d.values[xVar];
+                    const f = fits.find(ff => x >= Math.min(ff.fitXMin, ff.fitXMax) - 1e-9 && x <= Math.max(ff.fitXMin, ff.fitXMax) + 1e-9);
+                    if (!f) continue;
+                    const [a, b, c] = _derivQuadCoeffs(f);
+                    const nm = numById[d.id];
+                    rows.push({ t: x, xm: a * x * x + b * x + c, vm: 2 * a * x + b, am: 2 * a, vn: nm ? nm.v : null, an: nm ? nm.a : null });
+                }
+            }
+            derivState.data = rows;
+            const exp = document.getElementById('derivExportBtn'); if (exp) exp.disabled = rows.length === 0;
             if (!derivChart) return;
-            const color = isV ? '#1976d2' : '#d32f2f';
-            let series = data.map(d => ({ x: d.t, y: isV ? d.v : d.a, id: d.id }));
-            // En captura: decimar lo dibujado (como las gráficas principales)
-            if (state.isCollecting && typeof decimateMinMax === 'function') series = decimateMinMax(series, LIVE_MAX_DRAW_POINTS);
-            const many = series.length > 600;
-            derivChart.data.datasets = [{
-                label: isV ? 'v' : 'a',
-                data: series,
-                borderColor: color,
-                backgroundColor: 'transparent',
-                fill: false,
-                borderWidth: 2.5,
-                borderCapStyle: 'round',
-                borderJoinStyle: 'round',
-                showLine: !!state.showLines,
-                tension: 0.35,
-                cubicInterpolationMode: 'monotone',
-                pointRadius: many ? (state.showLines ? 0 : 1.5) : 2.5,
-                pointHoverRadius: 6,
-                pointHitRadius: 8,
-                pointBackgroundColor: color,
-                pointBorderColor: '#fff',
-                pointBorderWidth: many ? 0 : 1
-            }];
-            derivChart.options.scales.x.title.text = _derivTimeLabel().toUpperCase();
+            derivChart.data.datasets = datasets;
+            derivChart.options.scales.x.title.text = xi.label.toUpperCase();
             derivChart.options.scales.y.title.text = yLab.toUpperCase();
             derivChart.update('none');
         }
@@ -18294,18 +18402,18 @@ bluetooth.startIOPinService()</pre>
             if (container) container.style.display = on ? '' : 'none';
             if (opts) opts.style.display = on ? '' : 'none';
             if (on) {
-                updateDerivVarOptions();
-                derivState.varIdx = parseInt(document.getElementById('derivVarSelect').value) || 0;
                 derivState.win = parseInt(document.getElementById('derivWinSelect').value) || 5;
+                derivState.compare = !!document.getElementById('derivCompare').checked;
+                if (derivChart) derivChart.resetZoom();
                 updateDerivCharts();
                 const c = document.getElementById('derivWrapper');
                 if (c && c.scrollIntoView) { try { c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {} }
             }
         }
         document.getElementById('derivEnable').addEventListener('change', function () { _derivSetEnabled(this.checked); });
-        document.getElementById('derivVarSelect').addEventListener('change', function () {
-            derivState.varIdx = parseInt(this.value) || 0;
-            if (derivChart) derivChart.resetZoom();
+        document.getElementById('derivCompare').addEventListener('change', function () {
+            derivState.compare = this.checked;
+            const row = document.getElementById('derivWinRow'); if (row) row.style.display = this.checked ? '' : 'none';
             updateDerivCharts();
         });
         document.getElementById('derivWinSelect').addEventListener('change', function () {
@@ -18314,19 +18422,22 @@ bluetooth.startIOPinService()</pre>
         });
         document.getElementById('derivExportBtn').addEventListener('click', () => {
             const data = derivState.data || [];
-            if (!data.length) return;
-            const xName = (state.variables[derivState.varIdx] || {}).name || 'x';
-            const u = _derivUnitName();
-            const rows = [`t (${u}),${xName},v (${xName}/${u}),a (${xName}/${u}²)`];
-            for (const d of data) rows.push(`${d.t},${d.x},${d.v},${d.a}`);
-            const blob = new Blob(['\ufeff' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+            const f0 = (derivState.fits || [])[0];
+            if (!data.length || !f0) return;
+            const yName = (state.variables[f0.varIndex] || {}).name || 'x';
+            const xi = _derivXInfo(f0);
+            const u = xi.unit;
+            const withNum = derivState.compare;
+            const rows = [`${xi.sym} (${u}),${yName} (modelo),v (${yName}/${u}),a (${yName}/${u}²)` + (withNum ? `,v datos (${yName}/${u}),a datos (${yName}/${u}²)` : '')];
+            for (const d of data) rows.push(`${d.t},${d.xm},${d.vm},${d.am}` + (withNum ? `,${d.vn == null ? '' : d.vn},${d.an == null ? '' : d.an}` : ''));
+            const blob = new Blob(['﻿' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = 'derivadas.csv';
             link.click();
             setTimeout(() => URL.revokeObjectURL(link.href), 2000);
         });
-        updateDerivVarOptions();
+        updateDerivAvailability();
 
         // ========== DEPURACIÓN DE DATOS ==========
 
@@ -19732,17 +19843,22 @@ bluetooth.startIOPinService()</pre>
             const expr = (exprEl && exprEl.value || '').trim();
             let names = [];
             if (expr) { try { names = detectCustomParams(expr); } catch (e) { /* ecuación incompleta: aún no mostramos params */ } }
-            // Preservar valores ya tipeados
-            const prev = {};
+            // Preservar valores ya tipeados (y las marcas de "Fijar")
+            const prev = {}, prevFix = {};
             cont.querySelectorAll('input[data-pname]').forEach(inp => { prev[inp.dataset.pname] = inp.value; });
+            cont.querySelectorAll('input[data-pfix]').forEach(inp => { prevFix[inp.dataset.pfix] = inp.checked; });
             if (names.length === 0) { cont.innerHTML = ''; return; }
-            const titleTxt = (translations[currentLanguage] && translations[currentLanguage].customInitial) || 'Valores iniciales (opcional):';
+            const tI = translations[currentLanguage] || {};
+            const titleTxt = tI.customInitial || 'Valores iniciales (opcional):';
+            const fixTxt = tI.fitParamFix || 'Fijar';
             let html = `<div style="font-size:0.7rem; color:#1565c0; font-weight:700;">${titleTxt}</div>`;
             names.forEach(n => {
                 const v = (prev[n] != null && prev[n] !== '') ? prev[n] : '1';
-                html += `<div class="input-row" style="gap:6px; align-items:center;">`
-                      + `<label style="flex:0 0 auto; min-width:54px; margin:0; font-family:monospace;">${_escHtml(n)} =</label>`
-                      + `<input type="number" step="any" data-pname="${_escHtml(n)}" value="${_escHtml(v)}" style="font-size:12px; flex:1;"></div>`;
+                html += `<div style="display:flex; align-items:center; gap:6px; margin:3px 0;">`
+                      + `<label style="flex:0 0 auto; min-width:54px; margin:0; font-family:monospace; font-size:0.8rem; text-transform:none;">${_escHtml(n)} =</label>`
+                      + `<input type="number" step="any" data-pname="${_escHtml(n)}" value="${_escHtml(v)}" style="font-size:12px; flex:1; min-width:0; width:auto;">`
+                      + `<label style="flex:0 0 auto; margin:0; font-size:0.72rem; text-transform:none; display:flex; align-items:center; gap:3px; cursor:pointer;"><input type="checkbox" data-pfix="${_escHtml(n)}" ${prevFix[n] ? 'checked' : ''} style="margin:0; width:auto;">${_escHtml(fixTxt)}</label>`
+                      + `</div>`;
             });
             cont.innerHTML = html;
         }
@@ -19754,6 +19870,7 @@ bluetooth.startIOPinService()</pre>
                 const box = document.getElementById('customFitInputs');
                 if (box) box.style.display = isCustom ? 'block' : 'none';
                 if (isCustom) _renderCustomParamInputs();
+                if (typeof _renderFitParamPanel === 'function') _renderFitParamPanel();
                 // Refrescar botón + hint al elegir el modelo (así el usuario ve
                 // enseguida si ya puede realizar el ajuste y con qué datos)
                 updateCurveFitButtons();
@@ -20135,6 +20252,168 @@ bluetooth.startIOPinService()</pre>
             _fitGraphSelect.addEventListener('change', _syncFitVariableToSelectedGraph);
         }
 
+        // ===== Parámetros del ajuste: valores iniciales y parámetros fijos =====
+        // Para cada modelo incorporado el usuario puede escribir un valor
+        // inicial por parámetro y/o marcar "Fijar". El ajuste libre se hace
+        // igual que siempre y, si hay algo que aplicar, se reajusta con el
+        // mismo Levenberg-Marquardt de la ecuación personalizada variando
+        // solo los parámetros libres, partiendo de los valores dados (o de los
+        // del ajuste libre para los que quedaron vacíos).
+        function _fitParamSymbols(type) {
+            switch (type) {
+                case 'linear': return ['m', 'b'];
+                case 'quadratic': return ['a', 'b', 'c'];
+                case 'quadraticNoC': return ['a', 'b'];
+                case 'quadraticNoB': return ['a', 'c'];
+                case 'quadraticOnlyA': return ['a'];
+                case 'cubic': return ['a', 'b', 'c', 'd'];
+                case 'exponential': return ['a', 'b'];
+                case 'power': return ['a', 'b'];
+                case 'logarithmic': return ['a', 'b'];
+                case 'inverse': return ['a', 'b'];
+                case 'sinusoidal': return ['A', 'ω', 'φ', 'C'];
+                case 'saturating': return ['A', 'B', 'k'];
+                default: return [];
+            }
+        }
+        function _fitModelText(type) {
+            switch (type) {
+                case 'linear': return 'y = m·x + b';
+                case 'quadratic': return 'y = a·x² + b·x + c';
+                case 'quadraticNoC': return 'y = a·x² + b·x';
+                case 'quadraticNoB': return 'y = a·x² + c';
+                case 'quadraticOnlyA': return 'y = a·x²';
+                case 'cubic': return 'y = a·x³ + b·x² + c·x + d';
+                case 'exponential': return 'y = a·e^(b·x)';
+                case 'power': return 'y = a·x^b';
+                case 'logarithmic': return 'y = a·ln(x) + b';
+                case 'inverse': return 'y = a/x + b';
+                case 'sinusoidal': return 'y = A·sin(ω·x + φ) + C';
+                case 'saturating': return 'y = A − B·e^(−k·x)';
+                default: return '';
+            }
+        }
+        function _renderFitParamPanel() {
+            const panel = document.getElementById('fitParamPanel');
+            const rows = document.getElementById('fitParamRows');
+            if (!panel || !rows) return;
+            const type = document.getElementById('fitType').value;
+            const syms = _fitParamSymbols(type);
+            if (!syms.length) { panel.style.display = 'none'; rows.innerHTML = ''; return; }
+            // Preservar lo tipeado al cambiar de modelo (mismo símbolo)
+            const prev = {}, prevFix = {};
+            rows.querySelectorAll('input[data-fp]').forEach(i => { prev[i.dataset.fp] = i.value; });
+            rows.querySelectorAll('input[data-fpfix]').forEach(i => { prevFix[i.dataset.fpfix] = i.checked; });
+            const t = translations[currentLanguage] || {};
+            let html = `<div style="font-family:monospace; font-size:0.75rem; color:#333; margin-bottom:4px;">${_escHtml(_fitModelText(type))}</div>`;
+            syms.forEach(sym => {
+                html += `<div style="display:flex; align-items:center; gap:6px; margin:3px 0;">`
+                      + `<label style="flex:0 0 auto; min-width:34px; margin:0; font-family:monospace; font-size:0.8rem; text-transform:none;">${_escHtml(sym)} =</label>`
+                      + `<input type="number" step="any" data-fp="${_escHtml(sym)}" value="${_escHtml(prev[sym] || '')}" placeholder="${_escHtml(t.fitParamAuto || 'auto')}" style="font-size:12px; flex:1; min-width:0; width:auto;">`
+                      + `<label style="flex:0 0 auto; margin:0; font-size:0.72rem; text-transform:none; display:flex; align-items:center; gap:3px; cursor:pointer;"><input type="checkbox" data-fpfix="${_escHtml(sym)}" ${prevFix[sym] ? 'checked' : ''} style="margin:0; width:auto;">${_escHtml(t.fitParamFix || 'Fijar')}</label>`
+                      + `</div>`;
+            });
+            rows.innerHTML = html;
+            panel.style.display = 'block';
+        }
+        // Lee valores iniciales y marcas de "Fijar". Devuelve {init, fixed} o
+        // null si no hay nada que aplicar. Lanza si se marcó "Fijar" sin valor.
+        function _readFitConstraints(type, nParams) {
+            const init = new Array(nParams).fill(null), fixed = new Array(nParams).fill(false);
+            let any = false;
+            const t = translations[currentLanguage] || {};
+            if (type === 'custom') {
+                const inputs = document.querySelectorAll('#customFitParams input[data-pname]');
+                inputs.forEach((inp, i) => {
+                    if (i >= nParams) return;
+                    const fx = document.querySelector(`#customFitParams input[data-pfix="${inp.dataset.pname}"]`);
+                    if (!fx || !fx.checked) return;
+                    const v = parseFloat(inp.value);
+                    if (!Number.isFinite(v)) throw new Error((t.alertFixNoValue || 'Para fijar {p} tenés que escribir su valor.').replace('{p}', inp.dataset.pname));
+                    fixed[i] = true; init[i] = v; any = true;
+                });
+            } else {
+                _fitParamSymbols(type).forEach((sym, i) => {
+                    const inp = document.querySelector(`#fitParamRows input[data-fp="${sym}"]`);
+                    const fx = document.querySelector(`#fitParamRows input[data-fpfix="${sym}"]`);
+                    const v = inp ? parseFloat(inp.value) : NaN;
+                    if (Number.isFinite(v)) { init[i] = v; any = true; }
+                    if (fx && fx.checked) {
+                        if (!Number.isFinite(v)) throw new Error((t.alertFixNoValue || 'Para fijar {p} tenés que escribir su valor.').replace('{p}', sym));
+                        fixed[i] = true; any = true;
+                    }
+                });
+            }
+            return any ? { init, fixed } : null;
+        }
+        // Ecuación en texto a partir del tipo y los coeficientes (mismo formato
+        // que cada ajuste individual).
+        function _formatModelEquation(type, c, xShift, ctx) {
+            const sgn = (v) => (v >= 0 ? '+' : '');
+            const x0 = xShift || 0;
+            switch (type) {
+                case 'linear': return `y = ${fmtNum(c[0])}x ${sgn(c[1])} ${fmtNum(c[1])}`;
+                case 'quadratic': return `y = ${fmtNum(c[0])}x² ${sgn(c[1])} ${fmtNum(c[1])}x ${sgn(c[2])} ${fmtNum(c[2])}`;
+                case 'quadraticNoC': return `y = ${fmtNum(c[0])}x² ${sgn(c[1])} ${fmtNum(c[1])}x`;
+                case 'quadraticNoB': return `y = ${fmtNum(c[0])}x² ${sgn(c[1])} ${fmtNum(c[1])}`;
+                case 'quadraticOnlyA': return `y = ${fmtNum(c[0])}x²`;
+                case 'cubic': return `y = ${fmtNum(c[0])}x³ ${sgn(c[1])} ${fmtNum(c[1])}x² ${sgn(c[2])} ${fmtNum(c[2])}x ${sgn(c[3])} ${fmtNum(c[3])}`;
+                case 'exponential': return Math.abs(x0) < 1e-9
+                    ? `y = ${fmtNum(c[0])}·e^(${fmtNum(c[1])}x)`
+                    : `y = ${fmtNum(c[0])}·e^(${fmtNum(c[1])}·(x − ${fmtNum(x0)}))`;
+                case 'power': return `y = ${fmtNum(c[0])}·x^${fmtNum(c[1])}`;
+                case 'logarithmic': return `y = ${fmtNum(c[0])}·ln(x) ${sgn(c[1])} ${fmtNum(c[1])}`;
+                case 'inverse': return `y = ${fmtNum(c[0])}/x ${sgn(c[1])} ${fmtNum(c[1])}`;
+                case 'sinusoidal': return `y = ${fmtNum(c[0])}·sin(${fmtNum(c[1])}x ${sgn(c[2])} ${fmtNum(c[2])}) ${sgn(c[3])} ${fmtNum(c[3])}`;
+                case 'saturating': return Math.abs(x0) < 1e-9
+                    ? `y = ${fmtNum(c[0])} − ${fmtNum(c[1])}·e^(−${fmtNum(c[2])}x)`
+                    : `y = ${fmtNum(c[0])} − ${fmtNum(c[1])}·e^(−${fmtNum(c[2])}·(x − ${fmtNum(x0)}))`;
+                case 'custom': return `y = ${(ctx && ctx.expr) || ''}`;
+                default: return '';
+            }
+        }
+        // Reajusta respetando parámetros fijos y/o valores iniciales del usuario.
+        // `base` es el resultado del ajuste libre (performCurveFit).
+        function refitWithConstraints(type, xData, yData, base, cons) {
+            const names = (type === 'custom') ? (base.paramNames || []).slice() : _fitParamSymbols(type);
+            const xShift = base.xShift || 0;
+            const xs = xData.map(x => x - xShift);
+            const ctx = (type === 'custom') ? { expr: base.expr, paramNames: base.paramNames, degrees: base.degrees } : null;
+            let f;
+            if (type === 'custom') {
+                const compiled = math.compile(base.expr);
+                const trig = base.degrees ? _degTrigScope() : null;
+                f = (x, params) => { const v = compiled.evaluate(trig ? { x, ...params, ...trig } : { x, ...params }); return (typeof v === 'number') ? v : NaN; };
+            } else {
+                f = (x, params) => createPredictor(type, names.map(nm => params[nm]), 0)(x);
+            }
+            const paramsObj = {};
+            names.forEach((nm, i) => {
+                const v = cons.init[i];
+                paramsObj[nm] = Number.isFinite(v) ? v : (Number.isFinite(base.coeffs[i]) ? base.coeffs[i] : 1);
+            });
+            const freeNames = names.filter((nm, i) => !cons.fixed[i]);
+            const t = translations[currentLanguage] || {};
+            let errorsByName = {}, r2, converged = true;
+            if (freeNames.length) {
+                const res = _customLMFit(f, xs, yData, paramsObj, freeNames, { maxIter: 300 });
+                if (res.error || !Number.isFinite(res.r2)) throw new Error(res.error || t.alertFitNoConverge || 'El ajuste con esos valores no converge: probá otros valores iniciales.');
+                errorsByName = res.errors; r2 = res.r2; converged = res.converged;
+            } else {
+                r2 = calculateR2(xData, yData, (x) => f(x - xShift, paramsObj));
+            }
+            const coeffs = names.map(nm => paramsObj[nm]);
+            const errors = names.map((nm, i) => cons.fixed[i] ? 0 : errorsByName[nm]);
+            return {
+                ...base,
+                coeffs, errors, r2: sanitizeR2(r2),
+                predict: (x) => f(x - xShift, paramsObj),
+                equation: _formatModelEquation(type, coeffs, xShift, ctx),
+                fixedMask: cons.fixed.slice(), initValues: cons.init.slice(), converged
+            };
+        }
+        _renderFitParamPanel();
+
         document.getElementById('performFitBtn').addEventListener('click', () => {
             track('ajuste_curva', 'datos');
             try {
@@ -20234,6 +20513,9 @@ bluetooth.startIOPinService()</pre>
                     autoRanking = det.ranking;
                 } else {
                     fitResult = performCurveFit(fitType, xData, yData, fitOpts);
+                    // Valores iniciales y/o parámetros fijos del usuario
+                    const cons = _readFitConstraints(fitType, fitResult.coeffs.length);
+                    if (cons) fitResult = refitWithConstraints(fitType, xData, yData, fitResult, cons);
                 }
 
                 // Guardar resultado en estado.
@@ -20277,6 +20559,7 @@ bluetooth.startIOPinService()</pre>
                 // personalizado trae sus propios nombres (a, b, tau, ...).
                 const errorsDiv = document.getElementById('fitParamErrors');
                 const paramNames = fitResult.paramNames || getParamNames(fitResult.type);
+                const tFix = translations[currentLanguage] || {};
                 let errHtml = '';
                 for (let i = 0; i < fitResult.coeffs.length; i++) {
                     const name = paramNames[i] || `p${i}`;
@@ -20285,7 +20568,9 @@ bluetooth.startIOPinService()</pre>
                     // isFinite cubre NaN e Infinity (isNaN no detecta Infinity)
                     const errStr = isFinite(err) ? fmtNumHtml(err) : 'N/A';
                     const valStr = isFinite(val) ? fmtNumHtml(val) : 'N/A';
-                    errHtml += `<div class="didactic-row"><span class="lbl">${_escHtml(name)}</span><span class="val">${valStr} ± ${errStr}</span></div>`;
+                    const isFixed = !!(fitResult.fixedMask && fitResult.fixedMask[i]);
+                    const tail = isFixed ? ` <span style="color:#1565c0; font-weight:700;">(${_escHtml(tFix.fitParamFixed || 'fijo')})</span>` : ` ± ${errStr}`;
+                    errHtml += `<div class="didactic-row"><span class="lbl">${_escHtml(name)}</span><span class="val">${valStr}${tail}</span></div>`;
                 }
                 errorsDiv.innerHTML = errHtml;
 
@@ -20296,6 +20581,11 @@ bluetooth.startIOPinService()</pre>
                 // automático incluye la comparación de modelos probados)
                 const explainEl = document.getElementById('fitExplain');
                 explainEl.innerHTML = _explainFitType(fitResult.type, state.fitResult);
+                if (fitResult.fixedMask && fitResult.fixedMask.some(Boolean)) {
+                    const syms = fitResult.paramNames || _fitParamSymbols(fitResult.type);
+                    const list = fitResult.fixedMask.map((fx, i) => fx ? `${syms[i]} = ${fmtNum(fitResult.coeffs[i])}` : null).filter(Boolean).join(', ');
+                    explainEl.innerHTML += `<div style="margin-top:6px;"><b>${_escHtml(tFix.fitParamFixedBy || 'Parámetros fijados por vos:')}</b> ${_escHtml(list)}. ${_escHtml(tFix.fitParamFixedNote || 'Se ajustaron solo los demás; el R² corresponde a ese modelo restringido.')}</div>`;
+                }
 
                 // Actualizar gráfico con la curva de ajuste
                 updateAllCharts();
