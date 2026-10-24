@@ -37556,25 +37556,34 @@ bluetooth.startIOPinService()</pre>
     var EXT_BT_REPO = 'github:martinferreiraHCA/pxt-fisicabit-usb#bluetooth';
     // El CDN de MakeCode cachea el contenido de una extensión POR NOMBRE de rama
     // (puede servir una versión vieja durante horas), pero por SHA de commit es
-    // siempre exacto. Por eso las dependencias se fijan al SHA actual de la rama,
-    // consultado al momento (con respaldo a la referencia por nombre si no hay red).
+    // siempre exacto. Por eso las dependencias se fijan al SHA actual de la rama.
+    // El SHA se pide primero a la API de GitHub (siempre al día; límite de 60
+    // consultas por hora por IP, por eso se cachea 10 minutos también entre
+    // recargas) y, si falla, al servicio de refs de MakeCode, que también
+    // cachea y puede quedarse horas en el commit anterior. Sin red, referencia
+    // por nombre.
     var REPO_PATH = 'martinferreiraHCA/pxt-fisicabit-usb';
-    var _refCache = {};   // rama → { sha, at }
+    var LS_REFS = 'fisicabit_makecode_refs_v1';
+    var _refCache = loadJSON(LS_REFS, {});   // rama → { sha, at }
     async function resolveShaAsync(branch) {
         var c = _refCache[branch];
-        if (c && Date.now() - c.at < 10 * 60 * 1000) return c.sha;
+        if (c && typeof c.sha === 'string' && Date.now() - c.at < 10 * 60 * 1000) return c.sha;
         var sha = null;
         try {
-            var r = await withTimeout(fetch('https://www.makecode.com/api/gh/' + REPO_PATH + '/refs?rnd=' + Math.random(), { cache: 'no-store' }).then(function (x) { return x.json(); }), 6000);
-            sha = (r && r.refs && r.refs['refs/heads/' + branch]) || null;
+            var g = await withTimeout(fetch('https://api.github.com/repos/' + REPO_PATH + '/commits/' + encodeURIComponent(branch), { cache: 'no-store', headers: { Accept: 'application/vnd.github.sha' } })
+                .then(function (x) { return x.ok ? x.text() : ''; }), 6000);
+            sha = (typeof g === 'string' && /^[0-9a-f]{40}$/.test(g.trim())) ? g.trim() : null;
         } catch (_) {}
         if (!sha) {
             try {
-                var g = await withTimeout(fetch('https://api.github.com/repos/' + REPO_PATH + '/commits/' + encodeURIComponent(branch), { headers: { Accept: 'application/vnd.github+json' } }).then(function (x) { return x.json(); }), 6000);
-                sha = (g && typeof g.sha === 'string' && /^[0-9a-f]{40}$/.test(g.sha)) ? g.sha : null;
+                var r = await withTimeout(fetch('https://www.makecode.com/api/gh/' + REPO_PATH + '/refs?rnd=' + Math.random(), { cache: 'no-store' }).then(function (x) { return x.json(); }), 6000);
+                sha = (r && r.refs && r.refs['refs/heads/' + branch]) || null;
             } catch (_) {}
         }
-        if (sha) _refCache[branch] = { sha: sha, at: Date.now() };
+        if (sha) {
+            _refCache[branch] = { sha: sha, at: Date.now() };
+            try { localStorage.setItem(LS_REFS, JSON.stringify(_refCache)); } catch (_) {}
+        }
         return sha;
     }
     async function usbDepAsync() { var sha = await resolveShaAsync('main'); return sha ? 'github:' + REPO_PATH + '#' + sha : EXT_REPO; }
