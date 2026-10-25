@@ -42,6 +42,7 @@ piezas del modo cartón, con su miniatura (vista armada en 3D).
 | `atril-para-microbit.scad` | 3 (2 distintas) | Atril inclinado para la micro:bit (pantalla, brújula, acelerómetro). |
 | `soporte-de-celular.scad` | 3 (2 distintas) | Soporte para filmar con el celular fijo (Tracker, Video + Movimiento). |
 | `caja-encastrable.scad` | 5 (3 distintas) | Caja sin pegamento para guardar piezas, sensores o masas. |
+| `caja-rectangular.scad` | 6 | Caja cerrada con largo, ancho y alto independientes, armada como el pie para varilla (paredes en molinete con pestañas, base y tapa salientes), y hasta dos agujeros redondos, cada uno en la cara que elijas, con diámetro y posición. |
 | `caja-cubica.scad` | 6 | Cubo cerrado de 10 cm con la misma lógica de encastre que el pie para varilla (paredes en molinete con pestañas, base y tapa que sobresalen), tapa desmontable y un agujero redondo configurable (diámetro y posición) en cada cara: mirilla para el ojo, estenopo de cámara oscura, lente, LED o sensor. |
 | `regla-y-transportador.scad` | 2 | Regla de 20 cm y transportador de 180°, para pegar sobre cartón. |
 
