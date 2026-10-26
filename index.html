@@ -867,6 +867,36 @@
             margin-bottom: 0;
         }
 
+        /* Modo TIRADAS: franja guía sobre las gráficas */
+        .toolbar-btn.runs-on { background:#1565c0; color:#fff; border-color:#1565c0; }
+        .runs-strip { border:2px solid #1565c0; border-radius:6px; padding:8px 10px; margin-bottom:14px; background:#f4f8ff; font-size:0.8rem; }
+        .runs-head { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; }
+        .runs-title { font-weight:800; letter-spacing:0.5px; color:#1565c0; }
+        .runs-stats { color:#263238; font-weight:600; }
+        .runs-actions { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-left:auto; }
+        .runs-opt { display:flex; align-items:center; gap:4px; font-size:0.72rem; text-transform:none; cursor:pointer; white-space:nowrap; }
+        .runs-opt input[type=number] { width:44px; font-size:0.72rem; padding:2px 4px; }
+        .runs-opt input[type=checkbox] { margin:0; width:auto; }
+        .runs-guide { margin-top:6px; color:#37474f; line-height:1.4; }
+        .runs-pending { margin-top:8px; padding:8px 10px; background:#fff8e1; border:1px solid #ffca28; border-radius:5px; line-height:1.4; }
+        .runs-pending.warn { background:#fdecea; border-color:#ef9a9a; }
+        .runs-pending .runs-btns, .runs-detail .runs-btns { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+        .runs-pending .toolbar-btn, .runs-detail .toolbar-btn, .runs-actions .toolbar-btn { padding:3px 8px; font-size:0.7rem; }
+        .runs-chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
+        .runs-chip { border:1.5px solid #999; background:#fff; padding:2px 7px; font-size:0.7rem; font-weight:700; cursor:pointer; border-radius:12px; color:#555; line-height:1.4; }
+        .runs-chip.accepted { border-color:#2e7d32; color:#2e7d32; }
+        .runs-chip.suspicious { border-color:#ef6c00; color:#ef6c00; background:#fff3e0; }
+        .runs-chip.discarded { border-color:#bbb; color:#aaa; text-decoration:line-through; }
+        .runs-chip.pending { border-color:#1565c0; color:#1565c0; background:#e3f2fd; }
+        .runs-chip.current { box-shadow:0 0 0 2px #1565c0; }
+        .runs-detail { margin-top:8px; padding:8px 10px; background:#fff; border:1px solid #90caf9; border-radius:5px; line-height:1.5; }
+        .runs-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px; }
+        .runs-card { border:1.5px solid #ccc; border-radius:5px; padding:6px; background:#fff; font-size:0.72rem; }
+        .runs-card.accepted { border-color:#2e7d32; } .runs-card.suspicious { border-color:#ef6c00; } .runs-card.discarded { opacity:0.55; } .runs-card.pending { border-color:#1565c0; }
+        .runs-card canvas { width:100%; height:80px; display:block; background:#fafafa; border:1px solid #eee; }
+        .runs-card .runs-btns { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+        .runs-card .toolbar-btn { padding:2px 6px; font-size:0.64rem; }
+
         /* Tarjeta de derivadas (v(t) / a(t)) con pestañas */
         .deriv-tabs { display:flex; gap:0; border:1.5px solid #999; }
         .deriv-tabs button {
@@ -4854,6 +4884,7 @@
                 <button id="connectBluetoothBtn" class="toolbar-btn bluetooth">BLUETOOTH</button>
                 <button id="collectBtn" class="toolbar-btn primary" style="display:none;">CAPTURAR</button>
                 <button id="stopBtn" class="toolbar-btn" style="display:none;">DETENER</button>
+                <button id="tiradasBtn" class="toolbar-btn" onclick="runsToggle()" title="Repetir el experimento muchas veces y sumar las tiradas">TIRADAS</button>
                 <button id="cameraBtn" class="toolbar-btn">CÁMARA</button>
             </span>
         </span>
@@ -5004,6 +5035,25 @@
     <div class="main-container">
         <!-- Gráficas -->
         <div class="graph-panel">
+            <!-- Modo TIRADAS: franja guía (botón TIRADAS de la barra) -->
+            <div class="runs-strip" id="runsStrip" style="display:none;">
+                <div class="runs-head">
+                    <span class="runs-title" id="runsTitle">TIRADAS</span>
+                    <span class="runs-stats" id="runsStats"></span>
+                    <span class="runs-actions">
+                        <label class="runs-opt"><span id="runsCalibLabel">Calibración:</span> <input type="number" id="runsCalibCount" min="1" max="10" value="3"> <span id="runsCalibUnit">tiradas</span></label>
+                        <label class="runs-opt"><input type="checkbox" id="runsShowCloud" checked> <span id="runsShowCloudLabel">Nube de puntos</span></label>
+                        <label class="runs-opt"><input type="checkbox" id="runsShowMean" checked> <span id="runsShowMeanLabel">Promedio ± desvío</span></label>
+                        <label class="runs-opt"><input type="checkbox" id="runsIncludeSpurious"> <span id="runsIncludeSpuriousLabel">Incluir puntos espurios</span></label>
+                        <button type="button" class="toolbar-btn" id="runsViewAllBtn" onclick="runsOpenAll()">VER TODAS</button>
+                        <button type="button" class="toolbar-btn" id="runsFinishBtn" onclick="runsFinish()">TERMINAR</button>
+                    </span>
+                </div>
+                <div class="runs-guide" id="runsGuide"></div>
+                <div class="runs-pending" id="runsPending" style="display:none;"></div>
+                <div class="runs-chips" id="runsChips"></div>
+                <div class="runs-detail" id="runsDetail" style="display:none;"></div>
+            </div>
             <div class="graphs-container" id="graphsContainer">
                 <!-- Las gráficas se generan dinámicamente aquí -->
             </div>
@@ -5796,6 +5846,16 @@
                 </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal TIRADAS: todas las tiradas en una grilla -->
+    <div class="modal" id="runsAllModal">
+        <div class="modal-content" style="max-width: 980px;">
+            <div class="modal-header" id="runsAllTitle">TODAS LAS TIRADAS</div>
+            <div id="runsAllInfo" style="font-size:0.75rem; color:#546e7a; margin-bottom:8px;"></div>
+            <div style="max-height:65vh; overflow:auto;"><div class="runs-grid" id="runsAllGrid"></div></div>
+            <button class="toolbar-btn primary modal-close" onclick="runsCloseAll()" id="runsAllClose" style="margin-top:10px;">CERRAR</button>
         </div>
     </div>
 
@@ -6596,6 +6656,52 @@ basic.forever(function () {
                 showLines: 'Unir los puntos con una línea',
                 applyGraphConfig: 'APLICAR CONFIGURACIÓN',
                 setZero: 'ESTABLECER T=0',
+                runsBtn: 'TIRADAS',
+                runsOne: 'tirada',
+                runsTitle: 'TIRADAS',
+                runsCalib: 'Calibración:',
+                runsCalibUnit: 'tiradas',
+                runsShowCloud: 'Nube de puntos',
+                runsShowMean: 'Promedio ± desvío',
+                runsIncludeSpurious: 'Incluir puntos espurios',
+                runsViewAll: 'VER TODAS',
+                runsFinish: 'TERMINAR',
+                runsAllTitle: 'TODAS LAS TIRADAS',
+                runsStats: '{n} tiradas · {acc} aceptadas · {sus} sospechosas · {pts} puntos sumados',
+                runsFitLine: 'Ajuste con {n} tiradas: {eq}',
+                runsGuideStart: 'Paso 1 · Calibración ({c} tiradas): tocá CAPTURAR, hacé el experimento y tocá DETENER. Después marcá el tramo útil de esa tirada. Con las tiradas de calibración la app aprende la duración y la forma del tramo útil.',
+                runsGuideCalibNext: 'Calibración: tirada {n} de {c} lista. Tocá CAPTURAR para la siguiente tirada.',
+                runsGuideAuto: 'Paso 2 · Automático: cada tirada nueva se recorta y se alinea sola comparándola con el patrón de las aceptadas. Tocá CAPTURAR para la tirada {n} y TERMINAR cuando quieras parar. Las tiradas que se alejen del patrón quedan marcadas para que las revises.',
+                runsGuideCapturing: 'Capturando la tirada {n}… Tocá DETENER cuando termine el movimiento.',
+                runsGuideFinished: 'Tiradas terminadas: {acc} aceptadas, {pts} puntos. El análisis se hace como siempre sobre esta gráfica.',
+                runsPendMark: 'Tirada {n}: marcá el tramo útil. Seleccioná por arrastre (⬚) los puntos del movimiento sobre la gráfica y tocá USAR SELECCIÓN, o tocá SUGERIR para una propuesta automática.',
+                runsPendSuspicious: 'Tirada {n} sospechosa: {why}. Podés aceptarla igual, descartarla o marcar el tramo a mano.',
+                runsWhyDev: 'se aleja {d} % del patrón (lo normal es hasta {lim} %)',
+                runsWhyShort: 'es más corta que el tramo útil ({d} s de {need} s)',
+                runsWhyFew: 'tiene muy pocos puntos',
+                runsUseSel: 'USAR SELECCIÓN',
+                runsSuggest: 'SUGERIR',
+                runsAccept: 'ACEPTAR',
+                runsDiscard: 'DESCARTAR',
+                runsMark: 'MARCAR TRAMO A MANO',
+                runsViewOne: 'VER SOLA',
+                runsViewBack: 'VER TODAS JUNTAS',
+                runsClose: 'CERRAR',
+                runsDetail: 'Tirada {n} · {pts} puntos útiles de {raw} · tramo {dur} s · desvío {dev} % · {st}',
+                runsStAccepted: 'aceptada',
+                runsStSuspicious: 'sospechosa',
+                runsStDiscarded: 'descartada',
+                runsStPending: 'pendiente',
+                runsSpurious: '{k} puntos espurios marcados (se alejan más de 3 desvíos del promedio)',
+                runsToastAccepted: 'Tirada {n} aceptada · desvío {d} %',
+                runsToastDiscarded: 'Tirada {n} descartada',
+                runsToastEmpty: 'La tirada no tiene datos suficientes: capturá otra vez.',
+                runsAlertSel: 'Seleccioná al menos 3 puntos seguidos del tramo útil.',
+                runsAskExisting: 'Hay {n} puntos cargados. ¿Usarlos como tirada 1? (Cancelar = empezar las tiradas de cero y borrarlos)',
+                runsAskFinish: '¿Terminar las tiradas? Los datos quedan consolidados en la gráfica; podés volver a abrir TIRADAS para seguir sumando.',
+                runsMeanLabel: 'Promedio de tiradas',
+                runsBandLabel: 'Promedio ± desvío',
+                runsAllInfo: '{n} tiradas · gris: tirada completa · color: tramo útil alineado. Tocá una ficha de la franja para verla en la gráfica.',
                 tzeroTitle: 'TIEMPO CERO (t = 0)',
                 tzeroHint: 'Elegí desde dónde se cuenta el tiempo. No borra datos: solo corre el eje de tiempo de las gráficas y la tabla (los puntos anteriores quedan con tiempo negativo).',
                 tzeroFirst: 't = 0 EN EL PRIMER PUNTO',
@@ -7098,6 +7204,52 @@ basic.forever(function () {
                 showLines: 'Join the points with a line',
                 applyGraphConfig: 'APPLY CONFIGURATION',
                 setZero: 'SET T=0',
+                runsBtn: 'RUNS',
+                runsOne: 'run',
+                runsTitle: 'RUNS',
+                runsCalib: 'Calibration:',
+                runsCalibUnit: 'runs',
+                runsShowCloud: 'Point cloud',
+                runsShowMean: 'Mean ± deviation',
+                runsIncludeSpurious: 'Include spurious points',
+                runsViewAll: 'VIEW ALL',
+                runsFinish: 'FINISH',
+                runsAllTitle: 'ALL RUNS',
+                runsStats: '{n} runs · {acc} accepted · {sus} suspicious · {pts} points pooled',
+                runsFitLine: 'Fit with {n} runs: {eq}',
+                runsGuideStart: 'Step 1 · Calibration ({c} runs): press CAPTURE, do the experiment and press STOP. Then mark the useful interval of that run. With the calibration runs the app learns the duration and shape of the useful interval.',
+                runsGuideCalibNext: 'Calibration: run {n} of {c} done. Press CAPTURE for the next run.',
+                runsGuideAuto: 'Step 2 · Automatic: each new run is trimmed and aligned by itself, by comparing it with the pattern of the accepted ones. Press CAPTURE for run {n} and FINISH when you want to stop. Runs that stray from the pattern are flagged for you to review.',
+                runsGuideCapturing: 'Capturing run {n}… Press STOP when the motion ends.',
+                runsGuideFinished: 'Runs finished: {acc} accepted, {pts} points. Analysis works as usual on this graph.',
+                runsPendMark: 'Run {n}: mark the useful interval. Drag-select (⬚) the points of the motion on the graph and press USE SELECTION, or press SUGGEST for an automatic proposal.',
+                runsPendSuspicious: 'Run {n} suspicious: {why}. You can accept it anyway, discard it or mark the interval by hand.',
+                runsWhyDev: 'it strays {d} % from the pattern (up to {lim} % is normal)',
+                runsWhyShort: 'it is shorter than the useful interval ({d} s of {need} s)',
+                runsWhyFew: 'it has too few points',
+                runsUseSel: 'USE SELECTION',
+                runsSuggest: 'SUGGEST',
+                runsAccept: 'ACCEPT',
+                runsDiscard: 'DISCARD',
+                runsMark: 'MARK INTERVAL BY HAND',
+                runsViewOne: 'VIEW ALONE',
+                runsViewBack: 'VIEW ALL TOGETHER',
+                runsClose: 'CLOSE',
+                runsDetail: 'Run {n} · {pts} useful points of {raw} · interval {dur} s · deviation {dev} % · {st}',
+                runsStAccepted: 'accepted',
+                runsStSuspicious: 'suspicious',
+                runsStDiscarded: 'discarded',
+                runsStPending: 'pending',
+                runsSpurious: '{k} spurious points flagged (more than 3 deviations from the mean)',
+                runsToastAccepted: 'Run {n} accepted · deviation {d} %',
+                runsToastDiscarded: 'Run {n} discarded',
+                runsToastEmpty: 'The run has too little data: capture again.',
+                runsAlertSel: 'Select at least 3 consecutive points of the useful interval.',
+                runsAskExisting: 'There are {n} points loaded. Use them as run 1? (Cancel = start the runs from scratch and delete them)',
+                runsAskFinish: 'Finish the runs? The data stays pooled in the graph; you can reopen RUNS to keep adding.',
+                runsMeanLabel: 'Mean of runs',
+                runsBandLabel: 'Mean ± deviation',
+                runsAllInfo: '{n} runs · grey: whole run · colour: aligned useful interval. Tap a chip in the strip to see it on the graph.',
                 tzeroTitle: 'TIME ZERO (t = 0)',
                 tzeroHint: 'Choose where time starts counting. Nothing is deleted: it only shifts the time axis of the graphs and table (earlier points get negative times).',
                 tzeroFirst: 't = 0 AT THE FIRST POINT',
@@ -7600,6 +7752,52 @@ basic.forever(function () {
                 showLines: 'Unir os pontos com uma linha',
                 applyGraphConfig: 'APLICAR CONFIGURAÇÃO',
                 setZero: 'DEFINIR T=0',
+                runsBtn: 'TENTATIVAS',
+                runsOne: 'tentativa',
+                runsTitle: 'TENTATIVAS',
+                runsCalib: 'Calibração:',
+                runsCalibUnit: 'tentativas',
+                runsShowCloud: 'Nuvem de pontos',
+                runsShowMean: 'Média ± desvio',
+                runsIncludeSpurious: 'Incluir pontos espúrios',
+                runsViewAll: 'VER TODAS',
+                runsFinish: 'TERMINAR',
+                runsAllTitle: 'TODAS AS TENTATIVAS',
+                runsStats: '{n} tentativas · {acc} aceitas · {sus} suspeitas · {pts} pontos somados',
+                runsFitLine: 'Ajuste com {n} tentativas: {eq}',
+                runsGuideStart: 'Passo 1 · Calibração ({c} tentativas): toque em CAPTURAR, faça o experimento e toque em PARAR. Depois marque o trecho útil dessa tentativa. Com as tentativas de calibração o app aprende a duração e a forma do trecho útil.',
+                runsGuideCalibNext: 'Calibração: tentativa {n} de {c} pronta. Toque em CAPTURAR para a próxima.',
+                runsGuideAuto: 'Passo 2 · Automático: cada nova tentativa é recortada e alinhada sozinha, comparando-a com o padrão das aceitas. Toque em CAPTURAR para a tentativa {n} e TERMINAR quando quiser parar. As tentativas que fogem do padrão ficam marcadas para revisão.',
+                runsGuideCapturing: 'Capturando a tentativa {n}… Toque em PARAR quando o movimento terminar.',
+                runsGuideFinished: 'Tentativas terminadas: {acc} aceitas, {pts} pontos. A análise é feita como sempre neste gráfico.',
+                runsPendMark: 'Tentativa {n}: marque o trecho útil. Selecione arrastando (⬚) os pontos do movimento no gráfico e toque em USAR SELEÇÃO, ou toque em SUGERIR para uma proposta automática.',
+                runsPendSuspicious: 'Tentativa {n} suspeita: {why}. Você pode aceitá-la mesmo assim, descartá-la ou marcar o trecho à mão.',
+                runsWhyDev: 'afasta-se {d} % do padrão (o normal é até {lim} %)',
+                runsWhyShort: 'é mais curta que o trecho útil ({d} s de {need} s)',
+                runsWhyFew: 'tem pontos demais de menos',
+                runsUseSel: 'USAR SELEÇÃO',
+                runsSuggest: 'SUGERIR',
+                runsAccept: 'ACEITAR',
+                runsDiscard: 'DESCARTAR',
+                runsMark: 'MARCAR TRECHO À MÃO',
+                runsViewOne: 'VER SOZINHA',
+                runsViewBack: 'VER TODAS JUNTAS',
+                runsClose: 'FECHAR',
+                runsDetail: 'Tentativa {n} · {pts} pontos úteis de {raw} · trecho {dur} s · desvio {dev} % · {st}',
+                runsStAccepted: 'aceita',
+                runsStSuspicious: 'suspeita',
+                runsStDiscarded: 'descartada',
+                runsStPending: 'pendente',
+                runsSpurious: '{k} pontos espúrios marcados (afastam-se mais de 3 desvios da média)',
+                runsToastAccepted: 'Tentativa {n} aceita · desvio {d} %',
+                runsToastDiscarded: 'Tentativa {n} descartada',
+                runsToastEmpty: 'A tentativa não tem dados suficientes: capture de novo.',
+                runsAlertSel: 'Selecione pelo menos 3 pontos seguidos do trecho útil.',
+                runsAskExisting: 'Há {n} pontos carregados. Usá-los como tentativa 1? (Cancelar = começar do zero e apagá-los)',
+                runsAskFinish: 'Terminar as tentativas? Os dados ficam consolidados no gráfico; você pode reabrir TENTATIVAS para continuar somando.',
+                runsMeanLabel: 'Média das tentativas',
+                runsBandLabel: 'Média ± desvio',
+                runsAllInfo: '{n} tentativas · cinza: tentativa inteira · cor: trecho útil alinhado. Toque numa ficha da faixa para vê-la no gráfico.',
                 tzeroTitle: 'TEMPO ZERO (t = 0)',
                 tzeroHint: 'Escolha a partir de onde o tempo é contado. Não apaga dados: só desloca o eixo de tempo dos gráficos e da tabela (os pontos anteriores ficam com tempo negativo).',
                 tzeroFirst: 't = 0 NO PRIMEIRO PONTO',
@@ -8243,6 +8441,12 @@ basic.forever(function () {
             _setTxt('derivEnableLabel', t.derivEnable); _setTxt('derivCompareLabel', t.derivCompare);
             _setTxt('derivWinLabel', t.derivWin); _setTxt('derivExportBtn', t.derivExport);
             _setTxt('fitParamPanelTitle', t.fitParamPanelTitle); _setTxt('fitParamPanelHint', t.fitParamPanelHint);
+            // Modo TIRADAS
+            _setTxt('tiradasBtn', t.runsBtn); _setTxt('runsTitle', t.runsTitle); _setTxt('runsCalibLabel', t.runsCalib);
+            _setTxt('runsCalibUnit', t.runsCalibUnit); _setTxt('runsShowCloudLabel', t.runsShowCloud); _setTxt('runsShowMeanLabel', t.runsShowMean);
+            _setTxt('runsIncludeSpuriousLabel', t.runsIncludeSpurious); _setTxt('runsViewAllBtn', t.runsViewAll); _setTxt('runsFinishBtn', t.runsFinish);
+            _setTxt('runsAllTitle', t.runsAllTitle); _setTxt('runsAllClose', t.runsClose);
+            if (typeof runsRender === 'function') runsRender();
             if (typeof _renderFitParamPanel === 'function') _renderFitParamPanel();
             if (typeof updateDerivAvailability === 'function') updateDerivAvailability();
             _setTxt('derivAxisYRole', t.axisYPrefix); _setTxt('derivAxisXRole', t.axisXPrefix);
@@ -12465,7 +12669,8 @@ bluetooth.startIOPinService()</pre>
                                     const isTimeX = state.graphs[index] && state.graphs[index].xAxis === 'time';
                                     const xLabel = isTimeX ? fmtTime(context.parsed.x) : fmtNum(context.parsed.x);
                                     const yLabel = fmtNum(context.parsed.y);
-                                    return `${context.dataset.label}: (${xLabel}, ${yLabel})`;
+                                    const runTag = (context.raw && context.raw.run) ? ` · ${(translations[currentLanguage] || {}).runsOne || 'tirada'} ${context.raw.run}` : '';
+                                    return `${context.dataset.label}: (${xLabel}, ${yLabel})${runTag}`;
                                 }
                             }
                         },
@@ -14721,6 +14926,9 @@ bluetooth.startIOPinService()</pre>
 
         document.getElementById('collectBtn').addEventListener('click', () => {
             if (state.isCollecting) return;
+            // Modo TIRADAS: cada captura es una tirada nueva (los datos de las
+            // tiradas anteriores quedan guardados en state.runs, no se pierden)
+            if (state.runs && state.runs.active) { runsPrepareCapture(); beginCapture(false); return; }
             if (state.rawData.length === 0) { beginCapture(false); return; }
             // Ya hay datos (captura anterior, importación o transferencia): hay
             // que decidir si la nueva captura se suma a la misma línea temporal o
@@ -14893,6 +15101,9 @@ bluetooth.startIOPinService()</pre>
             document.getElementById('collectBtn').style.display = 'inline-block';
             document.getElementById('stopBtn').style.display = 'none';
             document.getElementById('statusText').textContent = 'PAUSADO';
+
+            // Modo TIRADAS: la captura que terminó es una tirada → procesarla
+            if (state.runs && state.runs.active && typeof runsOnCaptureStopped === 'function') runsOnCaptureStopped();
 
             // If desktop LAB mode is active, update UI after stop
             if (document.getElementById('desktopLabMode').classList.contains('active')) {
@@ -17323,7 +17534,11 @@ bluetooth.startIOPinService()</pre>
             const _hasSegFits = (state.segmentFits || []).some(sf => sf.graphIndex === index && !sf.error);
             const onlyModel = !!(_onlyModelCb && _onlyModelCb.checked && (_hasSingleFit || _hasSegFits));
 
-            if (!onlyModel) for (const varIdx of config.yVars) {
+            const hideCloud = (typeof runsCloudHidden === 'function') && runsCloudHidden();
+            // Datos sumados de varias tiradas: no unir con línea puntos de tiradas
+            // distintas (zigzaguearía entre tiradas); la curva promedio hace de línea.
+            const pooledRuns = state.rawData.length > 0 && !!state.rawData[0].run;
+            if (!onlyModel && !hideCloud) for (const varIdx of config.yVars) {
                 if (varIdx >= state.numVariables || !state.variables[varIdx]) continue;
                 const color = state.variables[varIdx].color;
                 const data = state.rawData.map(d => {
@@ -17338,7 +17553,8 @@ bluetooth.startIOPinService()</pre>
                     return {
                         x: xVal,
                         y: d.values[varIdx],
-                        id: d.id
+                        id: d.id,
+                        run: d.run
                     };
                 });
 
@@ -17374,7 +17590,7 @@ bluetooth.startIOPinService()</pre>
                     borderWidth: 2.5,
                     borderCapStyle: 'round',
                     borderJoinStyle: 'round',
-                    showLine: graphShowsLines(index),
+                    showLine: graphShowsLines(index) && !pooledRuns,
                     tension: 0.35,
                     cubicInterpolationMode: 'monotone',
                     // Puntos reales con estilización
@@ -17507,6 +17723,11 @@ bluetooth.startIOPinService()</pre>
                     fill: false
                 });
             });
+
+            // Modo TIRADAS: curva promedio ± desvío de las tiradas aceptadas
+            if (!onlyModel && typeof runsMeanDatasets === 'function') {
+                runsMeanDatasets(config, timeUnitValue).forEach(ds => chart.data.datasets.push(ds));
+            }
 
             // Conjuntos de datos adicionales (CSVs extra cargados para comparar).
             // Cada conjunto se dibuja como línea discontinua en su color, para
@@ -18059,6 +18280,577 @@ bluetooth.startIOPinService()</pre>
             updateDisplay();
             syncChartLabelsAndTitles();
         });
+
+        // ========== MODO TIRADAS: repetir el experimento y sumar tiradas ==========
+        // Para sensores que dan pocas muestras por tirada: se repite el
+        // experimento N veces y se juntan los puntos de todas las tiradas,
+        // alineadas en el tiempo, en una sola nube. El ajuste mejora con la
+        // cantidad de datos. Flujo guiado desde una franja sobre la gráfica:
+        //   1. Calibración (cantidad ajustable): el usuario marca el tramo útil
+        //      de cada tirada; la app aprende su duración y su forma (patrón).
+        //   2. Automático: cada tirada nueva se recorta y alinea buscando la
+        //      ventana de esa duración que mejor coincide con el patrón (sirve
+        //      para caída libre, plano inclinado y oscilaciones: no hace falta
+        //      que la señal "vuelva a la base"). Las que se alejan del patrón
+        //      quedan como sospechosas para revisarlas; los puntos que se salen
+        //      del promedio ± 3 desvíos quedan marcados como espurios.
+        //   3. TERMINAR: los datos consolidados quedan en la gráfica y el
+        //      análisis sigue como siempre. Cada punto recuerda su tirada.
+        // Estado en state.runs (viaja con el espacio de trabajo):
+        //   { active, finished, calibCount, varIdx, list:[run], learned:{durMs},
+        //     showCloud, showMean, includeSpurious, viewing, marking }
+        //   run = { n, raw:[puntos crudos], from, to, t0, status, dev, why,
+        //           spurious:[ids], manual }
+        const RUNS_BINS = 50;                 // resolución del patrón (bins sobre el tramo útil)
+        const RUNS_SUSPICIOUS_FACTOR = 3;     // sospechosa si se aleja > 3× el desvío típico…
+        const RUNS_SUSPICIOUS_MIN = 10;       // …y al menos 10 % del rango del patrón
+        const RUNS_SPURIOUS_SIGMAS = 3;
+        let _runsTemplate = null;             // {durMs, bins:[{t, mean:[porVar], sd:[porVar], n}], rangeV:[porVar]}
+        function _rt(key, params) {
+            let txt = (translations[currentLanguage] || {})[key] || (translations.es || {})[key] || key;
+            if (params) for (const k in params) txt = txt.split('{' + k + '}').join(params[k]);
+            return txt;
+        }
+        function _runsEl(id) { return document.getElementById(id); }
+        function _runsFmt(v) { return isFinite(v) ? fmtNum(v) : '—'; }
+        function _runsClone(d) { return { time: d.time, wallTime: d.wallTime, values: d.values.slice(), id: d.id }; }
+        function _median(arr) {
+            const a = arr.filter(v => isFinite(v)).slice().sort((x, y) => x - y);
+            if (!a.length) return NaN;
+            const m = a.length >> 1;
+            return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+        }
+        function runsNew() {
+            const g0 = state.graphs[0];
+            return {
+                active: false, finished: false,
+                calibCount: 3,
+                varIdx: (g0 && g0.yVars && g0.yVars.length) ? g0.yVars[0] : 0,
+                list: [], learned: { durMs: 0 },
+                showCloud: true, showMean: true, includeSpurious: false,
+                viewing: null, marking: null
+            };
+        }
+        function runsAccepted() { return (state.runs ? state.runs.list : []).filter(r => r.status === 'accepted'); }
+        function runsCloudHidden() {
+            const R = state.runs;
+            return !!(R && R.active && !R.showCloud && !R.marking && R.viewing == null && !state.isCollecting);
+        }
+        // ---- Botón TIRADAS ----
+        function runsToggle() {
+            const R = state.runs;
+            if (R && R.active) { runsFinish(); return; }
+            if (R && R.list && R.list.length) {           // retomar tiradas ya hechas
+                R.active = true; R.finished = false; R.viewing = null; R.marking = null;
+                runsRebuild(); runsRender(); return;
+            }
+            const n = state.rawData.length;
+            const start = (useExisting) => {
+                state.runs = runsNew();
+                if (useExisting && n > 0) {
+                    const run = _runsMakeRun(state.rawData);
+                    state.runs.list.push(run);
+                    state.runs.active = true;
+                    runsStartMarking(run);
+                } else {
+                    if (n > 0) resetCaptureData();
+                    state.runs = state.runs || runsNew();
+                    state.runs.active = true;
+                    runsRender();
+                    updateAllCharts();
+                }
+            };
+            if (n > 0) uiDialog({ message: _rt('runsAskExisting', { n }) }).then(ok => start(!!ok));
+            else start(false);
+        }
+        function runsFinish() {
+            const R = state.runs; if (!R || !R.active) return;
+            const close = () => {
+                R.active = false; R.finished = true; R.marking = null; R.viewing = null;
+                if (dragSelectMode) toggleDragSelectMode();
+                runsRebuild(); runsRender();
+                exToast(_rt('runsGuideFinished', { acc: runsAccepted().length, pts: state.rawData.length }));
+            };
+            if (R.marking) { uiDialog({ message: _rt('runsAskFinish') }).then(ok => { if (ok) { const r = R.list.find(x => x.n === R.marking); if (r && r.status === 'pending') r.status = 'discarded'; close(); } }); }
+            else close();
+        }
+        function runsReset() {
+            if (!state.runs) return;
+            state.runs = null; _runsTemplate = null;
+            runsRender();
+        }
+        function runsSerialize() {
+            const R = state.runs; if (!R) return null;
+            return JSON.parse(JSON.stringify({ ...R, marking: null, viewing: null }));
+        }
+        function runsAfterRestore() {
+            const R = state.runs;
+            if (!R) { runsRender(); return; }
+            R.marking = null; R.viewing = null;
+            if (R.active) runsRebuild();
+            else _runsComputeTemplate();
+            runsRender();
+        }
+        // ---- Captura ----
+        function runsPrepareCapture() {
+            const R = state.runs;
+            if (dragSelectMode) toggleDragSelectMode();
+            R.marking = null; R.viewing = null;
+            _runsClearPending();
+            state.rawData = [];
+            state.selectedPoints.clear();
+            state.timeZeroOffset = state.microbitTimestamp ? 0 : Date.now();
+            state.microbitTimeZeroSet = false;
+            _lastValidTimestamp = -1; _mbTimeShift = 0; _backwardsRun = 0; _backwardsPrevRaw = -1;
+            _forwardRun = 0; _forwardPrevRaw = -1; _mbDeltas = []; _lastBrowserPointTime = 0; _browserTimeShift = 0;
+            _resumeAnchor = null;
+            pendingChartPoints = []; sampleTimestamps = [];
+            currentYMin = {}; currentYMax = {}; scaleInitialized = {}; datasetYMin = {}; datasetYMax = {}; chartDirty = false;
+            document.getElementById('pointInfo').style.display = 'none';
+            R._capturing = R.list.length + 1;
+            runsRender();
+        }
+        function _runsMakeRun(points) {
+            const R = state.runs;
+            const raw = points.map(_runsClone).sort((a, b) => a.time - b.time);
+            return { n: R.list.length + 1, raw, from: 0, to: raw.length - 1, t0: raw.length ? raw[0].time : 0,
+                     status: 'pending', dev: NaN, why: '', spurious: [], manual: false };
+        }
+        function runsOnCaptureStopped() {
+            const R = state.runs; R._capturing = null;
+            if (state.rawData.length < 3) { exToast(_rt('runsToastEmpty')); runsRender(); return; }
+            const run = _runsMakeRun(state.rawData);
+            R.list.push(run);
+            if (runsAccepted().length < R.calibCount || !R.learned.durMs) {
+                runsStartMarking(run);                        // calibración: tramo a mano
+            } else {
+                _runsAutoProcess(run);
+                if (run.status === 'suspicious') { runsShowRun(run.n, true); runsRender(); }
+                else { run.status = 'accepted'; exToast(_rt('runsToastAccepted', { n: run.n, d: _runsFmt(run.dev) })); runsRebuild(); runsRender(); }
+            }
+        }
+        // ---- Marcado manual del tramo útil ----
+        function runsStartMarking(run) {
+            const R = state.runs;
+            R.marking = run.n; R.viewing = null;
+            state.rawData = run.raw.map(_runsClone);
+            state.timeZeroOffset = run.raw.length ? run.raw[0].time : 0;
+            state.selectedPoints.clear();
+            // Propuesta inicial: si ya hay patrón, la ventana que mejor coincide; si no, por actividad
+            const sug = _runsSuggest(run);
+            if (sug) for (let i = sug.from; i <= sug.to; i++) state.selectedPoints.add(run.raw[i].id);
+            if (!dragSelectMode) toggleDragSelectMode();
+            updateDisplay();
+            runsRender();
+        }
+        function _runsSuggest(run) {
+            const R = state.runs;
+            if (R.learned.durMs && runsAccepted().length) {
+                const m = _runsMatch(run, R.learned.durMs);
+                if (m) return { from: m.from, to: m.to };
+            }
+            // Por actividad: el tramo útil es donde la señal CAMBIA entre muestras
+            // (así el final se detecta aunque la señal no vuelva a la base, como
+            // en una caída que termina abajo). Ruido de referencia: el 20 % inicial.
+            const raw = run.raw, n = raw.length, v = raw.map(d => d.values[R.varIdx]);
+            if (n < 5) return null;
+            const dif = []; for (let i = 0; i < n - 1; i++) dif.push(Math.abs(v[i + 1] - v[i]));
+            const nb = Math.max(3, Math.floor(dif.length * 0.2));
+            const madD = _median(dif.slice(0, nb).map(x => Math.abs(x - _median(dif.slice(0, nb))))) || 0;
+            const range = Math.max(..._finite(v)) - Math.min(..._finite(v)) || 1;
+            const thr = Math.max(5 * 1.4826 * madD, range * 0.005, 1e-9);
+            let from = -1, to = -1;
+            for (let i = 0; i < dif.length; i++) { if (dif[i] > thr) { if (from < 0) from = i; to = i + 1; } }
+            if (from < 0) return { from: 0, to: n - 1 };
+            return { from: Math.max(0, from - 1), to: Math.min(n - 1, to + 1) };
+        }
+        function _finite(arr) { return arr.filter(x => isFinite(x)); }
+        function runsUseSelection() {
+            const R = state.runs; const run = R.list.find(r => r.n === R.marking); if (!run) return;
+            const idx = [];
+            run.raw.forEach((d, i) => { if (state.selectedPoints.has(d.id)) idx.push(i); });
+            if (idx.length < 3) { uiAlert(_rt('runsAlertSel')); return; }
+            run.from = Math.min(...idx); run.to = Math.max(...idx);
+            run.manual = true;
+            run.t0 = run.raw[run.from].time;
+            _runsLearnDuration();
+            // Alineación fina contra el patrón (si ya hay otras tiradas aceptadas)
+            const prev = _runsTemplate;
+            if (prev && runsAccepted().length) {
+                const m = _runsMatch(run, R.learned.durMs, { near: run.t0, span: R.learned.durMs * 0.25 });
+                if (m) { run.t0 = m.t0; run.dev = m.dev; }
+            } else run.dev = 0;
+            run.status = 'accepted'; run.why = '';
+            R.marking = null;
+            if (dragSelectMode) toggleDragSelectMode();
+            exToast(_rt('runsToastAccepted', { n: run.n, d: _runsFmt(run.dev) }));
+            runsRebuild(); runsRender();
+        }
+        function runsSuggestNow() {
+            const R = state.runs; const run = R.list.find(r => r.n === R.marking); if (!run) return;
+            const sug = _runsSuggest(run); if (!sug) return;
+            state.selectedPoints.clear();
+            for (let i = sug.from; i <= sug.to; i++) state.selectedPoints.add(run.raw[i].id);
+            updateDisplay();
+        }
+        function _runsLearnDuration() {
+            const R = state.runs;
+            const durs = R.list.filter(r => r.manual && (r.status === 'accepted' || r.n === R.marking)).map(r => r.raw[r.to].time - r.raw[r.from].time);
+            if (durs.length) R.learned.durMs = _median(durs);
+        }
+        // ---- Recorte y alineación automáticos: ventana de durMs que mejor coincide con el patrón ----
+        function _runsInterp(raw, varIdx, t) {
+            // Interpolación lineal de la variable en el instante absoluto t
+            let lo = 0, hi = raw.length - 1;
+            if (t <= raw[0].time) return raw[0].values[varIdx];
+            if (t >= raw[hi].time) return raw[hi].values[varIdx];
+            while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (raw[mid].time <= t) lo = mid; else hi = mid; }
+            const a = raw[lo], b = raw[hi], f = (t - a.time) / ((b.time - a.time) || 1);
+            return a.values[varIdx] + f * (b.values[varIdx] - a.values[varIdx]);
+        }
+        function _runsScore(raw, t0, tpl, varIdx) {
+            // RMS entre la tirada (desde t0) y el patrón, en % del rango del patrón
+            let s = 0, n = 0;
+            for (const b of tpl.bins) {
+                if (!b.n) continue;
+                const v = _runsInterp(raw, varIdx, t0 + b.t);
+                if (!isFinite(v)) continue;
+                const d = v - b.mean[varIdx]; s += d * d; n++;
+            }
+            if (!n) return Infinity;
+            const range = tpl.rangeV[varIdx] || 1;
+            return Math.sqrt(s / n) / range * 100;
+        }
+        function _runsMatch(run, durMs, opts) {
+            const R = state.runs, tpl = _runsTemplate, varIdx = R.varIdx;
+            if (!tpl || !tpl.bins.length) return null;
+            const raw = run.raw;
+            if (raw.length < 3) return null;
+            const tStart = raw[0].time, tEnd = raw[raw.length - 1].time;
+            const dt = (tEnd - tStart) / Math.max(1, raw.length - 1);
+            let lo = tStart, hi = Math.max(tStart, tEnd - durMs);
+            if (opts && opts.near != null) { lo = Math.max(tStart, opts.near - opts.span); hi = Math.min(Math.max(tStart, tEnd - durMs), opts.near + opts.span); if (hi < lo) hi = lo; }
+            // Búsqueda gruesa (paso = intervalo de muestreo) y fina (1/10)
+            let best = { t0: lo, dev: Infinity };
+            const step = Math.max(dt, 1);
+            for (let t0 = lo; t0 <= hi + 1e-9; t0 += step) { const d = _runsScore(raw, t0, tpl, varIdx); if (d < best.dev) best = { t0, dev: d }; }
+            const fine = step / 10;
+            for (let t0 = best.t0 - step; t0 <= best.t0 + step; t0 += fine) { if (t0 < lo || t0 > hi) continue; const d = _runsScore(raw, t0, tpl, varIdx); if (d < best.dev) best = { t0, dev: d }; }
+            if (!isFinite(best.dev)) return null;
+            // Puntos útiles: los que caen en [t0, t0 + durMs] (con medio intervalo de margen)
+            let from = -1, to = -1;
+            for (let i = 0; i < raw.length; i++) { const rel = raw[i].time - best.t0; if (rel >= -dt / 2 && rel <= durMs + dt / 2) { if (from < 0) from = i; to = i; } }
+            if (from < 0) return null;
+            return { t0: best.t0, dev: best.dev, from, to };
+        }
+        function _runsAutoProcess(run) {
+            const R = state.runs, durMs = R.learned.durMs;
+            const raw = run.raw;
+            run.manual = false; run.why = '';
+            const span = raw[raw.length - 1].time - raw[0].time;
+            const m = _runsMatch(run, durMs);
+            if (!m) { run.status = 'suspicious'; run.why = _rt('runsWhyFew'); run.from = 0; run.to = raw.length - 1; run.t0 = raw[0].time; run.dev = NaN; return; }
+            run.from = m.from; run.to = m.to; run.t0 = m.t0; run.dev = m.dev;
+            const reasons = [];
+            if (span < durMs * 0.7) reasons.push(_rt('runsWhyShort', { d: _runsFmt(span / 1000), need: _runsFmt(durMs / 1000) }));
+            const devs = runsAccepted().map(r => r.dev).filter(d => isFinite(d) && d > 0);
+            const typical = devs.length ? _median(devs) : 0;
+            const limit = Math.max(RUNS_SUSPICIOUS_MIN, RUNS_SUSPICIOUS_FACTOR * typical);
+            if (m.dev > limit) reasons.push(_rt('runsWhyDev', { d: _runsFmt(m.dev), lim: _runsFmt(limit) }));
+            if (reasons.length) { run.status = 'suspicious'; run.why = reasons.join('; '); }
+            else run.status = 'accepted';
+        }
+        // ---- Patrón (promedio ± desvío por bins) y puntos espurios ----
+        function _runsComputeTemplate() {
+            const R = state.runs; _runsTemplate = null;
+            if (!R) return;
+            const acc = runsAccepted(); const durMs = R.learned.durMs;
+            if (!acc.length || !durMs) return;
+            const nv = state.numVariables;
+            const binOf = (rel) => { let k = Math.floor(rel / durMs * RUNS_BINS); if (k === RUNS_BINS && rel <= durMs * 1.0001) k = RUNS_BINS - 1; return (k < 0 || k >= RUNS_BINS) ? -1 : k; };
+            const mk = () => { const b = []; for (let k = 0; k < RUNS_BINS; k++) b.push({ t: (k + 0.5) / RUNS_BINS * durMs, vals: [], n: 0 }); return b; };
+            // 1) Centro robusto por bin (mediana) de la variable principal y de todas
+            const bins = mk();
+            const minV = new Array(nv).fill(Infinity), maxV = new Array(nv).fill(-Infinity);
+            for (let v = 0; v < nv; v++) bins.forEach(b => { b.vals[v] = []; });
+            for (const r of acc) for (let i = r.from; i <= r.to; i++) {
+                const d = r.raw[i]; const k = binOf(d.time - r.t0); if (k < 0) continue;
+                for (let v = 0; v < nv; v++) { const y = d.values[v]; if (!isFinite(y)) continue; bins[k].vals[v].push(y); if (y < minV[v]) minV[v] = y; if (y > maxV[v]) maxV[v] = y; }
+            }
+            const rangeV = minV.map((mn, v) => Math.max(1e-9, maxV[v] - mn));
+            const center = bins.map(b => ({ t: b.t, med: b.vals.map(a => _median(a)), n: b.vals[R.varIdx].length }));
+            // Interpolación del centro (mediana) en un instante relativo
+            const centerAt = (rel, v) => {
+                const pts = center.filter(c => isFinite(c.med[v]));
+                if (!pts.length) return NaN;
+                if (rel <= pts[0].t) return pts[0].med[v];
+                if (rel >= pts[pts.length - 1].t) return pts[pts.length - 1].med[v];
+                let lo = 0, hi = pts.length - 1;
+                while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m].t <= rel) lo = m; else hi = m; }
+                const a = pts[lo], b = pts[hi], f = (rel - a.t) / ((b.t - a.t) || 1);
+                return a.med[v] + f * (b.med[v] - a.med[v]);
+            };
+            // 2) Puntos espurios: residuo respecto del centro interpolado, comparado con el
+            //    desvío robusto (MAD) de los residuos de su bin. Recién con 3 tiradas.
+            const v0 = R.varIdx;
+            const resBins = bins.map(() => []);
+            const resOf = new Map();
+            for (const r of acc) for (let i = r.from; i <= r.to; i++) {
+                const d = r.raw[i]; const rel = d.time - r.t0; const k = binOf(rel); if (k < 0) continue;
+                const c = centerAt(rel, v0); const y = d.values[v0];
+                if (!isFinite(c) || !isFinite(y)) continue;
+                const res = y - c; resBins[k].push(res); resOf.set(d.id, { res, k });
+            }
+            const sigma = resBins.map(a => { if (a.length < 3) return NaN; const med = _median(a); return 1.4826 * _median(a.map(x => Math.abs(x - med))); });
+            const floorS = rangeV[v0] * 0.02;
+            for (const r of acc) {
+                r.spurious = [];
+                if (acc.length < 3) continue;
+                for (let i = r.from; i <= r.to; i++) {
+                    const d = r.raw[i]; const e = resOf.get(d.id); if (!e) continue;
+                    const sg = Math.max(isFinite(sigma[e.k]) ? sigma[e.k] : 0, floorS);
+                    if (Math.abs(e.res) > RUNS_SPURIOUS_SIGMAS * sg) r.spurious.push(d.id);
+                }
+            }
+            // 3) Promedio ± desvío por bin SIN los puntos espurios (es lo que se dibuja y se usa de patrón)
+            const out = mk();
+            for (let v = 0; v < nv; v++) out.forEach(b => { b.vals[v] = []; });
+            for (const r of acc) {
+                const sp = new Set(r.spurious || []);
+                for (let i = r.from; i <= r.to; i++) {
+                    const d = r.raw[i]; if (sp.has(d.id)) continue;
+                    const k = binOf(d.time - r.t0); if (k < 0) continue;
+                    for (let v = 0; v < nv; v++) { const y = d.values[v]; if (isFinite(y)) out[k].vals[v].push(y); }
+                }
+            }
+            const tplBins = [];
+            out.forEach(b => {
+                const n = b.vals[v0].length;
+                const mean = b.vals.map(a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
+                const sd = b.vals.map((a, v) => { if (a.length < 2) return 0; const m = mean[v]; return Math.sqrt(a.reduce((x, y) => x + (y - m) * (y - m), 0) / a.length); });
+                tplBins.push({ t: b.t, mean, sd, n });
+            });
+            // Rellenar bins vacíos por interpolación de vecinos (curva continua)
+            for (let v = 0; v < nv; v++) {
+                let last = -1;
+                for (let k = 0; k < tplBins.length; k++) {
+                    if (tplBins[k].n) { if (last >= 0 && k - last > 1) { for (let j = last + 1; j < k; j++) { const f = (j - last) / (k - last); tplBins[j].mean[v] = tplBins[last].mean[v] + f * (tplBins[k].mean[v] - tplBins[last].mean[v]); tplBins[j].sd[v] = Math.max(tplBins[last].sd[v], tplBins[k].sd[v]); tplBins[j].interp = true; } } last = k; }
+                }
+            }
+            _runsTemplate = { durMs, bins: tplBins.filter(b => b.n || b.interp).map(b => ({ t: b.t, mean: b.mean, sd: b.sd, n: b.n || 1 })), rangeV };
+        }
+        // ---- Datos consolidados en la gráfica principal ----
+        function runsRebuild() {
+            const R = state.runs; if (!R) return;
+            _runsComputeTemplate();
+            const pts = [];
+            const only = (R.viewing != null) ? R.list.find(r => r.n === R.viewing) : null;
+            const src = only ? [only] : runsAccepted();
+            for (const r of src) {
+                const sp = new Set(R.includeSpurious ? [] : (r.spurious || []));
+                for (let i = r.from; i <= r.to; i++) {
+                    const d = r.raw[i];
+                    if (sp.has(d.id)) continue;
+                    pts.push({ time: d.time - r.t0, wallTime: d.wallTime, values: d.values.slice(), id: d.id, run: r.n });
+                }
+            }
+            pts.sort((a, b) => a.time - b.time);
+            state.rawData = pts;
+            state.timeZeroOffset = 0;
+            state.selectedPoints.clear();
+            document.getElementById('pointInfo').style.display = 'none';
+            // Ajuste: si hay uno hecho sobre todos los datos, rehacerlo con los datos sumados
+            const fm = document.querySelector('input[name="fitMode"]:checked');
+            if (state.fitResult && (!fm || fm.value === 'all') && pts.length >= 3 && !only) {
+                try { document.getElementById('performFitBtn').click(); } catch (_) {}
+            }
+            updateDisplay();
+            if (typeof updateDebugButtons === 'function') updateDebugButtons();
+        }
+        // Capa "promedio ± desvío" para una gráfica (solo eje X = tiempo)
+        function runsMeanDatasets(config, timeUnitValue) {
+            const R = state.runs, tpl = _runsTemplate;
+            if (!R || !R.showMean || !tpl || config.xAxis !== 'time' || R.marking) return [];
+            if (!R.active && !R.finished) return [];
+            const out = [];
+            config.yVars.forEach((varIdx, idx) => {
+                if (varIdx >= state.numVariables) return;
+                const mean = [], up = [], dn = [];
+                for (const b of tpl.bins) {
+                    const m = b.mean[varIdx]; if (!isFinite(m)) continue;
+                    const x = (b.t - state.timeZeroOffset) / timeUnitValue;
+                    mean.push({ x, y: m }); up.push({ x, y: m + b.sd[varIdx] }); dn.push({ x, y: m - b.sd[varIdx] });
+                }
+                if (mean.length < 2) return;
+                const name = _rt('runsMeanLabel') + (config.yVars.length > 1 ? ' · ' + (state.variables[varIdx] || {}).name : '');
+                out.push({ type: 'line', label: name, isFitCurve: true, data: mean, borderColor: '#111', backgroundColor: 'transparent', fill: false, borderWidth: 3, borderDash: [8, 4], showLine: true, tension: 0.3, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 6 });
+                [up, dn].forEach(serie => out.push({ type: 'line', label: _rt('runsBandLabel'), isFitCurve: true, data: serie, borderColor: 'rgba(0,0,0,0.35)', backgroundColor: 'transparent', fill: false, borderWidth: 1.5, borderDash: [3, 3], showLine: true, tension: 0.3, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 0, pointHitRadius: 0 }));
+            });
+            return out;
+        }
+        // ---- Acciones sobre una tirada ----
+        function runsShowRun(n, review) {
+            const R = state.runs; const run = R.list.find(r => r.n === n); if (!run) return;
+            R.viewing = n; R.marking = null;
+            if (dragSelectMode) toggleDragSelectMode();
+            runsRebuild(); runsRender();
+            if (review) _runsRenderPending(run);
+        }
+        function runsViewAllTogether() {
+            const R = state.runs; R.viewing = null; R.marking = null;
+            if (dragSelectMode) toggleDragSelectMode();
+            runsRebuild(); runsRender();
+        }
+        function runsAcceptRun(n) {
+            const R = state.runs; const run = R.list.find(r => r.n === n); if (!run) return;
+            if (run.status === 'pending' && !run.manual) { if (R.learned.durMs && _runsTemplate) _runsAutoProcess(run); else { run.from = 0; run.to = run.raw.length - 1; run.t0 = run.raw[0].time; } }
+            run.status = 'accepted'; run.why = '';
+            if (!R.learned.durMs) { run.manual = true; _runsLearnDuration(); }
+            R.viewing = null; R.marking = null;
+            if (dragSelectMode) toggleDragSelectMode();
+            exToast(_rt('runsToastAccepted', { n, d: _runsFmt(run.dev) }));
+            runsRebuild(); runsRender();
+        }
+        function runsDiscardRun(n) {
+            const R = state.runs; const run = R.list.find(r => r.n === n); if (!run) return;
+            run.status = 'discarded';
+            if (R.marking === n) R.marking = null;
+            if (R.viewing === n) R.viewing = null;
+            if (dragSelectMode) toggleDragSelectMode();
+            exToast(_rt('runsToastDiscarded', { n }));
+            _runsLearnDuration();
+            runsRebuild(); runsRender();
+            _runsRefreshAllModal();
+        }
+        function runsMarkRun(n) {
+            const R = state.runs; const run = R.list.find(r => r.n === n); if (!run) return;
+            runsCloseAll();
+            runsStartMarking(run);
+        }
+        // ---- Render de la franja ----
+        function _runsClearPending() { const p = _runsEl('runsPending'); if (p) { p.style.display = 'none'; p.innerHTML = ''; } }
+        function _runsStatusTxt(run) { return _rt(run.status === 'accepted' ? 'runsStAccepted' : run.status === 'suspicious' ? 'runsStSuspicious' : run.status === 'discarded' ? 'runsStDiscarded' : 'runsStPending'); }
+        function _runsBtn(label, onclick, cls) { return `<button type="button" class="toolbar-btn ${cls || ''}" onclick="${onclick}">${_escHtml(label)}</button>`; }
+        function _runsRenderPending(run) {
+            const p = _runsEl('runsPending'); if (!p) return;
+            const R = state.runs;
+            if (R.marking === run.n) {
+                p.className = 'runs-pending';
+                p.innerHTML = `<div>${_escHtml(_rt('runsPendMark', { n: run.n }))}</div><div class="runs-btns">`
+                    + _runsBtn(_rt('runsUseSel'), 'runsUseSelection()', 'primary') + _runsBtn(_rt('runsSuggest'), 'runsSuggestNow()')
+                    + _runsBtn(_rt('runsDiscard'), `runsDiscardRun(${run.n})`) + `</div>`;
+            } else if (run.status === 'suspicious') {
+                p.className = 'runs-pending warn';
+                p.innerHTML = `<div>${_escHtml(_rt('runsPendSuspicious', { n: run.n, why: run.why }))}</div><div class="runs-btns">`
+                    + _runsBtn(_rt('runsAccept'), `runsAcceptRun(${run.n})`, 'primary') + _runsBtn(_rt('runsDiscard'), `runsDiscardRun(${run.n})`)
+                    + _runsBtn(_rt('runsMark'), `runsMarkRun(${run.n})`) + `</div>`;
+            } else { _runsClearPending(); return; }
+            p.style.display = '';
+        }
+        function runsRender() {
+            const R = state.runs;
+            const strip = _runsEl('runsStrip'); const btn = _runsEl('tiradasBtn');
+            if (!strip) return;
+            const show = !!(R && R.active);
+            strip.style.display = show ? '' : 'none';
+            if (btn) btn.classList.toggle('runs-on', show);
+            if (!show) return;
+            const acc = runsAccepted();
+            const sus = R.list.filter(r => r.status === 'suspicious').length;
+            const unit = parseFloat(document.getElementById('timeUnit').value) || 1000;
+            // Estado y opciones
+            _runsEl('runsCalibCount').value = R.calibCount;
+            _runsEl('runsShowCloud').checked = !!R.showCloud;
+            _runsEl('runsShowMean').checked = !!R.showMean;
+            _runsEl('runsIncludeSpurious').checked = !!R.includeSpurious;
+            const spur = acc.reduce((s, r) => s + (r.spurious || []).length, 0);
+            const nextN = R.list.length + 1;
+            let stats = _rt('runsStats', { n: R.list.length, acc: acc.length, sus, pts: acc.reduce((s, r) => s + (r.to - r.from + 1) - (R.includeSpurious ? 0 : (r.spurious || []).length), 0) });
+            if (spur) stats += ' · ' + _rt('runsSpurious', { k: spur });
+            if (state.fitResult && R.viewing == null && !R.marking) stats += ' · ' + _rt('runsFitLine', { n: acc.length, eq: state.fitResult.equation || '' });
+            _runsEl('runsStats').textContent = stats;
+            // Guía
+            let guide;
+            if (R._capturing) guide = _rt('runsGuideCapturing', { n: R._capturing });
+            else if (acc.length < R.calibCount || !R.learned.durMs) guide = acc.length ? _rt('runsGuideCalibNext', { n: acc.length, c: R.calibCount }) : _rt('runsGuideStart', { c: R.calibCount });
+            else guide = _rt('runsGuideAuto', { n: nextN });
+            _runsEl('runsGuide').textContent = guide;
+            // Pendiente (marcado o sospechosa en revisión)
+            const pend = R.marking ? R.list.find(r => r.n === R.marking) : (R.viewing != null ? R.list.find(r => r.n === R.viewing && r.status === 'suspicious') : null);
+            if (pend) _runsRenderPending(pend); else _runsClearPending();
+            // Fichas
+            _runsEl('runsChips').innerHTML = R.list.map(r => `<span class="runs-chip ${r.status}${(R.viewing === r.n || R.marking === r.n) ? ' current' : ''}" onclick="runsChipClick(${r.n})" title="${_escHtml(_runsStatusTxt(r))}">#${r.n}${r.status === 'accepted' ? ' ✓' : r.status === 'suspicious' ? ' ⚠' : r.status === 'discarded' ? ' ✕' : ' …'}</span>`).join('');
+            // Detalle de la tirada que se está viendo
+            const det = _runsEl('runsDetail');
+            const vr = (R.viewing != null) ? R.list.find(r => r.n === R.viewing) : null;
+            if (vr && !R.marking) {
+                const dur = (vr.raw[vr.to].time - vr.raw[vr.from].time) / 1000;
+                det.innerHTML = `<div>${_escHtml(_rt('runsDetail', { n: vr.n, pts: vr.to - vr.from + 1, raw: vr.raw.length, dur: _runsFmt(dur), dev: _runsFmt(vr.dev), st: _runsStatusTxt(vr) }))}</div><div class="runs-btns">`
+                    + _runsBtn(_rt('runsViewBack'), 'runsViewAllTogether()', 'primary')
+                    + (vr.status !== 'accepted' ? _runsBtn(_rt('runsAccept'), `runsAcceptRun(${vr.n})`) : '')
+                    + (vr.status !== 'discarded' ? _runsBtn(_rt('runsDiscard'), `runsDiscardRun(${vr.n})`) : '')
+                    + _runsBtn(_rt('runsMark'), `runsMarkRun(${vr.n})`) + `</div>`;
+                det.style.display = '';
+            } else { det.style.display = 'none'; det.innerHTML = ''; }
+        }
+        function runsChipClick(n) {
+            const R = state.runs;
+            if (R.marking) return;                      // primero terminar de marcar
+            if (R.viewing === n) runsViewAllTogether(); else runsShowRun(n, false);
+        }
+        // Opciones de la franja
+        (function () {
+            const cc = _runsEl('runsCalibCount');
+            if (cc) cc.addEventListener('change', function () { if (!state.runs) return; state.runs.calibCount = Math.max(1, Math.min(10, parseInt(this.value) || 3)); this.value = state.runs.calibCount; runsRender(); });
+            const sc = _runsEl('runsShowCloud'); if (sc) sc.addEventListener('change', function () { if (!state.runs) return; state.runs.showCloud = this.checked; updateAllCharts(); });
+            const sm = _runsEl('runsShowMean'); if (sm) sm.addEventListener('change', function () { if (!state.runs) return; state.runs.showMean = this.checked; updateAllCharts(); });
+            const sp = _runsEl('runsIncludeSpurious'); if (sp) sp.addEventListener('change', function () { if (!state.runs) return; state.runs.includeSpurious = this.checked; runsRebuild(); runsRender(); });
+        })();
+        // ---- Modal "ver todas": grilla con la mini gráfica de cada tirada ----
+        function runsOpenAll() {
+            const R = state.runs; if (!R) return;
+            const m = _runsEl('runsAllModal'); if (!m) return;
+            m.classList.add('active');
+            _runsRefreshAllModal();
+        }
+        function runsCloseAll() { const m = _runsEl('runsAllModal'); if (m) m.classList.remove('active'); }
+        function _runsRefreshAllModal() {
+            const R = state.runs; const m = _runsEl('runsAllModal');
+            if (!R || !m || !m.classList.contains('active')) return;
+            _runsEl('runsAllInfo').textContent = _rt('runsAllInfo', { n: R.list.length });
+            const grid = _runsEl('runsAllGrid');
+            grid.innerHTML = R.list.map(r => `<div class="runs-card ${r.status}"><div><b>#${r.n}</b> · ${_escHtml(_runsStatusTxt(r))} · ${r.to - r.from + 1}/${r.raw.length} pts · ${_runsFmt(r.dev)} %</div><canvas data-run="${r.n}" width="360" height="160"></canvas><div class="runs-btns">`
+                + (r.status !== 'accepted' ? _runsBtn(_rt('runsAccept'), `runsAcceptRun(${r.n}); _runsRefreshAllModal();`, 'primary') : '')
+                + (r.status !== 'discarded' ? _runsBtn(_rt('runsDiscard'), `runsDiscardRun(${r.n})`) : '')
+                + _runsBtn(_rt('runsMark'), `runsMarkRun(${r.n})`) + `</div></div>`).join('');
+            grid.querySelectorAll('canvas[data-run]').forEach(cv => { const r = R.list.find(x => x.n === parseInt(cv.dataset.run)); if (r) _runsDrawMini(cv, r); });
+        }
+        function _runsDrawMini(cv, run) {
+            const R = state.runs, v = R.varIdx, ctx = cv.getContext('2d');
+            const W = cv.width, H = cv.height; ctx.clearRect(0, 0, W, H);
+            const raw = run.raw; if (raw.length < 2) return;
+            const ys = _finite(raw.map(d => d.values[v])); if (!ys.length) return;
+            const yMin = Math.min(...ys), yMax = Math.max(...ys), yR = (yMax - yMin) || 1;
+            const tMin = raw[0].time, tMax = raw[raw.length - 1].time, tR = (tMax - tMin) || 1;
+            const X = (t) => 6 + (t - tMin) / tR * (W - 12), Y = (y) => H - 6 - (y - yMin) / yR * (H - 12);
+            // Tramo útil sombreado
+            ctx.fillStyle = 'rgba(21,101,192,0.10)';
+            ctx.fillRect(X(raw[run.from].time), 0, Math.max(2, X(raw[run.to].time) - X(raw[run.from].time)), H);
+            // Patrón (si hay) alineado al t0 de la tirada
+            if (_runsTemplate && isFinite(run.t0)) {
+                ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.setLineDash([4, 3]); ctx.lineWidth = 1.5; ctx.beginPath(); let first = true;
+                for (const b of _runsTemplate.bins) { const m = b.mean[v]; if (!isFinite(m)) continue; const x = X(run.t0 + b.t), y = Y(m); if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y); }
+                ctx.stroke(); ctx.setLineDash([]);
+            }
+            const sp = new Set(run.spurious || []);
+            for (let i = 0; i < raw.length; i++) {
+                const y = raw[i].values[v]; if (!isFinite(y)) continue;
+                const inside = i >= run.from && i <= run.to;
+                ctx.fillStyle = sp.has(raw[i].id) ? '#ef6c00' : (inside ? (run.status === 'discarded' ? '#999' : '#1565c0') : '#bbb');
+                ctx.beginPath(); ctx.arc(X(raw[i].time), Y(y), inside ? 2.2 : 1.6, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+        runsRender();
 
         // ========== TIEMPO CERO (Depuración de datos) ==========
         // Tres maneras de decir desde dónde se cuenta el tiempo: el primer
@@ -20843,6 +21635,8 @@ bluetooth.startIOPinService()</pre>
             for (let i = 0; i < state.numVariables; i++) {
                 header += ',' + state.variables[i].name;
             }
+            const withRun = state.rawData.some(d => d.run);
+            if (withRun) header += ',tirada';
 
             // Datos
             const dataRows = state.rawData.map(d => {
@@ -20851,6 +21645,7 @@ bluetooth.startIOPinService()</pre>
                 for (let i = 0; i < state.numVariables; i++) {
                     row += ',' + d.values[i].toFixed(6);
                 }
+                if (withRun) row += ',' + (d.run || '');
                 return row;
             }).join('\n');
 
@@ -21452,6 +22247,7 @@ bluetooth.startIOPinService()</pre>
         // Borra datos, video y fotos y reinicia la línea temporal. Lo usan
         // LIMPIAR y «Nueva captura» (CAPTURAR con datos previos).
         function resetCaptureData() {
+                if (typeof runsReset === 'function') runsReset();
                 state.rawData = [];
                 state.selectedPoints.clear();
                 // Reiniciar la línea temporal: si se limpia en plena captura,
@@ -30767,10 +31563,13 @@ bluetooth.startIOPinService()</pre>
         var showT = state.microbitTimestamp !== false;
         var header = (showT ? 'Tiempo' : '#');
         for (var i = 0; i < state.numVariables; i++) header += ',' + (state.variables[i] ? state.variables[i].name : ('V' + (i + 1)));
+        var withRun = (state.rawData || []).some(function (d) { return d.run; });
+        if (withRun) header += ',tirada';
         var rows = (state.rawData || []).map(function (d, idx) {
           var first = showT ? ((d.time - (state.timeZeroOffset || 0)) / tuv).toFixed(6) : String(idx + 1);
           var row = first;
           for (var i = 0; i < state.numVariables; i++) row += ',' + (typeof d.values[i] === 'number' ? d.values[i].toFixed(6) : '');
+          if (withRun) row += ',' + (d.run || '');
           return row;
         }).join('\n');
         return header + '\n' + rows;
@@ -31029,6 +31828,7 @@ bluetooth.startIOPinService()</pre>
           fitColor: st.fitColor, fitResult: cleanFit(st.fitResult),
           segmentFits: (st.segmentFits || []).map(cleanFit),
           sensorPhotos: st.sensorPhotos || [], extraDataSets: st.extraDataSets || [],
+          runs: (typeof runsSerialize === 'function') ? runsSerialize() : (st.runs || null),
           timeUnit: (el('timeUnit') || {}).value
         };
         return app;
@@ -31069,6 +31869,7 @@ bluetooth.startIOPinService()</pre>
           st.segmentFits = (a.segmentFits || []).map(rebuildFit).filter(Boolean);
           if (Array.isArray(a.sensorPhotos)) st.sensorPhotos = a.sensorPhotos;
           if (Array.isArray(a.extraDataSets)) st.extraDataSets = a.extraDataSets;
+          st.runs = (a.runs && typeof a.runs === 'object') ? a.runs : null;
 
           // Sincronizar inputs de configuración con el estado restaurado
           setInputVal('timeUnit', a.timeUnit);
@@ -31097,6 +31898,7 @@ bluetooth.startIOPinService()</pre>
           if (fn('updateFitVariableOptions')) updateFitVariableOptions();
           if (fn('updateGraphsDisplay')) updateGraphsDisplay();
           if (fn('updateDisplay')) updateDisplay();
+          if (fn('runsAfterRestore')) { try { runsAfterRestore(); } catch (e) {} }
           // Panel de ajuste (secundario): mostrar ecuación/R² si hay ajuste único
           if (st.fitResult) {
             var fr = el('fitResults'); if (fr) fr.style.display = 'block';
