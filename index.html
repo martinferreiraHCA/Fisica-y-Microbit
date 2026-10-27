@@ -4447,6 +4447,21 @@
         .inf-rich table.doc-data-table th, .inf-rich table.doc-data-table td { border:1px solid #d3d3d3; padding:3px 8px; text-align:right; }
         .inf-rich table.doc-data-table th { background:#f0f0f0; font-weight:700; text-align:center; }
         .inf-rich table.doc-cmp-table td { text-align:left; min-width:70px; }
+        /* Tablas libres (botón «Tabla» del informe) */
+        .inf-rich table.doc-free-table th, .inf-rich table.doc-free-table td { text-align:left; min-width:56px; height:1.7em; vertical-align:top; }
+        .inf-rich table.doc-free-table th { text-align:center; }
+        .inf-tbl-pick { padding:6px 12px 8px; }
+        .inf-tbl-grid { display:grid; grid-template-columns:repeat(10, 17px); gap:3px; margin:4px 0 6px; }
+        .inf-tbl-grid span { width:17px; height:17px; border:1px solid #bbb; background:#fff; cursor:pointer; }
+        .inf-tbl-grid span.on { background:#1565c0; border-color:#0d47a1; }
+        .inf-tbl-size { font-size:12px; font-weight:700; text-align:center; min-height:16px; }
+        .inf-tbl-form { padding:4px 12px 8px; font-size:12px; display:flex; flex-direction:column; gap:6px; }
+        .inf-tbl-form .row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+        .inf-tbl-form input[type=number] { width:52px; padding:3px 4px; font-size:12px; border:1px solid #999; }
+        .inf-tbl-form textarea { width:100%; min-height:70px; box-sizing:border-box; font-family:monospace; font-size:11.5px; border:1px solid #999; padding:4px; resize:vertical; }
+        .inf-tbl-form button { align-self:flex-start; background:#000; color:#fff; border:2px solid #000; padding:4px 10px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; }
+        .inf-tbl-form button:hover { background:#fff; color:#000; }
+        .inf-tbl-form label { display:flex; align-items:center; gap:5px; cursor:pointer; }
         .inf-rich figure.doc-fig { width:60%; margin:12px auto; text-align:center; cursor:grab; }
         .inf-rich figure.doc-fig:active { cursor:grabbing; }
         .inf-rich figure.doc-fig.dragging { opacity:0.45; outline:2px dashed #000; }
@@ -5045,11 +5060,15 @@
                         <label class="runs-opt"><input type="checkbox" id="runsShowCloud" checked> <span id="runsShowCloudLabel">Nube de puntos</span></label>
                         <label class="runs-opt"><input type="checkbox" id="runsShowMean" checked> <span id="runsShowMeanLabel">Promedio ± desvío</span></label>
                         <label class="runs-opt"><input type="checkbox" id="runsIncludeSpurious"> <span id="runsIncludeSpuriousLabel">Incluir puntos espurios</span></label>
+                        <label class="runs-opt"><span id="runsAlignLabel">Alineación:</span> <select id="runsAlign" style="font-size:0.72rem;"><option value="model" id="runsAlignModelOpt">por modelo MRUV (tiempo + posición)</option><option value="time" id="runsAlignTimeOpt">solo tiempo</option></select></label>
+                        <label class="runs-opt"><span id="runsUnitLabel">Posición en</span> <select id="runsUnit" style="font-size:0.72rem;"><option value="cm">cm</option><option value="m">m</option></select></label>
+                        <label class="runs-opt" title="Muestras del final de cada tirada que se descartan (p. ej. cuando el sensor de ultrasonido pierde el objeto al alejarse)"><span id="runsTailLabel">Descartar al final:</span> <input type="number" id="runsTailDrop" min="0" max="5" value="0"> <span id="runsTailUnit">muestras</span></label>
                         <button type="button" class="toolbar-btn" id="runsViewAllBtn" onclick="runsOpenAll()">VER TODAS</button>
                         <button type="button" class="toolbar-btn" id="runsFinishBtn" onclick="runsFinish()">TERMINAR</button>
                     </span>
                 </div>
                 <div class="runs-guide" id="runsGuide"></div>
+                <div class="runs-guide" id="runsResult" style="display:none; font-weight:600; color:#1b5e20;"></div>
                 <div class="runs-pending" id="runsPending" style="display:none;"></div>
                 <div class="runs-chips" id="runsChips"></div>
                 <div class="runs-detail" id="runsDetail" style="display:none;"></div>
@@ -6702,6 +6721,16 @@ basic.forever(function () {
                 runsMeanLabel: 'Promedio de tiradas',
                 runsBandLabel: 'Promedio ± desvío',
                 runsAllInfo: '{n} tiradas · gris: tirada completa · color: tramo útil alineado. Tocá una ficha de la franja para verla en la gráfica.',
+                runsAlignLabel: 'Alineación:',
+                runsAlignModel: 'por modelo MRUV (tiempo + posición)',
+                runsAlignTime: 'solo tiempo',
+                runsUnitLabel: 'Posición en',
+                runsResult: 'MRUV con aceleración común a todas las tiradas: a = {a} ± {ea} {u}/s² (R² = {r2}, {n} puntos). Si es un plano inclinado: θ ≈ {roll} con una esfera que rueda (a = 5/7·g·sen θ) · θ ≈ {slide} deslizando sin fricción (a = g·sen θ). Las tiradas se colapsan sobre x = ½·a·t² (posición relativa al inicio del movimiento).',
+                runsResultBad: 'El modelo de aceleración constante no describe bien estas tiradas: revisá los datos o probá "solo tiempo".',
+                runsWhyNoMotion: 'no se detecta un inicio de movimiento (la señal no sale del reposo)',
+                runsTailLabel: 'Descartar al final:',
+                runsTailUnit: 'muestras',
+                runsResultImprecise: 'Precisión baja: quedan {p} puntos útiles por tirada en promedio. Para mejorarla, que el objeto siga frente al sensor más tiempo (recorrido más largo, sensor apuntando a lo largo del movimiento, reflector plano) y sumá más tiradas.',
                 tzeroTitle: 'TIEMPO CERO (t = 0)',
                 tzeroHint: 'Elegí desde dónde se cuenta el tiempo. No borra datos: solo corre el eje de tiempo de las gráficas y la tabla (los puntos anteriores quedan con tiempo negativo).',
                 tzeroFirst: 't = 0 EN EL PRIMER PUNTO',
@@ -7250,6 +7279,16 @@ basic.forever(function () {
                 runsMeanLabel: 'Mean of runs',
                 runsBandLabel: 'Mean ± deviation',
                 runsAllInfo: '{n} runs · grey: whole run · colour: aligned useful interval. Tap a chip in the strip to see it on the graph.',
+                runsAlignLabel: 'Alignment:',
+                runsAlignModel: 'by model, uniform acceleration (time + position)',
+                runsAlignTime: 'time only',
+                runsUnitLabel: 'Position in',
+                runsResult: 'Uniform acceleration common to all runs: a = {a} ± {ea} {u}/s² (R² = {r2}, {n} points). If it is an inclined plane: θ ≈ {roll} with a rolling sphere (a = 5/7·g·sin θ) · θ ≈ {slide} sliding without friction (a = g·sin θ). Runs are collapsed onto x = ½·a·t² (position relative to the start of motion).',
+                runsResultBad: 'The constant-acceleration model does not describe these runs well: check the data or try "time only".',
+                runsWhyNoMotion: 'no start of motion detected (the signal never leaves rest)',
+                runsTailLabel: 'Drop at the end:',
+                runsTailUnit: 'samples',
+                runsResultImprecise: 'Low precision: only {p} useful points per run on average. To improve it, keep the object in front of the sensor longer (longer path, sensor aimed along the motion, flat reflector) and add more runs.',
                 tzeroTitle: 'TIME ZERO (t = 0)',
                 tzeroHint: 'Choose where time starts counting. Nothing is deleted: it only shifts the time axis of the graphs and table (earlier points get negative times).',
                 tzeroFirst: 't = 0 AT THE FIRST POINT',
@@ -7798,6 +7837,16 @@ basic.forever(function () {
                 runsMeanLabel: 'Média das tentativas',
                 runsBandLabel: 'Média ± desvio',
                 runsAllInfo: '{n} tentativas · cinza: tentativa inteira · cor: trecho útil alinhado. Toque numa ficha da faixa para vê-la no gráfico.',
+                runsAlignLabel: 'Alinhamento:',
+                runsAlignModel: 'por modelo MRUV (tempo + posição)',
+                runsAlignTime: 'só tempo',
+                runsUnitLabel: 'Posição em',
+                runsResult: 'MRUV com aceleração comum a todas as tentativas: a = {a} ± {ea} {u}/s² (R² = {r2}, {n} pontos). Se for um plano inclinado: θ ≈ {roll} com uma esfera que rola (a = 5/7·g·sen θ) · θ ≈ {slide} deslizando sem atrito (a = g·sen θ). As tentativas são colapsadas sobre x = ½·a·t² (posição relativa ao início do movimento).',
+                runsResultBad: 'O modelo de aceleração constante não descreve bem estas tentativas: revise os dados ou tente "só tempo".',
+                runsWhyNoMotion: 'não se detecta um início de movimento (o sinal não sai do repouso)',
+                runsTailLabel: 'Descartar no final:',
+                runsTailUnit: 'amostras',
+                runsResultImprecise: 'Precisão baixa: restam {p} pontos úteis por tentativa em média. Para melhorar, mantenha o objeto diante do sensor por mais tempo (percurso mais longo, sensor apontando ao longo do movimento, refletor plano) e some mais tentativas.',
                 tzeroTitle: 'TEMPO ZERO (t = 0)',
                 tzeroHint: 'Escolha a partir de onde o tempo é contado. Não apaga dados: só desloca o eixo de tempo dos gráficos e da tabela (os pontos anteriores ficam com tempo negativo).',
                 tzeroFirst: 't = 0 NO PRIMEIRO PONTO',
@@ -8446,6 +8495,8 @@ basic.forever(function () {
             _setTxt('runsCalibUnit', t.runsCalibUnit); _setTxt('runsShowCloudLabel', t.runsShowCloud); _setTxt('runsShowMeanLabel', t.runsShowMean);
             _setTxt('runsIncludeSpuriousLabel', t.runsIncludeSpurious); _setTxt('runsViewAllBtn', t.runsViewAll); _setTxt('runsFinishBtn', t.runsFinish);
             _setTxt('runsAllTitle', t.runsAllTitle); _setTxt('runsAllClose', t.runsClose);
+            _setTxt('runsAlignLabel', t.runsAlignLabel); _setTxt('runsAlignModelOpt', t.runsAlignModel); _setTxt('runsAlignTimeOpt', t.runsAlignTime); _setTxt('runsUnitLabel', t.runsUnitLabel);
+            _setTxt('runsTailLabel', t.runsTailLabel); _setTxt('runsTailUnit', t.runsTailUnit);
             if (typeof runsRender === 'function') runsRender();
             if (typeof _renderFitParamPanel === 'function') _renderFitParamPanel();
             if (typeof updateDerivAvailability === 'function') updateDerivAvailability();
@@ -18328,6 +18379,7 @@ bluetooth.startIOPinService()</pre>
                 varIdx: (g0 && g0.yVars && g0.yVars.length) ? g0.yVars[0] : 0,
                 list: [], learned: { durMs: 0 },
                 showCloud: true, showMean: true, includeSpurious: false,
+                alignModel: true, unit: 'cm', model: null, tailDrop: 0,
                 viewing: null, marking: null
             };
         }
@@ -18474,9 +18526,9 @@ bluetooth.startIOPinService()</pre>
             run.manual = true;
             run.t0 = run.raw[run.from].time;
             _runsLearnDuration();
-            // Alineación fina contra el patrón (si ya hay otras tiradas aceptadas)
+            // Alineación fina contra el patrón (modo "solo tiempo", si ya hay otras tiradas aceptadas)
             const prev = _runsTemplate;
-            if (prev && runsAccepted().length) {
+            if (!R.alignModel && prev && runsAccepted().length) {
                 const m = _runsMatch(run, R.learned.durMs, { near: run.t0, span: R.learned.durMs * 0.25 });
                 if (m) { run.t0 = m.t0; run.dev = m.dev; }
             } else run.dev = 0;
@@ -18495,7 +18547,12 @@ bluetooth.startIOPinService()</pre>
         }
         function _runsLearnDuration() {
             const R = state.runs;
-            const durs = R.list.filter(r => r.manual && (r.status === 'accepted' || r.n === R.marking)).map(r => r.raw[r.to].time - r.raw[r.from].time);
+            R._step = _runsStep();
+            const durs = R.list.filter(r => r.manual && (r.status === 'accepted' || r.n === R.marking)).map(r => {
+                let i0 = r.from;
+                if (R.alignModel) { const on = _runsOnsetIdx(r, r.from, r.to); if (on >= 0) i0 = Math.max(r.from, on - 1); }
+                return r.raw[r.to].time - r.raw[i0].time;
+            });
             if (durs.length) R.learned.durMs = _median(durs);
         }
         // ---- Recorte y alineación automáticos: ventana de durMs que mejor coincide con el patrón ----
@@ -18547,6 +18604,7 @@ bluetooth.startIOPinService()</pre>
             const R = state.runs, durMs = R.learned.durMs;
             const raw = run.raw;
             run.manual = false; run.why = '';
+            if (R.alignModel) { _runsAutoProcessModel(run, durMs); return; }
             const span = raw[raw.length - 1].time - raw[0].time;
             const m = _runsMatch(run, durMs);
             if (!m) { run.status = 'suspicious'; run.why = _rt('runsWhyFew'); run.from = 0; run.to = raw.length - 1; run.t0 = raw[0].time; run.dev = NaN; return; }
@@ -18560,99 +18618,325 @@ bluetooth.startIOPinService()</pre>
             if (reasons.length) { run.status = 'suspicious'; run.why = reasons.join('; '); }
             else run.status = 'accepted';
         }
+        // ---- Alineación "por modelo MRUV" (lanzamientos desprolijos) ----
+        // Lo común a todas las tiradas de un mismo movimiento acelerado es la
+        // ACELERACIÓN; la posición y la velocidad iniciales cambian con cada
+        // lanzamiento. Entonces: (1) se detecta en cada tirada el inicio del
+        // movimiento (la señal deja el reposo), (2) se ajustan TODAS las
+        // tiradas juntas con x = x0ᵢ + v0ᵢ·t + ½·a·t² (a común, x0ᵢ y v0ᵢ de
+        // cada una) por mínimos cuadrados, (3) cada tirada se corre en tiempo
+        // (t' = t + v0ᵢ/a) y en posición (x' = x − x0ᵢ + v0ᵢ²/2a) para que
+        // todas caigan sobre la misma parábola x' = ½·a·t'². Los puntos que
+        // saltan de velocidad de forma implausible (el sensor perdió el objeto)
+        // o se apartan del modelo más de 4 desvíos robustos quedan espurios.
+        function _runsSolve(A, b) {
+            const n = A.length, M = A.map((row, i) => row.concat([b[i]]));
+            for (let i = 0; i < n; i++) {
+                let mx = i; for (let k = i + 1; k < n; k++) if (Math.abs(M[k][i]) > Math.abs(M[mx][i])) mx = k;
+                [M[i], M[mx]] = [M[mx], M[i]];
+                if (Math.abs(M[i][i]) < 1e-14) return null;
+                for (let k = i + 1; k < n; k++) { const f = M[k][i] / M[i][i]; for (let j = i; j <= n; j++) M[k][j] -= f * M[i][j]; }
+            }
+            const x = new Array(n);
+            for (let i = n - 1; i >= 0; i--) { let sum = M[i][n]; for (let j = i + 1; j < n; j++) sum -= M[i][j] * x[j]; x[i] = sum / M[i][i]; }
+            return x;
+        }
+        // Paso de cuantización del sensor (p. ej. 0,3 cm en el HC-SR04): percentil 20 de los |Δx| > 0
+        function _runsStep() {
+            const R = state.runs; if (!R) return 0;
+            const v = R.varIdx, d = [];
+            for (const r of R.list) {
+                if (r.status === 'discarded') continue;
+                for (let i = 1; i < r.raw.length; i++) { const dx = Math.abs(r.raw[i].values[v] - r.raw[i - 1].values[v]); if (isFinite(dx) && dx > 0) d.push(dx); }
+            }
+            if (!d.length) return 0;
+            // Moda de los saltos redondeados (p. ej. 0,3 cm): es el paso del sensor
+            const cnt = new Map(); let best = 0, bestN = 0;
+            for (const x of d) { const k = +x.toPrecision(2); const n = (cnt.get(k) || 0) + 1; cnt.set(k, n); if (n > bestN || (n === bestN && k < best)) { best = k; bestN = n; } }
+            return best;
+        }
+        // Inicio del movimiento dentro de [from, to]: primer punto que se aparta del reposo
+        // (reposo = mediana del primer tercio; umbral = 2 pasos del sensor o 3 desvíos del ruido)
+        function _runsOnsetIdx(run, from, to) {
+            const R = state.runs, v = R.varIdx, raw = run.raw;
+            const xs = []; for (let i = from; i <= to; i++) xs.push(raw[i].values[v]);
+            if (xs.length < 3) return -1;
+            const head = xs.slice(0, Math.max(3, Math.min(6, Math.floor(xs.length / 2))));
+            const rest = _median(head);
+            const mad = head.length >= 4 ? _median(head.map(x => Math.abs(x - rest))) : 0;
+            const thr = Math.max(2 * (R._step || 0), 3 * 1.4826 * mad, 1e-9);
+            // Si la cabeza ya está en movimiento (el tramo marcado arranca con el
+            // movimiento, sin reposo adelante), el inicio es el primer punto.
+            const hf = _finite(head); const headRange = hf.length ? Math.max(...hf) - Math.min(...hf) : 0;
+            const total = _finite(xs); const totalRange = total.length ? Math.max(...total) - Math.min(...total) : 0;
+            if (headRange > thr && headRange > 0.1 * totalRange) return from;
+            for (let i = 0; i < xs.length; i++) if (isFinite(xs[i]) && Math.abs(xs[i] - rest) > thr) return from + i;
+            return -1;
+        }
+        // Saltos de velocidad implausibles: la velocidad entre muestras más que se
+        // duplica de golpe (más allá del ruido del sensor). Desde ahí en adelante el
+        // sensor ya no sigue al objeto: esos puntos quedan como espurios.
+        function _runsSpeedJumpIds(run, i0, i1) {
+            // En un movimiento uniformemente acelerado la velocidad entre muestras
+            // crece de a pasos iguales: a partir del tercer intervalo ya no puede
+            // más que duplicarse de una muestra a la siguiente. Si lo hace, el
+            // sensor dejó de seguir al objeto: ese punto y los siguientes sobran.
+            const R = state.runs, v = R.varIdx, raw = run.raw, step = R._step || 0, ids = [];
+            const vels = [];
+            let lost = false, last = i0;      // last = último punto bueno
+            const velBetween = (a, b) => { const dt = (raw[b].time - raw[a].time) / 1000; return dt > 0 ? (raw[b].values[v] - raw[a].values[v]) / dt : NaN; };
+            for (let i = i0 + 1; i <= i1; i++) {
+                if (lost) { ids.push(raw[i].id); continue; }
+                const dt = (raw[i].time - raw[last].time) / 1000; if (!(dt > 0)) continue;
+                const vel = velBetween(last, i);
+                if (!isFinite(vel)) continue;
+                const k = vels.length;
+                if (k >= 1) {
+                    const prevV = vels[k - 1], allow = 1.5 * step / dt;
+                    const jump = k >= 2 && Math.abs(prevV) > step / dt && Math.abs(vel) > 2 * Math.abs(prevV) + allow;   // se disparó
+                    const stop = Math.abs(prevV) > 3 * step / dt && Math.abs(vel) < 0.25 * Math.abs(prevV) - allow;       // se frenó de golpe
+                    if (jump || stop) {
+                        // ¿Fue una sola muestra rara? Si saltándola la velocidad sigue siendo
+                        // coherente, se marca solo ese punto y se sigue.
+                        if (i + 1 <= i1) {
+                            const v2 = velBetween(last, i + 1);
+                            if (isFinite(v2) && Math.abs(v2) <= 2 * Math.abs(prevV) + allow && Math.abs(v2) >= 0.25 * Math.abs(prevV) - allow) { ids.push(raw[i].id); continue; }
+                        }
+                        lost = true; ids.push(raw[i].id); continue;
+                    }
+                }
+                vels.push(vel); last = i;
+            }
+            return ids;
+        }
+        // Ajuste conjunto: x = x0ᵢ + v0ᵢ·t + ½·a·t² con a común. segs = [{run, pts:[{t (s), x, id}]}]
+        function _runsJointFit(segs) {
+            const N = segs.length, P = 1 + 2 * N;
+            const A = []; for (let i = 0; i < P; i++) A.push(new Array(P).fill(0));
+            const b = new Array(P).fill(0);
+            let n = 0;
+            segs.forEach((sg, i) => {
+                for (const p of sg.pts) {
+                    const row = [[0, 0.5 * p.t * p.t], [1 + 2 * i, 1], [2 + 2 * i, p.t]];
+                    for (const [pi, pv] of row) { b[pi] += pv * p.x; for (const [qi, qv] of row) A[pi][qi] += pv * qv; }
+                    n++;
+                }
+            });
+            if (n <= P) return null;
+            const th = _runsSolve(A.map(r => r.slice()), b.slice()); if (!th || !th.every(isFinite)) return null;
+            const res = new Map(); let ss = 0, sum = 0;
+            segs.forEach((sg, i) => { for (const p of sg.pts) { const m = th[1 + 2 * i] + th[2 + 2 * i] * p.t + 0.5 * th[0] * p.t * p.t; res.set(p.id, p.x - m); ss += (p.x - m) * (p.x - m); sum += p.x; } });
+            const mean = sum / n; let sst = 0; segs.forEach(sg => { for (const p of sg.pts) sst += (p.x - mean) * (p.x - mean); });
+            const dof = Math.max(1, n - P), s2 = ss / dof;
+            const e0 = _runsSolve(A.map(r => r.slice()), [1].concat(new Array(P - 1).fill(0)));
+            const ea = (e0 && isFinite(e0[0]) && e0[0] > 0) ? Math.sqrt(s2 * e0[0]) : NaN;
+            const per = {}; segs.forEach((sg, i) => { per[sg.run.n] = { x0: th[1 + 2 * i], v0: th[2 + 2 * i] }; });
+            return { a: th[0], ea, per, res, r2: sst > 0 ? 1 - ss / sst : NaN, n, sigma: Math.sqrt(s2) };
+        }
+        function _runsRange(acc) {
+            const v = state.runs.varIdx; let mn = Infinity, mx = -Infinity;
+            for (const r of acc) for (let i = r.from; i <= r.to; i++) { const y = r.raw[i].values[v]; if (!isFinite(y)) continue; if (y < mn) mn = y; if (y > mx) mx = y; }
+            return (mx > mn) ? mx - mn : 0;
+        }
+        // Rehace el modelo conjunto con las tiradas aceptadas (inicio de movimiento,
+        // saltos, ajuste, espurios por residuo, desvío de cada tirada)
+        function _runsModelRebuild() {
+            const R = state.runs; R.model = null;
+            const acc = runsAccepted(); if (!acc.length) return;
+            R._step = _runsStep();
+            const v = R.varIdx;
+            for (const r of acc) {
+                const on = _runsOnsetIdx(r, r.from, r.to);
+                r.onset = on >= 0 ? Math.max(r.from, on - 1) : r.from;
+                r.spurious = _runsSpeedJumpIds(r, r.onset, r.to);
+                // Opción "descartar al final": las últimas N muestras de la tirada (p. ej.
+                // un sensor de ultrasonido que pierde el objeto al alejarse)
+                const sp = new Set(r.spurious);
+                for (let k = 0; k < (R.tailDrop || 0); k++) { const i = r.to - k; if (i > r.onset) sp.add(r.raw[i].id); }
+                r.spurious = Array.from(sp);
+            }
+            let fit = null;
+            for (let iter = 0; iter < 4; iter++) {
+                const segs = [];
+                for (const r of acc) {
+                    const sp = new Set(r.spurious), pts = [], tb = r.raw[r.onset].time;
+                    for (let i = r.onset; i <= r.to; i++) { const d = r.raw[i]; if (sp.has(d.id)) continue; const x = d.values[v]; if (!isFinite(x)) continue; pts.push({ t: (d.time - tb) / 1000, x, id: d.id }); }
+                    if (pts.length >= 2) segs.push({ run: r, pts });
+                }
+                if (!segs.length) { fit = null; break; }
+                const f = _runsJointFit(segs); if (!f) break;
+                fit = f;
+                const all = Array.from(f.res.values()); const med = _median(all);
+                const mad = _median(all.map(x => Math.abs(x - med)));
+                const sig = Math.max(1.4826 * mad, 0.5 * (R._step || 0), 1e-9);
+                f.sigmaRob = sig;
+                let changed = false;
+                for (const r of acc) {
+                    const sp = new Set(r.spurious);
+                    for (let i = r.onset; i <= r.to; i++) { const d = r.raw[i]; const e = f.res.get(d.id); if (e == null) continue; if (Math.abs(e) > 4 * sig && !sp.has(d.id)) { sp.add(d.id); changed = true; } }
+                    r.spurious = Array.from(sp);
+                }
+                if (!changed) break;
+            }
+            if (!fit) return;
+            R.model = { a: fit.a, ea: fit.ea, r2: fit.r2, n: fit.n, per: fit.per, sigma: fit.sigmaRob, step: R._step };
+            const range = _runsRange(acc) || 1;
+            for (const r of acc) {
+                if (!R.model.per[r.n]) { r.dev = NaN; continue; }
+                let s = 0, n = 0;
+                for (let i = r.onset; i <= r.to; i++) { const e = fit.res.get(r.raw[i].id); if (e == null) continue; s += e * e; n++; }
+                r.dev = n ? Math.sqrt(s / n) / range * 100 : NaN;
+            }
+        }
+        // Desvío de una tirada nueva respecto del modelo (a fija; x0 y v0 propios), en % del rango
+        function _runsModelDev(run) {
+            const R = state.runs, M = R.model, v = R.varIdx;
+            if (!M || !isFinite(M.a)) return 0;
+            const sp = new Set(run.spurious || []); const pts = []; const tb = run.raw[run.onset].time;
+            for (let i = run.onset; i <= run.to; i++) { const d = run.raw[i]; if (sp.has(d.id)) continue; const x = d.values[v]; if (!isFinite(x)) continue; pts.push({ t: (d.time - tb) / 1000, y: x - 0.5 * M.a * Math.pow((d.time - tb) / 1000, 2) }); }
+            if (pts.length < 2) return NaN;
+            // y = x0 + v0·t (mínimos cuadrados)
+            let st = 0, sy = 0, stt = 0, sty = 0; const n = pts.length;
+            for (const p of pts) { st += p.t; sy += p.y; stt += p.t * p.t; sty += p.t * p.y; }
+            const D = n * stt - st * st; if (Math.abs(D) < 1e-12) return NaN;
+            const v0 = (n * sty - st * sy) / D, x0 = (sy - v0 * st) / n;
+            let ss = 0; for (const p of pts) { const e = p.y - x0 - v0 * p.t; ss += e * e; }
+            const range = _runsRange(runsAccepted().concat([run])) || 1;
+            return Math.sqrt(ss / n) / range * 100;
+        }
+        function _runsAutoProcessModel(run, durMs) {
+            const R = state.runs, raw = run.raw;
+            R._step = _runsStep();
+            const on = _runsOnsetIdx(run, 0, raw.length - 1);
+            if (on < 0) { run.status = 'suspicious'; run.why = _rt('runsWhyNoMotion'); run.from = 0; run.to = raw.length - 1; run.onset = 0; run.t0 = raw[0].time; run.dev = NaN; return; }
+            const dt = (raw[raw.length - 1].time - raw[0].time) / Math.max(1, raw.length - 1);
+            run.onset = Math.max(0, on - 1); run.from = run.onset; run.t0 = raw[run.from].time;
+            let to = run.onset;
+            for (let i = run.onset; i < raw.length; i++) if (raw[i].time - raw[run.onset].time <= durMs * 1.5 + dt) to = i;
+            run.to = to;
+            run.spurious = _runsSpeedJumpIds(run, run.onset, run.to);
+            { const sp = new Set(run.spurious); for (let k = 0; k < (R.tailDrop || 0); k++) { const i = run.to - k; if (i > run.onset) sp.add(raw[i].id); } run.spurious = Array.from(sp); }
+            const moving = run.to - run.onset + 1 - run.spurious.length;
+            const reasons = [];
+            if (moving < 2) reasons.push(_rt('runsWhyFew'));
+            run.dev = _runsModelDev(run);
+            const devs = runsAccepted().map(r => r.dev).filter(d => isFinite(d) && d > 0);
+            const typical = devs.length ? _median(devs) : 0;
+            const limit = Math.max(RUNS_SUSPICIOUS_MIN, RUNS_SUSPICIOUS_FACTOR * typical);
+            if (isFinite(run.dev) && run.dev > limit) reasons.push(_rt('runsWhyDev', { d: _runsFmt(run.dev), lim: _runsFmt(limit) }));
+            run.status = reasons.length ? 'suspicious' : 'accepted'; run.why = reasons.join('; ');
+        }
+        // Puntos de una tirada ya alineados (tiempo relativo en ms; en modo modelo,
+        // también la posición colapsada sobre la parábola común)
+        function _runsAlignedPoints(r) {
+            const R = state.runs, v = R.varIdx, out = [];
+            const M = (R.alignModel && R.model && R.model.per[r.n] && isFinite(R.model.a) && R.model.a !== 0) ? R.model : null;
+            const i0 = M ? (r.onset != null ? r.onset : r.from) : r.from;
+            const tb = M ? r.raw[i0].time : r.t0;
+            const p = M ? M.per[r.n] : null;
+            for (let i = i0; i <= r.to; i++) {
+                const d = r.raw[i]; let t = d.time - tb; const vals = d.values.slice();
+                if (M) { const tS = t / 1000; t = (tS + p.v0 / M.a) * 1000; vals[v] = d.values[v] - p.x0 + p.v0 * p.v0 / (2 * M.a); }
+                out.push({ time: t, wallTime: d.wallTime, values: vals, id: d.id, run: r.n });
+            }
+            return out;
+        }
         // ---- Patrón (promedio ± desvío por bins) y puntos espurios ----
         function _runsComputeTemplate() {
             const R = state.runs; _runsTemplate = null;
             if (!R) return;
-            const acc = runsAccepted(); const durMs = R.learned.durMs;
-            if (!acc.length || !durMs) return;
+            const acc = runsAccepted();
+            if (!acc.length) return;
             const nv = state.numVariables;
-            const binOf = (rel) => { let k = Math.floor(rel / durMs * RUNS_BINS); if (k === RUNS_BINS && rel <= durMs * 1.0001) k = RUNS_BINS - 1; return (k < 0 || k >= RUNS_BINS) ? -1 : k; };
-            const mk = () => { const b = []; for (let k = 0; k < RUNS_BINS; k++) b.push({ t: (k + 0.5) / RUNS_BINS * durMs, vals: [], n: 0 }); return b; };
-            // 1) Centro robusto por bin (mediana) de la variable principal y de todas
+            const AL = acc.map(r => ({ r, pts: _runsAlignedPoints(r) }));
+            let tMin = Infinity, tMax = -Infinity;
+            AL.forEach(a => a.pts.forEach(p => { if (p.time < tMin) tMin = p.time; if (p.time > tMax) tMax = p.time; }));
+            const span = tMax - tMin;
+            if (!(span > 0)) return;
+            const binOf = (t) => { let k = Math.floor((t - tMin) / span * RUNS_BINS); if (k >= RUNS_BINS) k = RUNS_BINS - 1; return k < 0 ? -1 : k; };
+            const mk = () => { const b = []; for (let k = 0; k < RUNS_BINS; k++) b.push({ t: tMin + (k + 0.5) / RUNS_BINS * span, vals: [], n: 0 }); return b; };
+            // 1) Centro robusto por bin (mediana)
             const bins = mk();
             const minV = new Array(nv).fill(Infinity), maxV = new Array(nv).fill(-Infinity);
             for (let v = 0; v < nv; v++) bins.forEach(b => { b.vals[v] = []; });
-            for (const r of acc) for (let i = r.from; i <= r.to; i++) {
-                const d = r.raw[i]; const k = binOf(d.time - r.t0); if (k < 0) continue;
-                for (let v = 0; v < nv; v++) { const y = d.values[v]; if (!isFinite(y)) continue; bins[k].vals[v].push(y); if (y < minV[v]) minV[v] = y; if (y > maxV[v]) maxV[v] = y; }
+            for (const a of AL) for (const p of a.pts) {
+                const k = binOf(p.time); if (k < 0) continue;
+                for (let v = 0; v < nv; v++) { const y = p.values[v]; if (!isFinite(y)) continue; bins[k].vals[v].push(y); if (y < minV[v]) minV[v] = y; if (y > maxV[v]) maxV[v] = y; }
             }
             const rangeV = minV.map((mn, v) => Math.max(1e-9, maxV[v] - mn));
-            const center = bins.map(b => ({ t: b.t, med: b.vals.map(a => _median(a)), n: b.vals[R.varIdx].length }));
-            // Interpolación del centro (mediana) en un instante relativo
-            const centerAt = (rel, v) => {
+            const center = bins.map(b => ({ t: b.t, med: b.vals.map(arr => _median(arr)) }));
+            const centerAt = (t, v) => {
                 const pts = center.filter(c => isFinite(c.med[v]));
                 if (!pts.length) return NaN;
-                if (rel <= pts[0].t) return pts[0].med[v];
-                if (rel >= pts[pts.length - 1].t) return pts[pts.length - 1].med[v];
+                if (t <= pts[0].t) return pts[0].med[v];
+                if (t >= pts[pts.length - 1].t) return pts[pts.length - 1].med[v];
                 let lo = 0, hi = pts.length - 1;
-                while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m].t <= rel) lo = m; else hi = m; }
-                const a = pts[lo], b = pts[hi], f = (rel - a.t) / ((b.t - a.t) || 1);
+                while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m].t <= t) lo = m; else hi = m; }
+                const a = pts[lo], b = pts[hi], f = (t - a.t) / ((b.t - a.t) || 1);
                 return a.med[v] + f * (b.med[v] - a.med[v]);
             };
-            // 2) Puntos espurios: residuo respecto del centro interpolado, comparado con el
-            //    desvío robusto (MAD) de los residuos de su bin. Recién con 3 tiradas.
-            const v0 = R.varIdx;
-            const resBins = bins.map(() => []);
-            const resOf = new Map();
-            for (const r of acc) for (let i = r.from; i <= r.to; i++) {
-                const d = r.raw[i]; const rel = d.time - r.t0; const k = binOf(rel); if (k < 0) continue;
-                const c = centerAt(rel, v0); const y = d.values[v0];
-                if (!isFinite(c) || !isFinite(y)) continue;
-                const res = y - c; resBins[k].push(res); resOf.set(d.id, { res, k });
-            }
-            const sigma = resBins.map(a => { if (a.length < 3) return NaN; const med = _median(a); return 1.4826 * _median(a.map(x => Math.abs(x - med))); });
-            const floorS = rangeV[v0] * 0.02;
-            for (const r of acc) {
-                r.spurious = [];
-                if (acc.length < 3) continue;
-                for (let i = r.from; i <= r.to; i++) {
-                    const d = r.raw[i]; const e = resOf.get(d.id); if (!e) continue;
-                    const sg = Math.max(isFinite(sigma[e.k]) ? sigma[e.k] : 0, floorS);
-                    if (Math.abs(e.res) > RUNS_SPURIOUS_SIGMAS * sg) r.spurious.push(d.id);
+            // 2) Puntos espurios (modo "solo tiempo"; en modo modelo los marca el ajuste conjunto):
+            //    residuo respecto del centro, comparado con el desvío robusto (MAD) de su bin. Recién con 3 tiradas.
+            if (!R.alignModel) {
+                const v0 = R.varIdx;
+                const resBins = bins.map(() => []);
+                const resOf = new Map();
+                for (const a of AL) for (const p of a.pts) {
+                    const k = binOf(p.time); if (k < 0) continue;
+                    const c = centerAt(p.time, v0); const y = p.values[v0];
+                    if (!isFinite(c) || !isFinite(y)) continue;
+                    const res = y - c; resBins[k].push(res); resOf.set(p.id, { res, k });
+                }
+                const sigma = resBins.map(arr => { if (arr.length < 3) return NaN; const med = _median(arr); return 1.4826 * _median(arr.map(x => Math.abs(x - med))); });
+                const floorS = rangeV[v0] * 0.02;
+                for (const a of AL) {
+                    a.r.spurious = [];
+                    if (acc.length < 3) continue;
+                    for (const p of a.pts) {
+                        const e = resOf.get(p.id); if (!e) continue;
+                        const sg = Math.max(isFinite(sigma[e.k]) ? sigma[e.k] : 0, floorS);
+                        if (Math.abs(e.res) > RUNS_SPURIOUS_SIGMAS * sg) a.r.spurious.push(p.id);
+                    }
                 }
             }
             // 3) Promedio ± desvío por bin SIN los puntos espurios (es lo que se dibuja y se usa de patrón)
             const out = mk();
             for (let v = 0; v < nv; v++) out.forEach(b => { b.vals[v] = []; });
-            for (const r of acc) {
-                const sp = new Set(r.spurious || []);
-                for (let i = r.from; i <= r.to; i++) {
-                    const d = r.raw[i]; if (sp.has(d.id)) continue;
-                    const k = binOf(d.time - r.t0); if (k < 0) continue;
-                    for (let v = 0; v < nv; v++) { const y = d.values[v]; if (isFinite(y)) out[k].vals[v].push(y); }
+            for (const a of AL) {
+                const sp = new Set(a.r.spurious || []);
+                for (const p of a.pts) {
+                    if (sp.has(p.id)) continue;
+                    const k = binOf(p.time); if (k < 0) continue;
+                    for (let v = 0; v < nv; v++) { const y = p.values[v]; if (isFinite(y)) out[k].vals[v].push(y); }
                 }
             }
+            const v0 = R.varIdx;
             const tplBins = [];
             out.forEach(b => {
                 const n = b.vals[v0].length;
-                const mean = b.vals.map(a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
-                const sd = b.vals.map((a, v) => { if (a.length < 2) return 0; const m = mean[v]; return Math.sqrt(a.reduce((x, y) => x + (y - m) * (y - m), 0) / a.length); });
+                const mean = b.vals.map(arr => arr.length ? arr.reduce((x, y) => x + y, 0) / arr.length : NaN);
+                const sd = b.vals.map((arr, v) => { if (arr.length < 2) return 0; const m = mean[v]; return Math.sqrt(arr.reduce((x, y) => x + (y - m) * (y - m), 0) / arr.length); });
                 tplBins.push({ t: b.t, mean, sd, n });
             });
-            // Rellenar bins vacíos por interpolación de vecinos (curva continua)
             for (let v = 0; v < nv; v++) {
                 let last = -1;
                 for (let k = 0; k < tplBins.length; k++) {
                     if (tplBins[k].n) { if (last >= 0 && k - last > 1) { for (let j = last + 1; j < k; j++) { const f = (j - last) / (k - last); tplBins[j].mean[v] = tplBins[last].mean[v] + f * (tplBins[k].mean[v] - tplBins[last].mean[v]); tplBins[j].sd[v] = Math.max(tplBins[last].sd[v], tplBins[k].sd[v]); tplBins[j].interp = true; } } last = k; }
                 }
             }
-            _runsTemplate = { durMs, bins: tplBins.filter(b => b.n || b.interp).map(b => ({ t: b.t, mean: b.mean, sd: b.sd, n: b.n || 1 })), rangeV };
+            _runsTemplate = { durMs: span, bins: tplBins.filter(b => b.n || b.interp).map(b => ({ t: b.t, mean: b.mean, sd: b.sd, n: b.n || 1 })), rangeV };
         }
         // ---- Datos consolidados en la gráfica principal ----
         function runsRebuild() {
             const R = state.runs; if (!R) return;
+            if (R.alignModel) _runsModelRebuild(); else R.model = null;
             _runsComputeTemplate();
             const pts = [];
             const only = (R.viewing != null) ? R.list.find(r => r.n === R.viewing) : null;
             const src = only ? [only] : runsAccepted();
             for (const r of src) {
                 const sp = new Set(R.includeSpurious ? [] : (r.spurious || []));
-                for (let i = r.from; i <= r.to; i++) {
-                    const d = r.raw[i];
-                    if (sp.has(d.id)) continue;
-                    pts.push({ time: d.time - r.t0, wallTime: d.wallTime, values: d.values.slice(), id: d.id, run: r.n });
-                }
+                for (const p of _runsAlignedPoints(r)) { if (!sp.has(p.id)) pts.push(p); }
             }
             pts.sort((a, b) => a.time - b.time);
             state.rawData = pts;
@@ -18763,6 +19047,19 @@ bluetooth.startIOPinService()</pre>
             _runsEl('runsShowCloud').checked = !!R.showCloud;
             _runsEl('runsShowMean').checked = !!R.showMean;
             _runsEl('runsIncludeSpurious').checked = !!R.includeSpurious;
+            _runsEl('runsAlign').value = R.alignModel ? 'model' : 'time';
+            _runsEl('runsUnit').value = R.unit || 'cm';
+            _runsEl('runsTailDrop').value = R.tailDrop || 0;
+            // Resultado físico del modelo conjunto (aceleración común y ángulo equivalente)
+            const resEl = _runsEl('runsResult');
+            if (R.alignModel && R.model && isFinite(R.model.a) && R.viewing == null && !R.marking) {
+                const u = R.unit || 'cm', aM = u === 'cm' ? R.model.a / 100 : R.model.a, g = 9.81;
+                const th = (k) => { const sn = Math.abs(aM) / (k * g); return sn <= 1 ? fmtNum(Math.asin(sn) * 180 / Math.PI) + '°' : '—'; };
+                let txt = _rt('runsResult', { a: fmtNum(R.model.a), ea: _runsFmt(R.model.ea), u, r2: _runsFmt(R.model.r2), n: R.model.n, roll: th(5 / 7), slide: th(1) });
+                if (isFinite(R.model.r2) && R.model.r2 < 0.8) txt += ' · ' + _rt('runsResultBad');
+                if (isFinite(R.model.ea) && Math.abs(R.model.a) > 0 && R.model.ea / Math.abs(R.model.a) > 0.3) txt += ' · ' + _rt('runsResultImprecise', { p: fmtNum(R.model.n / Math.max(1, acc.length)) });
+                resEl.textContent = txt; resEl.style.display = '';
+            } else { resEl.style.display = 'none'; resEl.textContent = ''; }
             const spur = acc.reduce((s, r) => s + (r.spurious || []).length, 0);
             const nextN = R.list.length + 1;
             let stats = _rt('runsStats', { n: R.list.length, acc: acc.length, sus, pts: acc.reduce((s, r) => s + (r.to - r.from + 1) - (R.includeSpurious ? 0 : (r.spurious || []).length), 0) });
@@ -18805,6 +19102,9 @@ bluetooth.startIOPinService()</pre>
             const sc = _runsEl('runsShowCloud'); if (sc) sc.addEventListener('change', function () { if (!state.runs) return; state.runs.showCloud = this.checked; updateAllCharts(); });
             const sm = _runsEl('runsShowMean'); if (sm) sm.addEventListener('change', function () { if (!state.runs) return; state.runs.showMean = this.checked; updateAllCharts(); });
             const sp = _runsEl('runsIncludeSpurious'); if (sp) sp.addEventListener('change', function () { if (!state.runs) return; state.runs.includeSpurious = this.checked; runsRebuild(); runsRender(); });
+            const al = _runsEl('runsAlign'); if (al) al.addEventListener('change', function () { if (!state.runs) return; state.runs.alignModel = this.value === 'model'; _runsLearnDuration(); runsRebuild(); runsRender(); });
+            const un = _runsEl('runsUnit'); if (un) un.addEventListener('change', function () { if (!state.runs) return; state.runs.unit = this.value; runsRender(); });
+            const td = _runsEl('runsTailDrop'); if (td) td.addEventListener('change', function () { if (!state.runs) return; state.runs.tailDrop = Math.max(0, Math.min(5, parseInt(this.value) || 0)); this.value = state.runs.tailDrop; runsRebuild(); runsRender(); });
         })();
         // ---- Modal "ver todas": grilla con la mini gráfica de cada tirada ----
         function runsOpenAll() {
@@ -18836,8 +19136,14 @@ bluetooth.startIOPinService()</pre>
             // Tramo útil sombreado
             ctx.fillStyle = 'rgba(21,101,192,0.10)';
             ctx.fillRect(X(raw[run.from].time), 0, Math.max(2, X(raw[run.to].time) - X(raw[run.from].time)), H);
-            // Patrón (si hay) alineado al t0 de la tirada
-            if (_runsTemplate && isFinite(run.t0)) {
+            // Modelo conjunto de esa tirada (modo modelo) o patrón alineado al t0 (modo tiempo)
+            const MP = (R.alignModel && R.model && R.model.per[run.n] && run.onset != null) ? R.model.per[run.n] : null;
+            if (MP) {
+                ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.setLineDash([4, 3]); ctx.lineWidth = 1.5; ctx.beginPath();
+                const tb = raw[run.onset].time, tEnd = raw[run.to].time;
+                for (let k = 0; k <= 30; k++) { const t = tb + (tEnd - tb) * k / 30; const ts = (t - tb) / 1000; const y = MP.x0 + MP.v0 * ts + 0.5 * R.model.a * ts * ts; if (k === 0) ctx.moveTo(X(t), Y(y)); else ctx.lineTo(X(t), Y(y)); }
+                ctx.stroke(); ctx.setLineDash([]);
+            } else if (_runsTemplate && isFinite(run.t0)) {
                 ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.setLineDash([4, 3]); ctx.lineWidth = 1.5; ctx.beginPath(); let first = true;
                 for (const b of _runsTemplate.bins) { const m = b.mean[v]; if (!isFinite(m)) continue; const x = X(run.t0 + b.t), y = Y(m); if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y); }
                 ctx.stroke(); ctx.setLineDash([]);
@@ -28698,6 +29004,7 @@ bluetooth.startIOPinService()</pre>
         <div class="inf-menu" id="inf-cite-menu"></div>
         <div class="inf-menu" id="inf-img-menu"></div>
         <div class="inf-menu" id="inf-data-menu"></div>
+        <div class="inf-menu" id="inf-table-menu"></div>
         <div class="inf-menu" id="inf-graph-menu"></div>
         <div class="inf-menu" id="inf-add-menu"></div>
         <div class="inf-menu" id="inf-docopts-menu"></div>
@@ -28750,6 +29057,7 @@ bluetooth.startIOPinService()</pre>
 
     <!-- Barra flotante de edición de imagen -->
     <div class="inf-fig-tools" id="inf-fig-tools"></div>
+    <div class="inf-fig-tools" id="inf-tbl-tools"></div>
 
     <!-- Modal: editor de ecuaciones LaTeX -->
     <div class="inf-eq-modal" id="inf-eq-modal">
@@ -28952,6 +29260,7 @@ bluetooth.startIOPinService()</pre>
         ".rep-doc .rep-rich table.doc-data-table th,.rep-doc .rep-rich table.doc-data-table td{border:1px solid #cfcfcf;padding:3px 8px;text-align:right;}",
         ".rep-doc .rep-rich table.doc-data-table th{background:#f0f3f8;font-weight:700;text-align:center;}",
         ".rep-doc .rep-rich table.doc-cmp-table td{text-align:left;}",
+        ".rep-doc .rep-rich table.doc-free-table td{text-align:left;vertical-align:top;}",
         ".rep-doc .rep-rich h4{font-size:12.5px;font-weight:700;margin:8px 0 4px;color:#333;}",
         ".rep-doc .rep-rich figure.doc-fig{width:60%;margin:12px auto;text-align:center;}",
         ".rep-doc .rep-rich figure.doc-fig.fig-left{margin:12px auto 12px 0;text-align:left;}",
@@ -29825,6 +30134,10 @@ bluetooth.startIOPinService()</pre>
           } catch (e) {}
         });
         ed.addEventListener('keydown', function (e) {
+          if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            var cell = currentTableCell();
+            if (cell && ed.contains(cell)) { e.preventDefault(); tblTabMove(cell, e.shiftKey ? -1 : 1); return; }
+          }
           if (e.key !== ' ' || e.ctrlKey || e.metaKey || e.altKey) return;
           try {
             var sel = window.getSelection(); if (!sel || !sel.rangeCount || !sel.isCollapsed) return;
@@ -29854,8 +30167,16 @@ bluetooth.startIOPinService()</pre>
         ed.addEventListener('paste', function (e) {
           try {
             var cd = e.clipboardData; if (!cd) return;
-            if (cd.types && [].slice.call(cd.types).indexOf('text/html') >= 0) return;   // con formato: lo maneja el navegador
+            if (cd.types && [].slice.call(cd.types).indexOf('text/html') >= 0) {   // con formato: lo maneja el navegador
+              setTimeout(function () { if (normalizePastedTables(ed)) onEditableInput(ed); }, 0);   // tablas de Excel/Sheets con el estilo del informe
+              return;
+            }
             var txt = cd.getData('text/plain'); if (!txt || txt.indexOf('\n') < 0) return;
+            // Celdas copiadas de una planilla como texto (separadas por tabulaciones) → tabla
+            if (txt.indexOf('\t') >= 0) {
+              var grid = parseTableText(txt);
+              if (grid && grid.length >= 1 && grid[0].length >= 2) { e.preventDefault(); insertFreeTable(grid, { header: looksLikeHeader(grid) }); return; }
+            }
             var lines = txt.split(/\r?\n/).filter(function (l) { return l.trim(); });
             var marked = lines.filter(function (l) { return LIST_LINE_RE.test(l); });
             if (marked.length < 2) return;
@@ -30009,7 +30330,8 @@ bluetooth.startIOPinService()</pre>
         var g4 = grp('Insertar');
         g4.appendChild(rbBtn(ico('image'), 'Imagen', 'Subir una foto o insertar una imagen del experimento', function (e) { toggleImgMenu(e); }));
         g4.appendChild(rbBtn(ico('chart'), 'Gráfica', 'Insertar una gráfica de los datos capturados', function (e) { toggleGraphMenu(e); }));
-        g4.appendChild(rbBtn(ico('table'), 'Datos', 'Insertar la tabla de datos, las estadísticas o el resultado del ajuste (se pueden editar)', function (e) { ensureFocusEd(); toggleDataMenu(e); }));
+        g4.appendChild(rbBtn(ico('table'), 'Tabla', 'Insertar una tabla para completar, o pegar una desde Excel / Google Sheets', function (e) { ensureFocusEd(); toggleTableMenu(e); }));
+        g4.appendChild(rbBtn(ico('stats'), 'Datos', 'Insertar la tabla de datos, las estadísticas o el resultado del ajuste (se pueden editar)', function (e) { ensureFocusEd(); toggleDataMenu(e); }));
         g4.appendChild(rbBtn('∑', 'Ecuación', 'Insertar una fórmula (se arma con botones)', function () { openEqEditor(ensureFocusEd(), null); }, { glyph: true }));
         g4.appendChild(rbBtn(ico('pencil'), 'Dibujo', 'Dibujar a mano un esquema e insertarlo acá', drawAndInsert));
         g4.appendChild(rbBtn(ico('book'), 'Cita', 'Insertar una cita bibliográfica (formato APA)', function (e) { ensureFocusEd(); toggleCiteMenu(e); }));
@@ -30633,6 +30955,287 @@ bluetooth.startIOPinService()</pre>
         if (rows > 120) uiConfirm('La tabla tiene ' + rows + ' filas. ¿Insertar toda la tabla en el texto? Podés colapsar la sección después para que no ocupe tanto.').then(function (ok) { if (ok) doIt(); });
         else doIt();
       }
+      // ---- Tablas libres: insertar, pegar desde planillas y editar filas/columnas ----
+      function tblCellsHTML(n, tag, vals) {
+        var h = '';
+        for (var c = 0; c < n; c++) { var v = vals && vals[c] != null ? String(vals[c]) : ''; h += '<' + tag + '>' + (v.trim() ? esc(v.trim()) : '<br>') + '</' + tag + '>'; }
+        return h;
+      }
+      // grid: matriz de textos (o null para una tabla vacía de rows × cols)
+      function freeTableHTML(rows, cols, header, grid) {
+        var thead = '', body = '', start = 0;
+        if (header) { thead = '<thead><tr>' + tblCellsHTML(cols, 'th', grid && grid[0]) + '</tr></thead>'; start = 1; }
+        for (var r = start; r < rows; r++) body += '<tr>' + tblCellsHTML(cols, 'td', grid && grid[r]) + '</tr>';
+        return '<table class="doc-data-table doc-free-table" data-new-table="1">' + thead + '<tbody>' + body + '</tbody></table><p>​</p>';
+      }
+      function placeCaretIn(node, atEnd) {
+        try {
+          var r = document.createRange(); r.selectNodeContents(node); r.collapse(!atEnd);
+          var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); I._savedRange = r.cloneRange();
+        } catch (e) {}
+      }
+      function insertFreeTable(gridOrSize, opts) {
+        opts = opts || {};
+        var ed = I._focusEd || ensureFocusEd(); if (!ed) { toast('Creá una parte de texto para insertar la tabla.'); return; }
+        var grid = Array.isArray(gridOrSize) ? gridOrSize : null;
+        var rows = grid ? grid.length : Math.max(1, Math.min(60, gridOrSize.rows | 0));
+        var cols = grid ? grid.reduce(function (m, r) { return Math.max(m, r.length); }, 0) : Math.max(1, Math.min(15, gridOrSize.cols | 0));
+        if (!rows || !cols) { toast('No hay celdas para insertar.'); return; }
+        var header = !!opts.header && rows >= 1;
+        pushUndo();
+        ed.focus(); restoreRange();
+        // Si el cursor ya está dentro de otra tabla, la nueva va después de esa tabla (no anidada)
+        var inCell = currentTableCell();
+        if (inCell && ed.contains(inCell)) { var outer = inCell.closest('table'); var pAfter = document.createElement('p'); pAfter.innerHTML = '<br>'; outer.parentNode.insertBefore(pAfter, outer.nextSibling); placeCaretIn(pAfter, false); }
+        var html = freeTableHTML(rows, cols, header, grid);
+        try { document.execCommand('insertHTML', false, html); } catch (e) { ed.insertAdjacentHTML('beforeend', html); }
+        var t = ed.querySelector('table[data-new-table]');
+        if (t) {
+          t.removeAttribute('data-new-table');
+          var first = t.querySelector('th, td'); if (first) placeCaretIn(first, true);
+        }
+        onEditableInput(ed);
+        setTimeout(updateTblTools, 0);
+      }
+      // Texto de planilla → matriz. Separador: tabulación, punto y coma o coma (en ese orden).
+      function parseTableText(txt) {
+        var lines = String(txt || '').replace(/\r\n?/g, '\n').split('\n');
+        while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+        while (lines.length && !lines[0].trim()) lines.shift();
+        if (!lines.length) return null;
+        var sep = lines.some(function (l) { return l.indexOf('\t') >= 0; }) ? '\t' : (lines.some(function (l) { return l.indexOf(';') >= 0; }) ? ';' : (lines.some(function (l) { return l.indexOf(',') >= 0; }) ? ',' : null));
+        var grid = lines.map(function (l) {
+          if (!sep) return [l];
+          if (sep === '\t') return l.split('\t');
+          // CSV simple con comillas
+          var out = [], cur = '', q = false;
+          for (var i = 0; i < l.length; i++) {
+            var ch = l[i];
+            if (ch === '"') { if (q && l[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+            else if (ch === sep && !q) { out.push(cur); cur = ''; }
+            else cur += ch;
+          }
+          out.push(cur); return out;
+        });
+        var cols = grid.reduce(function (m, r) { return Math.max(m, r.length); }, 0);
+        grid.forEach(function (r) { while (r.length < cols) r.push(''); });
+        if (grid.length > 200) grid = grid.slice(0, 200);
+        return grid;
+      }
+      function _isNumCell(v) { v = String(v || '').trim(); return !!v && /^[-+]?(\d+[.,]?\d*|[.,]\d+)([eE][-+]?\d+)?$/.test(v); }
+      // ¿La primera fila es de títulos? (tiene texto y las siguientes tienen números)
+      function looksLikeHeader(grid) {
+        if (!grid || grid.length < 2) return false;
+        var firstText = grid[0].some(function (v) { return String(v).trim() && !_isNumCell(v); });
+        var restNum = grid.slice(1).some(function (r) { return r.some(_isNumCell); });
+        return firstText && restNum;
+      }
+      // Tablas pegadas con formato (Excel / Google Sheets / Word): estilo del informe y sin estilos sueltos
+      function normalizePastedTables(ed) {
+        var changed = false;
+        [].slice.call(ed.querySelectorAll('table')).forEach(function (t) {
+          if (/doc-data-table|rep-table|rep-stats/.test(t.className || '')) return;
+          t.className = 'doc-data-table doc-free-table';
+          ['style', 'width', 'border', 'cellpadding', 'cellspacing', 'align'].forEach(function (a) { t.removeAttribute(a); });
+          [].slice.call(t.querySelectorAll('col, colgroup')).forEach(function (c) { c.parentNode.removeChild(c); });
+          [].slice.call(t.querySelectorAll('tr, td, th')).forEach(function (c) { ['style', 'class', 'width', 'height', 'bgcolor'].forEach(function (a) { c.removeAttribute(a); }); if ((c.tagName === 'TD' || c.tagName === 'TH') && !c.textContent.trim() && !c.querySelector('img')) c.innerHTML = '<br>'; });
+          changed = true;
+        });
+        return changed;
+      }
+      function currentTableCell() {
+        try {
+          var sel = window.getSelection(); if (!sel || !sel.rangeCount) return null;
+          var n = sel.getRangeAt(0).startContainer; var e = n.nodeType === 1 ? n : n.parentNode;
+          var c = e && e.closest ? e.closest('td, th') : null;
+          if (!c || !c.closest('.inf-rich')) return null;
+          var t = c.closest('table'); if (!t || /rep-table|rep-stats/.test(t.className || '')) return null;
+          return c;
+        } catch (e) { return null; }
+      }
+      // Menú del botón «Tabla»: grilla para elegir el tamaño, tamaño a mano y pegar desde una planilla
+      function toggleTableMenu(evt) {
+        var m = el('inf-table-menu'); if (!m) return;
+        if (m.classList.contains('open')) { m.classList.remove('open'); return; }
+        closeMenus(); m.innerHTML = '';
+        menuHead(m, 'Insertar tabla');
+        var pick = document.createElement('div'); pick.className = 'inf-tbl-pick';
+        var size = document.createElement('div'); size.className = 'inf-tbl-size'; size.textContent = _t('Elegí filas × columnas');
+        var grid = document.createElement('div'); grid.className = 'inf-tbl-grid';
+        var R = 8, C = 10, cells = [];
+        for (var r = 1; r <= R; r++) for (var c = 1; c <= C; c++) {
+          (function (r, c) {
+            var sp = document.createElement('span'); sp.dataset.r = r; sp.dataset.c = c;
+            sp.addEventListener('mousedown', function (e) { e.preventDefault(); });
+            sp.addEventListener('mouseenter', function () { cells.forEach(function (x) { x.classList.toggle('on', +x.dataset.r <= r && +x.dataset.c <= c); }); size.textContent = r + ' × ' + c; });
+            sp.addEventListener('click', function () { m.classList.remove('open'); insertFreeTable({ rows: r, cols: c }, { header: hdr.checked }); });
+            cells.push(sp); grid.appendChild(sp);
+          })(r, c);
+        }
+        grid.addEventListener('mouseleave', function () { cells.forEach(function (x) { x.classList.remove('on'); }); size.textContent = _t('Elegí filas × columnas'); });
+        pick.appendChild(size); pick.appendChild(grid);
+        var hdrLbl = document.createElement('label'); hdrLbl.style.cssText = 'display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;';
+        var hdr = document.createElement('input'); hdr.type = 'checkbox'; hdr.checked = true; hdr.style.margin = '0';
+        hdrLbl.appendChild(hdr); hdrLbl.appendChild(document.createTextNode(_t('Primera fila de títulos')));
+        pick.appendChild(hdrLbl);
+        m.appendChild(pick);
+        // Tamaño a mano (más grande que la grilla)
+        menuSep(m); menuHead(m, 'Otro tamaño');
+        var f1 = document.createElement('div'); f1.className = 'inf-tbl-form';
+        f1.innerHTML = '<div class="row"><span>' + esc(_t('Filas')) + '</span><input type="number" min="1" max="60" value="5" data-k="r"><span>' + esc(_t('Columnas')) + '</span><input type="number" min="1" max="15" value="3" data-k="c"></div>';
+        var b1 = document.createElement('button'); b1.type = 'button'; b1.textContent = _t('Insertar tabla');
+        b1.addEventListener('mousedown', function (e) { e.preventDefault(); });
+        b1.addEventListener('click', function () {
+          var r = parseInt(f1.querySelector('[data-k=r]').value, 10), c = parseInt(f1.querySelector('[data-k=c]').value, 10);
+          if (!(r >= 1) || !(c >= 1)) { toast('Indicá cuántas filas y columnas.'); return; }
+          m.classList.remove('open'); insertFreeTable({ rows: Math.min(60, r), cols: Math.min(15, c) }, { header: hdr.checked });
+        });
+        f1.appendChild(b1); m.appendChild(f1);
+        // Pegar desde Excel / Google Sheets / CSV
+        menuSep(m); menuHead(m, 'Desde una planilla');
+        var f2 = document.createElement('div'); f2.className = 'inf-tbl-form';
+        var ta = document.createElement('textarea'); ta.placeholder = _t('Copiá las celdas en Excel, Google Sheets o un CSV y pegalas acá (Ctrl+V)');
+        f2.appendChild(ta);
+        var b2 = document.createElement('button'); b2.type = 'button'; b2.textContent = _t('Insertar como tabla');
+        b2.addEventListener('mousedown', function (e) { e.preventDefault(); });
+        b2.addEventListener('click', function () {
+          var g = parseTableText(ta.value);
+          if (!g) { toast('Pegá primero las celdas de la planilla.'); return; }
+          m.classList.remove('open'); insertFreeTable(g, { header: looksLikeHeader(g) || hdr.checked && g.length > 1 && !g[0].every(_isNumCell) });
+        });
+        f2.appendChild(b2);
+        var tip = document.createElement('div'); tip.style.cssText = 'font-size:10.5px;color:#777;line-height:1.35;';
+        tip.textContent = _t('También podés pegar directamente en el texto: las celdas copiadas de una planilla se convierten solas en tabla.');
+        f2.appendChild(tip);
+        m.appendChild(f2);
+        menuSep(m);
+        menuItem(m, 'stats', 'Tabla con tus datos', 'Tabla de datos, estadísticas o comparación con la teoría', function () { var b = [].slice.call(document.querySelectorAll('#inf-wp-toolbar .inf-wp-btn')).find(function (x) { var l = x.querySelector('.lb'); return l && l.textContent === _t('Datos'); }); toggleDataMenu({ currentTarget: b || evt.currentTarget }); });
+        positionMenu(m, evt.currentTarget || evt.target); m.classList.add('open');
+      }
+      // ---- Barra flotante para editar la tabla donde está el cursor ----
+      var _tblCell = null, _tblEd = null;
+      function tblRowCells(tr) { return [].slice.call(tr.children).filter(function (c) { return c.tagName === 'TD' || c.tagName === 'TH'; }); }
+      function tblAllRows(t) { return [].slice.call(t.rows); }
+      function tblNewRow(n, tag) { var tr = document.createElement('tr'); for (var i = 0; i < n; i++) { var c = document.createElement(tag); c.innerHTML = '<br>'; tr.appendChild(c); } return tr; }
+      function tblCols(t) { return tblAllRows(t).reduce(function (m, r) { return Math.max(m, tblRowCells(r).length); }, 0); }
+      function tblDone(focusCell) { if (focusCell) placeCaretIn(focusCell, true); if (_tblEd) onEditableInput(_tblEd); setTimeout(updateTblTools, 0); }
+      function tblAddRow(after) {
+        var c = _tblCell; if (!c) return; pushUndo();
+        var tr = c.parentNode, t = c.closest('table'), sec = tr.parentNode, n = tblCols(t);
+        var nr;
+        if (sec.tagName === 'THEAD') {
+          var tb = t.tBodies[0]; if (!tb) { tb = document.createElement('tbody'); t.appendChild(tb); }
+          nr = tblNewRow(n, 'td');
+          if (after) tb.insertBefore(nr, tb.firstChild); else { nr = tblNewRow(n, 'th'); sec.insertBefore(nr, tr); }
+        } else { nr = tblNewRow(n, 'td'); sec.insertBefore(nr, after ? tr.nextSibling : tr); }
+        tblDone(tblRowCells(nr)[Math.min(c.cellIndex, tblRowCells(nr).length - 1)]);
+      }
+      function tblAddCol(after) {
+        var c = _tblCell; if (!c) return; pushUndo();
+        var t = c.closest('table'), idx = c.cellIndex;
+        tblAllRows(t).forEach(function (tr) {
+          var cells = tblRowCells(tr), ref = cells[Math.min(idx, cells.length - 1)];
+          var nc = document.createElement(ref ? ref.tagName.toLowerCase() : 'td'); nc.innerHTML = '<br>';
+          if (!ref) tr.appendChild(nc); else tr.insertBefore(nc, after ? ref.nextSibling : ref);
+        });
+        var row = tblRowCells(c.parentNode); tblDone(row[after ? idx + 1 : idx]);
+      }
+      function tblDelRow() {
+        var c = _tblCell; if (!c) return; var t = c.closest('table');
+        if (tblAllRows(t).length <= 1) { tblDelete(); return; }
+        pushUndo();
+        var tr = c.parentNode, rows = tblAllRows(t), ri = rows.indexOf(tr), idx = c.cellIndex;
+        var sec = tr.parentNode; sec.removeChild(tr); if (!sec.rows.length && sec.tagName !== 'TABLE') sec.parentNode.removeChild(sec);
+        var rows2 = tblAllRows(t), nr = rows2[Math.min(ri, rows2.length - 1)];
+        tblDone(tblRowCells(nr)[Math.min(idx, tblRowCells(nr).length - 1)]);
+      }
+      function tblDelCol() {
+        var c = _tblCell; if (!c) return; var t = c.closest('table');
+        if (tblCols(t) <= 1) { tblDelete(); return; }
+        pushUndo();
+        var idx = c.cellIndex, tr = c.parentNode;
+        tblAllRows(t).forEach(function (r) { var cells = tblRowCells(r); if (cells[idx] && cells.length > 1) r.removeChild(cells[idx]); });
+        var cells = tblRowCells(tr); tblDone(cells[Math.min(idx, cells.length - 1)]);
+      }
+      function tblToggleHeader() {
+        var c = _tblCell; if (!c) return; pushUndo();
+        var t = c.closest('table'), ri = tblAllRows(t).indexOf(c.parentNode), idx = c.cellIndex;
+        if (t.tHead && t.tHead.rows.length) {
+          var tb = t.tBodies[0]; if (!tb) { tb = document.createElement('tbody'); t.appendChild(tb); }
+          [].slice.call(t.tHead.rows).reverse().forEach(function (tr) {
+            tblRowCells(tr).forEach(function (cell) { var td = document.createElement('td'); td.innerHTML = cell.innerHTML; tr.replaceChild(td, cell); });
+            tb.insertBefore(tr, tb.firstChild);
+          });
+          t.removeChild(t.tHead);
+        } else {
+          var first = tblAllRows(t)[0]; if (!first) return;
+          tblRowCells(first).forEach(function (cell) { var th = document.createElement('th'); th.innerHTML = cell.innerHTML; first.replaceChild(th, cell); });
+          var th = t.createTHead(); th.appendChild(first);
+        }
+        var nr = tblAllRows(t)[ri]; tblDone(nr ? tblRowCells(nr)[Math.min(idx, tblRowCells(nr).length - 1)] : null);
+      }
+      function tblAlign(a) {
+        var c = _tblCell; if (!c) return; pushUndo();
+        var t = c.closest('table'), idx = c.cellIndex;
+        tblAllRows(t).forEach(function (r) { var cell = tblRowCells(r)[idx]; if (cell && cell.tagName === 'TD') cell.style.textAlign = a; });
+        tblDone(c);
+      }
+      function tblDelete() {
+        var c = _tblCell; if (!c) return; pushUndo();
+        var t = c.closest('table'), nxt = t.nextElementSibling;
+        var p = document.createElement('p'); p.innerHTML = '<br>';
+        t.parentNode.replaceChild(p, t);
+        if (nxt && nxt.tagName === 'P' && !nxt.textContent.replace(/[\s​]/g, '')) nxt.parentNode.removeChild(nxt);
+        _tblCell = null; tblDone(p);
+      }
+      // Tab / Shift+Tab: celda siguiente o anterior; Tab en la última celda agrega una fila
+      function tblTabMove(cell, dir) {
+        var t = cell.closest('table'), all = [];
+        tblAllRows(t).forEach(function (r) { all = all.concat(tblRowCells(r)); });
+        var i = all.indexOf(cell) + dir;
+        if (i >= all.length) { _tblCell = cell; _tblEd = cell.closest('.inf-rich'); tblAddRow(true); var tr = tblAllRows(t)[tblAllRows(t).length - 1]; placeCaretIn(tblRowCells(tr)[0], true); return; }
+        if (i < 0) return;
+        placeCaretIn(all[i], true); updateTblTools();
+      }
+      function buildTblTools() {
+        var tb = el('inf-tbl-tools'); if (!tb || tb.dataset.built) return; tb.dataset.built = '1';
+        function mk(txt, title, fn) { var x = document.createElement('button'); x.type = 'button'; x.className = 'inf-fig-btn'; x.setAttribute('data-tip', title); x.innerHTML = txt; x.addEventListener('mousedown', function (e) { e.preventDefault(); }); x.addEventListener('click', function () { fn(); }); return x; }
+        function sep() { var s2 = document.createElement('span'); s2.className = 'inf-fig-sep'; return s2; }
+        function lbl(t) { var s2 = document.createElement('span'); s2.className = 'inf-fig-w'; s2.style.minWidth = '0'; s2.style.fontWeight = '700'; s2.textContent = t; return s2; }
+        tb.appendChild(lbl(_t('Fila')));
+        tb.appendChild(mk('＋↑', 'Agregar una fila arriba', function () { tblAddRow(false); }));
+        tb.appendChild(mk('＋↓', 'Agregar una fila abajo (o Tab en la última celda)', function () { tblAddRow(true); }));
+        tb.appendChild(mk('−', 'Quitar esta fila', tblDelRow));
+        tb.appendChild(sep());
+        tb.appendChild(lbl(_t('Columna')));
+        tb.appendChild(mk('＋←', 'Agregar una columna a la izquierda', function () { tblAddCol(false); }));
+        tb.appendChild(mk('＋→', 'Agregar una columna a la derecha', function () { tblAddCol(true); }));
+        tb.appendChild(mk('−', 'Quitar esta columna', tblDelCol));
+        tb.appendChild(sep());
+        tb.appendChild(mk('⯇', 'Alinear la columna a la izquierda', function () { tblAlign('left'); }));
+        tb.appendChild(mk('≡', 'Centrar la columna', function () { tblAlign('center'); }));
+        tb.appendChild(mk('⯈', 'Alinear la columna a la derecha (números)', function () { tblAlign('right'); }));
+        tb.appendChild(sep());
+        tb.appendChild(mk('<b>T</b>', 'Primera fila de títulos (sí / no)', tblToggleHeader));
+        tb.appendChild(mk('<span class="inf-ic">' + ico('trash') + '</span>', 'Quitar la tabla', tblDelete));
+      }
+      function positionTblTools() {
+        var tb = el('inf-tbl-tools'); if (!tb || !tb.classList.contains('open') || !_tblCell) return;
+        var t = _tblCell.closest('table'); if (!t || !t.isConnected) { tb.classList.remove('open'); return; }
+        var r = t.getBoundingClientRect();
+        if (r.bottom < 70 || r.top > window.innerHeight - 20) { tb.style.visibility = 'hidden'; return; }
+        tb.style.visibility = '';
+        var top = r.top - tb.offsetHeight - 6; if (top < 56) top = Math.min(56, r.bottom - tb.offsetHeight);
+        tb.style.top = Math.max(4, top) + 'px';
+        tb.style.left = Math.max(6, Math.min(r.left, window.innerWidth - tb.offsetWidth - 8)) + 'px';
+      }
+      function updateTblTools() {
+        var tb = el('inf-tbl-tools'); if (!tb) return;
+        var c = currentTableCell();
+        if (!c) { if (document.activeElement && tb.contains(document.activeElement)) return; tb.classList.remove('open'); _tblCell = null; return; }
+        _tblCell = c; _tblEd = c.closest('.inf-rich');
+        buildTblTools(); tb.classList.add('open'); positionTblTools();
+      }
       function toggleDataMenu(evt) {
         var m = el('inf-data-menu'); if (!m) return;
         if (m.classList.contains('open')) { m.classList.remove('open'); return; }
@@ -30778,7 +31381,7 @@ bluetooth.startIOPinService()</pre>
       // ---- Vista previa a pantalla completa (así queda el informe) ----
       function previewOpen() { var m = el('inf-preview-modal'); return !!(m && m.classList.contains('open')); }
       function openPreview() {
-        track('vista_previa', 'modo'); closeMenus(); closeFigTools();
+        track('vista_previa', 'modo'); closeMenus(); closeFigTools(); { var _tt = el('inf-tbl-tools'); if (_tt) _tt.classList.remove('open'); }
         var m = el('inf-preview-modal'); if (!m) return;
         m.classList.add('open'); renderPreview();
         var sc = el('inf-preview'); if (sc) sc.scrollTop = 0;
@@ -31127,7 +31730,7 @@ bluetooth.startIOPinService()</pre>
         function buildTable(tbl, ctx) {
           var cls = tbl.className || '';
           var kind = /rep-table/.test(cls) ? 'data' : (/rep-stats/.test(cls) ? 'stats' : (/doc-data-table/.test(cls) ? 'doc' : 'plain'));
-          var cmp = /doc-cmp-table/.test(cls);
+          var cmp = /doc-cmp-table|doc-free-table/.test(cls);
           var trs = [].slice.call(tbl.querySelectorAll('tr')).filter(function (tr) { return tr.closest('table') === tbl; });
           if (!trs.length) return null;
           var ncols = 0; trs.forEach(function (tr) { var n = 0; [].slice.call(tr.children).forEach(function (c) { n += (c.colSpan || 1); }); ncols = Math.max(ncols, n); });
@@ -32673,6 +33276,7 @@ bluetooth.startIOPinService()</pre>
         gUpdateDriveUI();   // solo refresca el botón; NO conecta con Google (la conexión es siempre manual)
         // Guardar la selección activa dentro de los editores enriquecidos
         document.addEventListener('selectionchange', saveRange);
+        document.addEventListener('selectionchange', function () { if (typeof updateTblTools === 'function') updateTblTools(); });
         buildFigTools();
         // Cerrar menús / barra de imagen al hacer clic afuera
         document.addEventListener('mousedown', function (e) {
@@ -32681,8 +33285,8 @@ bluetooth.startIOPinService()</pre>
           if (!(cl && (t.closest('.inf-fig-tools') || t.closest('.doc-fig')))) closeFigTools();
         });
         // Reposicionar la barra de imagen al hacer scroll o cambiar tamaño
-        window.addEventListener('scroll', function () { positionFigTools(); }, true);
-        window.addEventListener('resize', function () { positionFigTools(); });
+        window.addEventListener('scroll', function () { positionFigTools(); positionTblTools(); }, true);
+        window.addEventListener('resize', function () { positionFigTools(); positionTblTools(); });
       }
 
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
@@ -33592,6 +34196,36 @@ bluetooth.startIOPinService()</pre>
     'Subir imagen nueva…': { en: 'Upload new image…', pt: 'Enviar imagem nova…' },
     'Una foto de tu celular o computadora': { en: 'A photo from your phone or computer', pt: 'Uma foto do seu celular ou computador' },
     'Insertar como texto o tabla (se puede editar)': { en: 'Insert as text or table (editable)', pt: 'Inserir como texto ou tabela (editável)' },
+    'Tabla': { en: 'Table', pt: 'Tabela' },
+    'Insertar una tabla para completar, o pegar una desde Excel / Google Sheets': { en: 'Insert a table to fill in, or paste one from Excel / Google Sheets', pt: 'Inserir uma tabela para preencher, ou colar uma do Excel / Google Sheets' },
+    'Insertar tabla': { en: 'Insert table', pt: 'Inserir tabela' },
+    'Elegí filas × columnas': { en: 'Choose rows × columns', pt: 'Escolha linhas × colunas' },
+    'Primera fila de títulos': { en: 'First row as headers', pt: 'Primeira linha de títulos' },
+    'Otro tamaño': { en: 'Other size', pt: 'Outro tamanho' },
+    'Filas': { en: 'Rows', pt: 'Linhas' },
+    'Columnas': { en: 'Columns', pt: 'Colunas' },
+    'Desde una planilla': { en: 'From a spreadsheet', pt: 'De uma planilha' },
+    'Copiá las celdas en Excel, Google Sheets o un CSV y pegalas acá (Ctrl+V)': { en: 'Copy the cells in Excel, Google Sheets or a CSV and paste them here (Ctrl+V)', pt: 'Copie as células no Excel, Google Sheets ou um CSV e cole-as aqui (Ctrl+V)' },
+    'Insertar como tabla': { en: 'Insert as table', pt: 'Inserir como tabela' },
+    'También podés pegar directamente en el texto: las celdas copiadas de una planilla se convierten solas en tabla.': { en: 'You can also paste straight into the text: cells copied from a spreadsheet become a table by themselves.', pt: 'Você também pode colar direto no texto: as células copiadas de uma planilha viram tabela sozinhas.' },
+    'Tabla con tus datos': { en: 'Table with your data', pt: 'Tabela com seus dados' },
+    'Tabla de datos, estadísticas o comparación con la teoría': { en: 'Data table, statistics or comparison with theory', pt: 'Tabela de dados, estatísticas ou comparação com a teoria' },
+    'Fila': { en: 'Row', pt: 'Linha' },
+    'Columna': { en: 'Column', pt: 'Coluna' },
+    'Agregar una fila arriba': { en: 'Add a row above', pt: 'Adicionar uma linha acima' },
+    'Agregar una fila abajo (o Tab en la última celda)': { en: 'Add a row below (or Tab in the last cell)', pt: 'Adicionar uma linha abaixo (ou Tab na última célula)' },
+    'Quitar esta fila': { en: 'Remove this row', pt: 'Remover esta linha' },
+    'Agregar una columna a la izquierda': { en: 'Add a column to the left', pt: 'Adicionar uma coluna à esquerda' },
+    'Agregar una columna a la derecha': { en: 'Add a column to the right', pt: 'Adicionar uma coluna à direita' },
+    'Quitar esta columna': { en: 'Remove this column', pt: 'Remover esta coluna' },
+    'Alinear la columna a la izquierda': { en: 'Align the column left', pt: 'Alinhar a coluna à esquerda' },
+    'Centrar la columna': { en: 'Center the column', pt: 'Centralizar a coluna' },
+    'Alinear la columna a la derecha (números)': { en: 'Align the column right (numbers)', pt: 'Alinhar a coluna à direita (números)' },
+    'Primera fila de títulos (sí / no)': { en: 'First row as headers (on / off)', pt: 'Primeira linha de títulos (sim / não)' },
+    'Quitar la tabla': { en: 'Remove the table', pt: 'Remover a tabela' },
+    'Creá una parte de texto para insertar la tabla.': { en: 'Create a text part to insert the table.', pt: 'Crie uma parte de texto para inserir a tabela.' },
+    'Indicá cuántas filas y columnas.': { en: 'Say how many rows and columns.', pt: 'Indique quantas linhas e colunas.' },
+    'Pegá primero las celdas de la planilla.': { en: 'Paste the spreadsheet cells first.', pt: 'Cole primeiro as células da planilha.' },
     'Ecuación, R² y parámetros': { en: 'Equation, R² and parameters', pt: 'Equação, R² e parâmetros' },
     'Todos los puntos capturados': { en: 'All captured points', pt: 'Todos os pontos capturados' },
     'Media, mínimo, máximo y desviación': { en: 'Mean, minimum, maximum and deviation', pt: 'Média, mínimo, máximo e desvio' },
