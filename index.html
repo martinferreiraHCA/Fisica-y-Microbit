@@ -4447,6 +4447,21 @@
         .inf-rich table.doc-data-table th, .inf-rich table.doc-data-table td { border:1px solid #d3d3d3; padding:3px 8px; text-align:right; }
         .inf-rich table.doc-data-table th { background:#f0f0f0; font-weight:700; text-align:center; }
         .inf-rich table.doc-cmp-table td { text-align:left; min-width:70px; }
+        /* Tablas libres (botón «Tabla» del informe) */
+        .inf-rich table.doc-free-table th, .inf-rich table.doc-free-table td { text-align:left; min-width:56px; height:1.7em; vertical-align:top; }
+        .inf-rich table.doc-free-table th { text-align:center; }
+        .inf-tbl-pick { padding:6px 12px 8px; }
+        .inf-tbl-grid { display:grid; grid-template-columns:repeat(10, 17px); gap:3px; margin:4px 0 6px; }
+        .inf-tbl-grid span { width:17px; height:17px; border:1px solid #bbb; background:#fff; cursor:pointer; }
+        .inf-tbl-grid span.on { background:#1565c0; border-color:#0d47a1; }
+        .inf-tbl-size { font-size:12px; font-weight:700; text-align:center; min-height:16px; }
+        .inf-tbl-form { padding:4px 12px 8px; font-size:12px; display:flex; flex-direction:column; gap:6px; }
+        .inf-tbl-form .row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+        .inf-tbl-form input[type=number] { width:52px; padding:3px 4px; font-size:12px; border:1px solid #999; }
+        .inf-tbl-form textarea { width:100%; min-height:70px; box-sizing:border-box; font-family:monospace; font-size:11.5px; border:1px solid #999; padding:4px; resize:vertical; }
+        .inf-tbl-form button { align-self:flex-start; background:#000; color:#fff; border:2px solid #000; padding:4px 10px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; }
+        .inf-tbl-form button:hover { background:#fff; color:#000; }
+        .inf-tbl-form label { display:flex; align-items:center; gap:5px; cursor:pointer; }
         .inf-rich figure.doc-fig { width:60%; margin:12px auto; text-align:center; cursor:grab; }
         .inf-rich figure.doc-fig:active { cursor:grabbing; }
         .inf-rich figure.doc-fig.dragging { opacity:0.45; outline:2px dashed #000; }
@@ -28698,6 +28713,7 @@ bluetooth.startIOPinService()</pre>
         <div class="inf-menu" id="inf-cite-menu"></div>
         <div class="inf-menu" id="inf-img-menu"></div>
         <div class="inf-menu" id="inf-data-menu"></div>
+        <div class="inf-menu" id="inf-table-menu"></div>
         <div class="inf-menu" id="inf-graph-menu"></div>
         <div class="inf-menu" id="inf-add-menu"></div>
         <div class="inf-menu" id="inf-docopts-menu"></div>
@@ -28750,6 +28766,7 @@ bluetooth.startIOPinService()</pre>
 
     <!-- Barra flotante de edición de imagen -->
     <div class="inf-fig-tools" id="inf-fig-tools"></div>
+    <div class="inf-fig-tools" id="inf-tbl-tools"></div>
 
     <!-- Modal: editor de ecuaciones LaTeX -->
     <div class="inf-eq-modal" id="inf-eq-modal">
@@ -28952,6 +28969,7 @@ bluetooth.startIOPinService()</pre>
         ".rep-doc .rep-rich table.doc-data-table th,.rep-doc .rep-rich table.doc-data-table td{border:1px solid #cfcfcf;padding:3px 8px;text-align:right;}",
         ".rep-doc .rep-rich table.doc-data-table th{background:#f0f3f8;font-weight:700;text-align:center;}",
         ".rep-doc .rep-rich table.doc-cmp-table td{text-align:left;}",
+        ".rep-doc .rep-rich table.doc-free-table td{text-align:left;vertical-align:top;}",
         ".rep-doc .rep-rich h4{font-size:12.5px;font-weight:700;margin:8px 0 4px;color:#333;}",
         ".rep-doc .rep-rich figure.doc-fig{width:60%;margin:12px auto;text-align:center;}",
         ".rep-doc .rep-rich figure.doc-fig.fig-left{margin:12px auto 12px 0;text-align:left;}",
@@ -29825,6 +29843,10 @@ bluetooth.startIOPinService()</pre>
           } catch (e) {}
         });
         ed.addEventListener('keydown', function (e) {
+          if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            var cell = currentTableCell();
+            if (cell && ed.contains(cell)) { e.preventDefault(); tblTabMove(cell, e.shiftKey ? -1 : 1); return; }
+          }
           if (e.key !== ' ' || e.ctrlKey || e.metaKey || e.altKey) return;
           try {
             var sel = window.getSelection(); if (!sel || !sel.rangeCount || !sel.isCollapsed) return;
@@ -29854,8 +29876,16 @@ bluetooth.startIOPinService()</pre>
         ed.addEventListener('paste', function (e) {
           try {
             var cd = e.clipboardData; if (!cd) return;
-            if (cd.types && [].slice.call(cd.types).indexOf('text/html') >= 0) return;   // con formato: lo maneja el navegador
+            if (cd.types && [].slice.call(cd.types).indexOf('text/html') >= 0) {   // con formato: lo maneja el navegador
+              setTimeout(function () { if (normalizePastedTables(ed)) onEditableInput(ed); }, 0);   // tablas de Excel/Sheets con el estilo del informe
+              return;
+            }
             var txt = cd.getData('text/plain'); if (!txt || txt.indexOf('\n') < 0) return;
+            // Celdas copiadas de una planilla como texto (separadas por tabulaciones) → tabla
+            if (txt.indexOf('\t') >= 0) {
+              var grid = parseTableText(txt);
+              if (grid && grid.length >= 1 && grid[0].length >= 2) { e.preventDefault(); insertFreeTable(grid, { header: looksLikeHeader(grid) }); return; }
+            }
             var lines = txt.split(/\r?\n/).filter(function (l) { return l.trim(); });
             var marked = lines.filter(function (l) { return LIST_LINE_RE.test(l); });
             if (marked.length < 2) return;
@@ -30009,7 +30039,8 @@ bluetooth.startIOPinService()</pre>
         var g4 = grp('Insertar');
         g4.appendChild(rbBtn(ico('image'), 'Imagen', 'Subir una foto o insertar una imagen del experimento', function (e) { toggleImgMenu(e); }));
         g4.appendChild(rbBtn(ico('chart'), 'Gráfica', 'Insertar una gráfica de los datos capturados', function (e) { toggleGraphMenu(e); }));
-        g4.appendChild(rbBtn(ico('table'), 'Datos', 'Insertar la tabla de datos, las estadísticas o el resultado del ajuste (se pueden editar)', function (e) { ensureFocusEd(); toggleDataMenu(e); }));
+        g4.appendChild(rbBtn(ico('table'), 'Tabla', 'Insertar una tabla para completar, o pegar una desde Excel / Google Sheets', function (e) { ensureFocusEd(); toggleTableMenu(e); }));
+        g4.appendChild(rbBtn(ico('stats'), 'Datos', 'Insertar la tabla de datos, las estadísticas o el resultado del ajuste (se pueden editar)', function (e) { ensureFocusEd(); toggleDataMenu(e); }));
         g4.appendChild(rbBtn('∑', 'Ecuación', 'Insertar una fórmula (se arma con botones)', function () { openEqEditor(ensureFocusEd(), null); }, { glyph: true }));
         g4.appendChild(rbBtn(ico('pencil'), 'Dibujo', 'Dibujar a mano un esquema e insertarlo acá', drawAndInsert));
         g4.appendChild(rbBtn(ico('book'), 'Cita', 'Insertar una cita bibliográfica (formato APA)', function (e) { ensureFocusEd(); toggleCiteMenu(e); }));
@@ -30633,6 +30664,287 @@ bluetooth.startIOPinService()</pre>
         if (rows > 120) uiConfirm('La tabla tiene ' + rows + ' filas. ¿Insertar toda la tabla en el texto? Podés colapsar la sección después para que no ocupe tanto.').then(function (ok) { if (ok) doIt(); });
         else doIt();
       }
+      // ---- Tablas libres: insertar, pegar desde planillas y editar filas/columnas ----
+      function tblCellsHTML(n, tag, vals) {
+        var h = '';
+        for (var c = 0; c < n; c++) { var v = vals && vals[c] != null ? String(vals[c]) : ''; h += '<' + tag + '>' + (v.trim() ? esc(v.trim()) : '<br>') + '</' + tag + '>'; }
+        return h;
+      }
+      // grid: matriz de textos (o null para una tabla vacía de rows × cols)
+      function freeTableHTML(rows, cols, header, grid) {
+        var thead = '', body = '', start = 0;
+        if (header) { thead = '<thead><tr>' + tblCellsHTML(cols, 'th', grid && grid[0]) + '</tr></thead>'; start = 1; }
+        for (var r = start; r < rows; r++) body += '<tr>' + tblCellsHTML(cols, 'td', grid && grid[r]) + '</tr>';
+        return '<table class="doc-data-table doc-free-table" data-new-table="1">' + thead + '<tbody>' + body + '</tbody></table><p>​</p>';
+      }
+      function placeCaretIn(node, atEnd) {
+        try {
+          var r = document.createRange(); r.selectNodeContents(node); r.collapse(!atEnd);
+          var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); I._savedRange = r.cloneRange();
+        } catch (e) {}
+      }
+      function insertFreeTable(gridOrSize, opts) {
+        opts = opts || {};
+        var ed = I._focusEd || ensureFocusEd(); if (!ed) { toast('Creá una parte de texto para insertar la tabla.'); return; }
+        var grid = Array.isArray(gridOrSize) ? gridOrSize : null;
+        var rows = grid ? grid.length : Math.max(1, Math.min(60, gridOrSize.rows | 0));
+        var cols = grid ? grid.reduce(function (m, r) { return Math.max(m, r.length); }, 0) : Math.max(1, Math.min(15, gridOrSize.cols | 0));
+        if (!rows || !cols) { toast('No hay celdas para insertar.'); return; }
+        var header = !!opts.header && rows >= 1;
+        pushUndo();
+        ed.focus(); restoreRange();
+        // Si el cursor ya está dentro de otra tabla, la nueva va después de esa tabla (no anidada)
+        var inCell = currentTableCell();
+        if (inCell && ed.contains(inCell)) { var outer = inCell.closest('table'); var pAfter = document.createElement('p'); pAfter.innerHTML = '<br>'; outer.parentNode.insertBefore(pAfter, outer.nextSibling); placeCaretIn(pAfter, false); }
+        var html = freeTableHTML(rows, cols, header, grid);
+        try { document.execCommand('insertHTML', false, html); } catch (e) { ed.insertAdjacentHTML('beforeend', html); }
+        var t = ed.querySelector('table[data-new-table]');
+        if (t) {
+          t.removeAttribute('data-new-table');
+          var first = t.querySelector('th, td'); if (first) placeCaretIn(first, true);
+        }
+        onEditableInput(ed);
+        setTimeout(updateTblTools, 0);
+      }
+      // Texto de planilla → matriz. Separador: tabulación, punto y coma o coma (en ese orden).
+      function parseTableText(txt) {
+        var lines = String(txt || '').replace(/\r\n?/g, '\n').split('\n');
+        while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+        while (lines.length && !lines[0].trim()) lines.shift();
+        if (!lines.length) return null;
+        var sep = lines.some(function (l) { return l.indexOf('\t') >= 0; }) ? '\t' : (lines.some(function (l) { return l.indexOf(';') >= 0; }) ? ';' : (lines.some(function (l) { return l.indexOf(',') >= 0; }) ? ',' : null));
+        var grid = lines.map(function (l) {
+          if (!sep) return [l];
+          if (sep === '\t') return l.split('\t');
+          // CSV simple con comillas
+          var out = [], cur = '', q = false;
+          for (var i = 0; i < l.length; i++) {
+            var ch = l[i];
+            if (ch === '"') { if (q && l[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+            else if (ch === sep && !q) { out.push(cur); cur = ''; }
+            else cur += ch;
+          }
+          out.push(cur); return out;
+        });
+        var cols = grid.reduce(function (m, r) { return Math.max(m, r.length); }, 0);
+        grid.forEach(function (r) { while (r.length < cols) r.push(''); });
+        if (grid.length > 200) grid = grid.slice(0, 200);
+        return grid;
+      }
+      function _isNumCell(v) { v = String(v || '').trim(); return !!v && /^[-+]?(\d+[.,]?\d*|[.,]\d+)([eE][-+]?\d+)?$/.test(v); }
+      // ¿La primera fila es de títulos? (tiene texto y las siguientes tienen números)
+      function looksLikeHeader(grid) {
+        if (!grid || grid.length < 2) return false;
+        var firstText = grid[0].some(function (v) { return String(v).trim() && !_isNumCell(v); });
+        var restNum = grid.slice(1).some(function (r) { return r.some(_isNumCell); });
+        return firstText && restNum;
+      }
+      // Tablas pegadas con formato (Excel / Google Sheets / Word): estilo del informe y sin estilos sueltos
+      function normalizePastedTables(ed) {
+        var changed = false;
+        [].slice.call(ed.querySelectorAll('table')).forEach(function (t) {
+          if (/doc-data-table|rep-table|rep-stats/.test(t.className || '')) return;
+          t.className = 'doc-data-table doc-free-table';
+          ['style', 'width', 'border', 'cellpadding', 'cellspacing', 'align'].forEach(function (a) { t.removeAttribute(a); });
+          [].slice.call(t.querySelectorAll('col, colgroup')).forEach(function (c) { c.parentNode.removeChild(c); });
+          [].slice.call(t.querySelectorAll('tr, td, th')).forEach(function (c) { ['style', 'class', 'width', 'height', 'bgcolor'].forEach(function (a) { c.removeAttribute(a); }); if ((c.tagName === 'TD' || c.tagName === 'TH') && !c.textContent.trim() && !c.querySelector('img')) c.innerHTML = '<br>'; });
+          changed = true;
+        });
+        return changed;
+      }
+      function currentTableCell() {
+        try {
+          var sel = window.getSelection(); if (!sel || !sel.rangeCount) return null;
+          var n = sel.getRangeAt(0).startContainer; var e = n.nodeType === 1 ? n : n.parentNode;
+          var c = e && e.closest ? e.closest('td, th') : null;
+          if (!c || !c.closest('.inf-rich')) return null;
+          var t = c.closest('table'); if (!t || /rep-table|rep-stats/.test(t.className || '')) return null;
+          return c;
+        } catch (e) { return null; }
+      }
+      // Menú del botón «Tabla»: grilla para elegir el tamaño, tamaño a mano y pegar desde una planilla
+      function toggleTableMenu(evt) {
+        var m = el('inf-table-menu'); if (!m) return;
+        if (m.classList.contains('open')) { m.classList.remove('open'); return; }
+        closeMenus(); m.innerHTML = '';
+        menuHead(m, 'Insertar tabla');
+        var pick = document.createElement('div'); pick.className = 'inf-tbl-pick';
+        var size = document.createElement('div'); size.className = 'inf-tbl-size'; size.textContent = _t('Elegí filas × columnas');
+        var grid = document.createElement('div'); grid.className = 'inf-tbl-grid';
+        var R = 8, C = 10, cells = [];
+        for (var r = 1; r <= R; r++) for (var c = 1; c <= C; c++) {
+          (function (r, c) {
+            var sp = document.createElement('span'); sp.dataset.r = r; sp.dataset.c = c;
+            sp.addEventListener('mousedown', function (e) { e.preventDefault(); });
+            sp.addEventListener('mouseenter', function () { cells.forEach(function (x) { x.classList.toggle('on', +x.dataset.r <= r && +x.dataset.c <= c); }); size.textContent = r + ' × ' + c; });
+            sp.addEventListener('click', function () { m.classList.remove('open'); insertFreeTable({ rows: r, cols: c }, { header: hdr.checked }); });
+            cells.push(sp); grid.appendChild(sp);
+          })(r, c);
+        }
+        grid.addEventListener('mouseleave', function () { cells.forEach(function (x) { x.classList.remove('on'); }); size.textContent = _t('Elegí filas × columnas'); });
+        pick.appendChild(size); pick.appendChild(grid);
+        var hdrLbl = document.createElement('label'); hdrLbl.style.cssText = 'display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;';
+        var hdr = document.createElement('input'); hdr.type = 'checkbox'; hdr.checked = true; hdr.style.margin = '0';
+        hdrLbl.appendChild(hdr); hdrLbl.appendChild(document.createTextNode(_t('Primera fila de títulos')));
+        pick.appendChild(hdrLbl);
+        m.appendChild(pick);
+        // Tamaño a mano (más grande que la grilla)
+        menuSep(m); menuHead(m, 'Otro tamaño');
+        var f1 = document.createElement('div'); f1.className = 'inf-tbl-form';
+        f1.innerHTML = '<div class="row"><span>' + esc(_t('Filas')) + '</span><input type="number" min="1" max="60" value="5" data-k="r"><span>' + esc(_t('Columnas')) + '</span><input type="number" min="1" max="15" value="3" data-k="c"></div>';
+        var b1 = document.createElement('button'); b1.type = 'button'; b1.textContent = _t('Insertar tabla');
+        b1.addEventListener('mousedown', function (e) { e.preventDefault(); });
+        b1.addEventListener('click', function () {
+          var r = parseInt(f1.querySelector('[data-k=r]').value, 10), c = parseInt(f1.querySelector('[data-k=c]').value, 10);
+          if (!(r >= 1) || !(c >= 1)) { toast('Indicá cuántas filas y columnas.'); return; }
+          m.classList.remove('open'); insertFreeTable({ rows: Math.min(60, r), cols: Math.min(15, c) }, { header: hdr.checked });
+        });
+        f1.appendChild(b1); m.appendChild(f1);
+        // Pegar desde Excel / Google Sheets / CSV
+        menuSep(m); menuHead(m, 'Desde una planilla');
+        var f2 = document.createElement('div'); f2.className = 'inf-tbl-form';
+        var ta = document.createElement('textarea'); ta.placeholder = _t('Copiá las celdas en Excel, Google Sheets o un CSV y pegalas acá (Ctrl+V)');
+        f2.appendChild(ta);
+        var b2 = document.createElement('button'); b2.type = 'button'; b2.textContent = _t('Insertar como tabla');
+        b2.addEventListener('mousedown', function (e) { e.preventDefault(); });
+        b2.addEventListener('click', function () {
+          var g = parseTableText(ta.value);
+          if (!g) { toast('Pegá primero las celdas de la planilla.'); return; }
+          m.classList.remove('open'); insertFreeTable(g, { header: looksLikeHeader(g) || hdr.checked && g.length > 1 && !g[0].every(_isNumCell) });
+        });
+        f2.appendChild(b2);
+        var tip = document.createElement('div'); tip.style.cssText = 'font-size:10.5px;color:#777;line-height:1.35;';
+        tip.textContent = _t('También podés pegar directamente en el texto: las celdas copiadas de una planilla se convierten solas en tabla.');
+        f2.appendChild(tip);
+        m.appendChild(f2);
+        menuSep(m);
+        menuItem(m, 'stats', 'Tabla con tus datos', 'Tabla de datos, estadísticas o comparación con la teoría', function () { var b = [].slice.call(document.querySelectorAll('#inf-wp-toolbar .inf-wp-btn')).find(function (x) { var l = x.querySelector('.lb'); return l && l.textContent === _t('Datos'); }); toggleDataMenu({ currentTarget: b || evt.currentTarget }); });
+        positionMenu(m, evt.currentTarget || evt.target); m.classList.add('open');
+      }
+      // ---- Barra flotante para editar la tabla donde está el cursor ----
+      var _tblCell = null, _tblEd = null;
+      function tblRowCells(tr) { return [].slice.call(tr.children).filter(function (c) { return c.tagName === 'TD' || c.tagName === 'TH'; }); }
+      function tblAllRows(t) { return [].slice.call(t.rows); }
+      function tblNewRow(n, tag) { var tr = document.createElement('tr'); for (var i = 0; i < n; i++) { var c = document.createElement(tag); c.innerHTML = '<br>'; tr.appendChild(c); } return tr; }
+      function tblCols(t) { return tblAllRows(t).reduce(function (m, r) { return Math.max(m, tblRowCells(r).length); }, 0); }
+      function tblDone(focusCell) { if (focusCell) placeCaretIn(focusCell, true); if (_tblEd) onEditableInput(_tblEd); setTimeout(updateTblTools, 0); }
+      function tblAddRow(after) {
+        var c = _tblCell; if (!c) return; pushUndo();
+        var tr = c.parentNode, t = c.closest('table'), sec = tr.parentNode, n = tblCols(t);
+        var nr;
+        if (sec.tagName === 'THEAD') {
+          var tb = t.tBodies[0]; if (!tb) { tb = document.createElement('tbody'); t.appendChild(tb); }
+          nr = tblNewRow(n, 'td');
+          if (after) tb.insertBefore(nr, tb.firstChild); else { nr = tblNewRow(n, 'th'); sec.insertBefore(nr, tr); }
+        } else { nr = tblNewRow(n, 'td'); sec.insertBefore(nr, after ? tr.nextSibling : tr); }
+        tblDone(tblRowCells(nr)[Math.min(c.cellIndex, tblRowCells(nr).length - 1)]);
+      }
+      function tblAddCol(after) {
+        var c = _tblCell; if (!c) return; pushUndo();
+        var t = c.closest('table'), idx = c.cellIndex;
+        tblAllRows(t).forEach(function (tr) {
+          var cells = tblRowCells(tr), ref = cells[Math.min(idx, cells.length - 1)];
+          var nc = document.createElement(ref ? ref.tagName.toLowerCase() : 'td'); nc.innerHTML = '<br>';
+          if (!ref) tr.appendChild(nc); else tr.insertBefore(nc, after ? ref.nextSibling : ref);
+        });
+        var row = tblRowCells(c.parentNode); tblDone(row[after ? idx + 1 : idx]);
+      }
+      function tblDelRow() {
+        var c = _tblCell; if (!c) return; var t = c.closest('table');
+        if (tblAllRows(t).length <= 1) { tblDelete(); return; }
+        pushUndo();
+        var tr = c.parentNode, rows = tblAllRows(t), ri = rows.indexOf(tr), idx = c.cellIndex;
+        var sec = tr.parentNode; sec.removeChild(tr); if (!sec.rows.length && sec.tagName !== 'TABLE') sec.parentNode.removeChild(sec);
+        var rows2 = tblAllRows(t), nr = rows2[Math.min(ri, rows2.length - 1)];
+        tblDone(tblRowCells(nr)[Math.min(idx, tblRowCells(nr).length - 1)]);
+      }
+      function tblDelCol() {
+        var c = _tblCell; if (!c) return; var t = c.closest('table');
+        if (tblCols(t) <= 1) { tblDelete(); return; }
+        pushUndo();
+        var idx = c.cellIndex, tr = c.parentNode;
+        tblAllRows(t).forEach(function (r) { var cells = tblRowCells(r); if (cells[idx] && cells.length > 1) r.removeChild(cells[idx]); });
+        var cells = tblRowCells(tr); tblDone(cells[Math.min(idx, cells.length - 1)]);
+      }
+      function tblToggleHeader() {
+        var c = _tblCell; if (!c) return; pushUndo();
+        var t = c.closest('table'), ri = tblAllRows(t).indexOf(c.parentNode), idx = c.cellIndex;
+        if (t.tHead && t.tHead.rows.length) {
+          var tb = t.tBodies[0]; if (!tb) { tb = document.createElement('tbody'); t.appendChild(tb); }
+          [].slice.call(t.tHead.rows).reverse().forEach(function (tr) {
+            tblRowCells(tr).forEach(function (cell) { var td = document.createElement('td'); td.innerHTML = cell.innerHTML; tr.replaceChild(td, cell); });
+            tb.insertBefore(tr, tb.firstChild);
+          });
+          t.removeChild(t.tHead);
+        } else {
+          var first = tblAllRows(t)[0]; if (!first) return;
+          tblRowCells(first).forEach(function (cell) { var th = document.createElement('th'); th.innerHTML = cell.innerHTML; first.replaceChild(th, cell); });
+          var th = t.createTHead(); th.appendChild(first);
+        }
+        var nr = tblAllRows(t)[ri]; tblDone(nr ? tblRowCells(nr)[Math.min(idx, tblRowCells(nr).length - 1)] : null);
+      }
+      function tblAlign(a) {
+        var c = _tblCell; if (!c) return; pushUndo();
+        var t = c.closest('table'), idx = c.cellIndex;
+        tblAllRows(t).forEach(function (r) { var cell = tblRowCells(r)[idx]; if (cell && cell.tagName === 'TD') cell.style.textAlign = a; });
+        tblDone(c);
+      }
+      function tblDelete() {
+        var c = _tblCell; if (!c) return; pushUndo();
+        var t = c.closest('table'), nxt = t.nextElementSibling;
+        var p = document.createElement('p'); p.innerHTML = '<br>';
+        t.parentNode.replaceChild(p, t);
+        if (nxt && nxt.tagName === 'P' && !nxt.textContent.replace(/[\s​]/g, '')) nxt.parentNode.removeChild(nxt);
+        _tblCell = null; tblDone(p);
+      }
+      // Tab / Shift+Tab: celda siguiente o anterior; Tab en la última celda agrega una fila
+      function tblTabMove(cell, dir) {
+        var t = cell.closest('table'), all = [];
+        tblAllRows(t).forEach(function (r) { all = all.concat(tblRowCells(r)); });
+        var i = all.indexOf(cell) + dir;
+        if (i >= all.length) { _tblCell = cell; _tblEd = cell.closest('.inf-rich'); tblAddRow(true); var tr = tblAllRows(t)[tblAllRows(t).length - 1]; placeCaretIn(tblRowCells(tr)[0], true); return; }
+        if (i < 0) return;
+        placeCaretIn(all[i], true); updateTblTools();
+      }
+      function buildTblTools() {
+        var tb = el('inf-tbl-tools'); if (!tb || tb.dataset.built) return; tb.dataset.built = '1';
+        function mk(txt, title, fn) { var x = document.createElement('button'); x.type = 'button'; x.className = 'inf-fig-btn'; x.setAttribute('data-tip', title); x.innerHTML = txt; x.addEventListener('mousedown', function (e) { e.preventDefault(); }); x.addEventListener('click', function () { fn(); }); return x; }
+        function sep() { var s2 = document.createElement('span'); s2.className = 'inf-fig-sep'; return s2; }
+        function lbl(t) { var s2 = document.createElement('span'); s2.className = 'inf-fig-w'; s2.style.minWidth = '0'; s2.style.fontWeight = '700'; s2.textContent = t; return s2; }
+        tb.appendChild(lbl(_t('Fila')));
+        tb.appendChild(mk('＋↑', 'Agregar una fila arriba', function () { tblAddRow(false); }));
+        tb.appendChild(mk('＋↓', 'Agregar una fila abajo (o Tab en la última celda)', function () { tblAddRow(true); }));
+        tb.appendChild(mk('−', 'Quitar esta fila', tblDelRow));
+        tb.appendChild(sep());
+        tb.appendChild(lbl(_t('Columna')));
+        tb.appendChild(mk('＋←', 'Agregar una columna a la izquierda', function () { tblAddCol(false); }));
+        tb.appendChild(mk('＋→', 'Agregar una columna a la derecha', function () { tblAddCol(true); }));
+        tb.appendChild(mk('−', 'Quitar esta columna', tblDelCol));
+        tb.appendChild(sep());
+        tb.appendChild(mk('⯇', 'Alinear la columna a la izquierda', function () { tblAlign('left'); }));
+        tb.appendChild(mk('≡', 'Centrar la columna', function () { tblAlign('center'); }));
+        tb.appendChild(mk('⯈', 'Alinear la columna a la derecha (números)', function () { tblAlign('right'); }));
+        tb.appendChild(sep());
+        tb.appendChild(mk('<b>T</b>', 'Primera fila de títulos (sí / no)', tblToggleHeader));
+        tb.appendChild(mk('<span class="inf-ic">' + ico('trash') + '</span>', 'Quitar la tabla', tblDelete));
+      }
+      function positionTblTools() {
+        var tb = el('inf-tbl-tools'); if (!tb || !tb.classList.contains('open') || !_tblCell) return;
+        var t = _tblCell.closest('table'); if (!t || !t.isConnected) { tb.classList.remove('open'); return; }
+        var r = t.getBoundingClientRect();
+        if (r.bottom < 70 || r.top > window.innerHeight - 20) { tb.style.visibility = 'hidden'; return; }
+        tb.style.visibility = '';
+        var top = r.top - tb.offsetHeight - 6; if (top < 56) top = Math.min(56, r.bottom - tb.offsetHeight);
+        tb.style.top = Math.max(4, top) + 'px';
+        tb.style.left = Math.max(6, Math.min(r.left, window.innerWidth - tb.offsetWidth - 8)) + 'px';
+      }
+      function updateTblTools() {
+        var tb = el('inf-tbl-tools'); if (!tb) return;
+        var c = currentTableCell();
+        if (!c) { if (document.activeElement && tb.contains(document.activeElement)) return; tb.classList.remove('open'); _tblCell = null; return; }
+        _tblCell = c; _tblEd = c.closest('.inf-rich');
+        buildTblTools(); tb.classList.add('open'); positionTblTools();
+      }
       function toggleDataMenu(evt) {
         var m = el('inf-data-menu'); if (!m) return;
         if (m.classList.contains('open')) { m.classList.remove('open'); return; }
@@ -30778,7 +31090,7 @@ bluetooth.startIOPinService()</pre>
       // ---- Vista previa a pantalla completa (así queda el informe) ----
       function previewOpen() { var m = el('inf-preview-modal'); return !!(m && m.classList.contains('open')); }
       function openPreview() {
-        track('vista_previa', 'modo'); closeMenus(); closeFigTools();
+        track('vista_previa', 'modo'); closeMenus(); closeFigTools(); { var _tt = el('inf-tbl-tools'); if (_tt) _tt.classList.remove('open'); }
         var m = el('inf-preview-modal'); if (!m) return;
         m.classList.add('open'); renderPreview();
         var sc = el('inf-preview'); if (sc) sc.scrollTop = 0;
@@ -31127,7 +31439,7 @@ bluetooth.startIOPinService()</pre>
         function buildTable(tbl, ctx) {
           var cls = tbl.className || '';
           var kind = /rep-table/.test(cls) ? 'data' : (/rep-stats/.test(cls) ? 'stats' : (/doc-data-table/.test(cls) ? 'doc' : 'plain'));
-          var cmp = /doc-cmp-table/.test(cls);
+          var cmp = /doc-cmp-table|doc-free-table/.test(cls);
           var trs = [].slice.call(tbl.querySelectorAll('tr')).filter(function (tr) { return tr.closest('table') === tbl; });
           if (!trs.length) return null;
           var ncols = 0; trs.forEach(function (tr) { var n = 0; [].slice.call(tr.children).forEach(function (c) { n += (c.colSpan || 1); }); ncols = Math.max(ncols, n); });
@@ -32673,6 +32985,7 @@ bluetooth.startIOPinService()</pre>
         gUpdateDriveUI();   // solo refresca el botón; NO conecta con Google (la conexión es siempre manual)
         // Guardar la selección activa dentro de los editores enriquecidos
         document.addEventListener('selectionchange', saveRange);
+        document.addEventListener('selectionchange', function () { if (typeof updateTblTools === 'function') updateTblTools(); });
         buildFigTools();
         // Cerrar menús / barra de imagen al hacer clic afuera
         document.addEventListener('mousedown', function (e) {
@@ -32681,8 +32994,8 @@ bluetooth.startIOPinService()</pre>
           if (!(cl && (t.closest('.inf-fig-tools') || t.closest('.doc-fig')))) closeFigTools();
         });
         // Reposicionar la barra de imagen al hacer scroll o cambiar tamaño
-        window.addEventListener('scroll', function () { positionFigTools(); }, true);
-        window.addEventListener('resize', function () { positionFigTools(); });
+        window.addEventListener('scroll', function () { positionFigTools(); positionTblTools(); }, true);
+        window.addEventListener('resize', function () { positionFigTools(); positionTblTools(); });
       }
 
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
@@ -33592,6 +33905,36 @@ bluetooth.startIOPinService()</pre>
     'Subir imagen nueva…': { en: 'Upload new image…', pt: 'Enviar imagem nova…' },
     'Una foto de tu celular o computadora': { en: 'A photo from your phone or computer', pt: 'Uma foto do seu celular ou computador' },
     'Insertar como texto o tabla (se puede editar)': { en: 'Insert as text or table (editable)', pt: 'Inserir como texto ou tabela (editável)' },
+    'Tabla': { en: 'Table', pt: 'Tabela' },
+    'Insertar una tabla para completar, o pegar una desde Excel / Google Sheets': { en: 'Insert a table to fill in, or paste one from Excel / Google Sheets', pt: 'Inserir uma tabela para preencher, ou colar uma do Excel / Google Sheets' },
+    'Insertar tabla': { en: 'Insert table', pt: 'Inserir tabela' },
+    'Elegí filas × columnas': { en: 'Choose rows × columns', pt: 'Escolha linhas × colunas' },
+    'Primera fila de títulos': { en: 'First row as headers', pt: 'Primeira linha de títulos' },
+    'Otro tamaño': { en: 'Other size', pt: 'Outro tamanho' },
+    'Filas': { en: 'Rows', pt: 'Linhas' },
+    'Columnas': { en: 'Columns', pt: 'Colunas' },
+    'Desde una planilla': { en: 'From a spreadsheet', pt: 'De uma planilha' },
+    'Copiá las celdas en Excel, Google Sheets o un CSV y pegalas acá (Ctrl+V)': { en: 'Copy the cells in Excel, Google Sheets or a CSV and paste them here (Ctrl+V)', pt: 'Copie as células no Excel, Google Sheets ou um CSV e cole-as aqui (Ctrl+V)' },
+    'Insertar como tabla': { en: 'Insert as table', pt: 'Inserir como tabela' },
+    'También podés pegar directamente en el texto: las celdas copiadas de una planilla se convierten solas en tabla.': { en: 'You can also paste straight into the text: cells copied from a spreadsheet become a table by themselves.', pt: 'Você também pode colar direto no texto: as células copiadas de uma planilha viram tabela sozinhas.' },
+    'Tabla con tus datos': { en: 'Table with your data', pt: 'Tabela com seus dados' },
+    'Tabla de datos, estadísticas o comparación con la teoría': { en: 'Data table, statistics or comparison with theory', pt: 'Tabela de dados, estatísticas ou comparação com a teoria' },
+    'Fila': { en: 'Row', pt: 'Linha' },
+    'Columna': { en: 'Column', pt: 'Coluna' },
+    'Agregar una fila arriba': { en: 'Add a row above', pt: 'Adicionar uma linha acima' },
+    'Agregar una fila abajo (o Tab en la última celda)': { en: 'Add a row below (or Tab in the last cell)', pt: 'Adicionar uma linha abaixo (ou Tab na última célula)' },
+    'Quitar esta fila': { en: 'Remove this row', pt: 'Remover esta linha' },
+    'Agregar una columna a la izquierda': { en: 'Add a column to the left', pt: 'Adicionar uma coluna à esquerda' },
+    'Agregar una columna a la derecha': { en: 'Add a column to the right', pt: 'Adicionar uma coluna à direita' },
+    'Quitar esta columna': { en: 'Remove this column', pt: 'Remover esta coluna' },
+    'Alinear la columna a la izquierda': { en: 'Align the column left', pt: 'Alinhar a coluna à esquerda' },
+    'Centrar la columna': { en: 'Center the column', pt: 'Centralizar a coluna' },
+    'Alinear la columna a la derecha (números)': { en: 'Align the column right (numbers)', pt: 'Alinhar a coluna à direita (números)' },
+    'Primera fila de títulos (sí / no)': { en: 'First row as headers (on / off)', pt: 'Primeira linha de títulos (sim / não)' },
+    'Quitar la tabla': { en: 'Remove the table', pt: 'Remover a tabela' },
+    'Creá una parte de texto para insertar la tabla.': { en: 'Create a text part to insert the table.', pt: 'Crie uma parte de texto para inserir a tabela.' },
+    'Indicá cuántas filas y columnas.': { en: 'Say how many rows and columns.', pt: 'Indique quantas linhas e colunas.' },
+    'Pegá primero las celdas de la planilla.': { en: 'Paste the spreadsheet cells first.', pt: 'Cole primeiro as células da planilha.' },
     'Ecuación, R² y parámetros': { en: 'Equation, R² and parameters', pt: 'Equação, R² e parâmetros' },
     'Todos los puntos capturados': { en: 'All captured points', pt: 'Todos os pontos capturados' },
     'Media, mínimo, máximo y desviación': { en: 'Mean, minimum, maximum and deviation', pt: 'Média, mínimo, máximo e desvio' },
