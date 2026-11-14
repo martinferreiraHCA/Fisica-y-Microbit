@@ -37,6 +37,9 @@ Cada vez que se arma, el prompt lee del sitio lo que hay **en ese momento**:
 - los **bloques de la extensión FisicaBit** (se leen de
   `pxt-fisicabit-usb`: versión y textos de los bloques en español);
 - los **ajustes de curva** y los **módulos del menú EXTRAS** (del propio DOM).
+- los **componentes del editor de circuitos** (`circuitos/componentes.js`) y las
+  reglas de conexión de la micro:bit, cuando se pide que la respuesta incluya
+  un circuito.
 
 El docente suma el tema, el curso, lo que se mide, los elementos del catálogo
 que va a usar, **elementos propios** (`Carrito: chasis, 4 ruedas, eje` → un
