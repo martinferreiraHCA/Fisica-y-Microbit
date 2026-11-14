@@ -5,6 +5,8 @@ import { TransformControls } from '../lib/TransformControls.js';
 import * as motor from './motor.js';
 import { Arte } from './arte.js';
 import { construirFicha, figuraPaso, figuraArmado, exportarProtocolo, LETRAS } from './ficha.js';
+import { ELEMENTOS, GRUPOS, elemento, valores } from './elementos.js';
+import { LISTAS, promptIA, leerReceta } from './recetas.js';
 
 const $ = (s) => document.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -263,64 +265,114 @@ function agregarMalla(pos, nombre, extra) {
 }
 // Agrega un conjunto de piezas ya ubicadas entre sí (diseño de cartón armado)
 function agregarConjunto(piezas) {
+  const x = lugarLibre();
+  partesDeConjunto(piezas, (todo) => [x == null ? -(todo.min[0] + todo.max[0]) / 2 : x - todo.min[0], -(todo.min[1] + todo.max[1]) / 2, -todo.min[2]]);
+  sel = null; cambio(); encuadrar();
+}
+// Crea las partes de un conjunto conservando su posición relativa; desplazar(caja) da el corrimiento del grupo
+function partesDeConjunto(piezas, desplazar) {
   const todo = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
   piezas.forEach((q) => { const c = motor.caja(q.pos); for (let k = 0; k < 3; k++) { todo.min[k] = Math.min(todo.min[k], c.min[k]); todo.max[k] = Math.max(todo.max[k], c.max[k]); } });
-  const x = lugarLibre(), dx = x == null ? -(todo.min[0] + todo.max[0]) / 2 : x - todo.min[0], dy = -(todo.min[1] + todo.max[1]) / 2, dz = -todo.min[2];
-  const geos = [];   // piezas iguales comparten geometría (misma cantidad de triángulos y volumen)
+  const [dx, dy, dz] = desplazar ? desplazar(todo) : [0, 0, 0];
+  const geos = [], nuevas = [];   // piezas iguales comparten geometría (misma cantidad de triángulos y volumen)
   piezas.forEach((q) => {
     const c = motor.centrar(q.pos), vol = motor.volumen(q.pos);
     const igual = geos.find((g) => g.n === q.pos.length && Math.abs(g.vol - vol) < 1e-3 * vol && g.nombre === q.nombre && mismaForma(E.geos[g.id].pos, q.pos));
     const id = igual ? igual.id : nuevaGeo(q.pos);
     if (!igual) geos.push({ id, n: q.pos.length, vol, nombre: q.nombre });
-    nuevaParte(id, q.nombre, [c[0] + dx, c[1] + dy, c[2] + dz]);
+    nuevas.push(nuevaParte(id, q.nombre, [c[0] + dx, c[1] + dy, c[2] + dz]));
   });
-  sel = null; cambio(); encuadrar();
+  return nuevas;
+}
+
+/* ---------- Recetas: guías listas y guías que arma la IA ---------- */
+const DIRS = { arriba: [0, 0, 1], abajo: [0, 0, -1], izquierda: [-1, 0, 0], derecha: [1, 0, 0], frente: [0, -1, 0], atras: [0, 1, 0], fondo: [0, 1, 0], '+x': [1, 0, 0], '-x': [-1, 0, 0], '+y': [0, 1, 0], '-y': [0, -1, 0] };
+const llano = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9+-]+/g, ' ').trim();
+const tres = (a) => [0, 1, 2].map((k) => +(a && a[k]) || 0);
+async function armarReceta(r, avisar) {
+  cargar({ doc: Object.assign(docNuevo(), { titulo: String(r.titulo || ''), tipo: String(r.tipo || 'Práctica'), subtitulo: String(r.bajada || ''), descripcion: String(r.descripcion || '') }),
+    pasos: r.pasos.map((ps) => ({ id: uid(), titulo: String((ps && ps.titulo) || 'Paso'), texto: String((ps && ps.texto) || ''), vista: null })), partes: [], geos: {}, vistaPortada: null });
+  const grupos = {}, faltan = [], V3 = () => new THREE.Vector3();
+  const cajaG = (ps) => { const b = new THREE.Box3(); ps.forEach((p) => b.union(cajaDe(p, false))); return b; };
+  for (const q of r.piezas) {
+    const k = q.de.indexOf(':'), tipo = llano(q.de.slice(0, k)), ref = q.de.slice(k + 1).trim(), xLibre = lugarLibre();
+    let nuevas = [];
+    try {
+      if (tipo === 'elemento') {
+        const e = elemento(llano(ref).replace(/ /g, '-')) || ELEMENTOS.find((x) => llano(x.nombre) === llano(ref)); if (!e) throw new Error('no existe');
+        const v = valores(e, q.params), pos = e.hacer(...v); motor.centrar(pos);
+        nuevas = [nuevaParte(nuevaGeo(pos), String(q.nombre || e.rotulo(...v)), [0, 0, 0], { relleno: e.relleno || 'blanco' })];
+      } else if (tipo === 'carton' || tipo === '3d') {
+        avisar && avisar('Preparando «' + ref + '» del catálogo (la primera vez carga el motor, ~14 MB)…');
+        const cat = await catalogoListo(), d = (cat[tipo] || []).find((x) => llano(x.nombre) === llano(ref)); if (!d) throw new Error('no está en el catálogo');
+        const code = d.code || (d.code = await (await fetch(d.url)).text()), params = motor.parametros(code);
+        Object.keys(q.params || {}).forEach((n) => { const pr = params.find((x) => x.nombre === n); if (pr) pr.valor = pr.tipo === 'num' ? (parseFloat(q.params[n]) || pr.valor) : pr.tipo === 'bool' ? !!q.params[n] : String(q.params[n]); });
+        const defs = motor.definiciones(params);
+        if (tipo === 'carton') nuevas = partesDeConjunto(await motor.importarCarton(code, defs, avisar));
+        else { const pos = await motor.importar3d(code, defs); motor.centrar(pos); const pz = params.find((x) => x.nombre === 'pieza'); nuevas = [nuevaParte(nuevaGeo(pos), String(q.nombre || (pz ? String(pz.valor).replace(/_/g, ' ') : d.nombre)).replace(/^./, (c) => c.toUpperCase()), [0, 0, 0])]; }
+      } else throw new Error('origen desconocido');
+    } catch (e) { faltan.push(q.de); continue; }
+    if (q.relleno && /^(blanco|gris|oscuro|puntos)$/.test(q.relleno)) nuevas.forEach((p) => { p.relleno = q.relleno; });
+    if (nuevas.length === 1 && Array.isArray(q.rot)) nuevas[0].rot = tres(q.rot);
+    const ip = Math.max(0, Math.min(E.pasos.length - 1, (parseInt(q.paso) || 1) - 1));
+    nuevas.forEach((p) => { p.paso = E.pasos[ip].id; });
+    // dónde va
+    const b = cajaG(nuevas), c = b.getCenter(V3()), tam = b.getSize(V3());
+    const idRef = q.sobre || q.colgar || (Array.isArray(q.alLado) ? q.alLado[0] : null), gr = idRef != null ? grupos[String(idRef)] : null, t = gr ? cajaG(gr) : null, tc = t ? t.getCenter(V3()) : null;
+    let d;
+    if (Array.isArray(q.pos)) { const o = tres(q.pos); d = [o[0] - c.x, o[1] - c.y, o[2] - c.z]; }
+    else if (q.sobre && t) d = [tc.x - c.x, tc.y - c.y, t.max.z - b.min.z];
+    else if (q.colgar && t) d = [tc.x - c.x, tc.y - c.y, t.min.z - b.max.z];
+    else if (Array.isArray(q.alLado) && t) { const u = DIRS[llano(q.alLado[1])] || DIRS['+x']; d = [u[0] > 0 ? t.max.x - b.min.x : u[0] < 0 ? t.min.x - b.max.x : tc.x - c.x, u[1] > 0 ? t.max.y - b.min.y : u[1] < 0 ? t.min.y - b.max.y : tc.y - c.y, t.min.z - b.min.z]; }
+    else d = [(q.x != null ? +q.x || 0 : (xLibre == null ? 0 : xLibre + tam.x / 2)) - c.x, (+q.y || 0) - c.y, (+q.z || 0) - b.min.z];
+    const mv = tres(q.mover);
+    nuevas.forEach((p) => { p.pos = p.pos.map((v, n) => r1(v + d[n] + mv[n])); });
+    // desde dónde entra en el dibujo del paso (el primer paso entra armado, salvo que se indique)
+    let ex = [0, 0, 0];
+    if (Array.isArray(q.entra)) ex = tres(q.entra);
+    else { const u = DIRS[llano(q.entra)] || (ip > 0 ? DIRS.arriba : null); if (u) { const L = Math.max(50, Math.min(200, 0.6 * (Math.abs(u[0]) * tam.x + Math.abs(u[1]) * tam.y + Math.abs(u[2]) * tam.z) + 40)); ex = u.map((n) => Math.round(n * L)); } }
+    nuevas.forEach((p) => { p.exp = ex.slice(); });
+    if (q.id != null) { grupos[String(q.id)] = nuevas; nuevas.forEach((p) => { grupos[q.id + '/' + p.nombre] = [p]; }); }
+  }
+  sel = null; pasoId = E.pasos[0].id; cambio(); llenarDoc(); encuadrar();
+  return { piezas: E.partes.length, faltan };
 }
 function mismaForma(a, b) { for (let i = 0; i < a.length; i += 97) if (Math.abs(a[i] - b[i]) > 0.01) return false; return true; }
 
-const prim = (g) => { const n = g.index ? g.toNonIndexed() : g; return new Float32Array(n.attributes.position.array); };
-const hexagono = (af) => { const s = new THREE.Shape(), r = af / Math.sqrt(3); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; s[i ? 'lineTo' : 'moveTo'](r * Math.cos(a), r * Math.sin(a)); } s.closePath(); return s; };
-const AF = { 3: 5.5, 4: 7, 5: 8, 6: 10, 8: 13, 10: 17 };
-const FERRETERIA = [
-  { nombre: 'Varilla', campos: [['Diámetro (mm)', 12], ['Largo (mm)', 300]], hacer: (d, L) => prim(new THREE.CylinderGeometry(d / 2, d / 2, L, 48).rotateX(Math.PI / 2)), rotulo: (d, L) => 'Varilla ' + d + ' × ' + L },
-  { nombre: 'Tornillo hexagonal', campos: [['Rosca M', 6], ['Largo (mm)', 30]], hacer: (d, L) => {
-      const af = AF[d] || d * 1.65, hc = d * 0.65;
-      const cab = prim(new THREE.ExtrudeGeometry(hexagono(af), { depth: hc, bevelEnabled: false }).translate(0, 0, L));
-      const cu = prim(new THREE.CylinderGeometry(d / 2, d / 2, L, 32).rotateX(Math.PI / 2).translate(0, 0, L / 2));
-      const p = new Float32Array(cab.length + cu.length); p.set(cab); p.set(cu, cab.length); return p;
-    }, rotulo: (d, L) => 'Tornillo M' + d + ' × ' + L },
-  { nombre: 'Tuerca hexagonal', campos: [['Rosca M', 6]], hacer: (d) => { const s = hexagono(AF[d] || d * 1.65); const h = new THREE.Path(); h.absarc(0, 0, d / 2, 0, Math.PI * 2, true); s.holes.push(h); return prim(new THREE.ExtrudeGeometry(s, { depth: d * 0.8, bevelEnabled: false, curveSegments: 24 })); }, rotulo: (d) => 'Tuerca M' + d },
-  { nombre: 'Arandela', campos: [['Rosca M', 6]], hacer: (d) => { const s = new THREE.Shape(); s.absarc(0, 0, d, 0, Math.PI * 2, false); const h = new THREE.Path(); h.absarc(0, 0, d / 2 + 0.2, 0, Math.PI * 2, true); s.holes.push(h); return prim(new THREE.ExtrudeGeometry(s, { depth: Math.max(1, d * 0.2), bevelEnabled: false, curveSegments: 32 })); }, rotulo: (d) => 'Arandela M' + d },
-  { nombre: 'Bloque o placa', campos: [['Largo X (mm)', 60], ['Ancho Y (mm)', 40], ['Alto Z (mm)', 10]], hacer: (x, y, z) => prim(new THREE.BoxGeometry(x, y, z)), rotulo: (x, y, z) => 'Bloque ' + x + ' × ' + y + ' × ' + z },
-  { nombre: 'Placa micro:bit', campos: [], hacer: () => { const s = new THREE.Shape(), w = 51.6, h = 42, r = 3; s.moveTo(-w / 2 + r, -h / 2); s.lineTo(w / 2 - r, -h / 2); s.absarc(w / 2 - r, -h / 2 + r, r, -Math.PI / 2, 0); s.lineTo(w / 2, h / 2 - r); s.absarc(w / 2 - r, h / 2 - r, r, 0, Math.PI / 2); s.lineTo(-w / 2 + r, h / 2); s.absarc(-w / 2 + r, h / 2 - r, r, Math.PI / 2, Math.PI); s.lineTo(-w / 2, -h / 2 + r); s.absarc(-w / 2 + r, -h / 2 + r, r, Math.PI, Math.PI * 1.5); return prim(new THREE.ExtrudeGeometry(s, { depth: 1.6, bevelEnabled: false, curveSegments: 8 })); }, rotulo: () => 'micro:bit' }
-];
 let catalogo = null, catSel = null;
+let catalogoP = null;
+function catalogoListo() {   // lee una sola vez el catálogo de fisicabit (GitHub)
+  if (!catalogoP) catalogoP = (async () => {
+    const c = { '3d': [], carton: [], error: null };
+    try { [c['3d'], c.carton] = await Promise.all([motor.listar('3d'), motor.listar('carton')]); }
+    catch (e) { c.error = e.message; catalogoP = null; }   // si falló, la próxima vez se vuelve a intentar
+    catalogo = c; return c;
+  })();
+  return catalogoP;
+}
 async function abrirModal() {
   $('#modal').classList.add('abierto');
   pintarCatalogo();
-  if (!catalogo) {
-    catalogo = { '3d': [], carton: [], error: null };
-    try { [catalogo['3d'], catalogo.carton] = await Promise.all([motor.listar('3d'), motor.listar('carton')]); }
-    catch (e) { catalogo.error = e.message; }
-    pintarCatalogo();
-  }
+  if (!catalogo || (!catalogo.error && !catalogo.carton.length)) { await catalogoListo(); pintarCatalogo(); }
 }
 function pintarCatalogo() {
   const box = $('#cat-lista'); box.innerHTML = '';
   const grupo = (t) => { const g = document.createElement('div'); g.className = 'cat-g'; g.textContent = t; box.appendChild(g); };
   const item = (t, clave, fn) => { const d = document.createElement('div'); d.className = 'cat-i' + (catSel === clave ? ' sel' : ''); d.textContent = t; d.onclick = () => { catSel = clave; pintarCatalogo(); fn(); }; box.appendChild(d); };
-  grupo('Tus archivos'); item('Abrir un archivo .stl o .scad…', 'archivo', () => $('#f-pieza').click());
-  grupo('Ferretería'); FERRETERIA.forEach((f, i) => item(f.nombre, 'f' + i, () => detalleFerreteria(f)));
-  if (!catalogo || (!catalogo['3d'].length && !catalogo.carton.length && !catalogo.error)) { grupo('Catálogo de fisicabit'); const n = document.createElement('p'); n.className = 'nota'; n.textContent = 'Leyendo el catálogo…'; box.appendChild(n); return; }
-  if (catalogo.error) { grupo('Catálogo de fisicabit'); const n = document.createElement('p'); n.className = 'nota'; n.textContent = 'No se pudo leer el catálogo: ' + catalogo.error; box.appendChild(n); return; }
+  GRUPOS.forEach((g, i) => { grupo(g); ELEMENTOS.filter((e) => e.grupo === i).forEach((e) => item(e.nombre, 'e' + e.id, () => detalleFerreteria(e))); });
+  if (!catalogo || (!catalogo['3d'].length && !catalogo.carton.length && !catalogo.error)) { grupo('Catálogo de fisicabit'); const n = document.createElement('p'); n.className = 'nota'; n.textContent = 'Leyendo el catálogo…'; box.appendChild(n); archivos(); return; }
+  if (catalogo.error) { grupo('Catálogo de fisicabit'); const n = document.createElement('p'); n.className = 'nota'; n.textContent = 'No se pudo leer el catálogo: ' + catalogo.error; box.appendChild(n); archivos(); return; }
   grupo('Encastre en cartón'); catalogo.carton.forEach((d) => item(d.nombre, 'c' + d.archivo, () => detalleDiseno(d)));
   grupo('Impresión 3D'); catalogo['3d'].forEach((d) => item(d.nombre, 'd' + d.archivo, () => detalleDiseno(d)));
+  archivos();
 }
+function archivos() { const box = $('#cat-lista'); const g = document.createElement('div'); g.className = 'cat-g'; g.textContent = 'Tus archivos'; box.appendChild(g); const d = document.createElement('div'); d.className = 'cat-i'; d.textContent = 'Abrir un archivo .stl o .scad…'; d.onclick = () => $('#f-pieza').click(); box.appendChild(d); }
 function detalleFerreteria(f) {
-  const box = $('#cat-detalle'); box.className = ''; box.innerHTML = '<h3 style="margin:0 0 10px">' + f.nombre + '</h3>';
+  const box = $('#cat-detalle'); box.className = ''; box.innerHTML = '<h3 style="margin:0 0 4px">' + f.nombre + '</h3><p class="nota" style="margin:0 0 12px"></p>';
+  box.querySelector('p').textContent = f.desc || '';
   const ins = f.campos.map(([t, v]) => { const fila = document.createElement('div'); fila.className = 'par-fila'; fila.innerHTML = '<div>' + t + '</div>'; const i = document.createElement('input'); i.type = 'number'; i.value = v; i.min = 0.5; fila.appendChild(i); box.appendChild(fila); return i; });
-  const b = document.createElement('button'); b.className = 'btn pri'; b.textContent = 'Agregar'; b.style.marginTop = '10px';
-  b.onclick = () => { const v = ins.map((i) => Math.max(0.5, parseFloat(i.value) || 1)); agregarMalla(f.hacer(...v), f.rotulo(...v), f.nombre === 'Varilla' || /Tornillo|Tuerca|Arandela/.test(f.nombre) ? { relleno: 'gris' } : null); cerrarModal(); estado('Pieza agregada: ' + f.rotulo(...v) + '.'); };
+  const b = document.createElement('button'); b.className = 'btn pri'; b.textContent = 'Agregar a la guía'; b.style.marginTop = '10px';
+  b.onclick = () => { const v = ins.map((i, k) => Math.max(0.5, parseFloat(i.value) || f.campos[k][1])); agregarMalla(f.hacer(...v), f.rotulo(...v), f.relleno ? { relleno: f.relleno } : null); cerrarModal(); estado('Pieza agregada: ' + f.rotulo(...v) + '. Arrastrá las flechas para llevarla a su lugar.'); };
   box.appendChild(b);
 }
 async function detalleDiseno(d) {
@@ -383,7 +435,12 @@ $('#f-pieza').onchange = async (e) => {
 /* ---------- Ficha ---------- */
 let arte = null, fichaVieja = true, generando = false;
 function datosFicha() {
-  const partes = E.partes.filter((p) => !p.oculto).map((p) => {
+  // Si en un paso (del segundo en adelante) nadie indicó desde dónde entran las piezas, entran desde arriba
+  const total = new THREE.Box3(); E.partes.forEach((p) => { if (!p.oculto) total.union(cajaDe(p, false)); });
+  const subir = Math.round(Math.max(40, Math.min(160, (total.isEmpty() ? 100 : total.max.z - total.min.z) * 0.3)));
+  const sinEntrada = E.pasos.map((ps, i) => i > 0 && E.partes.filter((p) => p.paso === ps.id && !p.oculto).every((p) => !p.exp[0] && !p.exp[1] && !p.exp[2]));
+  const partes = E.partes.filter((p) => !p.oculto).map((p0) => {
+    const p = sinEntrada[idxPaso(p0.paso)] ? Object.assign({}, p0, { exp: [0, 0, subir] }) : p0;
     const mFinal = matriz(p, false), mExp = matriz(p, true);
     return { nombre: p.nombre, geoId: p.geoId, geometry: geoThree(p.geoId).g, mFinal, mExp, mGiro: new THREE.Matrix4(), paso: idxPaso(p.paso), relleno: p.relleno,
       cFinal: new THREE.Vector3(...p.pos), cExp: new THREE.Vector3(p.pos[0] + p.exp[0], p.pos[1] + p.exp[1], p.pos[2] + p.exp[2]), cajaFinal: cajaDe(p, false) };
@@ -460,6 +517,7 @@ function cargar(datos) {
   E.partes = (E.partes || []).filter((p) => E.geos[p.geoId]);
   E.partes.forEach((p) => { if (p.relleno === 'acento') p.relleno = 'oscuro'; });
   sel = null; pasoId = E.pasos[0].id; fichaVieja = true; entrada(false); cambio(); llenarDoc(); encuadrar();
+  $('#inicio').classList.remove('abierto');
 }
 $('#b-nuevo').onclick = () => { if (E.partes.length && !confirm('¿Empezar una guía vacía? Se pierde la actual si no la guardaste.')) return; cargar({ doc: docNuevo(), pasos: [], partes: [], geos: {}, vistaPortada: null }); $('#hojas').innerHTML = '<div class="vacio">Agregá piezas en el editor 3D y volvé acá para ver la ficha.</div>'; estado('Guía nueva: empezá por el nombre de la práctica o sistema.'); $('#n-guia').focus(); };
 $('#b-guardar').onclick = () => {
@@ -475,6 +533,108 @@ $('#f-abrir').onchange = async (e) => {
   try { const d = JSON.parse(await f.text()); if (d.formato !== 'fisicabit-guia-1') throw new Error('no es una guía de fisicabit'); Object.keys(d.geos).forEach((k) => { d.geos[k].pos = deB64(d.geos[k].pos); }); delete d.formato; cargar(d); estado('Guía abierta: ' + f.name); }
   catch (er) { estado('No se pudo abrir: ' + er.message, 'err'); }
 };
+
+/* ---------- Modo simple, ayuda paso a paso, guías listas e IA ---------- */
+let simple = true; try { simple = localStorage.getItem('fisicabit_guias_simple') !== '0'; } catch (e) {}
+function ponerSimple(v) {
+  simple = v; document.body.classList.toggle('simple', v);
+  $('#b-mas').textContent = v ? 'Más opciones' : 'Menos opciones'; $('#b-mas').classList.toggle('act', !v);
+  try { localStorage.setItem('fisicabit_guias_simple', v ? '1' : '0'); } catch (e) {}
+  if (v && modoEntrada) entrada(false); if (v && soloHasta) { soloHasta = false; $('#b-hasta').classList.remove('act'); sincronizar(); }
+  medir();
+}
+$('#b-mas').onclick = () => ponerSimple(!simple);
+
+const AYUDA = [
+  { t: 'Nombre', foco: '#n-guia', txt: 'Escribí arriba el nombre de la práctica o del sistema que vas a armar. Es lo primero que aparece en la guía.' },
+  { t: 'Piezas', foco: '#b-agregar', txt: 'Tocá «+ Agregar pieza» y elegí lo que lleva el montaje: soporte, resorte, masas, carrito, sensores, micro:bit… o piezas de cartón y 3D del catálogo. Repetilo por cada pieza.' },
+  { t: 'Ubicar', foco: '#visor', txt: 'Tocá una pieza y arrastrá sus flechas para llevarla a su lugar; con «Rotar» la girás. Arrastrando el fondo girás la vista y con la rueda te acercás.' },
+  { t: 'Pasos', foco: '#lista-pasos', txt: 'Con «+ Paso» creás los pasos del armado. En la lista de piezas, la letra de cada una dice en qué paso entra: cambiala. A la derecha escribí qué se hace en cada paso.' },
+  { t: 'Ficha', foco: '#b-imprimir', txt: 'Esta es la guía terminada: el dispositivo armado y un cuadro por paso. Con «Imprimir / PDF» la guardás o la imprimís.' },
+];
+let pasoAyuda = -1;
+function ayuda(i) {
+  document.querySelectorAll('.foco').forEach((e) => e.classList.remove('foco'));
+  if (i == null || i < 0) { pasoAyuda = -1; $('#asistente').hidden = true; medir(); return; }
+  pasoAyuda = Math.max(0, Math.min(AYUDA.length - 1, i)); const a = AYUDA[pasoAyuda];
+  $('#asistente').hidden = false;
+  $('#as-pasos').innerHTML = AYUDA.map((x, k) => `<button class="${k === pasoAyuda ? 'act' : k < pasoAyuda ? 'hecho' : ''}" data-k="${k}">${k + 1} · ${x.t}</button>`).join('');
+  $('#as-txt').textContent = a.txt; $('#as-ant').disabled = pasoAyuda === 0; $('#as-sig').textContent = pasoAyuda === AYUDA.length - 1 ? 'Listo ✓' : 'Siguiente →';
+  pestana(pasoAyuda === 4);
+  const f = $(a.foco); if (f) { f.classList.add('foco'); setTimeout(() => f.classList.remove('foco'), 3600); if (pasoAyuda === 0) f.focus(); }
+  medir();
+}
+$('#as-pasos').onclick = (e) => { const b = e.target.closest('button'); if (b) ayuda(+b.dataset.k); };
+$('#as-ant').onclick = () => ayuda(pasoAyuda - 1);
+$('#as-sig').onclick = () => (pasoAyuda === AYUDA.length - 1 ? ayuda(-1) : ayuda(pasoAyuda + 1));
+$('#as-x').onclick = () => ayuda(-1);
+
+// Pantalla de inicio
+function inicio(abrir) { $('#inicio').classList.toggle('abierto', abrir); $('#ini-seguir').hidden = !E.partes.length; }
+$('#b-inicio').onclick = () => inicio(true);
+$('#ini-seguir').onclick = () => inicio(false);
+$('#ini-abrir').onclick = () => { inicio(false); $('#f-abrir').click(); };
+$('#ini-mano').onclick = () => { inicio(false); ayuda(E.partes.length ? 2 : 0); };
+$('#ini-listas').onclick = () => { inicio(false); abrirListas(); };
+$('#ini-ia').onclick = () => { inicio(false); abrirIA(); };
+const hayTrabajo = () => E.partes.length > 0;
+async function usarReceta(r, origen) {
+  if (hayTrabajo() && !confirm('Se reemplaza la guía que tenés abierta. ¿Seguir?')) return false;
+  estado('Armando la guía…', 'ocup');
+  try {
+    const res = await armarReceta(r, (t) => estado(t, 'ocup'));
+    estado((origen || 'Guía') + ' lista: ' + res.piezas + ' piezas en ' + E.pasos.length + ' pasos.' + (res.faltan.length ? ' No se pudo agregar: ' + res.faltan.join(', ') + '.' : '') + ' Mové lo que haga falta y mirá la pestaña «Ficha».', res.faltan.length ? 'err' : '');
+    ayuda(2); return true;
+  } catch (e) { estado('No se pudo armar la guía: ' + e.message, 'err'); console.error(e); return false; }
+}
+// Guías listas
+function abrirListas() {
+  const box = $('#lst'); box.innerHTML = '';
+  LISTAS.forEach((l) => { const d = document.createElement('div'); d.className = 'lst-i'; d.innerHTML = '<b></b><span></span>'; d.querySelector('b').textContent = l.titulo; d.querySelector('span').textContent = l.resumen;
+    const b = document.createElement('button'); b.className = 'btn chico pri'; b.textContent = 'Usar esta guía'; b.onclick = async () => { $('#m-listas').classList.remove('abierto'); await usarReceta(l.receta, '«' + l.titulo + '»'); }; d.appendChild(b); box.appendChild(d); });
+  $('#m-listas').classList.add('abierto');
+}
+$('#lst-cerrar').onclick = () => $('#m-listas').classList.remove('abierto');
+// Con IA: narración → prompt largo → respuesta → guía
+let catIA = null;
+function catalogoParaIA() {   // nombres y descripciones del catálogo, leídos de los .scad
+  if (!catIA) catIA = (async () => {
+    const cat = await catalogoListo();
+    const leer = async (d) => { try { const code = d.code || (d.code = await (await fetch(d.url)).text()), desc = [];
+      for (const l of code.split('\n')) { const m = /^\s*\/\/\s?(.*)$/.exec(l); if (!m) break; const t = m[1].replace(/^=+\s*|\s*=+$/g, '').trim(); if (t && !/^miniaturas:/i.test(t)) desc.push(t); }
+      const pz = motor.parametros(code).find((x) => x.nombre === 'pieza'); return { nombre: d.nombre, desc: (desc.slice(1).join(' ') || desc[0] || '').slice(0, 220), piezas: pz && pz.opciones ? pz.opciones : null }; } catch (e) { return { nombre: d.nombre, desc: '' }; } };
+    const vale = (d) => !d.stl && !/plantilla/i.test(d.nombre);
+    if (cat.error || (!cat.carton.length && !cat['3d'].length)) { catIA = null; return null; }
+    return { carton: await Promise.all(cat.carton.filter(vale).map(leer)), '3d': await Promise.all(cat['3d'].filter(vale).map(leer)) };
+  })();
+  return catIA;
+}
+let pasoIA = 1;
+function abrirIA() { $('#m-ia').classList.add('abierto'); irIA(1); catalogoParaIA().catch(() => {}); setTimeout(() => $('#ia-narra').focus(), 50); }
+async function irIA(n) {
+  if (n === 2) {
+    $('#ia-resumen').textContent = 'Leyendo el catálogo de piezas…';
+    let cat = null; try { cat = await Promise.race([catalogoParaIA(), new Promise((r) => setTimeout(() => r(null), 12000))]); } catch (e) {}
+    const pr = promptIA($('#ia-narra').value, cat); $('#ia-prompt').value = pr;
+    $('#ia-resumen').innerHTML = 'Copiá este texto y pegalo en la IA que uses (ChatGPT, Claude, Gemini…). <b>Es largo a propósito</b>: le explica el formato y todo lo que hay hoy en fisicabit (' + ELEMENTOS.length + ' elementos de laboratorio' + (cat ? ', ' + cat.carton.length + ' diseños de cartón y ' + cat['3d'].length + ' piezas 3D del catálogo' : '') + ').' + (cat ? '' : ' No se pudo leer el catálogo de cartón y 3D en este momento: el prompt va solo con los elementos de laboratorio.');
+  }
+  pasoIA = n;
+  document.querySelectorAll('[data-iap]').forEach((e) => { e.hidden = +e.dataset.iap !== n; });
+  document.querySelectorAll('[data-ia]').forEach((e) => e.classList.toggle('act', +e.dataset.ia === n));
+  const pie = $('#ia-pie'); pie.innerHTML = '';
+  const bt = (t, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + (cls || ''); b.textContent = t; b.onclick = fn; pie.appendChild(b); return b; };
+  const nota = (t) => { const s = document.createElement('span'); s.className = 'nota'; s.textContent = t; pie.appendChild(s); };
+  if (n === 1) { nota('Nada se envía a ningún servicio: el prompt lo copiás vos.'); bt('Armar el prompt →', 'pri', () => irIA(2)); }
+  if (n === 2) { nota('Después de copiarlo, pegalo en la IA y esperá su respuesta.'); bt('← Cambiar', '', () => irIA(1)); bt('Copiar el prompt', 'pri', async () => { const ta = $('#ia-prompt'); try { await navigator.clipboard.writeText(ta.value); } catch (e) { ta.select(); document.execCommand('copy'); } estado('Prompt copiado. Pegalo en la IA y traé la respuesta.'); }); bt('Ya tengo la respuesta →', '', () => irIA(3)); }
+  if (n === 3) { $('#ia-msg').textContent = ''; nota('Si algo queda corrido, se acomoda después con el mouse.'); bt('← Prompt', '', () => irIA(2)); bt('Crear la guía', 'pri', async () => {
+    let r; try { r = leerReceta($('#ia-resp').value); } catch (e) { $('#ia-msg').textContent = '⚠ ' + e.message; return; }
+    $('#m-ia').classList.remove('abierto'); if (!(await usarReceta(r, 'Guía de la IA'))) $('#m-ia').classList.add('abierto');
+  }); }
+}
+document.querySelectorAll('[data-ia]').forEach((b) => { b.onclick = () => irIA(+b.dataset.ia); });
+$('#ia-cerrar').onclick = () => $('#m-ia').classList.remove('abierto');
+$('#b-ia').onclick = abrirIA;
+ponerSimple(simple);
 
 /* ---------- Embebida en el protocolo de práctico (guias/?embed=1 dentro del editor) ---------- */
 // Dos botones mandan el trabajo al documento: el dibujo del dispositivo o el anexo de ensamblado.
@@ -501,6 +661,6 @@ if (EMBEBIDA) {
 
 /* ---------- Inicio ---------- */
 medir(); cambio(); llenarDoc();
-(async () => { try { const d = await db(); const r = d.transaction('guia').objectStore('guia').get('actual'); r.onsuccess = () => { if (r.result && r.result.partes && r.result.partes.length) { cargar(r.result); estado('Se recuperó la guía en la que estabas trabajando.'); } }; } catch (e) {} })();
+(async () => { try { const d = await db(); const r = d.transaction('guia').objectStore('guia').get('actual'); r.onsuccess = () => { if (r.result && r.result.partes && r.result.partes.length) { cargar(r.result); estado('Se recuperó la guía en la que estabas trabajando.'); } else if (!/[?&]prueba=1/.test(location.search)) inicio(true); }; r.onerror = () => inicio(true); } catch (e) { inicio(true); } })();
 // Para pruebas y uso avanzado desde la consola
-window.__guias = { datosFicha, exportarProtocolo: () => { if (!arte) arte = new Arte(); return exportarProtocolo(datosFicha(), arte); }, get E() { return E; }, pantalla: (v) => { const q = new THREE.Vector3(...v).project(camera), r = lienzo.getBoundingClientRect(); return [r.left + (q.x * 0.5 + 0.5) * r.width, r.top + (1 - (q.y * 0.5 + 0.5)) * r.height]; }, motor, agregarMalla, agregarConjunto, generarFicha, pestana, elegir, encuadrar, cambio, entrada, FERRETERIA, setPaso: (id) => { pasoId = id; cambio(); } };
+window.__guias = { datosFicha, exportarProtocolo: () => { if (!arte) arte = new Arte(); return exportarProtocolo(datosFicha(), arte); }, get E() { return E; }, pantalla: (v) => { const q = new THREE.Vector3(...v).project(camera), r = lienzo.getBoundingClientRect(); return [r.left + (q.x * 0.5 + 0.5) * r.width, r.top + (1 - (q.y * 0.5 + 0.5)) * r.height]; }, motor, agregarMalla, agregarConjunto, generarFicha, pestana, elegir, encuadrar, cambio, entrada, ELEMENTOS, LISTAS, armarReceta, promptIA, leerReceta, ayuda, inicio, abrirIA, abrirListas, catalogoParaIA, setPaso: (id) => { pasoId = id; cambio(); } };
