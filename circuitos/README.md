@@ -68,6 +68,33 @@ botón **Avisos** de la barra muestra cuántos hay (en negro si hay errores) y
 abre la lista: ✕ error, ▲ aviso, ● información. Al pasar por un aviso se
 marcan en el lienzo los elementos y el pin; con un clic quedan elegidos.
 
+## Las dos vistas están vinculadas
+
+- **Generar protoboard →** / **← Generar esquemático** (en la barra, junto a
+  las pestañas) arma la otra pestaña a partir de la lista de conexiones de la
+  actual: mismos componentes, rótulos, valores, versión y conexión de la
+  micro:bit, y **las mismas redes**. Si la otra vista ya tenía algo, pide
+  confirmación; es un solo paso de deshacer. Lo que no existe en la vista
+  destino (tierra, texto, interruptor en la protoboard) se omite y se avisa
+  en la barra de estado. En el esquemático, los símbolos de tierra son la red
+  del GND de la placa.
+- **Esquemático → protoboard**: las piezas van de izquierda a derecha, junto
+  al canal (dos en serie comparten columna; las que se unen a las patas de
+  arriba de un integrado van en la mitad de arriba); fuentes a la izquierda,
+  micro:bit y demás elementos sueltos abajo; el positivo y la masa van por los
+  rieles (rojo y negro) y cada señal con puentes de un color. Si no entra en
+  30 columnas, pasa a la placa de 60.
+- **Protoboard → esquemático**: trazado por pistas. La micro:bit arriba a la
+  izquierda, una pista horizontal por red (el positivo primero, en rojo), la
+  fila de componentes debajo y la masa al fondo; cada pata llega a su pista
+  por un tramo vertical propio. Dos piezas de dos patas en serie se unen
+  directo, sin pista.
+- **Indicador**: junto al botón dice **Vistas iguales ✓** o **Vistas
+  distintas** (al tocarlo, qué difiere: «R1 está en el esquemático y no en la
+  protoboard», «P0 está unido a LED1 (A) solo en el esquemático»). Empareja
+  los elementos por componente y rótulo (y si no alcanza, por orden) y compara
+  las redes de las dos vistas. No aparece si una de las dos está vacía.
+
 ## Formas de dibujo
 
 Cada entrada de la base dice cómo se dibuja en cada vista (`esq.f`,
@@ -96,13 +123,15 @@ window.parent.FbitProtocolo.recibir({ tipo: 'circuito', vista: 'esquematico' | '
 
 Para pruebas: `window.__circuitos` (`estado`, `cargar(obj)`,
 `exportarPNG(vista)`, `exportarSVG(vista)`, `redes(vista)`, `avisos()`,
-`buscar(texto)`, `pata(id, nombre)`, `ejemplo(i)`…).
+`buscar(texto)`, `pata(id, nombre)`, `ejemplo(i)`, `vinculo()` → `{ igual, difs }`,
+`generar(desde, sinPreguntar)`…).
 
 ## Archivos
 
 - `index.html` — página y estilos.
 - `app.js` — motor e interfaz: formas de dibujo, lienzo SVG, catálogo, fichas,
-  redes, avisos, código de colores, exportación.
+  redes, avisos, vínculo y generación de una vista a partir de la otra, código
+  de colores, exportación.
 - `componentes.js` — base de componentes (datos).
 - `microbit.js` — pines de la micro:bit por versión, recomendaciones y
   revisión de un circuito (datos y reglas).
