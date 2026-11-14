@@ -7,6 +7,11 @@ la lista de piezas y un cuadro por paso, en dibujo de línea.
 No tiene enlaces desde el sitio. Se entra por `fisicabit.com/guias/` o por
 `fisicabit.com/#guias`.
 
+También se abre **dentro del protocolo de práctico** (INFORME ▾ → Protocolo de
+práctico → botón *Montaje*): ahí aparecen dos botones más, *Insertar dibujo*
+(el dispositivo armado como figura) e *Insertar anexo de armado* (dispositivo
+con llamadas, tira de piezas y un dibujo por paso, como parte del protocolo).
+
 ## Cómo se usa
 
 1. **Nombre de la práctica o sistema**: es lo primero. Se escribe en la

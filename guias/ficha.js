@@ -120,13 +120,14 @@ function listaPiezas(d, arte) {
     if (!grupos.has(k)) grupos.set(k, { p, n: 0, nombre: p.nombre });
     grupos.get(k).n++;
   });
-  let html = '';
+  let html = ''; const items = [];
   grupos.forEach((g) => {
     const r = relleno(d.doc, g.p, false);
     const art = arte.dibujar([{ geometry: g.p.geometry, matrix: g.p.mGiro, color: r.color, trama: r.trama, id: 1 }], opcionesArte(d.doc, { w: 230, h: 200, dir: VISTA, margen: 0.1, linea: 1.5 }));
+    items.push({ canvas: art.canvas, n: g.n, nombre: g.nombre });
     html += `<div class="bom-it"><img src="${art.canvas.toDataURL('image/png')}" alt=""><div class="bom-n"><span class="cant">${g.n}×</span><span>${esc(g.nombre)}</span></div></div>`;
   });
-  return { html, n: grupos.size };
+  return { html, n: grupos.size, items };
 }
 
 /* ---------- Reparto de los cuadros del manual ---------- */
@@ -222,4 +223,55 @@ export async function construirFicha(d, arte, avisar) {
     pag++;
   }
   return paginas.map((h, i) => h.replace('<!--PIE-->', pie(doc, i + 1, paginas.length)));
+}
+
+/* ---------- Para el protocolo de práctico: las figuras como imágenes sueltas ---------- */
+async function aImagen(canvas, svg, w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(canvas, 0, 0, w, h);
+  if (svg) {
+    const img = new Image();
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" font-family="Arial, Helvetica, sans-serif">${svg}</svg>`);
+    try { await img.decode(); g.drawImage(img, 0, 0, w, h); } catch (e) {}
+  }
+  return c.toDataURL('image/png');
+}
+// Dibujo del dispositivo armado, sin llamadas, desde la dirección dada
+export function figuraArmado(d, arte, w, h, dir) {
+  const items = d.partes.map((p, k) => { const r = relleno(d.doc, p, false); return { geometry: p.geometry, matrix: p.mFinal, color: r.color, trama: r.trama, id: Math.min(254, k + 1) }; });
+  const art = arte.dibujar(items, opcionesArte(d.doc, { w, h, dir: dir || d.vistaPortada || VISTA, margen: 0.05 }));
+  return aImagen(art.canvas, '', art.w, art.h);
+}
+// Todo lo que necesita el anexo de ensamblado: dispositivo con llamadas, tira de piezas y un dibujo por paso
+export async function exportarProtocolo(d, arte, avisar) {
+  const pasos = d.pasos.map((p, i) => Object.assign({}, p, { i, n: d.partes.filter((q) => q.paso === i).length })).filter((p) => p.n > 0);
+  avisar && avisar('Dibujando el dispositivo armado…'); await pausa();
+  const por = portada(d, arte, 184, 135);
+  const out = { titulo: (d.doc.titulo || '').trim(), descripcion: (d.doc.descripcion || '').trim(), armado: await aImagen(por.art.canvas, por.svg, por.W, por.H), piezas: null, lista: [], pasos: [] };
+  avisar && avisar('Dibujando las piezas…'); await pausa();
+  const bom = listaPiezas(d, arte);
+  out.lista = bom.items.map((it) => ({ n: it.n, nombre: it.nombre }));
+  if (bom.items.length) {   // tira de piezas: dibujo + «2× nombre»
+    const cols = Math.min(6, Math.max(3, bom.items.length)), cw = 250, ch = 262, filas = Math.ceil(bom.items.length / cols);
+    const c = document.createElement('canvas'); c.width = cols * cw; c.height = filas * ch;
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    bom.items.forEach((it, k) => {
+      const x = (k % cols) * cw, y = Math.floor(k / cols) * ch;
+      g.drawImage(it.canvas, x + 10, y + 6, 230, 200);
+      g.font = '800 19px Montserrat, Arial, sans-serif'; const q = it.n + '×', qw = g.measureText(q).width + 14;
+      g.font = '500 19px Montserrat, Arial, sans-serif'; let nom = it.nombre; while (nom.length > 3 && g.measureText(nom).width > cw - qw - 26) nom = nom.slice(0, -2) + '…';
+      const tw = qw + 8 + g.measureText(nom).width, x0 = x + (cw - tw) / 2, yb = y + 216;
+      g.fillStyle = '#000'; g.fillRect(x0, yb, qw, 28); g.fillStyle = '#fff'; g.font = '800 19px Montserrat, Arial, sans-serif'; g.textBaseline = 'middle'; g.fillText(q, x0 + 7, yb + 15);
+      g.fillStyle = '#111'; g.font = '500 19px Montserrat, Arial, sans-serif'; g.fillText(nom, x0 + qw + 8, yb + 15);
+    });
+    out.piezas = c.toDataURL('image/png');
+  }
+  const forma = Math.max(0.6, Math.min(1.8, por.forma));
+  const fw = 1000, fh = Math.round(fw / Math.max(0.85, Math.min(1.5, forma * 1.05)));
+  for (const p of pasos) {
+    avisar && avisar('Dibujando el paso ' + p.letra + '…'); await pausa();
+    const fig = figuraPaso(d, p.i, arte, fw, fh);
+    out.pasos.push({ letra: p.letra, titulo: p.titulo, texto: p.texto, png: await aImagen(fig.art.canvas, fig.svg, fig.art.w, fig.art.h) });
+  }
+  return out;
 }
