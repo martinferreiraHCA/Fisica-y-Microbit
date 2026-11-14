@@ -402,6 +402,10 @@
     });
   }
   // Descripción de los módulos conocidos; si el botón del sitio trae su propia descripción (title), se usa esa.
+  // Componentes del editor de circuitos (circuitos/componentes.js): la misma base que usa el editor
+  function componentesCircuito() {
+    return conCache('comp', function () { return import(RAIZ + 'circuitos/componentes.js').then(function (m) { return { cats: m.CATEGORIAS, lista: m.COMPONENTES }; }); });
+  }
   var MODULOS = {
     'MAKECODE + FISICABIT': 'editor oficial de MakeCode embebido, con la extensión FisicaBit ya cargada, para programar la micro:bit en bloques',
     'PIEZAS 3D': 'catálogo de piezas de laboratorio paramétricas (OpenSCAD en el navegador) para imprimir en 3D',
@@ -463,6 +467,18 @@
       p(modo === '3d' ? 'Todas son paramétricas: el docente cambia las medidas en el sitio y descarga el STL.' : 'Se imprimen en A4 y se pegan sobre cartón de 3 mm, o se cortan con láser; cada diseño trae su plano de piezas y el armado.');
       cat.forEach(function (c) { p('- **' + c.nombre + '**' + (c.desc ? ': ' + c.desc : '')); });
     });
+    if (f.extras.circuito) {
+      p(); p('## 2.4 Circuitos: componentes del editor y reglas de la micro:bit');
+      p('Reglas de conexión de la micro:bit (respetalas al proponer el circuito):');
+      p('- Trabaja a 3,3 V (máximo 3,6 V en cualquier pin). Cada pin entrega unos 5 mA; el pin 3V alimenta hasta 90 mA (V1) o 270 mA (V2).');
+      p('- Entradas analógicas (0 a 1023): P0, P1 y P2 (anillos grandes). P3, P4 y P10 también, pero comparten la pantalla LED y hay que apagarla.');
+      p('- Con un extensor (conector de borde): P8 y P16 son digitales libres (P9 también en la V2); P13, P14 y P15 son el SPI; P19 (SCL) y P20 (SDA) son el I2C y no se usan para otra cosa; P5 y P11 son los botones A y B.');
+      p('- Los módulos de 5 V (HC-SR04 clásico, relé, servo, LCD) se alimentan aparte, con los GND unidos, y sus salidas hacia la placa pasan por un divisor de tensión. Motores, lámparas, relés y electroimanes van con transistor, MOSFET o driver, nunca directo a un pin. Todo LED lleva su resistencia en serie (220 Ω o más).');
+      if (ctx.comp) {
+        p('Componentes disponibles hoy en el editor de circuitos (' + ctx.comp.lista.length + '):');
+        ctx.comp.cats.forEach(function (k) { var l = ctx.comp.lista.filter(function (c) { return c.cat === k.id && c.id !== 'texto' && c.id !== 'tierra'; }); if (l.length) p('- ' + k.nombre + ': ' + l.map(function (c) { return c.nombre; }).join('; ') + '.'); });
+      }
+    }
     p(); p('# 3. Elementos del montaje de ESTE práctico');
     var hay = false;
     if (f.elegidos.length) { hay = true; p('Del catálogo de fisicabit (usalos con estos nombres):'); f.elegidos.forEach(function (c) { p('- ' + c.nombre + ' (' + (c.modo === '3d' ? 'impresión 3D' : 'cartón encastrable') + ')' + (c.params.length ? '. Medidas que se pueden cambiar: ' + c.params.slice(0, 8).join('; ') + (c.params.length > 8 ? '; …' : '') : '') + '.'); }); }
@@ -484,7 +500,7 @@
     if (f.extras.bloques) p('- En «Programación de la micro:bit»: un bloque de código ```typescript con el programa completo para MakeCode, usando solo los bloques de 2.1. El editor lo convierte en la imagen de los bloques.');
     if (f.extras.grafica) p('- `[[GRAFICA: y = expresión | x: desde a hasta | ejeX: rótulo (unidad) | ejeY: rótulo (unidad) | titulo: texto]]` → gráfica teórica del modelo (variable x o t; se puede usar ^, sqrt(), sin(), cos(), exp(), ln(), pi). Ejemplo: `[[GRAFICA: y = 0.5*9.8*t^2 | x: 0 a 1 | ejeX: t (s) | ejeY: h (m) | titulo: Caída libre]]`. Poné una en «Fundamento teórico» o en «Análisis y preguntas».');
     if (f.extras.ejes) p('- `[[EJES: x: desde a hasta | y: desde a hasta | ejeX: rótulo (unidad) | ejeY: rótulo (unidad)]]` → ejes en blanco con cuadrícula para que el estudiante grafique a mano, en «Registro de datos».');
-    if (f.extras.circuito) p('- `[[CIRCUITO: descripción precisa de qué se conecta con qué: componentes, valores y pines de la micro:bit]]` → el docente lo dibuja con el editor de circuitos. Va en «Montaje experimental».');
+    if (f.extras.circuito) p('- `[[CIRCUITO: descripción precisa de qué se conecta con qué: componentes, valores y pines de la micro:bit]]` → el docente lo dibuja con el editor de circuitos. Va en «Montaje experimental». Usá los nombres de componentes y las reglas de pines de la sección 2.4.');
     p('- `[[MONTAJE: qué dibujo del dispositivo o del armado va acá]]` → el docente inserta el dibujo o el anexo de ensamblado. Va en «Montaje experimental».');
     p('No inventes funciones de fisicabit.com ni bloques que no estén en las listas de arriba. Si falta un dato, elegí un valor razonable y marcalo con «(a confirmar)».');
     return L.join('\n');
@@ -610,13 +626,14 @@
       '<div data-p="2" style="display:none"><div class="fp-caja-gris" id="fi-resumen"></div><label class="fp-l">Prompt (copialo y pegalo en la IA que uses: ChatGPT, Claude, Gemini…)</label><textarea class="fp-ta mono" id="fi-prompt" rows="18" spellcheck="false"></textarea></div>' +
       '<div data-p="3" style="display:none"><div class="fp-caja-gris">Pegá acá la respuesta completa de la IA. Cada «## Parte» se carga en la parte del protocolo con el mismo nombre (si está vacía) o se agrega como parte nueva. Los programas se convierten en bloques, las gráficas se dibujan solas y lo que falte insertar queda marcado en gris.</div><label class="fp-l">Respuesta de la IA</label><textarea class="fp-ta mono" id="fi-resp" rows="16" spellcheck="false" placeholder="# Título del práctico&#10;&#10;## Objetivos&#10;…"></textarea></div>';
     var q = function (s) { return v.cuerpo.querySelector(s); };
-    var ctx = { cat: { '3d': null, carton: null }, ext: null, sitio: estadoDelSitio() }, guia = null, pestana = 1;
+    var ctx = { cat: { '3d': null, carton: null }, ext: null, comp: null, sitio: estadoDelSitio() }, guia = null, pestana = 1;
     function chk(c) { return '<label class="fp-chk" title="' + esc(c.desc) + '"><input type="checkbox" data-cat="' + esc(c.modo + '|' + c.archivo) + '"> <span><b>' + esc(c.nombre) + '</b>' + (c.desc ? ' <span style="color:#666">· ' + esc(c.desc.slice(0, 70)) + (c.desc.length > 70 ? '…' : '') + '</span>' : '') + '</span></label>'; }
     [['3d', '#fi-cat-3d', '#fi-n3d'], ['carton', '#fi-cat-carton', '#fi-ncar']].forEach(function (x) {
       catalogo(x[0]).then(function (c) { ctx.cat[x[0]] = c; if (!abierta || abierta !== v) return; q(x[1]).innerHTML = c.map(chk).join('') || '<span class="fp-nota">Sin diseños.</span>'; q(x[2]).textContent = '· ' + c.length + ' hoy'; restaurar(); })
         .catch(function () { if (abierta === v) q(x[1]).innerHTML = '<span class="fp-nota">No se pudo leer el catálogo (sin conexión con GitHub). El prompt se arma igual, sin esta lista.</span>'; });
     });
     bloquesExtension().then(function (e) { ctx.ext = e; }).catch(function () {});
+    componentesCircuito().then(function (c) { ctx.comp = c; }).catch(function () {});
     guiaActual().then(function (g) { guia = g; if (g && abierta === v) { q('#fi-guia-box').style.display = 'flex'; q('#fi-guia-txt').innerHTML = 'Incluir la secuencia de la guía de armado que tengo abierta' + (g.titulo ? ' («' + esc(g.titulo) + '»)' : '') + ': ' + g.pasos.length + ' pasos'; } });
     function leer() {
       var eleg = []; [].forEach.call(v.cuerpo.querySelectorAll('[data-cat]:checked'), function (c) { var k = c.getAttribute('data-cat').split('|'); var it = (ctx.cat[k[0]] || []).filter(function (z) { return z.archivo === k[1]; })[0]; if (it) eleg.push(it); });
@@ -641,7 +658,7 @@
       var f = leer(); _iaForm = f; ctx.sitio = estadoDelSitio();
       var pr = armarPrompt(f, ctx); q('#fi-prompt').value = pr;
       var n3 = ctx.cat['3d'] ? ctx.cat['3d'].length : 0, nc = ctx.cat.carton ? ctx.cat.carton.length : 0;
-      q('#fi-resumen').innerHTML = '<b>Incluye lo que hay hoy en el sitio:</b> ' + n3 + ' piezas 3D, ' + nc + ' diseños de cartón, ' + (ctx.ext ? ctx.ext.bloques.length + ' bloques de la extensión FisicaBit v' + esc(ctx.ext.version) : 'los bloques básicos de la extensión') + ', ' + ctx.sitio.fits.length + ' ajustes de curva y ' + ctx.sitio.mods.length + ' módulos. ' +
+      q('#fi-resumen').innerHTML = '<b>Incluye lo que hay hoy en el sitio:</b> ' + n3 + ' piezas 3D, ' + nc + ' diseños de cartón, ' + (ctx.ext ? ctx.ext.bloques.length + ' bloques de la extensión FisicaBit v' + esc(ctx.ext.version) : 'los bloques básicos de la extensión') + ', ' + ctx.sitio.fits.length + ' ajustes de curva, ' + ctx.sitio.mods.length + ' módulos' + (ctx.comp ? ' y ' + ctx.comp.lista.length + ' componentes del editor de circuitos' : '') + '. ' +
         (f.elegidos.length || f.propios.length || f.guia || f.secuencia ? 'Montaje: ' + [f.elegidos.length ? f.elegidos.length + ' del catálogo' : '', f.propios.length ? f.propios.length + ' propios' : '', f.guia ? 'guía de armado' : '', f.secuencia ? 'secuencia escrita' : ''].filter(Boolean).join(', ') + '.' : 'Sin elementos elegidos: la IA propone el montaje.') + ' <span style="color:#555">(' + pr.length.toLocaleString('es') + ' caracteres)</span>';
     }
     function ir(n) {
@@ -671,7 +688,7 @@
     else if (cual === 'ia') abrirIA();
   }
   window.FbitProtocolo = {
-    abrir: abrir, recibir: recibir, cerrar: cerrar,
+    abrir: abrir, recibir: recibir, cerrar: cerrar, componentesCircuito: componentesCircuito,
     // para pruebas y para otras partes del sitio
     _: { compilar: compilar, dibujarGrafica: dibujarGrafica, dibujarBloques: dibujarBloques, armarPrompt: armarPrompt, catalogo: catalogo, bloquesExtension: bloquesExtension, estadoDelSitio: estadoDelSitio, guiaActual: guiaActual, partirMd: partirMd, mdAHtml: mdAHtml, importarRespuesta: importarRespuesta, anexoHTML: anexoHTML, resumenScad: resumenScad }
   };
