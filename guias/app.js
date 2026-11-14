@@ -4,7 +4,7 @@ import { OrbitControls } from '../lib/OrbitControls.js';
 import { TransformControls } from '../lib/TransformControls.js';
 import * as motor from './motor.js';
 import { Arte } from './arte.js';
-import { construirFicha, figuraPaso, LETRAS } from './ficha.js';
+import { construirFicha, figuraPaso, figuraArmado, exportarProtocolo, LETRAS } from './ficha.js';
 
 const $ = (s) => document.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -476,8 +476,31 @@ $('#f-abrir').onchange = async (e) => {
   catch (er) { estado('No se pudo abrir: ' + er.message, 'err'); }
 };
 
+/* ---------- Embebida en el protocolo de práctico (guias/?embed=1 dentro del editor) ---------- */
+// Dos botones mandan el trabajo al documento: el dibujo del dispositivo o el anexo de ensamblado.
+const EMBEBIDA = /[?&]embed=1/.test(location.search) && window.parent !== window;
+if (EMBEBIDA) {
+  const enviar = async (armar) => {
+    const d = datosFicha();
+    if (!d.partes.length) { estado('Agregá piezas antes de insertar.', 'err'); return; }
+    let P = null; try { P = window.parent.FbitProtocolo; } catch (e) {}
+    if (!P || !P.recibir) { estado('No encuentro el editor del protocolo.', 'err'); return; }
+    try {
+      if (!arte) arte = new Arte();
+      if (document.fonts && document.fonts.load) { try { await Promise.all([500, 800].map((w) => document.fonts.load(w + ' 19px Montserrat'))); } catch (e) {} }
+      P.recibir(await armar(d));
+    } catch (e) { estado('No se pudo insertar: ' + e.message, 'err'); console.error(e); }
+  };
+  const bImg = document.createElement('button'); bImg.className = 'btn'; bImg.id = 'b-ins-dibujo'; bImg.textContent = 'Insertar dibujo'; bImg.title = 'Inserta en el protocolo el dibujo del dispositivo armado, visto como lo estás mirando ahora';
+  bImg.onclick = () => enviar(async (d) => { estado('Dibujando el dispositivo…', 'ocup'); await new Promise((r) => setTimeout(r, 30)); return { tipo: 'guia-imagen', titulo: (E.doc.titulo || '').trim(), png: await figuraArmado(d, arte, 1400, 1000, vistaActual()) }; });
+  const bAnx = document.createElement('button'); bAnx.className = 'btn pri'; bAnx.id = 'b-ins-anexo'; bAnx.textContent = 'Insertar anexo de armado'; bAnx.title = 'Agrega al protocolo un anexo con el dispositivo armado, la lista de piezas y un dibujo por paso';
+  bAnx.onclick = () => enviar(async (d) => ({ tipo: 'guia-anexo', datos: await exportarProtocolo(d, arte, (t) => estado(t, 'ocup')) }));
+  const imp = $('#b-imprimir'); imp.classList.remove('pri'); imp.parentNode.insertBefore(bImg, imp); imp.parentNode.insertBefore(bAnx, imp);
+  document.body.classList.add('embebida');
+}
+
 /* ---------- Inicio ---------- */
 medir(); cambio(); llenarDoc();
 (async () => { try { const d = await db(); const r = d.transaction('guia').objectStore('guia').get('actual'); r.onsuccess = () => { if (r.result && r.result.partes && r.result.partes.length) { cargar(r.result); estado('Se recuperó la guía en la que estabas trabajando.'); } }; } catch (e) {} })();
 // Para pruebas y uso avanzado desde la consola
-window.__guias = { get E() { return E; }, pantalla: (v) => { const q = new THREE.Vector3(...v).project(camera), r = lienzo.getBoundingClientRect(); return [r.left + (q.x * 0.5 + 0.5) * r.width, r.top + (1 - (q.y * 0.5 + 0.5)) * r.height]; }, motor, agregarMalla, agregarConjunto, generarFicha, pestana, elegir, encuadrar, cambio, entrada, FERRETERIA, setPaso: (id) => { pasoId = id; cambio(); } };
+window.__guias = { datosFicha, exportarProtocolo: () => { if (!arte) arte = new Arte(); return exportarProtocolo(datosFicha(), arte); }, get E() { return E; }, pantalla: (v) => { const q = new THREE.Vector3(...v).project(camera), r = lienzo.getBoundingClientRect(); return [r.left + (q.x * 0.5 + 0.5) * r.width, r.top + (1 - (q.y * 0.5 + 0.5)) * r.height]; }, motor, agregarMalla, agregarConjunto, generarFicha, pestana, elegir, encuadrar, cambio, entrada, FERRETERIA, setPaso: (id) => { pasoId = id; cambio(); } };

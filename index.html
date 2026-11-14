@@ -4789,6 +4789,10 @@
           .inf-material-box { width:100%; }
           .inf-preview { padding:12px 6px 60px; }
         }
+        /* Protocolo de práctico: mismas herramientas + grupo «Laboratorio» en la cinta */
+        .informe-panel:not(.kind-protocolo) .inf-rb-prot { display:none; }
+        .informe-panel.kind-protocolo .inf-brand { background:#111; color:#fff; padding:5px 9px; }
+        .informe-panel.kind-protocolo .inf-brand small { color:#bbb; }
         /* ===== INFORME STYLES END ===== */
 
         /* ===== Comunicador de conexión Bluetooth (hoja de estado) ===== */
@@ -4921,7 +4925,13 @@
                     <button id="sensorModeBtn" style="border-left:4px solid #2e7d32;" onclick="enterSensorMode()">SENSORES</button>
                 </div>
             </div>
-            <button id="btn-informe" class="toolbar-btn" style="background:#111; color:#fff; border-color:#111;">INFORME</button>
+            <div style="position:relative; display:inline-block;">
+                <button id="btn-informe" class="toolbar-btn" style="background:#111; color:#fff; border-color:#111;" title="Informe del estudiante o protocolo de práctico del docente"><span>INFORME</span> ▾</button>
+                <div id="informeMenu" class="data-entry-dropdown" style="display:none; min-width:240px; white-space:nowrap;">
+                    <button id="btn-informe-inf" style="border-left:4px solid #111;" title="Informe de laboratorio del estudiante: datos, gráficas, ajustes y conclusiones">INFORME</button>
+                    <button id="btn-informe-prot" style="border-left:4px solid #888;" title="Para el docente: armar el protocolo del práctico con montaje, circuitos, bloques, gráficas teóricas y ayuda de IA">PROTOCOLO DE PRÁCTICO</button>
+                </div>
+            </div>
             <!-- Guardar / retomar el trabajo -->
             <button id="sessionTopBtn" class="toolbar-btn" onclick="window.Informe &amp;&amp; Informe.sessionMenuClick &amp;&amp; Informe.sessionMenuClick()"><span class="sess-dot"></span>Guardar / Retomar ▾</button>
         </span>
@@ -5008,7 +5018,8 @@
         <button class="toolbar-btn" onclick="openImportDialog(); closeToolbarMenu();">IMPORTAR CSV</button>
         <button class="toolbar-btn" onclick="openManualTableModal(); closeToolbarMenu();">TABLA DE VALORES</button>
         <button id="exportBtn2" class="toolbar-btn" onclick="document.getElementById('exportBtn').click(); closeToolbarMenu();">EXPORTAR CSV</button>
-        <button id="btn-informe2" class="toolbar-btn" style="background:#111; color:#fff; border-color:#111;" onclick="document.getElementById('btn-informe').click(); closeToolbarMenu();">INFORME</button>
+        <button id="btn-informe2" class="toolbar-btn" style="background:#111; color:#fff; border-color:#111;" onclick="window.Informe &amp;&amp; Informe.open &amp;&amp; Informe.open('informe'); closeToolbarMenu();">INFORME</button>
+        <button id="btn-protocolo2" class="toolbar-btn" style="background:#fff; color:#111; border-color:#111;" onclick="window.Informe &amp;&amp; Informe.open &amp;&amp; Informe.open('protocolo'); closeToolbarMenu();">PROTOCOLO DE PRÁCTICO</button>
         <button id="clearBtn2" class="toolbar-btn" onclick="document.getElementById('clearBtn').click(); closeToolbarMenu();">LIMPIAR</button>
         <button id="undoBtn2" class="toolbar-btn" disabled>DESHACER (Ctrl+Z)</button>
         <button id="redoBtn2" class="toolbar-btn" disabled>REHACER (Ctrl+Y)</button>
@@ -28945,7 +28956,7 @@ bluetooth.startIOPinService()</pre>
     <div id="informe-panel" class="informe-panel">
         <!-- Barra superior: nombre, estado de guardado y acciones -->
         <div class="inf-topbar">
-            <div class="inf-brand">Informe<small>fisicabit · micro:bit datalab</small></div>
+            <div class="inf-brand" id="inf-brand">Informe<small>fisicabit · micro:bit datalab</small></div>
             <button class="inf-savechip inf-tip" id="inf-save-chip" data-tip="Estado del guardado. Clic para ver las opciones: Google Drive, archivo, retomar…"><span class="sess-dot"></span><span id="inf-save-chip-txt">Se guarda solo en este navegador</span></button>
             <div class="inf-spacer"></div>
             <button class="inf-topbtn inf-tip" id="inf-preview-open" data-tip="Ver cómo queda el informe terminado (así se descarga en PDF y Word)"><span class="inf-ic" data-ic="eye"></span> Vista previa</button>
@@ -28981,7 +28992,7 @@ bluetooth.startIOPinService()</pre>
         <div class="inf-body">
             <!-- Lista de partes (ocultable) -->
             <aside class="inf-nav" id="inf-nav">
-                <div class="inf-nav-title"><span class="inf-ic" data-ic="list"></span> Partes del informe <span class="inf-spacer"></span><button class="inf-nav-close inf-tip" id="inf-nav-close" data-tip="Ocultar la lista de partes"><span class="inf-ic" data-ic="chevron-left"></span></button></div>
+                <div class="inf-nav-title"><span class="inf-ic" data-ic="list"></span> <span id="inf-nav-title-txt">Partes del informe</span> <span class="inf-spacer"></span><button class="inf-nav-close inf-tip" id="inf-nav-close" data-tip="Ocultar la lista de partes"><span class="inf-ic" data-ic="chevron-left"></span></button></div>
                 <div class="inf-nav-inner">
                     <div class="inf-progress" id="inf-progress"><div class="inf-progress-txt" id="inf-progress-txt"></div><div class="inf-progress-bar"><i id="inf-progress-fill"></i></div></div>
                     <div class="inf-outline" id="inf-outline"></div>
@@ -29295,6 +29306,11 @@ bluetooth.startIOPinService()</pre>
         drawingDataURL: function () { return this.drawingData; }
       };
       window.Informe = I;
+      // ---- Dos documentos sobre el mismo editor: «informe» (estudiante) y «protocolo» (docente).
+      //      El que no está abierto queda guardado en I._alt y viaja en el proyecto. ----
+      I.kind = 'informe'; I._alt = null;
+      function isProt() { return I.kind === 'protocolo'; }
+      var AUTO_DATA_RE = /^(data|graph\d+|fit|segfit|stats|dataphotos)$/;   // partes automáticas de datos
 
       // Tamaños de imagen (ancho relativo en el documento)
       var SIZE_LABELS = [['small', 'Chico'], ['medium', 'Mediano'], ['large', 'Grande']];
@@ -29451,7 +29467,8 @@ bluetooth.startIOPinService()</pre>
       function collect() {
         var out = {};
         availableItems().forEach(function (it) {
-          out[it.id] = (I.selected[it.id] !== undefined) ? I.selected[it.id] : it.def;
+          // En el protocolo las partes automáticas de datos no entran solas (el docente las tilda si las quiere).
+          out[it.id] = (I.selected[it.id] !== undefined) ? I.selected[it.id] : ((isProt() && AUTO_DATA_RE.test(it.id)) ? false : it.def);
         });
         return out;
       }
@@ -29466,7 +29483,8 @@ bluetooth.startIOPinService()</pre>
       var COVER_KICKER = 'Informe de laboratorio · fisicabit', COVER_SUB = 'micro:bit DataLab · datos procesados, gráficos y ajustes';
       var COVER_STYLES = [['classic', 'Clásica'], ['photo', 'Foto grande'], ['minimal', 'Minimalista']];
       var COVER_SWATCHES = ['#0a0a0a', '#1565c0', '#1b5e20', '#8e0000', '#4a148c', '#e65100', '#00695c'];
-      function defaultCover() { return { style: 'classic', accent: '#0a0a0a', kicker: COVER_KICKER, sub: COVER_SUB, image: null, imageFit: 'cover', fullPage: true, align: 'left' }; }
+      var PROT_KICKER = 'Protocolo de práctico · fisicabit', PROT_SUB = 'Guía para el trabajo experimental con micro:bit';
+      function defaultCover() { return { style: 'classic', accent: '#0a0a0a', kicker: isProt() ? PROT_KICKER : COVER_KICKER, sub: isProt() ? PROT_SUB : COVER_SUB, image: null, imageFit: 'cover', fullPage: true, align: 'left' }; }
       function normCover(c) {
         var d = defaultCover(); c = (c && typeof c === 'object') ? c : {};
         var o = Object.assign(d, c);
@@ -29484,13 +29502,13 @@ bluetooth.startIOPinService()</pre>
       function coverBlock() {
         var m = I.meta, c = coverCfg(), acc = c.accent;
         var cells = [];
-        cells.push(cell('Estudiante(s)', m.student));
+        cells.push(cell(isProt() ? 'Docente' : 'Estudiante(s)', m.student));
         cells.push(cell('Curso / Grupo', m.course));
-        cells.push(cell('Institución / Docente', m.institution));
+        cells.push(cell(isProt() ? 'Institución' : 'Institución / Docente', m.institution));
         cells.push(cell('Fecha', m.date || todayStr()));
         var meta = '<div class="rep-cover-meta" style="border-top-color:' + acc + ';">' + cells.join('') + '</div>';
         var texts = (c.kicker ? '<div class="rep-cover-kicker">' + esc(c.kicker) + '</div>' : '') +
-          '<div class="rep-cover-title">' + esc(m.title || 'Informe de laboratorio') + '</div>' +
+          '<div class="rep-cover-title">' + esc(m.title || (isProt() ? 'Protocolo de práctico' : 'Informe de laboratorio')) + '</div>' +
           (c.sub ? '<div class="rep-cover-sub">' + esc(c.sub) + '</div>' : '');
         var img = c.image ? '<div class="rep-cover-img rep-cover-img-' + c.imageFit + '"><img src="' + c.image + '" alt=""></div>' : '';
         var cls = 'rep-block rep-cover rep-cover-' + c.style + (c.fullPage ? ' rep-cover-page' : '') + (c.image ? ' has-img' : '') + (c.align === 'center' ? ' rep-cover-center' : '') + (acc.toLowerCase() !== '#0a0a0a' ? ' rep-cover-ac' : '');
@@ -29886,7 +29904,13 @@ bluetooth.startIOPinService()</pre>
         'align-justify': '<line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/>',
         'bullets': '<line x1="9" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="12" r="1.2" fill="currentColor"/><circle cx="4" cy="18" r="1.2" fill="currentColor"/>',
         'compare': '<line x1="12" y1="3" x2="12" y2="21"/><path d="M3 7h6l-3 7z"/><path d="M15 7h6l-3 7z"/><line x1="3" y1="14" x2="9" y2="14"/><line x1="15" y1="14" x2="21" y2="14"/>',
-        'segments': '<path d="M3 17l5-8 4 5 4-9 5 12"/>'
+        'segments': '<path d="M3 17l5-8 4 5 4-9 5 12"/>',
+        'cube': '<path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M3 7l9 5 9-5"/><line x1="12" y1="12" x2="12" y2="22"/>',
+        'code': '<rect x="3" y="4" width="13" height="6" rx="1"/><rect x="6" y="10" width="13" height="5"/><rect x="3" y="15" width="10" height="5" rx="1"/>',
+        'circuit': '<path d="M2 12h4l1.5-4 3 8 3-8 3 8L18 12h4"/>',
+        'function': '<path d="M3 20c5 0 5-16 9-16s4 16 9 16"/><line x1="3" y1="12" x2="21" y2="12"/>',
+        'sparkle': '<path d="M12 3l1.9 5.6L19.5 10.5 13.9 12.4 12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/><path d="M19 15l.7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7z"/>',
+        'shield': '<path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/>'
       };
       function ico(name) { var d = ICONS[name]; return d ? ('<svg viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>') : ''; }
       function fillIcons(root) { (root || document).querySelectorAll('[data-ic]').forEach(function (e) { if (!e.dataset.icDone) { e.innerHTML = ico(e.dataset.ic); e.dataset.icDone = '1'; } }); }
@@ -29953,8 +29977,8 @@ bluetooth.startIOPinService()</pre>
           var pct = total ? Math.round(done * 100 / total) : 0;
           pf.style.width = pct + '%';
           pb.classList.toggle('done', total > 0 && done === total); pb.classList.toggle('half', pct >= 50 && done !== total);
-          if (!(I.sections || []).length) pt.textContent = 'Empezá agregando las partes del informe';
-          else if (done === total) pt.textContent = 'Informe completo. Ya podés descargarlo o guardarlo en Drive.';
+          if (!(I.sections || []).length) pt.textContent = isProt() ? 'Empezá agregando las partes del protocolo' : 'Empezá agregando las partes del informe';
+          else if (done === total) pt.textContent = isProt() ? 'Protocolo completo. Ya podés descargarlo o guardarlo en Drive.' : 'Informe completo. Ya podés descargarlo o guardarlo en Drive.';
           else pt.textContent = done + ' de ' + total + ' partes listas · faltan ' + (total - done);
         }
       }
@@ -30053,11 +30077,29 @@ bluetooth.startIOPinService()</pre>
         { name: 'Conclusión', ic: 'check-circle', desc: '¿Se cumplió el objetivo?', hint: '¿Se cumplió el objetivo? ¿Qué aprendiste? ¿Qué mejorarías si lo repitieras?' }
       ];
       var TEMPLATE_ORDER = ['Objetivo', 'Fundamento teórico', 'Materiales', 'Procedimiento', 'Resultados', 'Conclusión'];
+      // Partes típicas de un PROTOCOLO de práctico (lo escribe el docente para sus estudiantes).
+      var PROT_KINDS = [
+        { name: 'Objetivos', ic: 'target', desc: 'Qué va a aprender o comprobar el grupo', hint: '¿Qué van a averiguar, medir o comprobar los estudiantes? Una o dos oraciones por objetivo.\nCon «IA» de la barra podés generar un borrador de todo el protocolo.' },
+        { name: 'Fundamento teórico', ic: 'book-open', desc: 'La física que hay que tener presente', hint: 'Resumí la teoría que el estudiante necesita: leyes, fórmulas y magnitudes.\nCon «∑ Ecuación» insertás fórmulas y con «Teórica» una gráfica del modelo.' },
+        { name: 'Materiales', ic: 'flask', desc: 'Lista de lo que hay que tener en la mesa', hint: 'Un material por línea (Enter agrega otro): micro:bit, sensores, piezas impresas o de cartón, cables…' },
+        { name: 'Montaje experimental', ic: 'cube', desc: 'Cómo se arma el dispositivo', hint: 'Explicá cómo se arma el dispositivo.\nCon «Montaje» insertás el dibujo del dispositivo armado o el anexo de ensamblado paso a paso; con «Circuito», el esquema o la protoboard.' },
+        { name: 'Programación de la micro:bit', ic: 'code', desc: 'El programa en bloques', hint: 'Indicá qué programa hay que cargar en la micro:bit.\nCon «Bloques» insertás los bloques de MakeCode listos para fisicabit.com.' },
+        { name: 'Procedimiento', ic: 'list-ordered', desc: 'Paso a paso para el estudiante', hint: 'Escribí los pasos como una receta, en imperativo.\nTip: «1. » al inicio de una línea arma una lista numerada.' },
+        { name: 'Registro de datos', ic: 'table', desc: 'Tablas y gráficas para completar', hint: 'Dejá listas las tablas que el estudiante tiene que completar (botón «Tabla») y, si querés, unos ejes en blanco (botón «Teórica» → solo ejes).' },
+        { name: 'Análisis y preguntas', ic: 'search', desc: 'Qué hacer con los datos', hint: '¿Qué gráfica tienen que hacer? ¿Qué ajuste? ¿Qué preguntas tienen que responder con sus datos?' },
+        { name: 'Seguridad y cuidados', ic: 'shield', desc: 'Lo que hay que cuidar', hint: 'Cuidados con el material, la micro:bit, las pilas y las personas.' }
+      ];
+      var PROT_TEMPLATE_ORDER = ['Objetivos', 'Fundamento teórico', 'Materiales', 'Montaje experimental', 'Programación de la micro:bit', 'Procedimiento', 'Registro de datos', 'Análisis y preguntas'];
+      function kinds() { return isProt() ? PROT_KINDS : SECTION_KINDS; }
       var SEC_ALIASES = { 'marco teórico': 'Fundamento teórico', 'introducción': 'Fundamento teórico', 'conclusiones': 'Conclusión', 'objetivos': 'Objetivo', 'discusión': 'Análisis', 'método': 'Procedimiento', 'metodología': 'Procedimiento', 'resultado': 'Resultados' };
       function sectionKind(title) {
         var t = (title || '').trim().toLowerCase(); if (!t) return null;
         t = SEC_ALIASES[t] ? SEC_ALIASES[t].toLowerCase() : t;
-        for (var i = 0; i < SECTION_KINDS.length; i++) if (SECTION_KINDS[i].name.toLowerCase() === t) return SECTION_KINDS[i];
+        var all = isProt() ? PROT_KINDS.concat(SECTION_KINDS) : SECTION_KINDS.concat(PROT_KINDS);
+        var raw = (title || '').trim().toLowerCase();
+        for (var j = 0; j < all.length; j++) if (all[j].name.toLowerCase() === raw) return all[j];
+        for (var i = 0; i < all.length; i++) if (all[i].name.toLowerCase() === t) return all[i];
+        if (/^anexo/.test(raw)) return { name: 'Anexo', ic: 'cube', desc: '', hint: 'Anexo del protocolo.' };
         return null;
       }
       function sectionHint(title) { var k = sectionKind(title); return k ? k.hint : 'Escribí acá… Con la barra de arriba das formato e insertás imágenes, gráficas, tablas y ecuaciones.'; }
@@ -30239,14 +30281,14 @@ bluetooth.startIOPinService()</pre>
         pushUndo();
         var added = 0;
         function findByName(n) { var r = null; (I.sections || []).forEach(function (s) { var k = sectionKind(s.title); if (!r && k && k.name === n) r = s; }); return r; }
-        TEMPLATE_ORDER.forEach(function (n) {
+        (isProt() ? PROT_TEMPLATE_ORDER : TEMPLATE_ORDER).forEach(function (n) {
           if (findByName(n)) return;
           I._secSeq = (I._secSeq || 0) + 1; var id = 'sec' + I._secSeq;
           I.sections.push({ id: id, title: n, pos: 'start', html: SEC_TEMPLATES[n] || '' }); I.selected['sec:' + id] = true; added++;
         });
         var avail = availableItemIds();
         function sid(n) { var s = findByName(n); return s ? ('sec:' + s.id) : null; }
-        var want = ['cover', 'toc', sid('Objetivo'), sid('Fundamento teórico'), sid('Materiales'), sid('Procedimiento'), sid('Resultados'), 'data'];
+        var want = isProt() ? ['cover', 'toc'].concat(PROT_TEMPLATE_ORDER.map(sid)) : ['cover', 'toc', sid('Objetivo'), sid('Fundamento teórico'), sid('Materiales'), sid('Procedimiento'), sid('Resultados'), 'data'];
         avail.forEach(function (id) { if (/^graph\d+$/.test(id)) want.push(id); });
         want = want.concat(['fit', 'segfit', 'stats', 'photos', 'dataphotos', 'drawing', 'notes', sid('Análisis'), sid('Conclusión')]);
         var order = want.filter(function (id) { return id && avail.indexOf(id) >= 0; });
@@ -30335,6 +30377,13 @@ bluetooth.startIOPinService()</pre>
         g4.appendChild(rbBtn('∑', 'Ecuación', 'Insertar una fórmula (se arma con botones)', function () { openEqEditor(ensureFocusEd(), null); }, { glyph: true }));
         g4.appendChild(rbBtn(ico('pencil'), 'Dibujo', 'Dibujar a mano un esquema e insertarlo acá', drawAndInsert));
         g4.appendChild(rbBtn(ico('book'), 'Cita', 'Insertar una cita bibliográfica (formato APA)', function (e) { ensureFocusEd(); toggleCiteMenu(e); }));
+        // Protocolo de práctico: herramientas del sistema (se cargan al usarlas, desde protocolo/protocolo.js)
+        var gl = grp('Laboratorio'); gl.parentNode.classList.add('inf-rb-prot');
+        gl.appendChild(rbBtn(ico('cube'), 'Montaje', 'Piezas 3D y de cartón del catálogo: dibujo del dispositivo armado o anexo con el ensamblado paso a paso', protTool('montaje')));
+        gl.appendChild(rbBtn(ico('circuit'), 'Circuito', 'Dibujar el circuito: esquemático o protoboard (con el código de colores de las resistencias)', protTool('circuito')));
+        gl.appendChild(rbBtn(ico('function'), 'Teórica', 'Gráfica teórica de una función (el modelo esperado) o ejes en blanco para completar a mano', protTool('teorica')));
+        gl.appendChild(rbBtn(ico('code'), 'Bloques', 'Bloques de MakeCode listos para enviar datos a fisicabit.com, o tus prácticas guardadas', protTool('bloques')));
+        gl.appendChild(rbBtn(ico('sparkle'), 'IA', 'Escribir o adaptar el protocolo con IA: arma el prompt con todo lo que hay hoy en fisicabit.com e importa la respuesta', protTool('ia')));
         var g5 = grp('Documento');
         g5.appendChild(rbBtn(ico('sliders'), 'Opciones', 'Índice, bibliografía, tipo de letra y vista', function (e) { toggleDocOptsMenu(e); }));
       }
@@ -30368,9 +30417,9 @@ bluetooth.startIOPinService()</pre>
         var m = el('inf-add-menu'); if (!m) return;
         if (m.classList.contains('open')) { m.classList.remove('open'); return; }
         closeMenus(); m.innerHTML = '';
-        menuItem(m, 'layout', 'Plantilla completa', 'Todas las partes de un informe, en orden y con pistas', applyTemplate, 'primary');
+        menuItem(m, 'layout', 'Plantilla completa', isProt() ? 'Todas las partes de un protocolo de práctico, en orden y con pistas' : 'Todas las partes de un informe, en orden y con pistas', applyTemplate, 'primary');
         menuHead(m, 'Partes de texto');
-        SECTION_KINDS.forEach(function (k) { menuItem(m, k.ic, k.name, k.desc, function () { addSection(k.name, { after: afterId }); }); });
+        kinds().forEach(function (k) { menuItem(m, k.ic, k.name, k.desc, function () { addSection(k.name, { after: afterId }); }); });
         menuItem(m, 'file', 'Parte en blanco', 'Con el título que vos quieras', function () { addSection('', { after: afterId }); });
         menuHead(m, 'Otras partes');
         if (!I.doc.toc) menuItem(m, 'list-ordered', 'Índice', 'Lista automática de las partes del informe', function () { setToc(true); });
@@ -30595,7 +30644,7 @@ bluetooth.startIOPinService()</pre>
         wrap.style.width = Math.round(794 * sc) + 'px'; wrap.style.height = Math.round(h * sc) + 'px';
       }
       function openCoverModal() {
-        buildCoverModal(); closeMenus();
+        buildCoverModal(); applyKindUI(); closeMenus();
         var m = el('inf-cover-modal'); if (!m) return;
         syncReportInputs(); refreshCoverForm(); m.classList.add('open');
         renderCoverPreview(); setTimeout(fitCoverPreview, 50);
@@ -31390,15 +31439,16 @@ bluetooth.startIOPinService()</pre>
 
       // ==================== EXPORTAR A PDF ====================
       function slugTitle() {
-        var t = (I.meta.title || 'informe');
+        var t = (I.meta.title || kindSlug());
         try { t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
         t = t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
-        return t || 'informe';
+        return t || kindSlug();
       }
+      function kindSlug() { return isProt() ? 'protocolo' : 'informe'; }
       function pdfFilename() {
         var d = new Date();
         var ds = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-        return 'informe_' + slugTitle() + '_' + ds + '.pdf';
+        var st = slugTitle(); return (st === kindSlug() ? st : kindSlug() + '_' + st) + '_' + ds + '.pdf';
       }
       function buildOffscreen(html) {
         var holder = document.createElement('div');
@@ -31468,6 +31518,17 @@ bluetooth.startIOPinService()</pre>
               if (y > margin) { pdf.addPage(); y = margin; }
               var cctx = null; try { cctx = canvas.getContext('2d'); } catch (e) {}
               var srcPageH = Math.floor(canvas.width * usableH / usableW), sy = 0, firstSlice = true;
+              // Zonas que no se parten entre páginas: figuras (con su subtítulo y párrafo previos), ecuaciones y filas de tabla.
+              // Los dibujos de línea tienen filas casi blancas por dentro y el corte «seguro» caía en el medio.
+              var keep = [];
+              try {
+                var bR = blocks[bi].getBoundingClientRect(), kS = canvas.height / Math.max(1, bR.height);
+                [].forEach.call(blocks[bi].querySelectorAll('figure, .doc-eq-block, tr'), function (e) {
+                  var r = e.getBoundingClientRect(), top = r.top;
+                  if (e.tagName === 'FIGURE') { var pv = e.previousElementSibling, n = 0; while (pv && n < 2 && /^(P|H2|H3)$/.test(pv.tagName)) { var pr = pv.getBoundingClientRect(); if (pr.height > 0) top = pr.top; n++; if (/^H/.test(pv.tagName)) break; pv = pv.previousElementSibling; } }
+                  keep.push([(top - bR.top) * kS - 3, (r.bottom - bR.top) * kS + 3]);
+                });
+              } catch (e) {}
               while (sy < canvas.height) {
                 var cutY;
                 if ((canvas.height - sy) <= srcPageH) { cutY = canvas.height; }
@@ -31475,6 +31536,7 @@ bluetooth.startIOPinService()</pre>
                   var ideal = sy + srcPageH;
                   cutY = findSafeCut(cctx, canvas.width, ideal, sy + Math.floor(srcPageH * 0.55));
                   if (!cutY || cutY <= sy + 4 || cutY > ideal) cutY = ideal;
+                  for (var kz = 0; kz < keep.length; kz++) { var z = keep[kz]; if (cutY > z[0] && cutY < z[1] && z[0] > sy + 8 && (z[1] - z[0]) < srcPageH) { cutY = Math.floor(z[0]); break; } }
                 }
                 var sh = cutY - sy;
                 var tmp = document.createElement('canvas'); tmp.width = canvas.width; tmp.height = sh;
@@ -31490,7 +31552,7 @@ bluetooth.startIOPinService()</pre>
           var total = pdf.internal.getNumberOfPages();
           for (var p = 1; p <= total; p++) {
             pdf.setPage(p); pdf.setFontSize(8); pdf.setTextColor(150);
-            pdf.text('fisicabit · informe de laboratorio', margin, pageH - 14);
+            pdf.text(isProt() ? 'fisicabit · protocolo de práctico' : 'fisicabit · informe de laboratorio', margin, pageH - 14);
             pdf.text(p + ' / ' + total, pageW - margin, pageH - 14, { align: 'right' });
           }
           return pdf;
@@ -31516,7 +31578,7 @@ bluetooth.startIOPinService()</pre>
       function docxFilename() {
         var d = new Date();
         var ds = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-        return 'informe_' + slugTitle() + '_' + ds + '.docx';
+        var st = slugTitle(); return (st === kindSlug() ? st : kindSlug() + '_' + st) + '_' + ds + '.docx';
       }
       async function ensureHtmlDocx() {
         if (window.htmlDocx && typeof window.htmlDocx.asBlob === 'function') return true;
@@ -32091,7 +32153,7 @@ bluetooth.startIOPinService()</pre>
             run: { font: FONT, size: hp(px), bold: true, color: '161616' }, paragraph: { spacing: { before: 200, after: 80 }, keepNext: true } }, extra || {});
         }
         return new D.Document({
-          creator: 'fisicabit', title: I.meta.title || 'Informe de laboratorio',
+          creator: 'fisicabit', title: I.meta.title || (isProt() ? 'Protocolo de práctico' : 'Informe de laboratorio'),
           styles: {
             // Sin interlineado fijo: con w:line sin regla, LibreOffice recorta las imágenes a una línea.
             default: { document: { run: { font: FONT, size: hp(12.5), color: '161616' }, paragraph: { spacing: { after: 120 } } } },
@@ -32441,12 +32503,63 @@ bluetooth.startIOPinService()</pre>
         // Espacios de trabajo: los demás espacios (inactivos) viajan dentro del proyecto.
         var WS = window.FbitWorkspaces;
         if (WS && WS.exportForProject) { try { Object.assign(app, WS.exportForProject()); } catch (e) {} }
-        var report = {
+        // «report» es siempre el informe del estudiante y «protocol» el protocolo del docente,
+        // esté abierto uno u otro (compatibilidad con proyectos guardados antes).
+        var cur = reportState();
+        var report = isProt() ? (I._alt || {}) : cur, protocol = isProt() ? cur : (I._alt || null);
+        return JSON.parse(JSON.stringify({ schema: 2, savedAt: Date.now(), app: app, report: report, protocol: protocol }));
+      }
+      function reportState() {
+        return {
           meta: I.meta, cover: coverCfg(), notes: I.notesText, drawing: I.drawingDataURL(),
           devicePhotos: I.devicePhotos, selected: I.selected,
           imgOpts: I.imgOpts, sections: I.sections, doc: I.doc
         };
-        return JSON.parse(JSON.stringify({ schema: 2, savedAt: Date.now(), app: app, report: report }));
+      }
+      function applyReportState(rep) {
+        rep = rep || {};
+        I.meta = Object.assign({ title: '', student: '', course: '', institution: '', date: todayStr() }, rep.meta || {});
+        I.cover = normCover(rep.cover);
+        I.notesText = rep.notes || '';
+        I.devicePhotos = Array.isArray(rep.devicePhotos) ? rep.devicePhotos : [];
+        I.selected = rep.selected || {};
+        I.imgOpts = rep.imgOpts || {};
+        I.sections = Array.isArray(rep.sections) ? rep.sections : [];
+        I._secSeq = I.sections.reduce(function (m, s) { var nn = parseInt(String(s.id).replace(/\D/g, '')) || 0; return Math.max(m, nn); }, 0);
+        I._blkSeq = 0; I._secActive = 0;
+        I.sections.forEach(normSection);
+        I.doc = Object.assign(defaultDoc(), rep.doc || {});
+        if (!Array.isArray(I.doc.order)) I.doc.order = [];
+        if (!Array.isArray(I.doc.biblio)) I.doc.biblio = [];
+        if (!I.doc.collapsed || typeof I.doc.collapsed !== 'object') I.doc.collapsed = {};
+        I.drawingData = rep.drawing || null;
+      }
+      // Cambia el documento abierto en el editor (informe ↔ protocolo) sin perder ninguno.
+      function setKind(k) {
+        k = (k === 'protocolo') ? 'protocolo' : 'informe';
+        if (k !== I.kind) {
+          var cur = JSON.parse(JSON.stringify(reportState())), other = I._alt;
+          I.kind = k; I._alt = cur;
+          applyReportState(other);
+          _undo.length = 0; _redo.length = 0; _activePart = null; I._focusEd = null; I._savedRange = null;
+          closePreview(); var mm = el('inf-material'); if (mm) mm.classList.remove('open');
+          syncReportInputs(); renderPhotos(); schedule();
+        }
+        applyKindUI();
+      }
+      function applyKindUI() {
+        var p = el('informe-panel'); if (!p) return;
+        var prot = isProt(); p.classList.toggle('kind-protocolo', prot);
+        var b = el('inf-brand'); if (b) b.innerHTML = prot ? 'Protocolo<small>fisicabit · práctico para el aula</small>' : 'Informe<small>fisicabit · micro:bit datalab</small>';
+        var nt = el('inf-nav-title-txt'); if (nt) nt.textContent = prot ? 'Partes del protocolo' : 'Partes del informe';
+        var ls = document.querySelector('label[for="inf-student"]'); if (ls) ls.textContent = prot ? 'Docente' : 'Estudiante(s)';
+        var tips = { 'inf-preview-open': ['Ver cómo queda el informe terminado (así se descarga en PDF y Word)', 'Ver cómo queda el protocolo terminado (así se descarga en PDF y Word)'],
+          'inf-add-part': ['Agregar una parte al informe: objetivo, materiales, procedimiento, conclusión…', 'Agregar una parte al protocolo: objetivos, materiales, montaje, procedimiento…'],
+          'inf-template': ['Agrega de una vez todas las partes de un informe de laboratorio, en orden, con pistas de qué escribir en cada una', 'Agrega de una vez todas las partes de un protocolo de práctico, en orden, con pistas de qué escribir en cada una'],
+          'informe-close': ['Cerrar el informe (lo que escribiste queda guardado)', 'Cerrar el protocolo (lo que escribiste queda guardado)'] };
+        Object.keys(tips).forEach(function (id) { var e = el(id); if (e) e.setAttribute('data-tip', tips[id][prot ? 1 : 0]); });
+        var nh = document.querySelector('#inf-nav .inf-nav-hint'); if (nh) nh.textContent = prot ? 'Tildá qué partes van en el protocolo. Arrastrá ⠿ para cambiar el orden. Tocá una parte para ir a ella.' : 'Tildá qué partes van en el informe. Arrastrá ⠿ para cambiar el orden. Tocá una parte para ir a ella.';
+        var pt = document.querySelector('#inf-preview-modal .ttl'); if (pt) pt.textContent = prot ? 'Así queda tu protocolo' : 'Así queda tu informe';
       }
 
       function setInputVal(id, v) { var e = el(id); if (e != null && v != null && v !== undefined) e.value = v; }
@@ -32528,22 +32641,11 @@ bluetooth.startIOPinService()</pre>
         restoreApp(a);
         try {
           // Restaurar el informe
-          var rep = blob.report || {};
-          I.meta = Object.assign({ title: '', student: '', course: '', institution: '', date: todayStr() }, rep.meta || {});
-          I.cover = normCover(rep.cover);
-          I.notesText = rep.notes || '';
-          I.devicePhotos = Array.isArray(rep.devicePhotos) ? rep.devicePhotos : [];
-          I.selected = rep.selected || {};
-          I.imgOpts = rep.imgOpts || {};
-          I.sections = Array.isArray(rep.sections) ? rep.sections : [];
-          I._secSeq = I.sections.reduce(function (m, s) { var nn = parseInt(String(s.id).replace(/\D/g, '')) || 0; return Math.max(m, nn); }, 0);
-          I._blkSeq = 0; I._secActive = 0;
-          I.sections.forEach(normSection);
-          I.doc = Object.assign(defaultDoc(), rep.doc || {});
-          if (!Array.isArray(I.doc.order)) I.doc.order = [];
-          if (!Array.isArray(I.doc.biblio)) I.doc.biblio = [];
-          if (!I.doc.collapsed || typeof I.doc.collapsed !== 'object') I.doc.collapsed = {};
-          I.drawingData = rep.drawing || null;
+          // El proyecto trae los dos documentos; queda abierto el que se estaba editando.
+          var wasProt = isProt();
+          I.kind = 'informe'; applyReportState(blob.report || {});
+          I._alt = (blob.protocol && typeof blob.protocol === 'object') ? blob.protocol : null;
+          if (wasProt) setKind('protocolo'); else applyKindUI();
           syncReportInputs();
           renderPhotos();
           refresh();
@@ -32573,11 +32675,12 @@ bluetooth.startIOPinService()</pre>
           JSON.stringify(I.cover || {}).length, (I.cover && I.cover.style) || '', (I.cover && I.cover.accent) || '',
           I.notesText.length, (I.drawingData ? I.drawingData.length : 0), I.devicePhotos.length,
           JSON.stringify(I.selected), JSON.stringify(I.imgOpts), JSON.stringify(I.sections), JSON.stringify(I.doc),
+          I.kind, I._alt ? JSON.stringify(I._alt.sections || []).length + '/' + ((I._alt.meta || {}).title || '') : '',
           (window.FbitWorkspaces && window.FbitWorkspaces.sig) ? window.FbitWorkspaces.sig() : ''].join('|');
       }
       async function autosaveNow() {
         var st = state || {};
-        var has = (st.rawData && st.rawData.length) || I.notesText.trim() || I.hasDrawing() || I.devicePhotos.length || (I.meta.title || I.meta.student);
+        var has = (st.rawData && st.rawData.length) || I.notesText.trim() || I.hasDrawing() || I.devicePhotos.length || (I.meta.title || I.meta.student) || (I.sections || []).length || I._alt;
         if (!has) return;
         var blob = null;
         try {
@@ -32620,7 +32723,8 @@ bluetooth.startIOPinService()</pre>
         if (blob && blob.app) {
           var n = (blob.app.rawData || []).length;
           var rep = blob.report || {};
-          var hasR = n > 0 || rep.notes || rep.drawing || (rep.devicePhotos || []).length || (rep.meta && rep.meta.title);
+          var prt = blob.protocol || {};
+          var hasR = n > 0 || rep.notes || rep.drawing || (rep.devicePhotos || []).length || (rep.meta && rep.meta.title) || (rep.sections || []).length || (prt.meta && prt.meta.title) || (prt.sections || []).length;
           if (hasR) { _cachedBlob = blob; _cachedAt = blob.savedAt || 0; _cachedPts = n; }
         }
         updateSessionMenu();
@@ -32996,7 +33100,8 @@ bluetooth.startIOPinService()</pre>
       function _sessionHasContent() {
         var st = state || {};
         return !!((st.rawData && st.rawData.length) || (I.notesText && I.notesText.trim()) || I.hasDrawing() ||
-          (I.devicePhotos && I.devicePhotos.length) || (I.meta && (I.meta.title || I.meta.student)) || (I.sections && I.sections.length));
+          (I.devicePhotos && I.devicePhotos.length) || (I.meta && (I.meta.title || I.meta.student)) || (I.sections && I.sections.length) ||
+          (I._alt && (((I._alt.meta || {}).title) || (I._alt.sections || []).length)));
       }
       function gClock() { try { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
       async function gSyncStart() {
@@ -33093,6 +33198,7 @@ bluetooth.startIOPinService()</pre>
         I.notesText = ''; I.devicePhotos = []; I.selected = {};
         I.imgOpts = {}; I.sections = []; I._secSeq = 0; I._secActive = 0; I._blkSeq = 0; I.drawingData = null;
         _gSessionFileId = null; _gSessionName = null; _lastSavedAt = 0;
+        I._alt = null;   // reiniciar todo borra también el otro documento (informe / protocolo)
         I.doc = defaultDoc(); _undo.length = 0; _redo.length = 0; _activePart = null; closePreview(); var mm = el('inf-material'); if (mm) mm.classList.remove('open');
         syncReportInputs(); renderPhotos(); renderDrawPreview();
         var fr = el('fitResults'); if (fr) fr.style.display = 'none';
@@ -33112,7 +33218,86 @@ bluetooth.startIOPinService()</pre>
       }
 
       // --- Panel ---
-      function openPanel() { track('abrir_informe', 'modo'); el('informe-panel').classList.add('open'); refresh(); gUpdateDriveUI(); }
+      function openPanel(kind) {
+        kind = (kind === 'protocolo') ? 'protocolo' : 'informe';
+        track(kind === 'protocolo' ? 'abrir_protocolo' : 'abrir_informe', 'modo');
+        setKind(kind);
+        el('informe-panel').classList.add('open'); refresh(); gUpdateDriveUI();
+      }
+      I.open = openPanel;
+      // ---- Herramientas del protocolo (protocolo/protocolo.js, se carga la primera vez que se usa) ----
+      var _protP = null;
+      function loadProt() {
+        if (!_protP) _protP = new Promise(function (res, rej) {
+          if (window.FbitProtocolo) { res(window.FbitProtocolo); return; }
+          var sc = document.createElement('script'); sc.src = 'protocolo/protocolo.js?v=1';
+          sc.onload = function () { if (window.FbitProtocolo) res(window.FbitProtocolo); else { _protP = null; rej(new Error('sin módulo')); } };
+          sc.onerror = function () { _protP = null; rej(new Error('sin red')); };
+          document.head.appendChild(sc);
+        });
+        return _protP;
+      }
+      function protTool(name) {
+        return function () {
+          closeMenus();
+          loadProt().then(function (P) { P.abrir(name); }).catch(function () { toast('No se pudo cargar la herramienta. Revisá la conexión y probá de nuevo.'); });
+        };
+      }
+      // Agrega una parte de texto con contenido ya armado (anexos, borradores importados).
+      function apiAddSection(title, html, opts) {
+        opts = opts || {};
+        pushUndo();
+        I._secSeq = (I._secSeq || 0) + 1;
+        var id = 'sec' + I._secSeq;
+        I.sections.push({ id: id, title: title || '', pos: 'start', html: html || '' });
+        I.selected['sec:' + id] = true;
+        var order = resolveOrder(), oi = order.indexOf('sec:' + id); if (oi >= 0) order.splice(oi, 1);
+        var bi = order.indexOf('biblio'), at = bi >= 0 ? bi : order.length;
+        if (opts.after && order.indexOf(opts.after) >= 0) at = order.indexOf(opts.after) + 1;
+        order.splice(at, 0, 'sec:' + id); I.doc.order = order;
+        if (!opts.silent) { buildEditorDoc(); renderPreviewDebounced(); schedule(); if (opts.go !== false) setTimeout(function () { goToPart('sec:' + id); }, 60); }
+        return id;
+      }
+      function figureHTML(dataUrl, caption, width) {
+        return '<figure class="doc-fig fig-center" contenteditable="false" draggable="true" title="Arrastrá para mover · clic para ver opciones" style="width:' + (width || 60) + '%"><img src="' + dataUrl + '"><figcaption contenteditable="true">' + (caption ? esc(caption) : '') + '</figcaption></figure>';
+      }
+      // Inserta HTML donde estaba el cursor; si se perdió (se abrió otra ventana), al final de la parte activa.
+      function apiInsertHTML(html) {
+        var ed = ensureFocusEd(); if (!ed) return false;
+        var done = false;
+        try {
+          var r = I._savedRange;
+          if (r && ed.contains(r.startContainer)) { ed.focus(); restoreRange(); done = document.execCommand('insertHTML', false, html); }
+        } catch (e) { done = false; }
+        if (!done) ed.insertAdjacentHTML('beforeend', html);
+        onEditableInput(ed); markFigsDraggable(ed);
+        return true;
+      }
+      function eqHTML(latex, block) {
+        var url = null; try { url = latexToImg(latex, !!block); } catch (e) {}
+        var inner = url ? ('<img src="' + url + '">') : esc(latex);
+        return block ? ('<div class="doc-eq-block" contenteditable="false" data-latex="' + encodeURIComponent(latex) + '">' + inner + '</div>')
+                     : ('<span class="doc-eq" contenteditable="false" data-latex="' + encodeURIComponent(latex) + '">' + inner + '</span>');
+      }
+      I.api = {
+        kind: function () { return I.kind; },
+        hasEditor: function () { return !!ensureFocusEd(); },
+        insertFigure: function (dataUrl, caption, width) {
+          if (!ensureFocusEd()) { apiAddSection(isProt() ? 'Montaje experimental' : 'Imágenes', figureHTML(dataUrl, caption, width) + '<p>​</p>'); return true; }
+          return apiInsertHTML(figureHTML(dataUrl, caption, width) + '<p>​</p>');
+        },
+        insertHTML: function (html) { if (!ensureFocusEd()) { apiAddSection('', html); return true; } return apiInsertHTML(html); },
+        figureHTML: figureHTML, eqHTML: eqHTML,
+        addSection: apiAddSection,
+        sections: function () { return (I.sections || []).map(function (s) { return { id: s.id, title: s.title, html: s.html }; }); },
+        setSectionHTML: function (id, html) { var s = findSec(id); if (!s) return false; pushUndo(); s.html = html; I.selected['sec:' + id] = true; return true; },
+        meta: function () { return I.meta; },
+        setMeta: function (m) { Object.assign(I.meta, m || {}); syncReportInputs(); },
+        rebuild: function () { buildEditorDoc(); renderPreviewDebounced(); schedule(); },
+        goTo: function (id) { goToPart('sec:' + id); },
+        applyTemplate: applyTemplate,
+        toast: toast, alert: uiAlert, confirm: uiConfirm, prompt: uiPrompt, esc: esc, ico: ico
+      };
       function closePanel() { el('informe-panel').classList.remove('open'); }
 
       function wire() {
@@ -33239,7 +33424,22 @@ bluetooth.startIOPinService()</pre>
         });
 
         // Abrir / cerrar panel
-        var btn = el('btn-informe'); if (btn) btn.addEventListener('click', openPanel);
+        var btn = el('btn-informe'), imenu = el('informeMenu');
+        if (btn && imenu) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var open = imenu.style.display === 'none';
+            if (open && window.matchMedia('(max-width: 600px)').matches) {
+              var r = btn.getBoundingClientRect(); imenu.style.position = 'fixed'; imenu.style.top = (r.bottom + 4) + 'px';
+              imenu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 230)) + 'px';
+            } else if (open) { imenu.style.position = ''; imenu.style.top = ''; imenu.style.left = ''; }
+            imenu.style.display = open ? 'block' : 'none';
+          });
+          document.addEventListener('click', function () { imenu.style.display = 'none'; });
+          var bi = el('btn-informe-inf'), bp = el('btn-informe-prot');
+          if (bi) bi.addEventListener('click', function () { openPanel('informe'); });
+          if (bp) bp.addEventListener('click', function () { openPanel('protocolo'); });
+        } else if (btn) btn.addEventListener('click', function () { openPanel('informe'); });
         var closeBtn = el('informe-close'); if (closeBtn) closeBtn.addEventListener('click', closePanel);
         document.addEventListener('keydown', function (e) {
           if (e.key !== 'Escape') return;
@@ -34260,6 +34460,18 @@ bluetooth.startIOPinService()</pre>
     'Cerrar el informe (lo que escribiste queda guardado)': { en: 'Close the report (what you wrote stays saved)', pt: 'Fechar o relatório (o que você escreveu fica salvo)' },
     '✕ Cerrar': { en: '✕ Close', pt: '✕ Fechar' },
     'Partes del informe': { en: 'Report parts', pt: 'Partes do relatório' },
+    'Partes del protocolo': { en: 'Protocol parts', pt: 'Partes do protocolo' },
+    'PROTOCOLO DE PRÁCTICO': { en: 'LAB PROTOCOL', pt: 'PROTOCOLO DE PRÁTICA' },
+    'Protocolo de práctico': { en: 'Lab protocol', pt: 'Protocolo de prática' },
+    'Protocolo de práctico · fisicabit': { en: 'Lab protocol · fisicabit', pt: 'Protocolo de prática · fisicabit' },
+    'Guía para el trabajo experimental con micro:bit': { en: 'Guide for experimental work with micro:bit', pt: 'Guia para o trabalho experimental com micro:bit' },
+    'Docente': { en: 'Teacher', pt: 'Docente' },
+    'Institución': { en: 'Institution', pt: 'Instituição' },
+    'Laboratorio': { en: 'Lab', pt: 'Laboratório' },
+    'Montaje': { en: 'Setup', pt: 'Montagem' },
+    'Circuito': { en: 'Circuit', pt: 'Circuito' },
+    'Teórica': { en: 'Theory', pt: 'Teórica' },
+    'Bloques': { en: 'Blocks', pt: 'Blocos' },
     'Agregar parte': { en: 'Add part', pt: 'Adicionar parte' },
     'Agregar una parte al informe: objetivo, materiales, procedimiento, conclusión…': { en: 'Add a part to the report: objective, materials, procedure, conclusion…', pt: 'Adicionar uma parte ao relatório: objetivo, materiais, procedimento, conclusão…' },
     'Usar plantilla completa': { en: 'Use full template', pt: 'Usar modelo completo' },
@@ -46059,8 +46271,15 @@ bluetooth.startIOPinService()</pre>
 
 
 <script>
-/* Herramienta oculta: guías de armado (no tiene enlaces; se entra por #guias o /guias/) */
-(function () { function ir() { if (/^#guias$/i.test(location.hash)) location.replace('guias/'); } ir(); window.addEventListener('hashchange', ir); })();
+/* Accesos directos: #guias y #circuitos abren esas herramientas en su página; #protocolo abre el protocolo de práctico */
+(function () {
+    function ir() {
+        if (/^#guias$/i.test(location.hash)) location.replace('guias/');
+        else if (/^#circuitos$/i.test(location.hash)) location.replace('circuitos/');
+        else if (/^#protocolo$/i.test(location.hash)) { var n = 0, t = setInterval(function () { if (window.Informe && window.Informe.open) { clearInterval(t); window.Informe.open('protocolo'); } else if (++n > 80) clearInterval(t); }, 150); }
+    }
+    ir(); window.addEventListener('hashchange', ir);
+})();
 </script>
 </body>
 </html>
