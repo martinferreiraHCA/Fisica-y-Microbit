@@ -23,3 +23,9 @@ Copias locales servidas desde este sitio para no depender de CDNs externos:
   [boxes.py](https://github.com/florianfesti/boxes) y
   [bmsleight/lasercut](https://github.com/bmsleight/lasercut); ver
   `diseños carton/README.md`.
+- `wokwi-elements.bundle.min.js` — [Wokwi Elements](https://github.com/wokwi/wokwi-elements)
+  1.9.2, sin cambios: componentes web con el dibujo realista de piezas de
+  electrónica (LED, pulsador, servo, HC-SR04, DHT22, pantallas, Arduino Uno…)
+  y la posición de cada pata. Licencia **MIT** (© 2020 Uri Shaked; texto en
+  `wokwi-elements.LICENSE`). Lo usa el editor de circuitos (`circuitos/`) para
+  la vista realista de la protoboard; se carga recién cuando hace falta.
