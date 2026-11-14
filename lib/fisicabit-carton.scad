@@ -73,7 +73,13 @@ module rect(ancho, alto, r = 0, center = false) {
 
 /* ---------- Armado 3D (una pieza 2D → placa de cartón) ---------- */
 // laja(): placa horizontal (plano XY), centrada en su espesor.
-module laja() linear_extrude(fb_espesor(), center = true) children();
+// $fb_separar > 0 achica cada placa esa cantidad (mm) por todos lados: las piezas
+// del armado dejan de tocarse y el sitio puede separarlas (guías de armado).
+$fb_separar = 0;
+module laja() {
+    if ($fb_separar > 0) linear_extrude(fb_espesor() - 2 * $fb_separar, center = true) offset(delta = -$fb_separar) children();
+    else linear_extrude(fb_espesor(), center = true) children();
+}
 // laja_xz(): placa vertical en el plano XZ (su "y" del dibujo pasa a ser altura).
 module laja_xz() rotate([90, 0, 0]) laja() children();
 // laja_yz(): placa vertical en el plano YZ.
@@ -263,5 +269,5 @@ module _fb_con_marcas() { $marcas = true; plano(); }
 module _fb_sin_marcas() { $marcas = false; plano(); }
 if (vista == "plano") _fb_sin_marcas();
 else if (vista == "marcas") difference() { _fb_sin_marcas(); _fb_con_marcas(); }
-else if (vista == "plano_3d") linear_extrude(fb_espesor()) _fb_sin_marcas();
+else if (vista == "plano_3d") translate([0, 0, fb_espesor() / 2]) laja() _fb_sin_marcas();
 else if (vista == "armado") armado();
