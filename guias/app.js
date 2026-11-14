@@ -12,7 +12,14 @@ const r1 = (n) => Math.round(n * 10) / 10;
 const hoy = () => new Date().toLocaleDateString('es', { month: 'long', year: 'numeric' });
 
 /* ---------- Estado ---------- */
-const docNuevo = () => ({ titulo: 'Mi dispositivo', version: '1.0', subtitulo: 'Guía de armado', autor: '', fecha: hoy(), descripcion: '', acento: '#ffca28', linea: 1.8, resaltar: true, sombra: false, listaPiezas: true });
+const docNuevo = () => ({ titulo: '', tipo: 'Práctica', version: '', subtitulo: '', autor: '', fecha: hoy(), descripcion: '', resalte: 'medio', linea: 1.8, sombra: false, listaPiezas: true });
+// Guías guardadas con el formato anterior (color de acento) pasan a grises
+function ponerAlDia(doc) {
+  const d = Object.assign(docNuevo(), doc || {});
+  if (!doc || doc.resalte == null) d.resalte = doc && doc.resaltar === false ? 'no' : 'medio';
+  if (doc && doc.tipo == null) { d.tipo = ''; if (d.subtitulo === 'Guía de armado') d.subtitulo = ''; }
+  delete d.acento; delete d.resaltar; return d;
+}
 let E = { doc: docNuevo(), pasos: [{ id: uid(), titulo: 'Base', texto: '', vista: null }], partes: [], geos: {}, vistaPortada: null };
 let sel = null, pasoId = E.pasos[0].id, modoEntrada = false, soloHasta = false;
 const ui = { geos: new Map(), meshes: new Map() };   // objetos de three (no se guardan)
@@ -88,7 +95,7 @@ function sincronizar() {
     m.rotation.set(...p.rot.map(THREE.MathUtils.degToRad));
     m.visible = !p.oculto && (!soloHasta || idxPaso(p.paso) <= actual);
     const delPaso = p.paso === pasoId;
-    m.material.color.set(p.id === sel ? E.doc.acento : (delPaso ? '#ffffff' : '#c9c9c9'));
+    m.material.color.set(p.id === sel ? '#6f6f6f' : (delPaso ? '#ffffff' : '#cfcfcf'));
   });
   const ms = ui.meshes.get(sel);
   if (ms && ms.visible) { if (tc.object !== ms) tc.attach(ms); } else tc.detach();
@@ -392,11 +399,11 @@ async function generarFicha() {
   if (generando) return; generando = true;
   try {
     if (!arte) arte = new Arte();
-    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    if (document.fonts && document.fonts.load) { try { await Promise.all([400, 500, 600, 700, 800].map((w) => document.fonts.load(w + ' 12px Montserrat'))); await document.fonts.ready; } catch (e) {} }
     const d = datosFicha(), box = $('#hojas');
     if (!d.partes.length) { box.innerHTML = '<div class="vacio">Agregá piezas en el editor 3D y volvé acá para ver la ficha.</div>'; return; }
     const pags = await construirFicha(d, arte, (t) => estado(t, 'ocup'));
-    box.innerHTML = pags.join(''); box.style.setProperty('--acento', E.doc.acento);
+    box.innerHTML = pags.join('');
     fichaVieja = false; estado('Ficha lista: ' + pags.length + ' hoja' + (pags.length === 1 ? '' : 's') + ' A4.');
   } catch (e) { estado('No se pudo dibujar la ficha: ' + e.message, 'err'); console.error(e); }
   finally { generando = false; }
@@ -408,17 +415,17 @@ function pestana(ficha) {
 }
 $('#tab-editor').onclick = () => pestana(false); $('#tab-ficha').onclick = () => pestana(true);
 $('#b-generar').onclick = generarFicha;
-const DOC = { 'd-titulo': 'titulo', 'd-version': 'version', 'd-fecha': 'fecha', 'd-subtitulo': 'subtitulo', 'd-autor': 'autor', 'd-descripcion': 'descripcion', 'd-acento': 'acento' };
+const DOC = { 'd-titulo': 'titulo', 'd-version': 'version', 'd-fecha': 'fecha', 'd-subtitulo': 'subtitulo', 'd-autor': 'autor', 'd-descripcion': 'descripcion', 'd-tipo': 'tipo', 'd-resalte': 'resalte' };
 function llenarDoc() {
   Object.keys(DOC).forEach((id) => { $('#' + id).value = E.doc[DOC[id]]; });
-  $('#d-linea').value = String(E.doc.linea); $('#d-resaltar').checked = E.doc.resaltar; $('#d-sombra').checked = E.doc.sombra; $('#d-lista').checked = E.doc.listaPiezas;
+  $('#d-linea').value = String(E.doc.linea); $('#n-guia').value = E.doc.titulo; $('#d-sombra').checked = E.doc.sombra; $('#d-lista').checked = E.doc.listaPiezas;
   $('#d-vista').classList.toggle('act', !!E.vistaPortada);
 }
 let tFicha = null;
 const refrescar = () => { fichaVieja = true; guardarPronto(); clearTimeout(tFicha); tFicha = setTimeout(generarFicha, 700); };
-Object.keys(DOC).forEach((id) => { $('#' + id).oninput = (e) => { E.doc[DOC[id]] = e.target.value; refrescar(); }; });
+Object.keys(DOC).forEach((id) => { $('#' + id).oninput = (e) => { E.doc[DOC[id]] = e.target.value; if (id === 'd-titulo') $('#n-guia').value = e.target.value; refrescar(); }; });
+$('#n-guia').oninput = (e) => { E.doc.titulo = e.target.value; $('#d-titulo').value = e.target.value; refrescar(); };
 $('#d-linea').onchange = (e) => { E.doc.linea = +e.target.value; refrescar(); };
-$('#d-resaltar').onchange = (e) => { E.doc.resaltar = e.target.checked; refrescar(); };
 $('#d-sombra').onchange = (e) => { E.doc.sombra = e.target.checked; refrescar(); };
 $('#d-lista').onchange = (e) => { E.doc.listaPiezas = e.target.checked; refrescar(); };
 $('#d-vista').onclick = () => { E.vistaPortada = vistaActual(); llenarDoc(); refrescar(); };
@@ -448,12 +455,13 @@ function guardarPronto() { clearTimeout(tGuardar); tGuardar = setTimeout(async (
 function cargar(datos) {
   ui.meshes.forEach((m) => { scene.remove(m); m.material.dispose(); }); ui.meshes.clear();
   ui.geos.forEach((o) => { o.g.dispose(); o.aristas.dispose(); }); ui.geos.clear(); tc.detach();
-  E = datos; E.doc = Object.assign(docNuevo(), E.doc || {});
+  E = datos; E.doc = ponerAlDia(E.doc);
   if (!E.pasos || !E.pasos.length) E.pasos = [{ id: uid(), titulo: 'Base', texto: '', vista: null }];
   E.partes = (E.partes || []).filter((p) => E.geos[p.geoId]);
+  E.partes.forEach((p) => { if (p.relleno === 'acento') p.relleno = 'oscuro'; });
   sel = null; pasoId = E.pasos[0].id; fichaVieja = true; entrada(false); cambio(); llenarDoc(); encuadrar();
 }
-$('#b-nuevo').onclick = () => { if (E.partes.length && !confirm('¿Empezar una guía vacía? Se pierde la actual si no la guardaste.')) return; cargar({ doc: docNuevo(), pasos: [], partes: [], geos: {}, vistaPortada: null }); $('#hojas').innerHTML = '<div class="vacio">Agregá piezas en el editor 3D y volvé acá para ver la ficha.</div>'; estado('Guía nueva.'); };
+$('#b-nuevo').onclick = () => { if (E.partes.length && !confirm('¿Empezar una guía vacía? Se pierde la actual si no la guardaste.')) return; cargar({ doc: docNuevo(), pasos: [], partes: [], geos: {}, vistaPortada: null }); $('#hojas').innerHTML = '<div class="vacio">Agregá piezas en el editor 3D y volvé acá para ver la ficha.</div>'; estado('Guía nueva: empezá por el nombre de la práctica o sistema.'); $('#n-guia').focus(); };
 $('#b-guardar').onclick = () => {
   const out = Object.assign({}, E, { formato: 'fisicabit-guia-1', geos: {} });
   Object.keys(E.geos).forEach((k) => { out.geos[k] = { pos: b64(E.geos[k].pos) }; });

@@ -1,5 +1,7 @@
-// Ficha de armado: portada con el conjunto y sus llamadas (A, B, C…),
-// y manual de ensamblado con la lista de piezas y un cuadro por paso.
+// Ficha de armado con la estética de fisicabit (blanco, negro y grises; bandas negras,
+// cuadrados negros para los pasos, recuadros con borde): portada con el nombre de la
+// práctica o sistema, el dispositivo armado y sus llamadas (A, B, C…), y manual de
+// ensamblado con la lista de piezas y un cuadro por paso.
 import * as THREE from 'three';
 
 export const LETRAS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -9,12 +11,24 @@ const texto = (s) => esc(s).replace(/\n/g, '<br>');
 const f1 = (n) => (Math.round(n * 10) / 10).toString();
 const pausa = () => new Promise((r) => setTimeout(r, 0));
 
+// Todo en blanco, negro y grises: el resalte de las piezas nuevas también es un gris.
+const GRISES = { claro: '#dedede', medio: '#b3b3b3', oscuro: '#7c7c7c' };
 function relleno(doc, p, nueva) {
-  if (nueva && doc.resaltar) return { color: doc.acento, trama: false };
-  if (p.relleno === 'gris') return { color: '#e3e3e3', trama: false };
-  if (p.relleno === 'acento') return { color: doc.acento, trama: false };
+  if (nueva && doc.resalte && doc.resalte !== 'no') return doc.resalte === 'puntos' ? { color: '#ffffff', trama: true } : { color: GRISES[doc.resalte] || GRISES.medio, trama: false };
+  if (p.relleno === 'gris') return { color: '#e6e6e6', trama: false };
+  if (p.relleno === 'oscuro' || p.relleno === 'acento') return { color: '#8f8f8f', trama: false };
   if (p.relleno === 'puntos') return { color: '#ffffff', trama: true };
   return { color: '#ffffff', trama: false };
+}
+// Mide un bloque de la hoja ya maquetada (fuera de pantalla), en milímetros.
+const MM = 25.4 / 96;
+function medir(html, sel) {
+  const caja = document.createElement('div');
+  caja.style.cssText = 'position:absolute; left:-99999px; top:0; visibility:hidden; pointer-events:none';
+  caja.innerHTML = html; document.body.appendChild(caja);
+  const el = caja.querySelector(sel);
+  const r = el ? { w: el.clientWidth * MM, h: el.clientHeight * MM, sobra: (el.scrollHeight - el.clientHeight) * MM } : { w: 184, h: 120, sobra: 0 };
+  caja.remove(); return r;
 }
 const opcionesArte = (doc, extra) => Object.assign({ linea: doc.linea || 1.8, sombra: doc.sombra ? 0.16 : 0, tinta: '#111111' }, extra);
 
@@ -55,9 +69,9 @@ function figuraHtml(fig, clase) {
          `<svg viewBox="0 0 ${a.w} ${a.h}" xmlns="http://www.w3.org/2000/svg">${fig.svg || ''}</svg></div>`;
 }
 
-/* ---------- Portada: conjunto armado con llamadas ---------- */
-function portada(d, arte, altoMm) {
-  const doc = d.doc, W = 1500, H = Math.round(1500 * altoMm / 184);
+/* ---------- Portada: dispositivo armado con llamadas (cuadrado negro + letra) ---------- */
+function portada(d, arte, anchoMm, altoMm) {
+  const doc = d.doc, W = 1500, H = Math.max(300, Math.round(1500 * altoMm / anchoMm));
   const items = d.partes.map((p, k) => { const r = relleno(doc, p, false); return { geometry: p.geometry, matrix: p.mFinal, color: r.color, trama: r.trama, id: Math.min(254, k + 1) }; });
   const art = arte.dibujar(items, opcionesArte(doc, { w: W, h: H, dir: d.vistaPortada || VISTA, margen: 0.15 }));
   // Llamadas: una por paso con piezas, apuntando al borde de sus piezas
@@ -77,31 +91,25 @@ function portada(d, arte, altoMm) {
     if (!hit) hit = [Math.round(c[0]), Math.round(c[1])];
     llamadas.push({ letra: paso.letra, lado, hit, y: hit[1] });
   });
-  for (const lado of [-1, 1]) {   // separar las letras de un mismo lado
+  const C = 62, SEP = 80;   // lado del cuadrado y separación mínima entre llamadas
+  for (const lado of [-1, 1]) {   // separar las letras de un mismo lado y mantenerlas dentro del cuadro
     const l = llamadas.filter((q) => q.lado === lado).sort((a, b) => a.y - b.y);
-    for (let k = 1; k < l.length; k++) if (l[k].y - l[k - 1].y < 84) l[k].y = l[k - 1].y + 84;
+    l.forEach((q, k) => { q.y = Math.max(q.y, 96, k ? l[k - 1].y + SEP : 0); });
+    for (let k = l.length - 1; k >= 0; k--) { const tope = H - 56 - (l.length - 1 - k) * SEP; if (l[k].y > tope) l[k].y = Math.max(40, tope); }
   }
   let svg = '';
   llamadas.forEach((q) => {
-    const xl = q.lado < 0 ? 62 : W - 62, x0 = xl - q.lado * 46, hx = q.hit[0] + q.lado * 10, hy = q.hit[1];
-    const L = Math.hypot(hx - x0, hy - q.y) || 1, ux = (hx - x0) / L, uy = (hy - q.y) / L, t = 15;
-    svg += `<text x="${xl}" y="${q.y + 17}" text-anchor="middle" font-size="50" font-weight="800" fill="#111">${esc(q.letra)}</text>` +
-           `<line x1="${f1(x0)}" y1="${f1(q.y)}" x2="${f1(hx - ux * t)}" y2="${f1(hy - uy * t)}" stroke="#111" stroke-width="3.2" stroke-dasharray="0.01 8.5" stroke-linecap="round"/>` +
-           `<path d="M${f1(hx)},${f1(hy)} L${f1(hx - ux * t - uy * 7)},${f1(hy - uy * t + ux * 7)} L${f1(hx - ux * t + uy * 7)},${f1(hy - uy * t - ux * 7)} Z" fill="#111"/>`;
+    const xl = q.lado < 0 ? 66 : W - 66, x0 = xl - q.lado * (C / 2), hx = q.hit[0] - q.lado * 9, hy = q.hit[1];
+    svg += `<line x1="${f1(x0)}" y1="${f1(q.y)}" x2="${f1(hx)}" y2="${f1(hy)}" stroke="#111" stroke-width="2.4"/>` +
+           `<circle cx="${f1(hx)}" cy="${f1(hy)}" r="7.5" fill="#111" stroke="#fff" stroke-width="2.5"/>` +
+           `<rect x="${f1(xl - C / 2)}" y="${f1(q.y - C / 2)}" width="${C}" height="${C}" fill="#111"/>` +
+           `<text x="${xl}" y="${f1(q.y + 14)}" text-anchor="middle" font-size="40" font-weight="800" fill="#fff">${esc(q.letra)}</text>`;
   });
-  // Decoración: círculo de acento detrás del último paso y dos ondas
-  const ult = d.partes.filter((p) => p.paso === Math.max(...d.partes.map((q) => q.paso)));
-  const cb = new THREE.Box3(); ult.forEach((p) => cb.union(p.cajaFinal));
-  const cc = ult.length ? art.proyectar(cb.getCenter(new THREE.Vector3())) : [W * 0.6, H * 0.35];
-  const onda = (x, y, col) => `<path d="M${x},${y} q16,-22 32,0 t32,0 t32,0 t32,0" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round"/>`;
-  const fondo = `<svg class="deco" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">` +
-    `<circle cx="${f1(Math.min(W - 300, Math.max(300, cc[0] + 70)))}" cy="${f1(Math.min(H - 300, Math.max(300, cc[1] - 20)))}" r="235" fill="${esc(doc.acento)}" opacity="0.55"/>` +
-    onda(W * 0.07, H * 0.78, '#d9d9d9') + onda(W * 0.80, H * 0.60, '#d9d9d9') + `</svg>`;
   // Proporción del conjunto en la vista (ancho / alto), para repartir los cuadros del manual
   let x0 = W, x1 = 0, y0 = H, y1 = 0;
   for (let y = 0; y < H; y += 3) for (let x = 0; x < W; x += 3) if (art.ids[y * W + x]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
   const forma = x1 > x0 && y1 > y0 ? (x1 - x0) / (y1 - y0) : 1;
-  return { art, svg, fondo, forma, W, H };
+  return { art, svg, forma, W, H };
 }
 
 /* ---------- Lista de piezas ---------- */
@@ -116,7 +124,7 @@ function listaPiezas(d, arte) {
   grupos.forEach((g) => {
     const r = relleno(d.doc, g.p, false);
     const art = arte.dibujar([{ geometry: g.p.geometry, matrix: g.p.mGiro, color: r.color, trama: r.trama, id: 1 }], opcionesArte(d.doc, { w: 230, h: 200, dir: VISTA, margen: 0.1, linea: 1.5 }));
-    html += `<div class="bom-it"><img src="${art.canvas.toDataURL('image/png')}" alt=""><div><b>${g.n}×</b> ${esc(g.nombre)}</div></div>`;
+    html += `<div class="bom-it"><img src="${art.canvas.toDataURL('image/png')}" alt=""><div class="bom-n"><span class="cant">${g.n}×</span><span>${esc(g.nombre)}</span></div></div>`;
   });
   return { html, n: grupos.size };
 }
@@ -124,84 +132,93 @@ function listaPiezas(d, arte) {
 /* ---------- Reparto de los cuadros del manual ---------- */
 // Elige columnas × filas para que las figuras salgan lo más grandes posible
 // según la proporción del conjunto (forma = ancho / alto en la vista).
+const SEP_MM = 4;   // separación entre cuadros
 function repartir(n, altoMm, forma) {
   let mejor = null;
   for (const cols of [1, 2, 3, 4]) {
-    const filas = Math.ceil(n / cols), pieMm = [13, 15, 19, 23][cols - 1];
-    const anchoMm = (184 - 7 * (cols - 1)) / cols;
-    let figMm = (altoMm - 4 * (filas - 1)) / filas - pieMm;
-    if (figMm < 30) continue;
+    const filas = Math.ceil(n / cols), pieMm = [17, 19, 23, 27][cols - 1];   // cabecera + texto de cada cuadro
+    const anchoMm = (184 - SEP_MM * (cols - 1)) / cols - 0.8;
+    let figMm = (altoMm - SEP_MM * (filas - 1)) / filas - pieMm;
+    if (figMm < 28) continue;
     figMm = Math.min(figMm, anchoMm * 1.7);
     const escala = Math.min(anchoMm / Math.max(0.2, forma), figMm);
     if (!mejor || escala > mejor.escala * 1.04) mejor = { cols, filas, anchoMm, figMm, escala };
   }
-  return mejor || { cols: 3, filas: Math.ceil(n / 3), anchoMm: 56.6, figMm: 40 };
+  return mejor || { cols: 3, filas: Math.ceil(n / 3), anchoMm: 58, figMm: 38 };
 }
-
 /* ---------- Páginas ---------- */
-function cabecera(doc, derecha) {
-  return `<div class="cab"><div class="cab-t"><b>${esc(doc.titulo)}</b> ${esc(doc.version)}</div><div class="cab-d">${esc(derecha)}</div></div>`;
-}
+const nombreDe = (doc) => (doc.titulo || '').trim() || 'Práctica sin nombre';
 function pie(doc, n, total) {
-  const datos = [doc.autor, doc.fecha].filter(Boolean).map(esc).join(', ');
-  return `<div class="pie"><span>${datos}</span><span class="pie-m">fisicabit · guías de armado</span><span>${n} / ${total}</span></div>`;
+  const datos = [doc.autor, doc.fecha].filter(Boolean).map(esc).join(' · ');
+  return `<div class="pie"><span>${datos}</span><span class="pie-m">fisicabit.com · guía de armado</span><span>${n} / ${total}</span></div>`;
 }
+const cuadro = (c) => `<div class="celda${c.final ? ' final' : ''}">
+  <div class="cel-c"><span class="cuad">${c.final ? '✓' : esc(c.paso.letra)}</span><b>${c.final ? 'Dispositivo armado' : esc(c.paso.titulo)}</b></div>
+  ${c.fig ? figuraHtml(c.fig) : `<div class="fig" style="aspect-ratio:${c.fw}/${c.fh}"></div>`}
+  <div class="cel-x">${c.final ? 'Así queda el conjunto con todas las piezas en su lugar.' : texto(c.paso.texto)}</div></div>`;
+
 export async function construirFicha(d, arte, avisar) {
   const doc = d.doc, paginas = [];
   const pasos = d.pasos.map((p, i) => Object.assign({}, p, { i, n: d.partes.filter((q) => q.paso === i).length })).filter((p) => p.n > 0);
   if (!d.partes.length) return [];
-  // Portada
+  const nombre = nombreDe(doc);
+  /* Portada: primero el nombre de la práctica o sistema, después el dispositivo armado y los pasos */
   avisar && avisar('Dibujando la portada…'); await pausa();
-  const cols = Math.min(4, Math.max(1, pasos.length)), filasCol = Math.ceil(pasos.length / 4);
-  const largo = Math.max(0, ...pasos.map((p) => (p.texto || '').length));
-  const altoCols = filasCol * (9 + Math.ceil(largo / (cols > 3 ? 34 : cols > 2 ? 48 : 75)) * 3.6);
-  const altoHeroe = Math.max(110, Math.min(198, 231 - altoCols - (doc.descripcion ? 6 + Math.ceil(doc.descripcion.length / 120) * 4 : 0)));
-  const por = portada(d, arte, altoHeroe);
   const caja = new THREE.Box3(); d.partes.forEach((p) => caja.union(p.cajaFinal));
   const t = caja.getSize(new THREE.Vector3());
-  const columnas = pasos.map((p) => `<div class="col"><b>${esc(p.letra)}. ${esc(p.titulo)}</b><br>${texto(p.texto)}</div>`).join('');
-  paginas.push(`<div class="hoja portada">
-    <div class="por-cab">
-      <div><h1><b>${esc(doc.titulo)}</b> ${esc(doc.version)}</h1><div class="regla"></div>
-        <p class="por-sub">${esc(doc.subtitulo)}${doc.autor ? '<br>por <b>' + esc(doc.autor) + '</b>' + (doc.fecha ? ', ' + esc(doc.fecha) : '') : ''}</p></div>
-      <div class="sello"><span>fisica<b>bit</b></span><small>guía de armado</small></div>
+  const bajada = [doc.subtitulo, doc.version ? 'versión ' + doc.version : ''].filter(Boolean).map(esc).join(' · ');
+  const firma = [doc.autor ? 'por <b>' + esc(doc.autor) + '</b>' : '', esc(doc.fecha || '')].filter(Boolean).join(' · ');
+  const cols = pasos.length > 8 ? 3 : pasos.length > 1 ? 2 : 1;
+  const lista = pasos.map((p) => `<div class="paso-f"><span class="cuad">${esc(p.letra)}</span><div><b>${esc(p.titulo)}</b>${p.texto ? '<br>' + texto(p.texto) : ''}</div></div>`).join('');
+  const hojaPortada = (heroe) => `<div class="hoja portada">
+    <div class="banda">
+      <div class="banda-k"><span class="banda-m">fisica<b>bit</b></span><span>Guía de armado${doc.tipo ? ' · ' + esc(doc.tipo) : ''}</span></div>
+      <h1>${esc(nombre)}</h1>
+      ${bajada ? `<div class="banda-s">${bajada}</div>` : ''}
     </div>
-    <div class="heroe" style="height:${f1(altoHeroe)}mm">${por.fondo}${figuraHtml({ art: por.art, svg: por.svg })}</div>
-    ${doc.descripcion ? `<p class="por-desc">${texto(doc.descripcion)}</p>` : ''}
-    <div class="cols" style="grid-template-columns:repeat(${cols},1fr)">${columnas}</div>
-    <div class="por-med">Conjunto armado: ${Math.round(t.x)} × ${Math.round(t.y)} × ${Math.round(t.z)} mm · ${d.partes.length} pieza${d.partes.length === 1 ? '' : 's'}</div>
-    <!--PIE--></div>`);
-  // Manual: lista de piezas + un cuadro por paso + el armado final
+    <div class="meta"><span>${firma}</span><span>${d.partes.length} pieza${d.partes.length === 1 ? '' : 's'} · ${pasos.length} paso${pasos.length === 1 ? '' : 's'} · ${Math.round(t.x)} × ${Math.round(t.y)} × ${Math.round(t.z)} mm</span></div>
+    <div class="heroe"><span class="etq">Dispositivo armado</span>${heroe}</div>
+    <p class="epi">Las letras indican en qué paso se coloca cada parte.</p>
+    ${doc.descripcion ? `<div class="nota-f">${texto(doc.descripcion)}</div>` : ''}
+    <div class="h1f">Pasos de armado</div>
+    <div class="pasos-l" style="grid-template-columns:repeat(${cols},1fr)">${lista}</div>
+    <!--PIE--></div>`;
+  const mh = medir(hojaPortada(''), '.heroe');
+  const por = portada(d, arte, mh.w, mh.h);
+  paginas.push(hojaPortada(figuraHtml({ art: por.art, svg: por.svg })));
+  /* Manual: lista de piezas + un cuadro por paso + el dispositivo armado */
   avisar && avisar('Dibujando las piezas…'); await pausa();
   const bom = doc.listaPiezas ? listaPiezas(d, arte) : null;
-  const bomMm = bom ? 13 + Math.ceil(bom.n / 7) * 26 : 0;
   const celdas = pasos.map((p) => ({ paso: p })); celdas.push({ final: true });
   const forma = por.forma * 0.9;   // con las piezas entrando, el dibujo suele ser más alto
+  const hojaManual = (pag, grilla, colsG) => `<div class="hoja manual">
+      <div class="banda chica"><span class="banda-t">${esc(nombre)}</span><span class="banda-d">Manual de ensamblado</span></div>
+      ${pag === 0 && bom ? `<div class="h1f">Piezas</div><div class="bom-l" style="grid-template-columns:repeat(${Math.min(7, Math.max(4, bom.n))},1fr)">${bom.html}</div>` : ''}
+      <div class="h1f">Armado paso a paso</div>
+      <div class="grilla" style="grid-template-columns:repeat(${colsG},1fr)">${grilla}</div><!--PIE--></div>`;
   let k = 0, pag = 0;
   while (k < celdas.length) {
-    const alto = 244 - (pag === 0 ? bomMm : 0);
     const grupo = celdas.slice(k, k + 9); k += grupo.length;
+    const alto = medir(hojaManual(pag, '', 1), '.grilla').h;
     const r = repartir(grupo.length, alto, forma);
-    const fw = Math.round(r.anchoMm * 12.7), fh = Math.round(r.figMm * 12.7);
+    // Ajuste fino: si los textos son largos y los cuadros no entran, se achican las figuras
+    for (let v = 0; v < 3; v++) {
+      grupo.forEach((c) => { c.fw = Math.round(r.anchoMm * 12.7); c.fh = Math.round(r.figMm * 12.7); });
+      const m = medir(hojaManual(pag, grupo.map(cuadro).join(''), r.cols), '.grilla');
+      if (m.sobra < 0.4 || r.figMm < 24) break;
+      r.figMm = Math.max(22, r.figMm - m.sobra / r.filas - 0.6);
+    }
     for (const c of grupo) {
       if (c.final) {
-        avisar && avisar('Dibujando el armado final…'); await pausa();
+        avisar && avisar('Dibujando el dispositivo armado…'); await pausa();
         const fin = d.partes.map((p, q) => { const rl = relleno(doc, p, false); return { geometry: p.geometry, matrix: p.mFinal, color: rl.color, trama: rl.trama, id: Math.min(254, q + 1) }; });
-        c.fig = { art: arte.dibujar(fin, opcionesArte(doc, { w: fw, h: fh, dir: d.vistaPortada || VISTA, margen: 0.07 })), svg: '' };
+        c.fig = { art: arte.dibujar(fin, opcionesArte(doc, { w: c.fw, h: c.fh, dir: d.vistaPortada || VISTA, margen: 0.07 })), svg: '' };
       } else {
         avisar && avisar('Dibujando el paso ' + c.paso.letra + '…'); await pausa();
-        c.fig = figuraPaso(d, c.paso.i, arte, fw, fh);
+        c.fig = figuraPaso(d, c.paso.i, arte, c.fw, c.fh);
       }
     }
-    const html = grupo.map((c, j) => {
-      const ult = c.final;
-      return `<div class="celda${ult ? ' final' : ''}">${figuraHtml(c.fig)}
-        <div class="cel-t"><span class="insignia">${ult ? '✓' : esc(c.paso.letra)}</span><div><b>${ult ? 'Armado final' : esc(c.paso.titulo)}</b>${ult ? '' : '<br>' + texto(c.paso.texto)}</div></div>
-        ${(j + 1) % r.cols && j < grupo.length - 1 ? '<span class="sigue">»</span>' : ''}</div>`;
-    }).join('');
-    paginas.push(`<div class="hoja manual">${cabecera(doc, 'Manual de ensamblado')}
-      ${pag === 0 && bom ? `<div class="bom"><div class="bom-t">Piezas</div><div class="bom-l">${bom.html}</div></div>` : ''}
-      <div class="grilla" style="grid-template-columns:repeat(${r.cols},1fr)">${html}</div><!--PIE--></div>`);
+    paginas.push(hojaManual(pag, grupo.map(cuadro).join(''), r.cols));
     pag++;
   }
   return paginas.map((h, i) => h.replace('<!--PIE-->', pie(doc, i + 1, paginas.length)));
