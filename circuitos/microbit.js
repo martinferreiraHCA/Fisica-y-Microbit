@@ -42,7 +42,7 @@ const P = {
   '3V': { potencia: '3V' },
   GND: { potencia: 'GND' },
 };
-const ver = (v) => (v === 'v1' ? 'v1' : 'v2');
+const ver = (v) => (String(v || '').toLowerCase() === 'v1' ? 'v1' : 'v2');
 const porVersion = (x, v) => (x && typeof x === 'object' ? x[ver(v)] : x) || 0;
 
 // Capacidades de un pin en una versión
@@ -121,7 +121,8 @@ export function infoPin(pin, v) {
 /* ---------- Dónde conviene conectar un componente ---------- */
 const comp = (id) => COMPONENTES.find((c) => c.id === id) || null;
 const SENAL = { aout: 1, dout: 1, din: 1, pwm: 1, io: 1, sda: 1, scl: 1, sck: 1, miso: 1, mosi: 1, cs: 1 };
-const LIBRES = (v) => EXTENSOR.filter((p) => { const c = caps(p, v); return c.gpio && c.libre && !c.reservado; });
+// pines digitales libres; primero los que no tienen ninguna otra función (P8, P16, P9 en la V2), después los del SPI
+const LIBRES = (v) => EXTENSOR.filter((p) => { const c = caps(p, v); return c.gpio && c.libre && !c.reservado; }).sort((a, b) => (caps(a, v).spi ? 1 : 0) - (caps(b, v).spi ? 1 : 0));
 
 // Para la ficha del componente: a qué pin de la micro:bit va cada pata y qué problemas hay
 export function recomendar(id, v) {
@@ -216,7 +217,7 @@ export function revisar(redes, v) {
         const gp = mbEn(i).filter((x) => caps(x.pin, v).gpio)[0];
         if (gp || esMasa(i) || tension(i) != null) return { directo: true, gp };
         for (const x of redes[i] || []) {
-          if (x.el === el || !/^(resistencia|potenciometro|calefactor)$/.test(x.c)) continue;
+          if (x.el === el || !/^(resistencia|_?potenciometro|calefactor)$/.test(x.c)) continue;
           const o = elems.get(x.el), j = o && Object.keys(o.patas).map((k) => o.patas[k]).find((k) => k !== i); if (j == null) continue;
           const g2 = mbEn(j).filter((y) => caps(y.pin, v).gpio)[0];
           if (g2 || esMasa(j) || tension(j) != null) return { r: x.ohm || 0, rel: x.el, gp: g2 };
