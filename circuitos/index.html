@@ -29,9 +29,10 @@ button, input, select, textarea { font-family:inherit; font-size:inherit; color:
 .marca i { font-style:normal; display:inline-block; background:#000; color:#fff; padding:2px 8px; margin-left:8px; font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; vertical-align:2px; }
 .tabs { display:flex; } .tabs .btn + .btn { border-left:0; }
 .hueco { flex:1; }
-.barra .nombre { width:230px; border:1.5px solid #000; border-radius:999px; padding:5px 14px; font-weight:600; background:#fff; } .nombre::placeholder { color:#999; font-weight:500; }
-#estado { font-size:11px; color:var(--tenue); max-width:30vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.barra .nombre { width:170px; border:1.5px solid #000; border-radius:999px; padding:5px 14px; font-weight:600; background:#fff; } .nombre::placeholder { color:#999; font-weight:500; }
+#estado { flex:1 1 0; min-width:0; text-align:right; font-size:11px; color:var(--tenue); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 #estado.err { color:#c62828; font-weight:600; }
+.pista.fuerte { color:#000; font-weight:600; border-color:#000; }
 /* Cuerpo */
 .cuerpo { flex:1; min-height:0; display:grid; grid-template-columns:262px 1fr 304px; }
 .lado { background:#fff; overflow:auto; padding:12px; }
@@ -77,6 +78,11 @@ button, input, select, textarea { font-family:inherit; font-size:inherit; color:
 .av:hover, .av.fijo { background:#f1f1f1; } .av i { font-style:normal; width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; border:1.5px solid #000; }
 .av.error i { background:#000; color:#fff; } .av.info i { border-radius:50%; font-size:7px; } .av b { font-weight:800; } .av span { grid-column:2; color:#333; }
 .av-ok { padding:10px; font-size:11px; color:var(--tenue); }
+/* Vínculo entre las dos vistas */
+.menu.vinc { min-width:340px; padding:10px 12px; font-size:11.5px; line-height:1.45; }
+.vinc-t { font-size:9.5px; font-weight:800; letter-spacing:1.1px; text-transform:uppercase; border-bottom:1.5px solid #000; padding-bottom:3px; margin-bottom:5px; }
+.vinc-d { padding:3px 0 3px 14px; position:relative; border-bottom:1px solid #e2e2e2; } .vinc-d::before { content:'▲'; position:absolute; left:0; top:5px; font-size:8px; }
+.vinc-p { color:var(--tenue); margin-top:7px; } .vinc-ok { color:#000; }
 /* Menú de ejemplos */
 .con-menu { position:relative; } .menu { position:absolute; left:0; top:100%; margin-top:4px; min-width:300px; background:#fff; border:2px solid #000; z-index:6; box-shadow:4px 4px 0 rgba(0,0,0,.12); }
 .menu button { display:block; width:100%; text-align:left; background:#fff; border:0; border-bottom:1px solid #d4d4d4; padding:8px 10px; cursor:pointer; font-size:11.5px; font-weight:700; } .menu button:last-child { border-bottom:0; } .menu button:hover { background:#000; color:#fff; } .menu small { display:block; font-weight:500; font-size:10px; opacity:.75; }
@@ -121,7 +127,8 @@ input[type=text], select { width:100%; border:1.5px solid #000; border-radius:0;
   <div class="marca"><span>fisica</span><b>bit</b><i>Circuitos</i></div>
   <input type="text" class="nombre" id="n-circ" placeholder="Nombre del circuito">
   <div class="tabs"><button class="btn act" id="tab-esq">1 · Esquemático</button><button class="btn" id="tab-proto">2 · Protoboard</button></div>
-  <span class="hueco"></span>
+  <button class="btn" id="b-generar" title="Arma la otra pestaña con los mismos componentes y las mismas conexiones">Generar protoboard →</button>
+  <div class="con-menu"><button class="btn chico" id="b-vinc" hidden></button><div class="menu vinc" id="m-vinc" hidden></div></div>
   <span id="estado">Listo.</span>
   <button class="btn pri" id="b-insertar" hidden title="Agrega este dibujo al protocolo de práctico">Insertar en el protocolo</button>
   <button class="btn" id="b-nuevo" title="Empezar un circuito vacío">Nuevo</button>

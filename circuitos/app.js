@@ -276,8 +276,8 @@ const PROTO = {
       }
       return `<g transform="translate(${el.a[0]},${el.a[1]})${el.arriba ? ' rotate(180 110 85)' : ''}">${s}</g>`;
     } },
-  motor: { n: 'libre', rotAt: (el) => [el.a[0], el.a[1] - 46, 'middle'], term: (el) => [[el.a[0] - 10, el.a[1] + 40], [el.a[0] + 10, el.a[1] + 40]],
-    d: (el) => { const [x, y] = el.a; return linea(`M${x - 10},${y + 20} V${y + 40} M${x + 10},${y + 20} V${y + 40}`, 1.6) + caja(x - 3.5, y - 35, 7, 13, 1, '#fff', 1.6) + circ(24, x, y) + txt('M', x, y, { t: 15, w: 800 }) + borne(x - 10, y + 40) + borne(x + 10, y + 40); } },
+  motor: { n: 'libre', rota: 2, rotAt: (el) => [el.a[0], el.a[1] - (el.rot ? 52 : 46), 'middle'], term: (el) => { const s = el.rot ? -1 : 1; return [[el.a[0] - 10, el.a[1] + 40 * s], [el.a[0] + 10, el.a[1] + 40 * s]]; },
+    d: (el) => { const [x, y] = el.a, s = el.rot ? -1 : 1; return linea(`M${x - 10},${y + 20 * s} V${y + 40 * s} M${x + 10},${y + 20 * s} V${y + 40 * s}`, 1.6) + caja(x - 3.5, s > 0 ? y - 35 : y + 22, 7, 13, 1, '#fff', 1.6) + circ(24, x, y) + txt('M', x, y, { t: 15, w: 800 }) + borne(x - 10, y + 40 * s) + borne(x + 10, y + 40 * s); } },
 };
 
 /* ---------- Protoboard: formas genéricas de la base de componentes ---------- */
@@ -334,7 +334,7 @@ function libreProto(comp, fo) {   // caja suelta con un borne por pin (los posit
   const w = Math.max(60, Math.ceil(Math.max(fo.w || 0, k1 * G + 10) / 20) * 20), h = Math.max(fo.h || 50, dos ? 64 : 40), x0 = (k) => Math.round((w - (k - 1) * G) / 20) * 10;
   const local = (el) => comp.pines.map((_, i) => { const abajo = i < k1; return [x0(abajo ? k1 : k2) + (abajo ? i : i - k1) * G, dos ? (abajo ? h + 14 : -14) : el.rot ? -14 : h + 14]; });
   return { n: 'libre', rota: dos ? 0 : 2, term: (el) => local(el).map(([x, y]) => [el.a[0] + x, el.a[1] + y]),
-    rotAt: (el) => [el.a[0] + w / 2, el.a[1] - (dos || el.rot ? 26 : 9), 'middle'],
+    rotAt: (el) => [el.a[0] + w / 2, dos ? el.a[1] - 26 : el.rot ? el.a[1] + h + 12 : el.a[1] - 9, 'middle'],
     d: (el) => {
       const [x, y] = el.a, hayArr = dos || !!el.rot, hayAba = dos || !el.rot; let s = '', nom = '';
       local(el).forEach(([lx, ly], i) => {
@@ -424,7 +424,7 @@ function nombres(el, v = vista) {   // nombre de cada terminal, en el mismo orde
   return t.map((_, i) => (p.length ? p[i % p.length] : String(i + 1)));
 }
 const igual = (p, q) => Math.abs(p[0] - q[0]) < 0.5 && Math.abs(p[1] - q[1]) < 0.5;
-function estado(t, err) { const e = $('#estado'); e.textContent = t; e.className = err ? 'err' : ''; }
+function estado(t, err) { const e = $('#estado'); e.textContent = t; e.title = t; e.className = err ? 'err' : ''; }
 const primeraMB = (v = vista) => E[v].els.find((e) => esMB(e, v)) || null;
 const versionDibujo = () => { const m = primeraMB(); return m ? m.ver || 'v2' : verFicha; };
 
@@ -485,13 +485,14 @@ function contenido(v, exp) {
 }
 
 /* ---------- Redes: qué patas quedan unidas eléctricamente ----------
-   Devuelve [[{ el, c, pin, ohm? }, …], …] (solo redes con 2 o más patas; los cables unen pero no figuran). */
-function redes(v = vista) {
+   Devuelve [[{ el, c, pin, ohm? }, …], …] (solo redes con 2 o más patas, salvo que se pidan todas; los cables
+   unen pero no figuran). En el esquemático, los símbolos de tierra son una sola red, la del GND de la placa. */
+function redes(v = vista, todas) {
   const lista = E[v].els, padre = new Map();
   const raiz = (k) => { if (!padre.has(k)) padre.set(k, k); let r = k; while (padre.get(r) !== r) r = padre.get(r); padre.set(k, r); return r; };
   const unir = (a, b) => { const ra = raiz(a), rb = raiz(b); if (ra !== rb) padre.set(ra, rb); };
   const nodo = (p) => (v === 'proto' ? nodoProto(p) : 'p' + p[0] + ',' + p[1]);
-  const cables = lista.filter((e) => e.c === 'cable'), patas = [], puntos = [];
+  const cables = lista.filter((e) => e.c === 'cable'), patas = [], puntos = [], hayTierra = v === 'esq' && lista.some((e) => nat(e, v) === 'tierra');
   cables.forEach((c) => { unir(nodo(c.a), nodo(c.b)); puntos.push(c.a, c.b); });
   lista.forEach((el) => {
     if (el.c === 'cable') return;
@@ -499,14 +500,14 @@ function redes(v = vista) {
     const ohm = el.ohm > 0 ? el.ohm : /Ω/.test(el.valor || '') ? leerOhm(el.valor) : NaN;   // resistencias y potenciómetros llevan su valor
     t.forEach((p, i) => {
       const k = 'e' + el.id + '|' + nom[i]; unir(k, nodo(p)); puntos.push(p);
-      if (propio === 'tierra') unir(k, 'TIERRA');
+      if (propio === 'tierra' || (hayTierra && c === 'microbit' && nom[i] === 'GND')) unir(k, 'TIERRA');
       if (!patas.some((x) => x.k === k)) patas.push(Object.assign({ k, el: el.id, c, pin: nom[i] }, ohm > 0 ? { ohm } : {}));
     });
   });
   if (v === 'esq') puntos.forEach((p) => cables.forEach((c) => { if (enCable(p, c)) unir(nodo(p), nodo(c.a)); }));
   const grupos = new Map();
   patas.forEach((x) => { const r = raiz(x.k), o = Object.assign({}, x); delete o.k; if (!grupos.has(r)) grupos.set(r, []); grupos.get(r).push(o); });
-  return [...grupos.values()].filter((g) => g.length >= 2);
+  return [...grupos.values()].filter((g) => todas || g.length >= 2);
 }
 
 /* ---------- Lienzo ---------- */
@@ -947,6 +948,7 @@ function inspector() {
 
 /* ---------- Avisos de compatibilidad con la micro:bit ---------- */
 function revisarAhora() {
+  pintarVinculo();
   const mb = primeraMB(), antes = avisos.length;
   try { avisos = mb ? revisar(redes(), mb.ver || 'v2') : []; } catch (e) { avisos = []; console.error(e); }
   if (resFijo) resFijo = avisos.find((a) => a.titulo === resFijo.titulo && a.texto === resFijo.texto) || null;
@@ -1136,6 +1138,303 @@ $('#f-abrir').onchange = async (e) => {
   } catch (er) { estado('No se pudo abrir: ' + er.message, true); }
 };
 
+/* ---------- Vínculo entre el esquemático y la protoboard ----------
+   Las dos vistas se comparan por sus redes; cualquiera de las dos puede generar la otra. */
+const sinCables = (v) => E[v].els.filter((e) => e.c !== 'cable' && nat(e, v) !== 'texto');
+const rolDe = (c, pinN) => { const k = COMP.get(c === 'microbit' ? '' : c), p = k && k.pines.find((x) => x.n === pinN); return p ? p.rol : ''; };
+const nombreEl = (el) => el.rotulo || comp(el).nombre;
+const OTRA = { esq: 'proto', proto: 'esq' }, VISTA_TXT = { esq: 'el esquemático', proto: 'la protoboard' }, DE_VISTA = { esq: 'del esquemático', proto: 'de la protoboard' };
+// Empareja los elementos de las dos vistas: mismo componente y rótulo; después, mismo componente, por orden
+function emparejar() {
+  const A = sinCables('esq').filter((e) => comp(e).proto), B = sinCables('proto').filter((e) => comp(e).esq), pares = [], libresB = new Set(B);
+  const tomar = (a, igualRot) => { for (const b of libresB) if (b.c === a.c && (!igualRot || (b.rotulo || '') === (a.rotulo || ''))) { libresB.delete(b); pares.push([a, b]); return true; } return false; };
+  const quedan = A.filter((a) => !tomar(a, true)), solosA = quedan.filter((a) => !tomar(a, false));
+  return { pares, solosA, solosB: [...libresB] };
+}
+function vinculo() {
+  if (!sinCables('esq').length || !sinCables('proto').length) return { igual: null, vacio: true, difs: [] };
+  const { pares, solosA, solosB } = emparejar(), difs = [], clave = { esq: new Map(), proto: new Map() }, rot = new Map();
+  solosA.forEach((a) => difs.push(nombreEl(a) + ' está en el esquemático y no en la protoboard.'));
+  solosB.forEach((b) => difs.push(nombreEl(b) + ' está en la protoboard y no en el esquemático.'));
+  pares.forEach(([a, b], i) => {
+    const na = new Set(nombres(a, 'esq')), comunes = new Set(nombres(b, 'proto').filter((n) => na.has(n)));   // solo las patas que existen en las dos vistas
+    clave.esq.set(a.id, { k: 'k' + i, comunes }); clave.proto.set(b.id, { k: 'k' + i, comunes }); rot.set('k' + i, esMB(a, 'esq') ? '' : nombreEl(a));
+  });
+  const rotulo = (s) => { const [k, pinN] = s.split('\u0001'); return rot.get(k) ? rot.get(k) + ' (' + pinN + ')' : pinN; };
+  const conj = (v) => redes(v).map((r) => r.map((x) => { const q = clave[v].get(x.el); return q && q.comunes.has(x.pin) ? q.k + '\u0001' + x.pin : null; }).filter(Boolean).sort()).filter((r) => r.length >= 2);
+  const R = { esq: conj('esq'), proto: conj('proto') };
+  for (const v of ['esq', 'proto']) {
+    const deOtra = new Map(); R[OTRA[v]].forEach((r) => r.forEach((s) => deOtra.set(s, r)));
+    R[v].forEach((r) => { const o = deOtra.get(r[0]) || [], faltan = r.slice(1).filter((s) => !o.includes(s)); faltan.forEach((s) => difs.push(rotulo(r[0]) + ' está unido a ' + rotulo(s) + ' solo en ' + VISTA_TXT[v] + '.')); });
+  }
+  const firma = (l) => l.map((r) => r.join('+')).sort().join(' | ');
+  if (!difs.length && firma(R.esq) !== firma(R.proto)) difs.push('Las conexiones no coinciden.');
+  return { igual: !difs.length, vacio: false, difs: [...new Set(difs)] };
+}
+// Medida real de un elemento ya ubicado (lo que ocupa su dibujo, con rótulos, más sus terminales)
+let gMedir = null;
+function medir(el, v) {
+  if (!gMedir) { const s = document.createElementNS(NS, 'svg'); s.style.cssText = 'position:absolute; left:-9999px; top:0; width:10px; height:10px; visibility:hidden'; gMedir = document.createElementNS(NS, 'g'); s.appendChild(gMedir); document.body.appendChild(s); }
+  gMedir.innerHTML = dibujar(el, v, true); const b = gMedir.getBBox(); gMedir.innerHTML = '';
+  let x0 = b.x, y0 = b.y, x1 = b.x + b.width, y1 = b.y + b.height;
+  terminales(el, v).forEach((p) => { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); });
+  return { x0, y0, x1, y1 };
+}
+// Lista de conexiones de una vista, lista para armar la otra: elementos nuevos (mismo componente, rótulo, valor…) y
+// redes con su clase: '+' positivo, '+2' segundo positivo, '-' masa, 's' señal.
+function conexiones(desde) {
+  const hacia = OTRA[desde], dest = new Map(), fuera = [], sinPata = [], els = [];
+  sinCables(desde).forEach((s) => {
+    const c = comp(s);
+    if (!c[hacia]) { if (nat(s, desde) !== 'tierra') fuera.push(nombreEl(s)); return; }
+    const el = { id: uid(), c: s.c }; if (c[hacia].f === 'nativo') el.t = c[hacia].t;
+    ['rotulo', 'valor', 'ohm', 'tol', 'ver', 'ext', 'cerrado'].forEach((k) => { if (s[k] != null && s[k] !== '') el[k] = s[k]; });
+    dest.set(s.id, el); els.push(el);
+  });
+  const esTierra = (x) => { const s = porId(x.el, desde); return !!s && nat(s, desde) === 'tierra'; };
+  const crudas = redes(desde, true).map((r) => ({
+    pos: r.some((x) => (x.c === 'microbit' && x.pin === '3V') || rolDe(x.c, x.pin) === 'fuente+'), neg: r.some((x) => (x.c === 'microbit' && x.pin === 'GND') || rolDe(x.c, x.pin) === 'fuente-' || esTierra(x)),
+    placa: r.some((x) => x.c === 'microbit' && (x.pin === '3V' || x.pin === 'GND')),
+    patas: r.map((x) => { const el = dest.get(x.el); if (!el) return null; if (!nombres(Object.assign({ a: [0, 0], b: [100, 0] }, el), hacia).includes(x.pin)) { sinPata.push(nombreEl(el) + ' (' + x.pin + ')'); return null; } return { el, pin: x.pin }; }).filter(Boolean),
+  })).filter((r) => r.patas.length >= 2);
+  const primero = (l) => l.slice().sort((p, q) => q.placa - p.placa)[0];
+  const P = crudas.filter((r) => r.pos), M = crudas.filter((r) => r.neg && !r.pos), p1 = primero(P), p2 = P.find((r) => r !== p1), m = primero(M);
+  crudas.forEach((r) => { r.clase = r === p1 ? '+' : r === p2 ? '+2' : r === m ? '-' : 's'; });
+  return { els, redes: crudas, fuera, sinPata };
+}
+// Orden de los elementos siguiendo las conexiones de señal: primero lo que toca a la placa, y quedan cerca los que se unen
+function ordenar(lista, nets) {
+  const vec = new Map(lista.map((e) => [e, []]));
+  nets.filter((r) => r.clase === 's').forEach((r) => r.patas.forEach((p) => r.patas.forEach((q) => { if (p.el !== q.el && vec.has(p.el) && vec.has(q.el) && !vec.get(p.el).includes(q.el)) vec.get(p.el).push(q.el); })));
+  const dePlaca = new Set(), enPos = new Set(), fuentes = (e) => comp(e).pines.some((p) => p.rol === 'fuente+');
+  nets.forEach((r) => { const placa = r.patas.some((p) => p.el.t === 'microbit'); r.patas.forEach((p) => { if (r.clase === 's' && placa) dePlaca.add(p.el); if (r.clase[0] === '+') enPos.add(p.el); }); });
+  const out = [], visto = new Set(), bajar = (e) => { if (visto.has(e) || !vec.has(e)) return; visto.add(e); out.push(e); vec.get(e).slice().sort((a, b) => vec.get(a).length - vec.get(b).length).forEach(bajar); };
+  const resto = lista.filter((e) => !fuentes(e));   // las fuentes quedan para el final
+  resto.filter((e) => dePlaca.has(e)).concat(resto.filter((e) => enPos.has(e)), resto, lista).forEach(bajar);
+  return out;
+}
+const COLORES_SENAL = ['amarillo', 'azul', 'verde', 'naranja', 'gris'];
+const cab = (a, b, color) => ({ id: uid(), c: 'cable', t: 'cable', a: [a[0], a[1]], b: [b[0], b[1]], color });
+// Red de exactamente dos patas entre dos elementos: se pueden poner en serie directa, sin cable ni pista
+const enSerie = (nets, x, y) => nets.find((r) => r.patas.length === 2 && ((r.patas[0].el === x && r.patas[1].el === y) || (r.patas[0].el === y && r.patas[1].el === x))) || null;
+const pataDe = (r, el) => r.patas.find((p) => p.el === el).pin;
+
+/* ---------- Esquemático → protoboard ----------
+   Sobre la placa: columnas de izquierda a derecha, una libre entre pieza y pieza. Las de dos patas van junto al canal,
+   en la mitad de abajo (o en la de arriba si se unen a las patas de arriba de un integrado); dos en serie comparten columna.
+   Fuera de la placa: fuentes a la izquierda; micro:bit y demás sueltos abajo, cerca de lo que conectan.
+   Alimentación por los rieles; cada señal, con puentes de un color. */
+function aProtoboard() {
+  const N = conexiones('esq'), nets = N.redes, cables = [];
+  const D = (el) => def(el, 'proto'), suelto = (el) => D(el).n === 'libre', canal = (el) => comp(el).proto.f === 'dip' || el.t === 'pulsador';
+  const enPlaca = ordenar(N.els.filter((e) => !suelto(e)), nets);
+  // 1. Mitad de cada pieza de dos patas: arriba si toca más patas de arriba de los integrados que de abajo
+  const arribaDip = (el, pn) => { const ps = comp(el).pines, i = ps.findIndex((p) => p.n === pn); return comp(el).proto.f === 'dip' && i >= Math.ceil(ps.length / 2); };
+  const mitadDe = new Map();
+  enPlaca.forEach((el) => {
+    if (D(el).n !== 2) { mitadDe.set(el, canal(el) ? 'x' : 'f'); return; }
+    let pts = 0; nets.forEach((r) => { if (r.patas.some((p) => p.el === el)) r.patas.forEach((p) => { if (p.el !== el && comp(p.el).proto.f === 'dip') pts += arribaDip(p.el, p.pin) ? 1 : -1; }); });
+    mitadDe.set(el, pts > 0 ? 'a' : 'f');
+  });
+  const FILA_P = { f: ['f', 'h'], a: ['e', 'c'] }, FILA_R = { h: 'g', e: 'd', c: 'b' };   // filas de las piezas y fila que tapa su rótulo (el de la fila f cae sobre el canal)
+  const tramos = {}, cubre = (fila, c1, c2) => (tramos[fila] || []).some(([x, y]) => c1 <= y && c2 >= x), tender = (fila, c1, c2) => (tramos[fila] = tramos[fila] || []).push([Math.min(c1, c2), Math.max(c1, c2)]);
+  // 2. Columnas
+  const cur = { f: 2, a: 2 }, prev = { f: null, a: null };
+  const siguiente = (k, m) => { for (let j = k + 1; j < enPlaca.length; j++) { const x = mitadDe.get(enPlaca[j]); if (x === m || x === 'x' || (m === 'f' && D(enPlaca[j]).n !== 2)) return enPlaca[j]; } return null; };
+  enPlaca.forEach((el, k) => {
+    const d = D(el), fo = comp(el).proto, m = mitadDe.get(el);
+    if (d.n === 2) {
+      const nm = nombres(Object.assign({ a: [0, 0], b: [20, 0] }, el), 'proto'), largo = el.t === 'resistencia' || el.t === 'diodo' || fo.f === 'axial' ? 4 : (d.alto || 0) > 13 ? 2 : 1;
+      const sig = siguiente(k, m), pv = prev[m], rp = pv ? enSerie(nets, pv.el, el) : null, rs = sig && D(sig).n === 2 && mitadDe.get(sig) === m ? enSerie(nets, el, sig) : null;
+      let cIzq = cur[m], fila = FILA_P[m][0], pIzq = rs ? nm.find((n) => n !== pataDe(rs, el)) : nm[0];
+      if (rp && pv.pDer === pataDe(rp, pv.el) && (!rs || pataDe(rs, el) !== pataDe(rp, el))) { cIzq = pv.cDer; fila = FILA_P[m][pv.fila === FILA_P[m][0] ? 1 : 0]; pIzq = pataDe(rp, el); }   // en serie: comparte la columna con la anterior
+      const cDer = cIzq + largo, izq = hoyo(cIzq, fila), der = hoyo(cDer, fila);
+      el.a = nm[0] === pIzq ? izq : der; el.b = nm[0] === pIzq ? der : izq;
+      tender(fila, cIzq, cDer); if (el.rotulo && FILA_R[fila]) tender(FILA_R[fila], cIzq, cDer);   // ni puentes por encima de la pieza ni de su rótulo
+      prev[m] = { el, cDer, fila, pDer: nm.find((n) => n !== pIzq) }; cur[m] = cDer + 2;
+    } else if (canal(el)) {
+      const ancho = fo.f === 'dip' ? Math.ceil(comp(el).pines.length / 2) : 3, c = Math.max(cur.f, cur.a);
+      el.a = hoyo(c, 'e'); cur.f = cur.a = c + ancho + 1; prev.f = prev.a = null;
+    } else {
+      const n = d.term(Object.assign({ a: [0, 0] }, el)).length, w = fo.f === 'modulo' ? Math.max(fo.w || 0, (n - 1) * G + 18) : 0, extra = Math.max(0, Math.ceil(((w - (n - 1) * G) / 2 - 8) / G));
+      const alta = (fo.f === 'modulo' ? Math.max(fo.h || 40, 40) : el.t === 'potenciometro' ? 52 : 30) > 50, c = alta ? Math.max(cur.f, cur.a) : cur.f;   // un cuerpo alto pasa el canal y tapa la mitad de arriba
+      el.a = hoyo(c + extra, 'f'); cur.f = c + extra * 2 + n + 1; if (alta) { cur.a = cur.f; prev.a = null; } prev.f = null;
+    }
+  });
+  const cols = Math.max(cur.f, cur.a) <= 30 ? 30 : 60, anchoPlaca = colX(cols) + 40;
+  // 3. Agujeros ocupados y nodo (columna y mitad) de cada pata
+  const usados = new Set(), clave = (p) => p[0] + ',' + p[1], ocupar = (p) => { usados.add(clave(p)); return p; };
+  enPlaca.forEach((el) => terminales(el, 'proto').forEach(ocupar));
+  const nodoDe = (p) => { const c = Math.round((p[0] - 40) / G) + 1, f = FILA_Y.indexOf(p[1]); return f < 0 || c < 1 || c > cols ? null : { col: c, mitad: f < 5 ? 'a' : 'f' }; };
+  const puntos = (pt) => { const t = terminales(pt.el, 'proto'), nm = nombres(pt.el, 'proto'); return t.filter((_, i) => nm[i] === pt.pin); };
+  // 4. Elementos sueltos: fuentes a la izquierda, a la altura de los rieles de abajo; el resto abajo, cerca de sus conexiones
+  const deseado = (el) => { const xs = []; nets.forEach((r) => { if (r.patas.some((p) => p.el === el)) r.patas.forEach((p) => { if (!suelto(p.el)) puntos(p).forEach((q) => xs.push(q[0])); }); }); return xs.length ? xs.reduce((u, w) => u + w, 0) / xs.length : anchoPlaca / 2; };
+  let yIzq = 372; const abajo = [];
+  N.els.filter(suelto).forEach((el) => {
+    const fuente = el.t !== 'microbit' && comp(el).pines.some((p) => p.rol === 'fuente+');
+    if (el.t === 'microbit') el.arriba = true; else if (D(el).rota === 2) el.rot = 1;   // bornes hacia arriba, del lado de la placa
+    el.a = [0, 0]; const b = medir(el, 'proto');
+    if (fuente) { el.a = [Math.floor((-40 - b.x1) / 10) * 10, Math.ceil((yIzq - b.y0) / 10) * 10]; yIzq = el.a[1] + b.y1 + 30; }   // desde la altura de los rieles de abajo, hacia abajo
+    else abajo.push({ el, b, x: deseado(el) });
+  });
+  let tope = -Infinity;
+  abajo.sort((p, q) => p.x - q.x).forEach((it) => {
+    const w = it.b.x1 - it.b.x0, izq = Math.max(it.x - w / 2, tope + 40);
+    it.el.a = [Math.round((izq - it.b.x0) / 10) * 10, Math.ceil((440 - it.b.y0) / 10) * 10]; tope = it.el.a[0] + it.b.x1;
+  });
+  // 5. Cables
+  const FIL = { f: ['j', 'i', 'g', 'h', 'f'], a: ['a', 'b', 'd', 'c', 'e'] };
+  const hueco = (col, mitad, evitar, cerca) => { const l = cerca ? FIL[mitad].slice().sort((x, y) => Math.abs(FILAS[x] - 190) - Math.abs(FILAS[y] - 190)) : FIL[mitad]; for (const f of l) { const p = hoyo(col, f); if (f !== evitar && !usados.has(clave(p)) && !cubre(f, col, col)) return ocupar(p); } return ocupar(hoyo(col, l[0])); };
+  function puente(n1, n2, color) {   // une dos medias columnas: por una misma fila si está despejada; si no, en diagonal
+    const c1 = Math.min(n1.col, n2.col), c2 = Math.max(n1.col, n2.col);
+    if (n1.mitad === n2.mitad) for (const f of FIL[n1.mitad]) {
+      let libre = !cubre(f, c1, c2); for (let c = c1; c <= c2 && libre; c++) if (usados.has(clave(hoyo(c, f)))) libre = false;
+      if (libre) { tender(f, c1, c2); cables.push(cab(ocupar(hoyo(n1.col, f)), ocupar(hoyo(n2.col, f)), color)); return; }
+    }
+    const cruza = n1.mitad !== n2.mitad, p = hueco(n1.col, n1.mitad, null, cruza), q = hueco(n2.col, n2.mitad, cruza ? null : Object.keys(FILAS).find((f) => FILAS[f] === p[1]), cruza); cables.push(cab(p, q, color));
+  }
+  const rielUsado = [new Set(), new Set(), new Set(), new Set()], enUso = [false, false, false, false];
+  function riel(i, x, yOtro) {   // agujero libre del riel más cercano a x; si el cable cruza el riel vecino, ese agujero queda reservado
+    let mejor = null; const vecino = i ^ 1;
+    for (let c = 2; c <= cols - 2; c++) if (enRiel(c) && !rielUsado[i].has(c) && (mejor == null || Math.abs(colX(c) - x) < Math.abs(colX(mejor) - x))) mejor = c;
+    if (mejor == null) mejor = 2;
+    rielUsado[i].add(mejor); enUso[i] = true;
+    if ((RIELES[vecino] - RIELES[i]) * (yOtro - RIELES[vecino]) > 0) rielUsado[vecino].add(mejor);
+    return hoyo(mejor, i);
+  }
+  let nColor = 0; const dosPos = nets.some((r) => r.clase === '+2');
+  nets.forEach((r) => {
+    const color = r.clase[0] === '+' ? 'rojo' : r.clase === '-' ? 'negro' : COLORES_SENAL[nColor++ % COLORES_SENAL.length], nd = [], sueltos = [];
+    r.patas.forEach((pt) => {
+      const pts = puntos(pt); if (!pts.length) return;
+      if (suelto(pt.el)) { sueltos.push(pts[0]); return; }
+      const n = nodoDe(pts.slice().sort((u, w) => w[1] - u[1])[0]); if (n && !nd.some((x) => x.col === n.col && x.mitad === n.mitad)) nd.push(n);   // patas unidas por dentro: alcanza con una
+    });
+    nd.sort((u, w) => u.col - w.col); sueltos.sort((u, w) => u[0] - w[0]);
+    const nA = nd.filter((n) => n.mitad === 'a'), nF = nd.filter((n) => n.mitad === 'f');
+    if (r.clase !== 's' && nd.length + sueltos.length >= 2) {   // alimentación: por los rieles (abajo, salvo que la red solo toque la mitad de arriba)
+      const rAbajo = r.clase === '+' ? 2 : r.clase === '+2' ? 0 : 3, rArriba = r.clase === '+' ? (dosPos ? 2 : 0) : r.clase === '+2' ? 0 : 1;
+      nd.forEach((n) => { const p = hueco(n.col, n.mitad); cables.push(cab(p, riel(n.mitad === 'f' ? rAbajo : rArriba, p[0], p[1]), color)); });
+      sueltos.forEach((p) => cables.push(cab(p, riel(nA.length && !nF.length ? rArriba : rAbajo, p[0], p[1]), color)));
+    } else {   // señal: cadena de puentes en cada mitad, un solo cruce del canal, y los bornes sueltos a la columna más cercana
+      for (let i = 1; i < nA.length; i++) puente(nA[i - 1], nA[i], color);
+      for (let i = 1; i < nF.length; i++) puente(nF[i - 1], nF[i], color);
+      if (nA.length && nF.length) { let par = null; nA.forEach((u) => nF.forEach((w) => { if (!par || Math.abs(u.col - w.col) < Math.abs(par[0].col - par[1].col)) par = [u, w]; })); puente(par[0], par[1], color); }
+      const base = nF.length ? nF : nA;
+      if (base.length) sueltos.forEach((p) => { const n = base.slice().sort((u, w) => Math.abs(colX(u.col) - p[0]) - Math.abs(colX(w.col) - p[0]))[0]; cables.push(cab(p, hueco(n.col, n.mitad), color)); });
+      else for (let i = 1; i < sueltos.length; i++) cables.push(cab(sueltos[i - 1], sueltos[i], color));
+    }
+  });
+  if (!dosPos && enUso[0] && enUso[2]) cables.push(cab(hoyo(cols, 0), hoyo(cols, 2), 'rojo'));    // los dos rieles + son la misma red
+  if (enUso[1] && enUso[3]) cables.push(cab(hoyo(cols - 1, 1), hoyo(cols - 1, 3), 'negro'));       // y los dos rieles −
+  return { els: N.els.concat(cables), cols, fuera: N.fuera, sinPata: N.sinPata };
+}
+
+/* ---------- Protoboard → esquemático (trazado por pistas) ----------
+   La micro:bit arriba a la izquierda; debajo, una pista horizontal por red (el positivo primero); debajo, la fila de
+   componentes; la masa, al fondo. Cada pata baja o sube a su pista por un tramo vertical que nadie más usa. */
+function aEsquematico() {
+  const N = conexiones('proto'), nets = N.redes, cables = [], g20 = (n, f) => Math[f](n / G) * G;
+  const D = (el) => def(el, 'esq'), placa = N.els.find((e) => e.t === 'microbit') || null, fila = ordenar(N.els.filter((e) => e !== placa), nets);
+  // rótulos automáticos para lo que no tenía (R1, LED1…)
+  N.els.forEach((el) => { const c = comp(el), d = D(el); if (el.rotulo || !c.pref || (d.n !== 2 && !d.rotAt)) return; const usados = new Set(N.els.map((e) => e.rotulo)); let n = 1; while (usados.has(c.pref + n)) n++; el.rotulo = c.pref + n; });
+  // 1. Series directas entre vecinos de dos patas, y de qué lado queda cada pata
+  const serie = new Map();   // red → true
+  fila.forEach((el, k) => {
+    if (D(el).n !== 2) return;
+    const nm = nombres(Object.assign({ a: [0, 0], b: [100, 0] }, el), 'esq'), ant = fila[k - 1], sig = fila[k + 1];
+    const rp = ant && D(ant).n === 2 && ant.pDer ? enSerie(nets, ant, el) : null, rs = sig && D(sig).n === 2 ? enSerie(nets, el, sig) : null;
+    let pIzq = nm[0];
+    if (rp && ant.pDer === pataDe(rp, ant) && (!rs || pataDe(rs, el) !== pataDe(rp, el))) { pIzq = pataDe(rp, el); serie.set(rp, true); el.pegado = true; }
+    else if (rs) pIzq = nm.find((n) => n !== pataDe(rs, el));
+    el.pIzq = pIzq; el.pDer = nm.find((n) => n !== pIzq);
+  });
+  // 2. Plan de cada elemento en coordenadas propias: por dónde sale cada pata conectada hacia su pista
+  const pistas = nets.filter((r) => !serie.has(r)), haciaAbajo = (r, el) => el === placa || r.clase === '-';
+  function plan(el) {
+    const d = D(el); el.a = [0, 0]; if (d.n === 2) { el.a = [el.pIzq === nombres(Object.assign({ a: [0, 0], b: [100, 0] }, el), 'esq')[0] ? 0 : 100, 0]; el.b = [100 - el.a[0], 0]; }
+    const t = terminales(el, 'esq'), nm = nombres(el, 'esq'), b = medir(el, 'esq'), caja = { x0: g20(b.x0, 'floor'), y0: g20(b.y0, 'floor'), x1: g20(b.x1, 'ceil'), y1: g20(b.y1, 'ceil') };
+    const cx = (Math.min(...t.map((p) => p[0])) + Math.max(...t.map((p) => p[0]))) / 2;
+    const lado = (p) => (d.n === 2 ? (p[0] < 50 ? 'L' : 'R') : el.t === 'microbit' && !el.ext ? 'B' : d.rota === 4 ? (Math.abs(p[0]) > Math.abs(p[1]) ? (p[0] < 0 ? 'L' : 'R') : p[1] < 0 ? 'T' : 'B') : p[0] < cx ? 'L' : 'R');
+    const sal = [], vert = [];   // salidas: { p, x, red, abajo } · tramos verticales ya tomados: { x, y, abajo }
+    const choca = (x, y, abajo, propio) => t.some((q) => q !== propio && q[0] === x && (abajo ? q[1] > y : q[1] < y)) || vert.some((w) => w.x === x && (w.abajo === abajo || (abajo ? w.y > y : w.y < y)));
+    const pend = [];
+    pistas.forEach((r) => r.patas.forEach((pt) => { if (pt.el !== el) return; const i = nm.indexOf(pt.pin); if (i >= 0) pend.push({ p: t[i], red: r, abajo: haciaAbajo(r, el) }); }));
+    pend.sort((u, w) => (u.abajo !== w.abajo ? u.abajo - w.abajo : u.abajo ? w.p[1] - u.p[1] : u.p[1] - w.p[1]));   // primero las que suben, desde arriba; las que bajan, desde abajo
+    let kL = 0, kR = 0;
+    pend.forEach((s) => {
+      const l = lado(s.p), recto = d.n === 2 || l === 'L' || l === 'R' || (l === 'T' && !s.abajo) || (l === 'B' && s.abajo);
+      if (recto && !choca(s.p[0], s.p[1], s.abajo, s.p)) s.x = s.p[0];
+      else if (l === 'L') { do { kL++; s.x = caja.x0 - G * kL; } while (choca(s.x, s.p[1], s.abajo)); }
+      else { do { kR++; s.x = caja.x1 + G * kR; } while (choca(s.x, s.p[1], s.abajo)); }
+      vert.push({ x: s.x, y: s.p[1], abajo: s.abajo }); sal.push(s);
+    });
+    return { el, caja, sal, x0: caja.x0 - G * kL, x1: caja.x1 + G * kR };
+  }
+  // 3. Ubicación: la placa en el origen; la fila, a su derecha
+  const pl = placa ? plan(placa) : null, planes = fila.map(plan);
+  const arriba = pistas.filter((r) => r.clase !== '-' && r.patas.length >= 2).sort((a, b) => (a.clase[0] === '+' ? 0 : 1) - (b.clase[0] === '+' ? 0 : 1));
+  const yPistas = (pl ? pl.caja.y1 : -G) + 2 * G, yFila = yPistas + arriba.length * G + G;
+  const yDe = new Map(arriba.map((r, i) => [r, yPistas + i * G]));
+  const mover = (p, dx, dy) => { p.el.a = [p.el.a[0] + dx, p.el.a[1] + dy]; if (p.el.b) p.el.b = [p.el.b[0] + dx, p.el.b[1] + dy]; p.sal.forEach((s) => { s.p = [s.p[0] + dx, s.p[1] + dy]; s.x += dx; }); p.y1 = p.caja.y1 + dy; };
+  let cur = pl ? pl.x1 + 3 * G : 0, yFondo = yFila;
+  if (pl) mover(pl, 0, 0);
+  planes.forEach((p, k) => {
+    const pegado = p.el.pegado && k > 0, dx = pegado ? planes[k - 1].el[planes[k - 1].el.pIzq === nombres(planes[k - 1].el, 'esq')[0] ? 'b' : 'a'][0] + 2 * G - 0 : g20(cur - p.x0, 'ceil');
+    mover(p, dx, yFila - p.caja.y0 + (D(p.el).n === 2 ? 0 : 0)); cur = p.x1 + dx + 3 * G; yFondo = Math.max(yFondo, p.y1);
+    if (pegado) { const ant = planes[k - 1].el, q = ant[ant.pIzq === nombres(ant, 'esq')[0] ? 'b' : 'a']; cables.push(cab(q, [q[0] + 2 * G, q[1]], 'negro')); }
+  });
+  // las de dos patas quedan todas a la misma altura
+  const y2 = Math.max(yFila + 2 * G, ...planes.filter((p) => D(p.el).n === 2).map((p) => p.el.a[1]));
+  planes.forEach((p) => { if (D(p.el).n === 2 && p.el.a[1] !== y2) { const dy = y2 - p.el.a[1]; mover(p, 0, dy); yFondo = Math.max(yFondo, p.y1); } });
+  cables.forEach((c) => { c.a[1] = c.b[1] = y2; });
+  const yMasa = g20(yFondo, 'ceil') + 2 * G;
+  // 4. Cables: salida de cada pata, tramo vertical hasta su pista y la pista
+  const enPista = new Map();
+  (pl ? [pl] : []).concat(planes).forEach((p) => p.sal.forEach((s) => {
+    const y = s.red.clase === '-' ? yMasa : yDe.get(s.red); if (y == null) return;
+    const color = s.red.clase[0] === '+' ? 'rojo' : 'negro';
+    if (s.x !== s.p[0]) cables.push(cab(s.p, [s.x, s.p[1]], color));
+    cables.push(cab([s.x, s.p[1]], [s.x, y], color));
+    if (!enPista.has(s.red)) enPista.set(s.red, { y, xs: [], color }); enPista.get(s.red).xs.push(s.x);
+  }));
+  enPista.forEach((t) => { const a = Math.min(...t.xs), b = Math.max(...t.xs); if (b > a) cables.push(cab([a, t.y], [b, t.y], t.color)); });
+  N.els.forEach((el) => { delete el.pIzq; delete el.pDer; delete el.pegado; });
+  return { els: N.els.concat(cables), fuera: N.fuera, sinPata: N.sinPata };
+}
+
+function generar(desde = vista, sinPreguntar) {
+  const hacia = OTRA[desde];
+  if (!sinCables(desde).length) { estado('No hay nada dibujado en ' + VISTA_TXT[desde] + '.', true); return null; }
+  if (!sinPreguntar && E[hacia].els.length && !confirm('Se reemplaza el dibujo ' + DE_VISTA[hacia] + ' por uno generado a partir ' + DE_VISTA[desde] + '. ¿Seguir?')) return null;
+  const guardada = vista; vista = desde; let r;
+  try { r = desde === 'esq' ? aProtoboard() : aEsquematico(); } finally { vista = guardada; }
+  marcar();
+  E[hacia].els = r.els; if (hacia === 'proto') { E.proto.cols = r.cols; $('#s-cols').value = String(r.cols); }
+  V[hacia].listo = false; cambiarVista(hacia); cambio();
+  const v = vinculo(), n = r.els.filter((e) => e.c !== 'cable').length, lista = (l) => [...new Set(l)].join(', ');
+  const msj = (hacia === 'proto' ? 'Protoboard generada' : 'Esquemático generado') + ': ' + n + ' componente' + (n === 1 ? '' : 's') + (v.igual ? ', mismas conexiones ✓' : '') + '.' +
+    (r.fuera.length ? ' No van en ' + VISTA_TXT[hacia] + ': ' + lista(r.fuera) + '.' : '') + (r.sinPata.length ? ' Sin pata en ' + VISTA_TXT[hacia] + ': ' + lista(r.sinPata) + '.' : '') + (v.igual === false ? ' Revisá el indicador «Vistas distintas».' : '');
+  estado(msj, v.igual === false);
+  // La barra de estado es angosta: el resultado se lee entero un rato en la línea de ayuda del lienzo
+  const pista = $('#pista'), antes = pista.textContent; pista.textContent = msj; pista.classList.add('fuerte');
+  setTimeout(() => { pista.classList.remove('fuerte'); if (pista.textContent === msj) pista.textContent = antes; }, 9000);
+  return v;
+}
+function pintarVinculo() {   // indicador permanente junto a las pestañas
+  const v = vinculo(), b = $('#b-vinc'), m = $('#m-vinc');
+  $('#b-generar').textContent = vista === 'esq' ? 'Generar protoboard →' : '← Generar esquemático';
+  $('#b-generar').disabled = !sinCables(vista).length;
+  b.hidden = v.vacio; if (v.vacio) { m.hidden = true; return; }
+  b.textContent = v.igual ? 'Vistas iguales ✓' : 'Vistas distintas'; b.classList.toggle('act', !v.igual);
+  b.title = v.igual ? 'El esquemático y la protoboard tienen las mismas conexiones.' : v.difs.slice(0, 6).join('\n');
+  m.innerHTML = v.igual ? '<div class="vinc-ok">✓ El esquemático y la protoboard tienen los mismos componentes y las mismas conexiones.</div>'
+    : '<div class="vinc-t">Qué difiere</div>' + v.difs.slice(0, 12).map((t) => `<div class="vinc-d">${esc(t)}</div>`).join('') + (v.difs.length > 12 ? `<div class="vinc-d">… y ${v.difs.length - 12} más.</div>` : '') +
+      '<div class="vinc-p">Para dejarlas iguales, generá una vista a partir de la otra.</div>';
+}
+$('#b-generar').onclick = () => generar(vista);
+$('#b-vinc').onclick = () => { $('#m-vinc').hidden = !$('#m-vinc').hidden; };
+
 /* ---------- Barra ---------- */
 function cambiarVista(v) {
   vista = v; sel = new Set(); pend = null; pinSel = null; compMirado = null; resFijo = resHover = resalte = null;
@@ -1158,7 +1457,7 @@ $('#s-cols').onchange = (e) => {   // al achicar la placa, las huellas fijas vue
 };
 { let marcado = false; $('#n-circ').oninput = (e) => { if (!marcado) { marcar(); marcado = true; } E.titulo = e.target.value; cambio(); }; $('#n-circ').onblur = () => { marcado = false; }; }
 window.addEventListener('resize', () => pintarSobre());
-document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.con-menu')) $('#m-ej').hidden = true; });
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.con-menu')) { $('#m-ej').hidden = true; $('#m-vinc').hidden = true; } });
 
 /* ---------- Inicio ---------- */
 if (EMBED) { $('#b-insertar').hidden = false; $('#b-abrir').hidden = true; $('#b-guardar').hidden = true; }
@@ -1173,6 +1472,7 @@ window.__circuitos = {
   get estado() { return E; }, get vista() { return vista; }, get elegido() { return [...sel][0] || null; }, get elegidos() { return [...sel]; }, get pin() { return pinSel; },
   exportarPNG: (v) => exportarPNG(aVista(v)), exportarSVG: (v) => { const r = svgDe(aVista(v)); return r ? r.svg : null; },
   cargar, cambiarVista, encuadrar, bandas, leerOhm, textoOhm,
+  vinculo, generar: (desde, sinPreguntar) => generar(aVista(desde), sinPreguntar), redesTodas: (v) => redes(aVista(v), true),
   redes: (v) => redes(aVista(v)), avisos: () => { revisarAhora(); return avisos; }, buscar: (t) => buscar(t, vista).map((c) => c.id),
   componentes: () => LISTA.map((c) => c.id), ejemplo: (i) => cargar(EJEMPLOS[i].hacer()), ejemplos: EJEMPLOS.map((x) => x.nombre),
   pata: (id, n) => { const el = porId(id); if (!el) return null; const i = nombres(el).indexOf(n); return i < 0 ? null : terminales(el)[i]; },
