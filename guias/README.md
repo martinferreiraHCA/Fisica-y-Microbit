@@ -1,10 +1,10 @@
-# Guías de armado (herramienta oculta)
+# Guías de armado
 
 Diseñador de **fichas de ensamblaje** con la estética de fisicabit: toma
 piezas del catálogo del sitio y arma una guía A4 con el dispositivo armado,
 la lista de piezas y un cuadro por paso, en dibujo de línea.
 
-No tiene enlaces desde el sitio. Se entra por `fisicabit.com/guias/` o por
+Se entra desde **EXTRAS → Guías de armado**, por `fisicabit.com/guias/` o por
 `fisicabit.com/#guias`.
 
 También se abre **dentro del protocolo de práctico** (INFORME ▾ → Protocolo de
@@ -14,28 +14,38 @@ con llamadas, tira de piezas y un dibujo por paso, como parte del protocolo).
 
 ## Cómo se usa
 
-1. **Nombre de la práctica o sistema**: es lo primero. Se escribe en la
-   barra de arriba y encabeza todas las hojas.
-2. **Editor 3D** → *Agregar pieza*: diseños de **encastre en cartón** (entran
-   armados, con cada pieza suelta y con su nombre), de **impresión 3D** (se
-   elige la pieza y sus medidas), **ferretería** (varilla, tornillo, tuerca,
-   arandela, bloque, micro:bit) o un archivo propio `.stl` / `.scad`.
-3. Ubicar cada pieza donde va en el conjunto: gizmo de **mover / rotar**
-   (con salto de 1, 5 o 10 mm y 15°, 45° o 90°) o los campos de posición y
-   rotación; *apoyar en el piso*, *centrar*, *duplicar*.
-4. **Pasos de armado**: cada pieza entra en un paso (A, B, C…). Con
-   **Entrada** se aleja la pieza hacia donde está antes de colocarla: la
-   ficha la dibuja ahí, en gris, con una flecha hasta su lugar.
-   *Entrada automática* las levanta solas; *Usar esta vista* fija desde
-   dónde se dibuja el paso; *Vista previa del paso* lo muestra al momento.
-5. **Ficha**: tipo (práctica, sistema…), bajada, autor, descripción, gris
-   de las piezas nuevas, grosor de línea. Sale una **portada** (nombre,
-   dispositivo armado con llamadas A, B, C… y el texto de cada paso) y el
-   **manual de ensamblado** (lista de piezas y un cuadro por paso).
-   *Imprimir / PDF* la guarda o la imprime en A4.
+Se entra desde **EXTRAS → Guías de armado** (o `fisicabit.com/guias/`). Al abrir
+aparecen tres formas de empezar:
 
-La guía se guarda sola en el navegador y se puede **descargar / abrir**
-como archivo `.guia.json`.
+1. **Contale a la IA qué querés armar.** Se escribe el montaje con palabras
+   propias; el sitio arma un prompt largo (formato, coordenadas, los elementos
+   de laboratorio y el catálogo de cartón y 3D leído en el momento); se pega en
+   la IA que se use y su respuesta (una «receta» en JSON) se pega de vuelta: la
+   guía queda armada, con piezas y pasos.
+2. **Empezar con una guía lista**: ley de Hooke, péndulo simple, carrito en
+   plano inclinado, segunda ley de Newton, caída libre, máquina de Atwood,
+   enfriamiento de un líquido y péndulo con soporte de cartón.
+3. **Armarla a mano**, con una ayuda de 5 pasos: nombre → piezas → ubicar →
+   pasos → ficha.
+
+La pantalla arranca en **modo simple**: mover, rotar, agregar piezas, pasos y
+ficha. «Más opciones» muestra lo avanzado (salto, vista explotada a mano,
+rellenos, rotación numérica, estilo de la ficha, guardar y abrir archivos).
+
+**Agregar pieza** ofrece:
+
+- **Elementos de laboratorio** (se dibujan al instante): soporte universal,
+  varilla, nuez, pinza, mesa, bloque, riel, plano inclinado; resorte, masas,
+  pesas, portapesas, poleas, carrito, autito, esfera, lenteja, cilindro, hilo,
+  regla, dinamómetro, imán; micro:bit, portapilas, sensor de ultrasonido,
+  módulo sensor, barrera óptica, protoboard, servo, motor, láser, celular;
+  vaso, termómetro, jeringa; tornillo, tuerca y arandela.
+- Diseños de **encastre en cartón** (entran armados, con cada pieza suelta y
+  con su nombre) y de **impresión 3D** del catálogo.
+- Archivos propios `.stl` / `.scad`.
+
+Si en un paso nadie indicó desde dónde entran las piezas, la ficha las dibuja
+entrando desde arriba.
 
 ## Estética
 
@@ -57,3 +67,7 @@ negro y letra blanca, recuadros con borde negro y etiqueta, notas en gris
   por cambio de pieza, arista o salto de profundidad, con cámara
   isométrica ajustada.
 - `ficha.js` — arma las hojas: portada, lista de piezas, pasos y llamadas.
+- `elementos.js` — elementos básicos de laboratorio (geometría generada en el
+  momento, sin OpenSCAD).
+- `recetas.js` — formato de receta, guías listas, prompt para la IA y lectura
+  de su respuesta.

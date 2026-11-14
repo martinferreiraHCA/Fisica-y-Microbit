@@ -77,8 +77,9 @@ function portada(d, arte, anchoMm, altoMm) {
   // Llamadas: una por paso con piezas, apuntando al borde de sus piezas
   const llamadas = [];
   d.pasos.forEach((paso, i) => {
-    const ids = new Set(); const caja = new THREE.Box3();
-    d.partes.forEach((p, k) => { if (p.paso === i) { ids.add(Math.min(254, k + 1)); caja.union(p.cajaFinal); } });
+    // La llamada apunta a la pieza más grande del paso (el centro del grupo puede caer en el vacío)
+    const ids = new Set(); let caja = null, mayor = -1;
+    d.partes.forEach((p, k) => { if (p.paso === i) { ids.add(Math.min(254, k + 1)); const t = p.cajaFinal.getSize(new THREE.Vector3()).length(); if (t > mayor) { mayor = t; caja = p.cajaFinal; } } });
     if (!ids.size) return;
     const c = art.proyectar(caja.getCenter(new THREE.Vector3()));
     const lado = c[0] < W / 2 ? -1 : 1;
