@@ -1,8 +1,9 @@
 # Circuitos (herramienta oculta)
 
-Editor de circuitos sencillo, con la estética de fisicabit: dibujo vectorial
-en blanco y negro. El único color son las **bandas de las resistencias**, los
-**cables** y el borne + / − de las fuentes sueltas.
+Editor de circuitos sencillo, con la estética de fisicabit. La interfaz y el
+esquemático van en blanco y negro (el único color son los cables). La
+protoboard tiene dos estilos: **Realista**, con dibujos a color parecidos a
+los de Tinkercad, y **Línea**, en blanco y negro, para imprimir.
 
 No tiene enlaces desde el sitio. Se entra por `fisicabit.com/circuitos/`, o
 desde el protocolo de práctico, que la abre embebida (`?embed=1`).
@@ -12,6 +13,8 @@ desde el protocolo de práctico, que la abre embebida (`?embed=1`).
 - **1 · Esquemático** — cuadrícula de 20 px; los puntos de unión se dibujan
   solos.
 - **2 · Protoboard** — placa de 30 o 60 columnas con rieles de alimentación.
+  En la barra se elige el estilo **Realista / Línea** (se recuerda en el
+  navegador y se guarda con el circuito).
 
 Cada pestaña tiene su propio dibujo.
 
@@ -22,7 +25,8 @@ categorías). El panel izquierdo tiene el **buscador** (tecla `/` o Ctrl+K;
 busca por nombre, alias, categoría y descripción, sin distinguir mayúsculas
 ni tildes; Esc lo limpia), el filtro *Solo los que están en Tinkercad* y las
 categorías plegables con sus miniaturas, dibujadas con la misma función que el
-lienzo. Un resultado que solo existe en la otra pestaña aparece atenuado y, al
+lienzo: una lista con los símbolos en el esquemático y un **mosaico de dos
+columnas** con el dibujo grande en la protoboard. Un resultado que solo existe en la otra pestaña aparece atenuado y, al
 elegirlo, cambia de pestaña.
 
 Al pasar por un componente (o al elegirlo en el dibujo) el panel derecho
@@ -106,8 +110,56 @@ Cada entrada de la base dice cómo se dibuja en cada vista (`esq.f`,
   rotulados a los lados; es también el dibujo de reserva).
 - Protoboard: piezas propias, `axial`, `radial`, `to92`, `to220`, `dip`,
   `modulo` y `libre` (caja suelta con un borne por pin, que es el dibujo de
-  reserva; artes propios: servo, pila9v, pila-boton, multimetro, altavoz,
-  arduino).
+  reserva; artes propios: servo, pila9v, pila-boton, multimetro, altavoz).
+
+## Protoboard realista
+
+El estilo **Realista** (`arte.js`) cambia solo el dibujo: los terminales de
+cada pieza son los mismos que en Línea, así que las redes, los avisos, los
+circuitos guardados y la generación de una vista a partir de la otra no
+dependen del estilo. Un LED y un pulsador pueden cambiar de **color** desde el
+panel derecho.
+
+- **Dibujos propios**: la protoboard, la micro:bit V1 y V2 y su extensor, los
+  cables, la resistencia con sus bandas, capacitores, diodos, inductor,
+  fusible, LDR, termistor, fotodiodo y fototransistor, TO-92, TO-220,
+  integrados DIP, el módulo genérico (plaqueta con tira de pines) y los
+  sueltos: portapilas, batería de 9 V, pila botón, motor, parlante,
+  multímetros, fuente, generador, osciloscopio, celda solar, lámpara,
+  ventilador y la caja genérica.
+- **Dibujos de [Wokwi Elements](https://github.com/wokwi/wokwi-elements)**
+  1.9.2 (licencia MIT, © Uri Shaked; el paquete, sin cambios, está en
+  `../lib/wokwi-elements.bundle.min.js` y su licencia en
+  `../lib/wokwi-elements.LICENSE`): LED y LED infrarrojo (`led`), LED RGB
+  (`rgb-led`), pulsador (`pushbutton-6mm`), potenciómetro (`potentiometer`),
+  zumbadores (`buzzer`), interruptor deslizante (`slide-switch`), HC-SR04 y
+  HC-SR04P (`hc-sr04`), PIR (`pir-motion-sensor`), MPU6050 (`mpu6050`), LCD
+  16 × 2 y LCD I2C (`lcd1602`), HX711 (`hx711`), encoder (`ky-040`), sensor de
+  gas (`gas-sensor`), sensor de sonido (`small-sound-sensor`), display de 7
+  segmentos (`7segment`), DHT11 y DHT22 (`dht22`), OLED (`ssd1306`), joystick
+  (`analog-joystick`), NeoPixel (`neopixel`), relé (`ks2e-m-dc5`), servo
+  (`servo`) y teclado 4 × 4 (`membrane-keypad`).
+
+El paquete se carga una sola vez, al entrar por primera vez a la protoboard
+realista. Cada elemento se instancia fuera de pantalla, su SVG (con los
+estilos ya resueltos) se copia a un `<symbol>` y en el lienzo va como `<use>`:
+no queda ningún componente web en el dibujo, y el SVG y el PNG exportados
+llevan adentro los símbolos que usan. Si el paquete no carga, la protoboard
+pasa sola al estilo Línea y lo avisa en la barra de estado.
+
+Cómo se acomoda cada dibujo de Wokwi a nuestros terminales (tabla `WOKWI` de
+`arte.js`, por id de componente):
+
+- `pines`: sus patas caen sobre nuestros agujeros; la escala y el giro salen
+  de la primera y la última (el paso entre patas queda igual al de la placa).
+- `dos`: piezas de dos patas entre dos agujeros cualesquiera (LED, zumbador);
+  el cuerpo queda de pie y, si los agujeros están más lejos, las patas se
+  alargan.
+- `patas`: cuando el orden o la cantidad de patas no coincide (DHT, OLED,
+  joystick, NeoPixel, relé), el cuerpo va sobre una tira de pines propia,
+  rotulada con nuestros nombres.
+- `libre`: sueltos (servo, LCD I2C, teclado); el dibujo, un conector en
+  nuestros bornes y los cables que los unen.
 
 Los circuitos guardados con el formato anterior (cada elemento con `t`)
 siguen abriendo: cada pieza pasa al componente equivalente de la base.
@@ -124,7 +176,8 @@ window.parent.FbitProtocolo.recibir({ tipo: 'circuito', vista: 'esquematico' | '
 Para pruebas: `window.__circuitos` (`estado`, `cargar(obj)`,
 `exportarPNG(vista)`, `exportarSVG(vista)`, `redes(vista)`, `avisos()`,
 `buscar(texto)`, `pata(id, nombre)`, `ejemplo(i)`, `vinculo()` → `{ igual, difs }`,
-`generar(desde, sinPreguntar)`…).
+`generar(desde, sinPreguntar)`, `estilo`, `ponerEstilo('real' | 'linea')`,
+`arteListo()` → promesa que se cumple cuando están los dibujos de Wokwi…).
 
 ## Archivos
 
@@ -132,6 +185,8 @@ Para pruebas: `window.__circuitos` (`estado`, `cargar(obj)`,
 - `app.js` — motor e interfaz: formas de dibujo, lienzo SVG, catálogo, fichas,
   redes, avisos, vínculo y generación de una vista a partir de la otra, código
   de colores, exportación.
+- `arte.js` — estilo Realista de la protoboard: dibujos propios y carga de los
+  de Wokwi Elements.
 - `componentes.js` — base de componentes (datos).
 - `microbit.js` — pines de la micro:bit por versión, recomendaciones y
   revisión de un circuito (datos y reglas).
