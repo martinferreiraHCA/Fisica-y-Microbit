@@ -1,9 +1,11 @@
 // Editor de circuitos de fisicabit: un esquemático y una protoboard, dibujados en SVG.
 // Todo elemento de dos terminales se crea entre dos puntos (A y B): el símbolo queda
 // centrado y los terminales se estiran. Los componentes salen de la base de datos
-// (componentes.js): cada uno dice con qué forma se dibuja en cada vista. Dibujo en
-// blanco y negro; el único color son las bandas de las resistencias y los cables.
+// (componentes.js): cada uno dice con qué forma se dibuja en cada vista. El esquemático
+// va en línea, en blanco y negro; la protoboard tiene dos estilos: «Realista» (arte.js) y
+// «Línea» (blanco y negro, para imprimir). Los terminales son los mismos en los dos.
 import { CATEGORIAS, COMPONENTES } from './componentes.js';
+import { placaReal, cableReal, defReal, cargarWokwi, wokwiListo, simbolosDe, tonosDe } from './arte.js';
 import { VERSIONES, ANILLOS, EXTENSOR, caps, infoPin, recomendar, revisar } from './microbit.js';
 
 const $ = (s) => document.querySelector(s);
@@ -59,7 +61,7 @@ const caja = (x, y, w, h, rx = 0, fill = '#fff', sw = 2) => `<rect x="${N(x)}" y
 // Texto: o = { t: tamaño, w: peso, a: anclaje, c: color, deg: giro del grupo (para dejarlo derecho), halo: borde blanco }
 function txt(s, x, y, o = {}) {
   const t = o.t || 11, giro = o.deg ? ` transform="rotate(${N(-o.deg)} ${N(x)} ${N(y)})"` : '';
-  return `<text x="${N(x)}" y="${N(y + t * 0.36)}" font-family="Montserrat, Arial, sans-serif" font-size="${N(t)}" font-weight="${o.w || 600}" fill="${o.c || '#111'}" text-anchor="${o.a || 'middle'}"${o.halo ? ' stroke="#fff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke"' : ''}${giro}>${esc(s)}</text>`;
+  return `<text x="${N(x)}" y="${N(y + t * 0.36)}" font-family="Montserrat, Arial, sans-serif" font-size="${N(t)}" font-weight="${o.w || 600}" fill="${o.c || '#111'}" text-anchor="${o.a || 'middle'}"${o.halo ? ` stroke="${o.halo === true ? '#fff' : o.halo}" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke"` : ''}${giro}>${esc(s)}</text>`;
 }
 const cabe = (s, ancho, max) => Math.min(max, ancho / Math.max(1, String(s).length * 0.7));   // tamaño de letra para que un texto entre en un ancho
 const pin = (x, y) => `<rect x="${N(x - 2.6)}" y="${N(y - 2.6)}" width="5.2" height="5.2" fill="#111"/>`;
@@ -193,7 +195,7 @@ const RIELES = [20, 40, 340, 360];   // +, −, +, −
 const enRiel = (c) => c >= 2 && (c - 2) % 6 !== 5;
 const placas = {};
 function placa(cols) {
-  if (placas[cols]) return placas[cols];
+  const k = cols + (real() ? 'r' : ''); if (placas[k]) return placas[k];
   const ag = [], w = colX(cols) + 40;
   for (let c = 1; c <= cols; c++) { FILA_Y.forEach((y) => ag.push([colX(c), y])); if (enRiel(c)) RIELES.forEach((y) => ag.push([colX(c), y])); }
   let s = caja(0, -10, w, 400, 9) + `<rect x="12" y="181" width="${w - 24}" height="18" rx="3" fill="#f1f1f1" stroke="#999" stroke-width="1"/>`;
@@ -202,7 +204,7 @@ function placa(cols) {
   Object.entries(FILAS).forEach(([l, y]) => { s += txt(l, 22, y, { t: 9, c: '#555' }) + txt(l, w - 22, y, { t: 9, c: '#555' }); });
   for (let c = 1; c <= cols; c++) if (c === 1 || c % 5 === 0) s += txt(c, colX(c), 66, { t: 8, c: '#555' }) + txt(c, colX(c), 314, { t: 8, c: '#555' });
   s += ag.map(([x, y]) => `<rect x="${x - 2.6}" y="${y - 2.6}" width="5.2" height="5.2" fill="#fff" stroke="#6d6d6d" stroke-width="1"/>`).join('');
-  return (placas[cols] = { cols, w, agujeros: ag, svg: `<g pointer-events="none">${s}</g>` });
+  return (placas[k] = { cols, w, agujeros: ag, svg: real() ? placaReal(cols, { colX, FILAS, RIELES, enRiel }) : `<g pointer-events="none">${s}</g>` });
 }
 const colsP = () => (E.proto.cols === 60 ? 60 : 30);
 const colCerca = (x, ancho = 1) => Math.max(1, Math.min(colsP() - ancho + 1, Math.round((x - 40) / G) + 1));
@@ -315,7 +317,7 @@ function dipProto(comp, fo) {   // integrado a caballo del canal; la pata 1 est�
 function moduloProto(comp, fo) {   // plaqueta con una tira de pines enchufada en una fila
   const n = comp.pines.length, w = Math.max(fo.w || 0, (n - 1) * G + 18), h = Math.max(fo.h || 40, 40), titulo = fo.txt || comp.nombre;
   const arriba = (el) => (el.rot ? el.a[1] - 9 : el.a[1] - h + 9);
-  return { n: 'fijo', rota: 2, ancla: anclaFila(n), term: (el) => enFila(el, n), rotAt: (el) => [el.a[0] + G * (n - 1) / 2, el.rot ? arriba(el) + h + 9 : arriba(el) - 9, 'middle'],
+  return { n: 'fijo', rota: 2, caja: { w, h }, ancla: anclaFila(n), term: (el) => enFila(el, n), rotAt: (el) => [el.a[0] + G * (n - 1) / 2, el.rot ? arriba(el) + h + 9 : arriba(el) - 9, 'middle'],
     d: (el) => { const pts = enFila(el, n), s = el.rot ? -1 : 1, cx = el.a[0] + G * (n - 1) / 2, y = el.a[1], top = arriba(el);
       return caja(cx - w / 2, top, w, h, 3, '#fff', 1.6) + `<path d="M${cx - w / 2 + 4},${y - 19 * s} H${cx + w / 2 - 4}" stroke="#999" stroke-width="1"/>` +
         txt(titulo, cx, s > 0 ? top + (h - 28) / 2 : top + 28 + (h - 28) / 2, { t: cabe(titulo, w - 10, 9), w: 800 }) + pts.map((p) => pin(p[0], p[1])).join('') + nombresPines(comp, pts, -11 * s, false); } };
@@ -326,14 +328,13 @@ const ARTE = {
   pila9v: (x, y, w, h, t) => circ(6, x + w / 2 - 11, y + 9, '#fff', 1.5) + forma(`M${x + w / 2 + 5},${y + 9} l3,-5.2 h6 l3,5.2 l-3,5.2 h-6 Z`, '#fff', 1.5) + txt(t, x + w / 2, y + h / 2 + 8, { t: cabe(t, w - 8, 10), w: 800 }),
   'pila-boton': (x, y, w, h, t) => circ(Math.min(w, h) / 2 - 2, x + w / 2, y + h / 2, '#fff', 1.5) + txt('+', x + w / 2, y + h / 2 - 7, { t: 10, w: 800 }) + txt(t, x + w / 2, y + h / 2 + 5, { t: cabe(t, Math.min(w, h) - 14, 7), w: 700 }),
   multimetro: (x, y, w, h) => caja(x + 7, y + 4, w - 14, 14, 2, '#fff', 1.3) + txt('0.00', x + w / 2, y + 11, { t: 8.5, w: 800 }) + circ(Math.max(5, Math.min(10, (h - 26) / 2)), x + w / 2, y + 20 + (h - 20) / 2, '#fff', 1.4) + linea(`M${x + w / 2},${y + 20 + (h - 20) / 2} l4,-6`, 1.6),
-  arduino: (x, y, w, h, t) => caja(x + 8, y + 8, 34, 26, 2, '#fff', 1.4) + txt('USB', x + 25, y + 21, { t: 7, w: 700 }) + caja(x + 8, y + h - 34, 30, 24, 2, '#111', 1.4) + caja(x + w / 2 - 10, y + h / 2 + 12, Math.min(120, w / 2), 18, 2, '#fff', 1.4) + txt(t, x + w / 2 + 14, y + h / 2 - 10, { t: cabe(t, w - 90, 13), w: 800 }),
   altavoz: (x, y, w, h) => { const r = Math.min(w, h) / 2 - 2; return circ(r, x + w / 2, y + h / 2, '#fff', 1.5) + circ(N(r * 0.58), x + w / 2, y + h / 2, '#fff', 1.2) + circ(N(r * 0.2), x + w / 2, y + h / 2, '#111', 1); },
 };
 function libreProto(comp, fo) {   // caja suelta con un borne por pin (los positivos y negativos de las fuentes, marcados)
   const n = comp.pines.length, dos = n > 8, k1 = dos ? Math.ceil(n / 2) : n, k2 = n - k1, titulo = fo.txt || comp.nombre;
   const w = Math.max(60, Math.ceil(Math.max(fo.w || 0, k1 * G + 10) / 20) * 20), h = Math.max(fo.h || 50, dos ? 64 : 40), x0 = (k) => Math.round((w - (k - 1) * G) / 20) * 10;
   const local = (el) => comp.pines.map((_, i) => { const abajo = i < k1; return [x0(abajo ? k1 : k2) + (abajo ? i : i - k1) * G, dos ? (abajo ? h + 14 : -14) : el.rot ? -14 : h + 14]; });
-  return { n: 'libre', rota: dos ? 0 : 2, term: (el) => local(el).map(([x, y]) => [el.a[0] + x, el.a[1] + y]),
+  return { n: 'libre', rota: dos ? 0 : 2, caja: { w, h, dos }, term: (el) => local(el).map(([x, y]) => [el.a[0] + x, el.a[1] + y]),
     rotAt: (el) => [el.a[0] + w / 2, dos ? el.a[1] - 26 : el.rot ? el.a[1] + h + 12 : el.a[1] - 9, 'middle'],
     d: (el) => {
       const [x, y] = el.a, hayArr = dos || !!el.rot, hayAba = dos || !el.rot; let s = '', nom = '';
@@ -406,6 +407,10 @@ let vista = 'esq', sel = new Set(), herr = 'sel', pend = null, arr = null, espac
 let pinSel = null;     // { el, pin }: pin elegido de una micro:bit
 let resalte = null;    // aviso que se está señalando en el lienzo
 let avisos = [], avisosAbierto = false, verFicha = 'v2', compMirado = null;
+// Estilo de la protoboard: 'real' (dibujos realistas) o 'linea' (blanco y negro). Se recuerda y se guarda con el circuito.
+const CLAVE_ESTILO = 'fisicabit_circuito_estilo';
+let estilo = 'real'; try { if (localStorage.getItem(CLAVE_ESTILO) === 'linea') estilo = 'linea'; } catch (e) {}
+function real() { return estilo === 'real'; }
 const V = { esq: { x: 0, y: 0, k: 1 }, proto: { x: 0, y: 0, k: 1 } };
 const colorNuevo = { esq: 'negro', proto: 'rojo' };
 const hist = [], futuro = [];
@@ -429,11 +434,12 @@ const primeraMB = (v = vista) => E[v].els.find((e) => esMB(e, v)) || null;
 const versionDibujo = () => { const m = primeraMB(); return m ? m.ver || 'v2' : verFicha; };
 
 /* ---------- Dibujo de un elemento ---------- */
+const haloEn = (x, y) => (real() && x > 0 && x < colX(colsP()) + 40 && y > -10 && y < 390 ? '#f4f0e3' : true);   // borde de un rótulo: del color de la placa si cae sobre ella
 function rotulos(el, v, d) {
   const t1 = el.rotulo || '', t2 = v === 'esq' && el.c !== 'cable' ? el.valor || '' : '';
   if (!t1 && !t2) return '';
   const [ax, ay] = el.a, [bx, by] = el.b, L = Math.hypot(bx - ax, by - ay) || 1, ux = (bx - ax) / L, uy = (by - ay) / L;
-  const mx = (ax + bx) / 2, my = (ay + by) / 2, horiz = Math.abs(ux) >= Math.abs(uy), halo = v === 'proto';
+  const mx = (ax + bx) / 2, my = (ay + by) / 2, horiz = Math.abs(ux) >= Math.abs(uy), halo = v === 'proto' && haloEn(mx, my);
   let nx = -uy, ny = ux;
   if (horiz ? ny > 0 : nx < 0) { nx = -nx; ny = -ny; }   // horizontal: arriba · vertical: a la derecha
   const haciaArr = nx * uy - ny * ux > 0;   // ¿la normal elegida apunta al «arriba» del símbolo?
@@ -443,25 +449,35 @@ function rotulos(el, v, d) {
   const x = mx + nx * (h1 + 7), dos = t1 && t2;
   return (t1 ? txt(t1, x, my - (dos ? 7 : 0), { t: 11, w: 700, a: 'start', halo }) : '') + (t2 ? txt(t2, x, my + (dos ? 7 : 0), { t: 10.5, a: 'start' }) : '');
 }
+// Dibujo realista de un componente en la protoboard (null: va el de línea). Los de Wokwi aparecen cuando termina de cargar.
+const cacheReal = new Map();
+const X_ARTE = { bandas: (el) => { const b = bandas(el.ohm || 0); return [BANDA[b.d1][1], BANDA[b.d2][1], colorMult(b.m)[1], colorTol(el.tol || 5)[1]]; }, ver: (el) => verTxt(el) };
+function realDe(c) {
+  if (!real() || !c.proto) return null;
+  const k = c.id + (wokwiListo() ? '|w' : ''); if (!cacheReal.has(k)) cacheReal.set(k, defReal(c, c.proto, defDe(c, 'proto'), X_ARTE));
+  return cacheReal.get(k);
+}
 function dibujar(el, v, exp) {
-  const d = def(el, v); let s;
+  const d = def(el, v), r = v === 'proto' && el.c !== 'cable' ? realDe(comp(el)) : null; let s;
   if (d.n === 2) {
     const [ax, ay] = el.a, [bx, by] = el.b, L = Math.hypot(bx - ax, by - ay) || 0.01, deg = Math.atan2(by - ay, bx - ax) * 180 / Math.PI, Lr = N(L);
     let dentro;
     if (el.c === 'cable') {
       const c = CABLES[el.color] || CABLES.negro;
-      dentro = v === 'esq' ? `<path d="M0,0 H${Lr}" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`
+      dentro = v === 'esq' ? `<path d="M0,0 H${Lr}" stroke="${c}" stroke-width="2" stroke-linecap="round"/>` : real() ? cableReal(L, el.color)
         : `<path d="M0,0 H${Lr}" stroke="#111" stroke-width="6.4" stroke-linecap="round"/><path d="M0,0 H${Lr}" stroke="${c}" stroke-width="3.8" stroke-linecap="round"/>`;
-    } else if (v === 'esq') {
+    } else if (r) dentro = r.d2(el, L, deg);
+    else if (v === 'esq') {
       const a1 = Math.max(0, L / 2 - d.s);
       dentro = linea(`M0,0 H${N(a1)} M${N(L - a1)},0 H${Lr}`) + `<g transform="translate(${N(L / 2)},0)">${d.d(el, deg)}</g>`;
     } else dentro = linea(`M0,0 H${Lr}`, 1.6) + pin(0, 0) + pin(L, 0) + `<g transform="translate(${N(L / 2)},0)">${d.d(el, deg)}</g>`;
     const toque = exp ? '' : `<path d="M0,0 H${Lr}" stroke="#000" stroke-opacity="0" stroke-width="15" stroke-linecap="round"/>`;
-    s = `<g transform="translate(${N(ax)},${N(ay)}) rotate(${N(deg)})">${toque}${dentro}</g>` + rotulos(el, v, d);
+    s = `<g transform="translate(${N(ax)},${N(ay)}) rotate(${N(deg)})">${toque}${dentro}</g>` + rotulos(el, v, r ? Object.assign({}, d, { alto: r.alto }) : d);
   } else {
-    s = d.d(el);
+    const pts = r ? d.term(el) : null;
+    s = r ? r.d(el, pts) : d.d(el);
     const t2 = v === 'esq' && d.rota === 4 ? el.valor || '' : '';
-    if (d.rotAt && (el.rotulo || t2)) { const [x, y, a] = d.rotAt(el); s += (el.rotulo ? txt(el.rotulo, x, y, { t: 11, w: 700, a, halo: v === 'proto' }) : '') + (t2 ? txt(t2, x, y + (el.rotulo ? 14 : 0), { t: 10.5, a }) : ''); }
+    if (d.rotAt && (el.rotulo || t2)) { const [x, y, a] = r && r.rotAt ? r.rotAt(el, pts) : d.rotAt(el); s += (el.rotulo ? txt(el.rotulo, x, y, { t: 11, w: 700, a, halo: v === 'proto' && haloEn(x, y) }) : '') + (t2 ? txt(t2, x, y + (el.rotulo ? 14 : 0), { t: 10.5, a }) : ''); }
   }
   return exp ? `<g>${s}</g>` : `<g data-id="${el.id}">${s}</g>`;
 }
@@ -514,10 +530,22 @@ function redes(v = vista, todas) {
 const svg = $('#lienzo'), gMundo = $('#mundo'), gCont = $('#g-contenido'), gSobre = $('#g-sobre');
 function verVista() { const v = V[vista]; gMundo.setAttribute('transform', `translate(${N(v.x)},${N(v.y)}) scale(${N(v.k * 1000) / 1000})`); }
 function pintar() { gCont.innerHTML = contenido(vista, false); pintarSobre(); }
+// Caja de un nodo SVG en sus propias coordenadas. Como getBBox, pero de los dibujos de Wokwi cuenta solo lo que se ve
+// (su data-lim): getBBox incluye lo recortado y lo invisible.
+function cajaDom(nodo) {
+  const lims = [...nodo.querySelectorAll('[data-lim]')]; if (!lims.length) return nodo.getBBox();
+  const base = nodo.getScreenCTM(), mats = lims.map((n) => (base ? base.inverse().multiply(n.getScreenCTM()) : null));
+  lims.forEach((n) => n.setAttribute('display', 'none'));
+  const b = nodo.getBBox(); lims.forEach((n) => n.removeAttribute('display'));
+  let x0 = b.x, y0 = b.y, x1 = b.x + b.width, y1 = b.y + b.height, vacia = !b.width && !b.height;
+  lims.forEach((n, i) => { const m = mats[i], l = n.dataset.lim.split(',').map(Number); if (!m) return;
+    [[l[0], l[1]], [l[2], l[1]], [l[0], l[3]], [l[2], l[3]]].forEach(([x, y]) => { const px = m.a * x + m.c * y + m.e, py = m.b * x + m.d * y + m.f;
+      if (vacia) { x0 = x1 = px; y0 = y1 = py; vacia = false; } else { x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px); y1 = Math.max(y1, py); } }); });
+  return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+}
 const cajaDe = (id, m) => {   // caja de un elemento en coordenadas del mundo
   const g = gCont.querySelector(`[data-id="${id}"]`); if (!g) return null;
-  const r = g.getBoundingClientRect(), o = svg.getBoundingClientRect(), v = V[vista];
-  return [(r.left - o.left - v.x) / v.k - m, (r.top - o.top - v.y) / v.k - m, r.width / v.k + 2 * m, r.height / v.k + 2 * m];
+  const b = cajaDom(g); return [b.x - m, b.y - m, b.width + 2 * m, b.height + 2 * m];
 };
 function pinPunto(id, pinN) { const el = porId(id); if (!el) return null; const i = nombres(el).indexOf(pinN); return i >= 0 ? terminales(el)[i] : null; }
 function pintarSobre() {
@@ -555,7 +583,7 @@ function anclar(el, p) {   // dónde queda un elemento de un clic: huellas fijas
 }
 function encuadrar() {
   const o = svg.getBoundingClientRect(); if (!o.width) return;
-  let b = gCont.getBBox();
+  let b = cajaDom(gCont);
   if (!b.width && !b.height) b = { x: -260, y: -160, width: 520, height: 320 };
   if (vista === 'proto' && E.proto.els.length < 3) b = { x: b.x - 150, y: b.y - 60, width: b.width + 300, height: b.height + 230 };   // aire para los elementos sueltos
   const m = 40, k = Math.max(0.25, Math.min(vista === 'esq' ? 1.6 : 1.15, (o.width - 2 * m) / b.width, (o.height - 2 * m) / b.height));
@@ -564,7 +592,7 @@ function encuadrar() {
 }
 
 /* ---------- Cambios, deshacer y guardado ---------- */
-const datos = () => JSON.stringify({ titulo: E.titulo, resEstilo: E.resEstilo, esq: E.esq, proto: E.proto });
+const datos = () => JSON.stringify({ titulo: E.titulo, resEstilo: E.resEstilo, estilo, esq: E.esq, proto: E.proto });
 function marcar() { hist.push(datos()); if (hist.length > 80) hist.shift(); futuro.length = 0; botonesHist(); }
 function botonesHist() { $('#h-deshacer').disabled = !hist.length; $('#h-rehacer').disabled = !futuro.length; }
 let tGuardar = null, tAvisos = null;
@@ -596,6 +624,7 @@ function limpiar(o) {
   return e;
 }
 function cargar(o) {
+  if (o && (o.estilo === 'linea' || o.estilo === 'real') && o.estilo !== estilo) ponerEstilo(o.estilo, true);   // el circuito trae su estilo (no cambia el preferido)
   E = limpiar(o); hist.length = 0; futuro.length = 0; sel = new Set(); pinSel = null; resalte = null;
   $('#n-circ').value = E.titulo; $('#s-res').value = E.resEstilo; $('#s-cols').value = String(colsP()); botonesHist();
   V.esq.listo = V.proto.listo = false; cambiarVista(vista); cambio();
@@ -809,7 +838,7 @@ let q = '', soloTk = false, resFijo = null, resHover = null;
 const CLAVE_CATS = 'fisicabit_circuito_cats';
 let abiertas; try { abiertas = new Set(JSON.parse(localStorage.getItem(CLAVE_CATS) || 'null') || [CATEGORIAS[0].id]); } catch (e) { abiertas = new Set([CATEGORIAS[0].id]); }
 function icono(c) {   // miniatura dibujada con la misma función que el lienzo
-  const fo = c[vista], el = { id: '_', c: c.id, a: [0, 0], b: [64, 0], ohm: leerOhm(c.valor || '') || 220, tol: 5, color: colorNuevo[vista], ver: 'v2' };
+  const fo = c[vista], rl = vista === 'proto' ? realDe(c) : null, el = { id: '_', c: c.id, a: [0, 0], b: [(rl && rl.icoL) || 64, 0], ohm: leerOhm(c.valor || '') || 220, tol: 5, color: colorNuevo[vista], ver: 'v2' };
   if (fo.f === 'nativo') { el.t = fo.t; if (fo.t === 'texto') el.valor = 'Abc'; }
   return `<svg xmlns="${NS}" data-ico="1"><g>${dibujar(el, vista, true)}</g></svg>`;
 }
@@ -829,9 +858,9 @@ function catalogo() {
       h += `<button class="cat-g${ab ? ' abierta' : ''}" data-g="${esc(k.id)}"><i>${ab ? '▾' : '▸'}</i><b>${esc(k.nombre)}</b><span>${l.length}</span></button>` + (ab ? `<div class="cat-l">${l.map(itemCat).join('')}</div>` : '');
     });
   }
-  box.innerHTML = h;
+  box.innerHTML = h; box.classList.toggle('mosaico', vista === 'proto');   // en la protoboard, mosaico de dos columnas con la miniatura grande
   box.querySelectorAll('svg[data-ico]').forEach((s) => {   // encuadre de cada miniatura
-    const b = s.firstChild.getBBox(), m = 3, w = Math.max(b.width, 44), hh = Math.max(b.height, 24);
+    const b = cajaDom(s.firstChild), m = 3, w = Math.max(b.width, vista === 'proto' ? 30 : 44), hh = Math.max(b.height, 24);
     s.setAttribute('viewBox', `${N(b.x + b.width / 2 - w / 2 - m)} ${N(b.y + b.height / 2 - hh / 2 - m)} ${N(w + 2 * m)} ${N(hh + 2 * m)}`);
   });
   $('#cat-total').textContent = LISTA.filter((c) => enVista(c, vista) && vale(c)).length + ' en esta vista';
@@ -884,6 +913,7 @@ function pinHTML(pinN, ver) {   // para qué sirve un pin de la micro:bit según
 }
 
 /* ---------- Inspector ---------- */
+const TONO_CSS = { rojo: '#e03131', verde: '#2f9e44', amarillo: '#f5c518', azul: '#2f6fde', blanco: '#ffffff', negro: '#2b2b2b' };
 function inspector() {
   const box = $('#insp'), lista = elegidos(), el = lista.length === 1 ? lista[0] : null;
   const enlazarVers = () => box.querySelectorAll('[data-ver]').forEach((b) => { b.onclick = () => { verFicha = b.dataset.ver; inspector(); }; });
@@ -910,6 +940,8 @@ function inspector() {
   if (conValor) h += `<label class="c">${propio === 'texto' ? 'Texto' : 'Valor'}</label><input type="text" id="i-valor" value="${esc(el.valor || '')}" placeholder="con su unidad">`;
   if (esRes) h += `<svg id="i-res" viewBox="0 0 300 92" xmlns="${NS}" style="display:block;width:100%;height:64px;margin-top:8px">${resGrande(el.ohm || 0, el.tol || 5)}</svg><button class="btn ancho" id="i-codigo" style="margin-top:4px">Código de colores…</button>`;
   if (el.c === 'cable') h += `<label class="c">Color del cable</label><div class="colores">${Object.keys(CABLES).map((k) => `<button class="col${(el.color || 'negro') === k ? ' sel' : ''}" data-c="${k}" title="${k}" style="background:${CABLES[k]}"></button>`).join('')}</div>`;
+  const tonos = vista === 'proto' ? tonosDe(el.c) : null;
+  if (tonos) h += `<label class="c">${propio === 'led' ? 'Color del LED' : 'Color'}</label><div class="colores">${tonos.map((k) => `<button class="col tono${(el.tono || tonos[0]) === k ? ' sel' : ''}" data-t="${k}" title="${k}" style="background:${TONO_CSS[k]}"></button>`).join('')}</div>${real() ? '' : '<p class="nota" style="margin-top:4px">El color se ve en el estilo Realista.</p>'}`;
   if (propio === 'interruptor') h += `<label class="chk"><input type="checkbox" id="i-cerrado"${el.cerrado ? ' checked' : ''}> Cerrado (deja pasar la corriente)</label>`;
   if (mb) {
     const ver = el.ver || 'v2', pn = nombres(el);
@@ -925,7 +957,8 @@ function inspector() {
   box.innerHTML = h; enlazarVers();
   const campo = (id, k) => { const i = $(id); if (!i) return; let marcado = false; i.oninput = () => { if (!marcado) { marcar(); marcado = true; } el[k] = i.value; if (k === 'valor' && esRes) { const v = leerOhm(i.value); if (v > 0) el.ohm = v; } cambio(); if (esRes && $('#i-res')) $('#i-res').innerHTML = resGrande(el.ohm || 0, el.tol || 5); }; };
   campo('#i-rotulo', 'rotulo'); campo('#i-valor', 'valor');
-  box.querySelectorAll('.col').forEach((b) => { b.onclick = () => { marcar(); el.color = b.dataset.c; colorNuevo[vista] = el.color; cambio(); inspector(); }; });
+  box.querySelectorAll('.col:not(.tono)').forEach((b) => { b.onclick = () => { marcar(); el.color = b.dataset.c; colorNuevo[vista] = el.color; cambio(); inspector(); }; });
+  box.querySelectorAll('.tono').forEach((b) => { b.onclick = () => { marcar(); el.tono = b.dataset.t; cambio(); inspector(); }; });
   if ($('#i-cerrado')) $('#i-cerrado').onchange = (e) => { marcar(); el.cerrado = e.target.checked; cambio(); };
   if (mb) {
     // al cambiar la placa, los cables enganchados siguen al pin con el mismo nombre
@@ -1021,9 +1054,10 @@ function svgDe(v, css) {
   tmp.style.cssText = 'position:absolute; left:-9999px; top:0; width:10px; height:10px; visibility:hidden';
   const dentro = contenido(v, true);
   g.innerHTML = dentro; tmp.appendChild(g); document.body.appendChild(tmp);
-  const b = g.getBBox(); tmp.remove();
+  const b = cajaDom(g); tmp.remove();
   const m = 16, x = Math.floor(b.x - m), y = Math.floor(b.y - m), w = Math.ceil(b.width + 2 * m), h = Math.ceil(b.height + 2 * m);
-  return { w, h, svg: `<svg xmlns="${NS}" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}">${css ? `<style>${css}</style>` : ''}<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/>${dentro}</svg>` };
+  const sim = v === 'proto' ? simbolosDe(dentro) : '';   // los dibujos de Wokwi que usa van adentro: el SVG no depende de la página
+  return { w, h, svg: `<svg xmlns="${NS}"${sim ? ' xmlns:xlink="http://www.w3.org/1999/xlink"' : ''} width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}">${css ? `<style>${css}</style>` : ''}${sim ? `<defs>${sim}</defs>` : ''}<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/>${dentro}</svg>` };
 }
 // Montserrat incrustada para que el PNG salga con la tipografía del sitio (si no hay red, queda Arial)
 let fuenteLista = null;
@@ -1045,6 +1079,7 @@ function fuenteCSS() {
   fuenteLista = Promise.race([bajarla, tope]); return fuenteLista;
 }
 async function exportarPNG(v = vista) {
+  if (v === 'proto' && real()) await asegurarArte();
   const r = svgDe(v, await fuenteCSS()); if (!r) return null;
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(r.svg);
   await img.decode(); await new Promise((ok) => setTimeout(ok, 60));
@@ -1091,7 +1126,7 @@ const EJEMPLOS = [
     e.pon('ldr', [120, -20], { b: [120, 60], rotulo: 'LDR1' }); e.pon('resistencia', [120, 60], Object.assign({ b: [120, 140], rotulo: 'R1' }, R10K));
     e.cable('negro', V3, [20, -20], [120, -20]); e.cable('negro', GND, [40, -40], [200, -40], [200, 140], [120, 140]); e.cable('negro', P1, [-20, 60], [120, 60]);
     const mb = p.pon('microbit', [140, 430], { ver: 'v2', arriba: true });
-    p.pon('resistencia', hoyo(8, 'g'), Object.assign({ b: hoyo(15, 'g') }, R10K)); p.pon('ldr', hoyo(11, 'h'), { b: hoyo(15, 'h') });
+    p.pon('resistencia', hoyo(15, 'f'), Object.assign({ b: hoyo(8, 'f'), rotulo: 'R1' }, R10K)); p.pon('ldr', hoyo(11, 'h'), { b: hoyo(15, 'h'), rotulo: 'LDR1' });
     p.cable('negro', p.pata(mb, 'GND'), hoyo(8, 'j')); p.cable('rojo', p.pata(mb, '3V'), hoyo(11, 'j')); p.cable('amarillo', p.pata(mb, 'P1'), hoyo(15, 'j'));
   }) },
   { nombre: 'Ultrasonido HC-SR04P con extensor', nota: 'Distancia con el sensor de 3,3 V en dos pines libres: TRIG en P8 y ECHO en P16.', hacer: () => armar('Ultrasonido con extensor', (e, p) => {
@@ -1111,8 +1146,8 @@ const EJEMPLOS = [
     e.pon(pilas, [60, 20], { b: [60, 120], rotulo: 'B1' });
     e.cable('negro', [60, 20], e.pata(s, 'V+')); e.cable('negro', [60, 120], [100, 120], [100, 40], e.pata(s, 'GND')); e.cable('negro', GND, [40, 120], [60, 120]);
     if (S) e.cable('negro', e.pata(m, 'P0'), [-40, 160], [S[0] + 20, 160], [S[0] + 20, S[1]], S);
-    const mb = p.pon('microbit', [100, 440], { ver: 'v2', arriba: true }), sv = p.pon('servo', [380, 450], { rot: 1 }), b = p.pon(pilas, [520, 450], { rot: 1 });
-    p.cable('rojo', p.pata(b, '+'), hoyo(27, 2)); p.cable('negro', p.pata(b, '−'), hoyo(29, 3)); p.cable('rojo', p.pata(sv, 'V+'), hoyo(20, 2)); p.cable('negro', p.pata(sv, 'GND'), hoyo(18, 3));
+    const mb = p.pon('microbit', [100, 440], { ver: 'v2', arriba: true }), sv = p.pon('servo', [380, 450], { rot: 1 }), b = p.pon(pilas, [600, 450], { rot: 1 });
+    p.cable('rojo', p.pata(b, '+'), hoyo(28, 2)); p.cable('negro', p.pata(b, '−'), hoyo(30, 3)); p.cable('rojo', p.pata(sv, 'V+'), hoyo(20, 2)); p.cable('negro', p.pata(sv, 'GND'), hoyo(18, 3));
     p.cable('negro', p.pata(mb, 'GND'), hoyo(5, 3)); p.cable('amarillo', p.pata(mb, 'P0'), p.pata(sv, 'SEÑAL'));
   }) },
 ];
@@ -1175,7 +1210,7 @@ function vinculo() {
 let gMedir = null;
 function medir(el, v) {
   if (!gMedir) { const s = document.createElementNS(NS, 'svg'); s.style.cssText = 'position:absolute; left:-9999px; top:0; width:10px; height:10px; visibility:hidden'; gMedir = document.createElementNS(NS, 'g'); s.appendChild(gMedir); document.body.appendChild(s); }
-  gMedir.innerHTML = dibujar(el, v, true); const b = gMedir.getBBox(); gMedir.innerHTML = '';
+  gMedir.innerHTML = dibujar(el, v, true); const b = cajaDom(gMedir); gMedir.innerHTML = '';
   let x0 = b.x, y0 = b.y, x1 = b.x + b.width, y1 = b.y + b.height;
   terminales(el, v).forEach((p) => { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); });
   return { x0, y0, x1, y1 };
@@ -1188,7 +1223,7 @@ function conexiones(desde) {
     const c = comp(s);
     if (!c[hacia]) { if (nat(s, desde) !== 'tierra') fuera.push(nombreEl(s)); return; }
     const el = { id: uid(), c: s.c }; if (c[hacia].f === 'nativo') el.t = c[hacia].t;
-    ['rotulo', 'valor', 'ohm', 'tol', 'ver', 'ext', 'cerrado'].forEach((k) => { if (s[k] != null && s[k] !== '') el[k] = s[k]; });
+    ['rotulo', 'valor', 'ohm', 'tol', 'ver', 'ext', 'cerrado', 'tono'].forEach((k) => { if (s[k] != null && s[k] !== '') el[k] = s[k]; });
     dest.set(s.id, el); els.push(el);
   });
   const esTierra = (x) => { const s = porId(x.el, desde); return !!s && nat(s, desde) === 'tierra'; };
@@ -1246,8 +1281,16 @@ function aProtoboard() {
     if (d.n === 2) {
       const nm = nombres(Object.assign({ a: [0, 0], b: [20, 0] }, el), 'proto'), largo = el.t === 'resistencia' || el.t === 'diodo' || fo.f === 'axial' ? 4 : (d.alto || 0) > 13 ? 2 : 1;
       const sig = siguiente(k, m), pv = prev[m], rp = pv ? enSerie(nets, pv.el, el) : null, rs = sig && D(sig).n === 2 && mitadDe.get(sig) === m ? enSerie(nets, el, sig) : null;
-      let cIzq = cur[m], fila = FILA_P[m][0], pIzq = rs ? nm.find((n) => n !== pataDe(rs, el)) : nm[0];
-      if (rp && pv.pDer === pataDe(rp, pv.el) && (!rs || pataDe(rs, el) !== pataDe(rp, el))) { cIzq = pv.cDer; fila = FILA_P[m][pv.fila === FILA_P[m][0] ? 1 : 0]; pIzq = pataDe(rp, el); }   // en serie: comparte la columna con la anterior
+      // En el estilo realista, las piezas que van de pie (LED, zumbador) quedan junto al canal y las acostadas una fila más allá, para que no se tapen
+      const rl = real() && m === 'f' ? realDe(comp(el)) : null, pref = real() && m === 'f' ? (rl && rl.wokwi && rl.alto > 30 ? 'f' : 'h') : FILA_P[m][0];
+      const dePie = !!rl && rl.wokwi && rl.alto > 30, pIzq0 = rs ? nm.find((n) => n !== pataDe(rs, el)) : nm[0];
+      let cIzq = cur[m], fila = pref, pIzq = pIzq0;
+      if (rp && pv.pDer === pataDe(rp, pv.el) && (!rs || pataDe(rs, el) !== pataDe(rp, el))) { cIzq = pv.cDer; fila = pv.fila === pref ? FILA_P[m].find((f) => f !== pref) : pref; pIzq = pataDe(rp, el); }   // en serie: comparte la columna con la anterior
+      if (real()) {   // que una pieza de pie no tape a las de la otra mitad (ni al revés): se corre hasta tener lugar
+        const choca = (c) => cubre(fila, c, c + largo) || (dePie && fila === 'f' && ['e', 'd', 'c'].some((f) => cubre(f, c - 1, c + largo + 1)));
+        if (choca(cIzq)) { if (cIzq !== cur[m]) { cIzq = cur[m]; fila = pref; pIzq = pIzq0; } while (choca(cIzq) && cIzq < 58) cIzq++; }
+        if (dePie && fila === 'f') ['e', 'd', 'c'].forEach((f) => tender(f, cIzq - 1, cIzq + largo + 1));
+      }
       const cDer = cIzq + largo, izq = hoyo(cIzq, fila), der = hoyo(cDer, fila);
       el.a = nm[0] === pIzq ? izq : der; el.b = nm[0] === pIzq ? der : izq;
       tender(fila, cIzq, cDer); if (el.rotulo && FILA_R[fila]) tender(FILA_R[fila], cIzq, cDer);   // ni puentes por encima de la pieza ni de su rótulo
@@ -1255,6 +1298,11 @@ function aProtoboard() {
     } else if (canal(el)) {
       const ancho = fo.f === 'dip' ? Math.ceil(comp(el).pines.length / 2) : 3, c = Math.max(cur.f, cur.a);
       el.a = hoyo(c, 'e'); cur.f = cur.a = c + ancho + 1; prev.f = prev.a = null;
+    } else if (real()) {   // el dibujo realista es más grande que la huella: se le deja su lugar (lo alto tapa también la mitad de arriba)
+      const n = d.term(Object.assign({ a: [0, 0] }, el)).length, b = medir(Object.assign({}, el, { a: hoyo(10, 'f'), rotulo: '' }), 'proto');
+      const izq = Math.max(0, Math.ceil((colX(10) - b.x0 - 10) / G)), der = Math.max(0, Math.ceil((b.x1 - colX(10 + n - 1) - 10) / G)), alta = FILAS.f - b.y0 > 50, libre = alta ? Math.max(cur.f, cur.a) : cur.f;
+      const c = Math.max(2, libre + izq - (libre <= 2 ? 2 : 0));
+      el.a = hoyo(c, 'f'); cur.f = c + n + der + 1; prev.f = null; if (alta) { cur.a = cur.f; prev.a = null; ['a', 'b', 'c', 'd', 'e'].forEach((f) => tender(f, c - izq, c + n - 1 + der)); }
     } else {
       const n = d.term(Object.assign({ a: [0, 0] }, el)).length, w = fo.f === 'modulo' ? Math.max(fo.w || 0, (n - 1) * G + 18) : 0, extra = Math.max(0, Math.ceil(((w - (n - 1) * G) / 2 - 8) / G));
       const alta = (fo.f === 'modulo' ? Math.max(fo.h || 40, 40) : el.t === 'potenciometro' ? 52 : 30) > 50, c = alta ? Math.max(cur.f, cur.a) : cur.f;   // un cuerpo alto pasa el canal y tapa la mitad de arriba
@@ -1432,20 +1480,39 @@ function pintarVinculo() {   // indicador permanente junto a las pestañas
     : '<div class="vinc-t">Qué difiere</div>' + v.difs.slice(0, 12).map((t) => `<div class="vinc-d">${esc(t)}</div>`).join('') + (v.difs.length > 12 ? `<div class="vinc-d">… y ${v.difs.length - 12} más.</div>` : '') +
       '<div class="vinc-p">Para dejarlas iguales, generá una vista a partir de la otra.</div>';
 }
-$('#b-generar').onclick = () => generar(vista);
+$('#b-generar').onclick = async () => { if (vista === 'esq' && real() && !wokwiListo()) { estado('Cargando los dibujos…'); await asegurarArte(); } generar(vista); };
 $('#b-vinc').onclick = () => { $('#m-vinc').hidden = !$('#m-vinc').hidden; };
 
 /* ---------- Barra ---------- */
 function cambiarVista(v) {
   vista = v; sel = new Set(); pend = null; pinSel = null; compMirado = null; resFijo = resHover = resalte = null;
   $('#tab-esq').classList.toggle('act', v === 'esq'); $('#tab-proto').classList.toggle('act', v === 'proto');
-  $('#grilla').style.display = v === 'esq' ? '' : 'none'; $('#s-res').hidden = v !== 'esq'; $('#s-cols').hidden = v !== 'proto';
+  $('#grilla').style.display = v === 'esq' ? '' : 'none'; $('#s-res').hidden = v !== 'esq'; $('#s-cols').hidden = v !== 'proto'; $('#p-estilo').hidden = v !== 'proto';
+  if (v === 'proto' && real()) asegurarArte();
   if (herr !== 'sel' && !(COMP.get(herr) && COMP.get(herr)[v])) herr = 'sel';
   catalogo(); herramienta(herr); pintar(); inspector(); verVista();
   if (!V[v].listo) { V[v].listo = true; encuadrar(); }
   revisarAhora();
 }
 $('#tab-esq').onclick = () => cambiarVista('esq'); $('#tab-proto').onclick = () => cambiarVista('proto');
+// Dibujos de Wokwi Elements: se cargan una sola vez, al entrar por primera vez a la protoboard realista
+let arteP = null;
+function asegurarArte() {
+  if (!arteP) arteP = cargarWokwi($('#defs-arte')).then((ok) => {
+    if (ok) { cacheReal.clear(); if (vista === 'proto') { catalogo(); pintar(); inspector(); if (!V.proto.tocado) encuadrar(); } }
+    else if (real()) { ponerEstilo('linea', true); estado('No se pudieron cargar los dibujos realistas: la protoboard queda en estilo Línea.', true); }
+    return ok;
+  });
+  return arteP;
+}
+function ponerEstilo(e, sinRecordar) {
+  estilo = e === 'linea' ? 'linea' : 'real';
+  if (!sinRecordar) try { localStorage.setItem(CLAVE_ESTILO, estilo); } catch (er) {}
+  $('#e-real').classList.toggle('act', real()); $('#e-linea').classList.toggle('act', !real());
+  if (vista === 'proto') { if (real()) asegurarArte(); catalogo(); inspector(); }
+  cambio();
+}
+$('#e-real').onclick = () => ponerEstilo('real'); $('#e-linea').onclick = () => ponerEstilo('linea');
 $('#h-sel').onclick = () => { herramienta('sel'); inspector(); }; $('#h-cable').onclick = () => { herramienta(herr === 'cable' ? 'sel' : 'cable'); inspector(); };
 $('#h-deshacer').onclick = () => volver(hist, futuro); $('#h-rehacer').onclick = () => volver(futuro, hist);
 $('#h-encuadrar').onclick = encuadrar;
@@ -1461,8 +1528,9 @@ document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.con-me
 
 /* ---------- Inicio ---------- */
 if (EMBED) { $('#b-insertar').hidden = false; $('#b-abrir').hidden = true; $('#b-guardar').hidden = true; }
-try { const g = localStorage.getItem(CLAVE); if (g) { E = limpiar(JSON.parse(g)); if (E.esq.els.length || E.proto.els.length) estado('Se recuperó el circuito en el que estabas trabajando.'); } } catch (e) {}
+try { const g = localStorage.getItem(CLAVE); if (g) { const o = JSON.parse(g); if (o && (o.estilo === 'linea' || o.estilo === 'real')) estilo = o.estilo; E = limpiar(o); if (E.esq.els.length || E.proto.els.length) estado('Se recuperó el circuito en el que estabas trabajando.'); } } catch (e) {}
 $('#n-circ').value = E.titulo; $('#s-res').value = E.resEstilo; $('#s-cols').value = String(colsP()); botonesHist();
+$('#e-real').classList.toggle('act', real()); $('#e-linea').classList.toggle('act', !real());
 cambiarVista('esq');
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { catalogo(); pintar(); });
 
@@ -1472,6 +1540,11 @@ window.__circuitos = {
   get estado() { return E; }, get vista() { return vista; }, get elegido() { return [...sel][0] || null; }, get elegidos() { return [...sel]; }, get pin() { return pinSel; },
   exportarPNG: (v) => exportarPNG(aVista(v)), exportarSVG: (v) => { const r = svgDe(aVista(v)); return r ? r.svg : null; },
   cargar, cambiarVista, encuadrar, bandas, leerOhm, textoOhm,
+  get estilo() { return estilo; }, ponerEstilo, arteListo: () => asegurarArte(), cajaDom,
+  // cuánto se aparta de su agujero la peor pata del dibujo de Wokwi de un componente (null si no usa uno o no se ajusta por patas)
+  ajuste: (id, rot) => { const c = COMP.get(id), r = c && c.proto ? realDe(c) : null, d = c && c.proto ? defDe(c, 'proto') : null; if (!r || !r.wokwi || !r.resto) return null; const el = { c: id, a: d.ancla ? d.ancla([240, 220]) : [240, 220], b: [260, 220], rot: rot ? 1 : 0 }; return N(r.resto(el, d.n === 2 ? [el.a, el.b] : d.term(el))); },
+  usaWokwi: (id) => { const c = COMP.get(id), r = c && c.proto ? realDe(c) : null; return !!(r && r.wokwi); },
+  miniatura: (id, v = vista) => { const c = COMP.get(id), ant = vista; if (!c || !c[v]) return null; vista = v; try { return icono(c); } finally { vista = ant; } },
   vinculo, generar: (desde, sinPreguntar) => generar(aVista(desde), sinPreguntar), redesTodas: (v) => redes(aVista(v), true),
   redes: (v) => redes(aVista(v)), avisos: () => { revisarAhora(); return avisos; }, buscar: (t) => buscar(t, vista).map((c) => c.id),
   componentes: () => LISTA.map((c) => c.id), ejemplo: (i) => cargar(EJEMPLOS[i].hacer()), ejemplos: EJEMPLOS.map((x) => x.nombre),
