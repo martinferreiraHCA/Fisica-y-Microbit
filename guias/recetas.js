@@ -78,7 +78,7 @@ export const LISTAS = [
       { id: 'soporte', de: 'elemento:soporte-universal', params: { alto: 400 }, x: 0, y: 0, paso: 1 },
       { id: 'nuez', de: 'elemento:nuez', pos: [14, 26, 250], paso: 1, entra: 'atras' },
       { id: 'pinza', de: 'elemento:pinza', params: { largo: 150 }, pos: [90, 14, 263], paso: 1, entra: 'derecha' },
-      { id: 'vaso', de: 'elemento:vaso', params: { diametro: 80, alto: 100 }, pos: [190, 14, 50], paso: 2, entra: 'frente' },
+      { id: 'vaso', de: 'elemento:vaso', params: { volumen: 400 }, pos: [190, 14, 55], paso: 2, entra: 'frente' },
       { id: 'sonda', de: 'elemento:termometro', params: { largo: 240 }, nombre: 'Sonda de temperatura', pos: [190, 14, 145], paso: 3, entra: 'arriba' },
       { id: 'mb', de: 'elemento:microbit', x: 60, y: -150, paso: 4 }] } },
   { clave: 'pendulo-carton', titulo: 'Péndulo con soporte de cartón', resumen: 'El soporte de péndulo encastrable del catálogo, con hilo y lenteja. Tarda unos segundos: usa el motor de piezas.', receta: {
@@ -89,6 +89,25 @@ export const LISTAS = [
       { id: 'hilo', de: 'elemento:hilo', params: { largo: 170 }, colgar: 'soporte/Brazo', mover: [0, 28, 6], paso: 2 },
       { id: 'lenteja', de: 'elemento:lenteja', params: { diametro: 28 }, colgar: 'hilo', mover: [0, 0, 4], paso: 2 },
       { id: 'mb', de: 'elemento:microbit', alLado: ['soporte', '+x'], mover: [40, 0, 0], paso: 3 }] } },
+  { clave: 'calentamiento', titulo: 'Calentamiento de agua', resumen: 'Soporte ya armado con aro, rejilla y pinza, mechero, vaso de bohemia y sonda de temperatura.', receta: {
+    titulo: 'Calentamiento de agua', tipo: 'Práctica', bajada: 'Calor y temperatura', descripcion: 'El mechero calienta el agua del vaso, apoyado en la rejilla. La sonda, sostenida por la pinza, mide la temperatura en función del tiempo.',
+    pasos: [{ titulo: 'Soporte', texto: 'Apoyar el soporte con el aro y la rejilla a unos 20 cm de altura y la pinza más arriba.' }, { titulo: 'Mechero', texto: 'Ubicar el mechero debajo del centro de la rejilla, todavía apagado.' }, { titulo: 'Vaso con agua', texto: 'Medir el agua con la probeta, pasarla al vaso de bohemia y apoyarlo en el centro de la rejilla.' }, { titulo: 'Sonda de temperatura', texto: 'Sujetar la sonda con la pinza, con la punta dentro del agua y sin tocar el vidrio.' }, { titulo: 'micro:bit', texto: 'Conectar la sonda a la micro:bit, empezar a registrar y recién entonces encender el mechero.' }],
+    piezas: [
+      { id: 'soporte', de: 'elemento:soporte-para-calentar', params: { alto: 600, altura: 200, pinza: 420, diametro: 90 }, pos: [48.75, 5.75, 307.5], paso: 1 },
+      { id: 'mechero', de: 'elemento:mechero', params: { alto: 130 }, x: 135, y: 14, paso: 2, entra: 'frente' },
+      { id: 'vaso', de: 'elemento:vaso', params: { volumen: 250 }, sobre: 'soporte/Rejilla', paso: 3 },
+      { id: 'sonda', de: 'elemento:termometro', params: { largo: 200 }, nombre: 'Sonda de temperatura', pos: [135, 14, 328], paso: 4, entra: 'arriba' },
+      { id: 'probeta', de: 'elemento:probeta', params: { volumen: 100 }, x: 300, y: -40, paso: 3 },
+      { id: 'mb', de: 'elemento:microbit', x: 30, y: -150, paso: 5 }] } },
+  { clave: 'densidad', titulo: 'Densidad de un sólido', resumen: 'Balanza digital para la masa y probeta con agua para el volumen por desplazamiento.', receta: {
+    titulo: 'Densidad de un sólido', tipo: 'Práctica', bajada: 'Masa, volumen y densidad', descripcion: 'La masa del cuerpo se mide con la balanza y su volumen, por el agua que desplaza en la probeta.',
+    pasos: [{ titulo: 'Balanza', texto: 'Apoyar la balanza sobre una mesa firme, encenderla y ponerla en cero.' }, { titulo: 'Masa', texto: 'Apoyar el cuerpo en el centro del plato y anotar su masa.' }, { titulo: 'Probeta con agua', texto: 'Pasar agua del vaso a la probeta y anotar el volumen inicial, mirando la marca a la altura de los ojos.' }, { titulo: 'Volumen', texto: 'Sumergir el cuerpo en la probeta con cuidado y anotar el volumen final: la diferencia es su volumen.' }],
+    piezas: [
+      { id: 'balanza', de: 'elemento:balanza', x: 0, y: 0, paso: 1 },
+      { id: 'cuerpo', de: 'elemento:cilindro', params: { diametro: 25, alto: 40 }, nombre: 'Cuerpo', relleno: 'gris', pos: [0, 25, 56], paso: 2, entra: 'arriba' },
+      { id: 'vaso', de: 'elemento:vaso', params: { volumen: 250 }, x: 170, y: 40, paso: 3 },
+      { id: 'probeta', de: 'elemento:probeta', params: { volumen: 100 }, x: 280, y: -20, paso: 3 },
+      { id: 'cuerpo2', de: 'elemento:cilindro', params: { diametro: 25, alto: 40 }, nombre: 'Cuerpo', relleno: 'gris', pos: [280, -20, 300], paso: 4, entra: 'arriba' }] } },
 ];
 
 /* ---------- Prompt para la IA ---------- */
@@ -115,7 +134,9 @@ export function promptIA(narracion, catalogo) {
   p('- `"entra"` dice desde dónde llega la pieza en el dibujo del paso: "arriba" (por defecto), "abajo", "izquierda", "derecha", "frente", "atras", o un vector [dx, dy, dz] en mm.');
   p(); p('# 5. Elementos de laboratorio disponibles (`"de": "elemento:<id>"`)');
   p('Cada uno acepta en `"params"` las claves que se indican (en mm salvo que diga otra cosa); lo que no pongas toma el valor entre paréntesis.');
-  GRUPOS.forEach((g, i) => { p(); p('## ' + g); ELEMENTOS.filter((e) => e.grupo === i).forEach((e) => p('- `' + e.id + '` — ' + e.nombre + '. ' + e.desc + (e.campos.length ? ' Parámetros: ' + e.campos.map((c) => '`' + c[2] + '` (' + c[1] + ') ' + c[0].replace(/ \(mm\)$/, '').toLowerCase()).join('; ') + '.' : ''))); });
+  GRUPOS.forEach((g, i) => { p(); p('## ' + g); ELEMENTOS.filter((e) => e.grupo === i).forEach((e) => p('- `' + e.id + '` — ' + e.nombre + '. ' + e.desc + (e.campos.length ? ' Parámetros: ' + e.campos.map((c) => '`' + c[2] + '` (' + c[1] + ') ' + c[0].replace(/ \(mm\)$/, '').toLowerCase().replace('(ml)', '(mL)') + (c[3] ? ', solo uno de: ' + c[3].join(', ') : '')).join('; ') + '.' : '') +
+    (e.conjunto ? ' Es un conjunto ya armado: trae estas piezas → ' + e.conjunto(...e.campos.map((c) => c[1])).map((q) => q.nombre).join(', ') + '. No hace falta agregar aparte el soporte ni la nuez; para colgar o apoyar algo en una de sus piezas usá `"id del conjunto/Nombre de la pieza"`.' : ''))); });
+  p(); p('Cuando el montaje usa un soporte con brazo, pinza o aro, preferí los «Soportes ya armados»: se ubican con `"x"` e `"y"` y ya traen todo en su lugar. El material de vidrio se elige por volumen (mL).');
   p(); p('Medidas útiles: el soporte universal tiene una base de 200 × 130 × 15 mm y su varilla (12 mm de diámetro) queda 40 mm hacia el fondo del centro de la base; para cruzarle una varilla horizontal a una altura h se usa una nuez con `"pos": [14, 26, h]` y la varilla con `"rot": [0, 90, 0]` y `"pos": [largo/2 − 30, 14, h + 13]`. La micro:bit mide 52 × 42 mm; el carrito de 160 mm de largo mide 70 de ancho y 48 de alto; el sensor de ultrasonido mide 45 × 20 mm.');
   if (catalogo && (catalogo.carton.length || catalogo['3d'].length)) {
     p(); p('# 6. Piezas del catálogo de fisicabit (se fabrican en cartón o impresas en 3D)');

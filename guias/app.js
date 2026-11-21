@@ -5,7 +5,7 @@ import { TransformControls } from '../lib/TransformControls.js';
 import * as motor from './motor.js';
 import { Arte } from './arte.js';
 import { construirFicha, figuraPaso, figuraArmado, exportarProtocolo, LETRAS } from './ficha.js';
-import { ELEMENTOS, GRUPOS, elemento, valores } from './elementos.js';
+import { ELEMENTOS, GRUPOS, elemento, valores, piezasDe } from './elementos.js';
 import { LISTAS, promptIA, leerReceta } from './recetas.js';
 
 const $ = (s) => document.querySelector(s);
@@ -280,7 +280,7 @@ function partesDeConjunto(piezas, desplazar) {
     const igual = geos.find((g) => g.n === q.pos.length && Math.abs(g.vol - vol) < 1e-3 * vol && g.nombre === q.nombre && mismaForma(E.geos[g.id].pos, q.pos));
     const id = igual ? igual.id : nuevaGeo(q.pos);
     if (!igual) geos.push({ id, n: q.pos.length, vol, nombre: q.nombre });
-    nuevas.push(nuevaParte(id, q.nombre, [c[0] + dx, c[1] + dy, c[2] + dz]));
+    nuevas.push(nuevaParte(id, q.nombre, [c[0] + dx, c[1] + dy, c[2] + dz], q.relleno ? { relleno: q.relleno } : null));
   });
   return nuevas;
 }
@@ -300,8 +300,9 @@ async function armarReceta(r, avisar) {
     try {
       if (tipo === 'elemento') {
         const e = elemento(llano(ref).replace(/ /g, '-')) || ELEMENTOS.find((x) => llano(x.nombre) === llano(ref)); if (!e) throw new Error('no existe');
-        const v = valores(e, q.params), pos = e.hacer(...v); motor.centrar(pos);
-        nuevas = [nuevaParte(nuevaGeo(pos), String(q.nombre || e.rotulo(...v)), [0, 0, 0], { relleno: e.relleno || 'blanco' })];
+        const v = valores(e, q.params);
+        if (e.conjunto) nuevas = partesDeConjunto(e.conjunto(...v));   // soporte ya armado: varias piezas, como un diseño de cartón
+        else { const pos = e.hacer(...v); motor.centrar(pos); nuevas = [nuevaParte(nuevaGeo(pos), String(q.nombre || e.rotulo(...v)), [0, 0, 0], { relleno: e.relleno || 'blanco' })]; }
       } else if (tipo === 'carton' || tipo === '3d') {
         avisar && avisar('Preparando «' + ref + '» del catálogo (la primera vez carga el motor, ~14 MB)…');
         const cat = await catalogoListo(), d = (cat[tipo] || []).find((x) => llano(x.nombre) === llano(ref)); if (!d) throw new Error('no está en el catálogo');
@@ -370,9 +371,20 @@ function archivos() { const box = $('#cat-lista'); const g = document.createElem
 function detalleFerreteria(f) {
   const box = $('#cat-detalle'); box.className = ''; box.innerHTML = '<h3 style="margin:0 0 4px">' + f.nombre + '</h3><p class="nota" style="margin:0 0 12px"></p>';
   box.querySelector('p').textContent = f.desc || '';
-  const ins = f.campos.map(([t, v]) => { const fila = document.createElement('div'); fila.className = 'par-fila'; fila.innerHTML = '<div>' + t + '</div>'; const i = document.createElement('input'); i.type = 'number'; i.value = v; i.min = 0.5; fila.appendChild(i); box.appendChild(fila); return i; });
+  // cada campo: un número o, si trae opciones (volúmenes del material de vidrio), una lista
+  const ins = f.campos.map(([t, v, , ops]) => {
+    const fila = document.createElement('div'); fila.className = 'par-fila'; fila.innerHTML = '<div>' + t + '</div>'; let i;
+    if (ops) { i = document.createElement('select'); ops.forEach((o) => { const op = document.createElement('option'); op.value = o; op.textContent = o; if (o === v) op.selected = true; i.appendChild(op); }); }
+    else { i = document.createElement('input'); i.type = 'number'; i.value = v; i.min = 0.5; }
+    fila.appendChild(i); box.appendChild(fila); return i;
+  });
+  if (f.conjunto) { const nota = document.createElement('p'); nota.className = 'nota'; nota.style.margin = '10px 0 0'; nota.textContent = 'Entra ya armado, con cada pieza por separado: después se pueden mover, quitar o repartir en pasos.'; box.appendChild(nota); }
   const b = document.createElement('button'); b.className = 'btn pri'; b.textContent = 'Agregar a la guía'; b.style.marginTop = '10px';
-  b.onclick = () => { const v = ins.map((i, k) => Math.max(0.5, parseFloat(i.value) || f.campos[k][1])); agregarMalla(f.hacer(...v), f.rotulo(...v), f.relleno ? { relleno: f.relleno } : null); cerrarModal(); estado('Pieza agregada: ' + f.rotulo(...v) + '. Arrastrá las flechas para llevarla a su lugar.'); };
+  b.onclick = () => {
+    const v = ins.map((i, k) => Math.max(0.5, parseFloat(i.value) || f.campos[k][1])), ps = piezasDe(f, v);
+    if (f.conjunto) agregarConjunto(ps); else agregarMalla(ps[0].pos, ps[0].nombre, f.relleno ? { relleno: f.relleno } : null);
+    cerrarModal(); estado((f.conjunto ? 'Agregado: ' + f.rotulo(...v) + ' (' + ps.length + ' piezas)' : 'Pieza agregada: ' + f.rotulo(...v)) + '. Arrastrá las flechas para llevarlo a su lugar.');
+  };
   box.appendChild(b);
 }
 async function detalleDiseno(d) {
