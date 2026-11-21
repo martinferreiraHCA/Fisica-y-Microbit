@@ -63,6 +63,25 @@ comparte la pantalla, ○ comparte un botón, ◆ bus I2C). Al tocar un pin (en 
 dibujo o en la lista del inspector) aparece su ficha: para qué sirve, para qué
 no y qué tener en cuenta en esa versión.
 
+### Los pines de la micro:bit como fuente
+
+En **Alimentación** hay tres entradas para usar la placa como fuente sin
+dibujarla entera: **3V de la micro:bit**, **GND de la micro:bit** y **Pin de la
+micro:bit (P0, P1, P2…)**. En el esquemático son una etiqueta con el nombre del
+pin; en la protoboard, un trozo del borde de la placa con su anillo.
+
+- Al elegir uno se puede **cambiar el pin** (3V, GND o cualquiera del extensor)
+  y, si no hay una placa en el dibujo, la **versión** de la micro:bit; debajo
+  aparece para qué sirve y para qué no ese pin.
+- Los pines sueltos con el **mismo nombre son un mismo punto** aunque no haya
+  un cable entre ellos (como las etiquetas de un esquema), y también lo son con
+  ese pin de la placa si está dibujada.
+- Para los **avisos** cuentan como pines de la micro:bit: un LED sin resistencia
+  entre un pin y GND, 9 V al 3V o un sensor analógico en un pin que no mide se
+  marcan igual que con la placa entera.
+- En el archivo son los componentes `mb-3v`, `mb-gnd` y `mb-pin`, con el pin
+  elegido en `pin`.
+
 ## Avisos de compatibilidad
 
 Con una micro:bit en el dibujo, el editor calcula las **redes** (qué patas
@@ -104,6 +123,9 @@ marcan en el lienzo los elementos y el pin; con un clic quedan elegidos.
 Cada entrada de la base dice cómo se dibuja en cada vista (`esq.f`,
 `proto.f`; el esquema completo está en el encabezado de `componentes.js`):
 
+- El capacitor electrolítico lleva `pol: true` en su `esq`: el símbolo marca la
+  polaridad (placa recta y signo + del lado de la pata «+», placa curva del
+  negativo).
 - Esquemático: símbolos propios de dos patas (resistencia, pila, LED,
   inductor, zener, fusible…), de tres patas (`npn`, `pnp`, `nmos`, `pmos`,
   `pot3`, `conmutador`, `opamp`, `regulador`) y `bloque` (caja con los pines

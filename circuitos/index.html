@@ -27,6 +27,9 @@ button, input, select, textarea { font-family:inherit; font-size:inherit; color:
 .barra { display:flex; align-items:center; gap:8px; background:#fff; border-bottom:2px solid #000; padding:7px 12px; flex:none; flex-wrap:wrap; }
 .marca { font-size:15px; letter-spacing:.2px; margin-right:6px; white-space:nowrap; } .marca b { font-weight:800; } .marca span { font-weight:300; }
 .marca i { font-style:normal; display:inline-block; background:#000; color:#fff; padding:2px 8px; margin-left:8px; font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; vertical-align:2px; }
+.btn.sitio { text-transform:none; text-decoration:none; font-size:15px; font-weight:400; letter-spacing:.2px; padding:2px 10px; } .btn.sitio .lg span { font-weight:300; } .btn.sitio .lg b { font-weight:800; }
+.marca .logo { display:none; } .marca.sola .logo { display:inline; } .marca .logo + i { margin-left:0; } .marca.sola .logo + i { margin-left:8px; }
+@media (max-width:1360px) { .barra .nombre { width:120px; } }
 .tabs { display:flex; } .tabs .btn + .btn { border-left:0; }
 .hueco { flex:1; }
 .barra .nombre { width:170px; border:1.5px solid #000; border-radius:999px; padding:5px 14px; font-weight:600; background:#fff; } .nombre::placeholder { color:#999; font-weight:500; }
@@ -132,7 +135,8 @@ input[type=text], select { width:100%; border:1.5px solid #000; border-radius:0;
 </head>
 <body>
 <div class="barra">
-  <div class="marca"><span>fisica</span><b>bit</b><i>Circuitos</i></div>
+  <a class="btn sitio" id="b-sitio" href="../" title="Volver al inicio de fisicabit.com"><span>←</span><span class="lg"><span>fisica</span><b>bit</b></span></a>
+  <div class="marca" id="marca"><span class="logo"><span>fisica</span><b>bit</b></span><i>Circuitos</i></div>
   <input type="text" class="nombre" id="n-circ" placeholder="Nombre del circuito">
   <div class="tabs"><button class="btn act" id="tab-esq">1 · Esquemático</button><button class="btn" id="tab-proto">2 · Protoboard</button></div>
   <button class="btn" id="b-generar" title="Arma la otra pestaña con los mismos componentes y las mismas conexiones">Generar protoboard →</button>

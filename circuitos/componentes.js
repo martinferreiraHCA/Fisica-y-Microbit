@@ -22,6 +22,7 @@
 //             led { vf: V, i: mA }  pata de un LED     fuente+ { v }  fuente-     pas  pasivo
 //   esq     cómo se dibuja en el esquemático:
 //             { f: 'nativo', t }            uno de los símbolos que ya tiene el editor
+//                                           (pol: true en un capacitor = con polaridad: placa curva del negativo y signo +)
 //             { f: <símbolo de 2 patas> }   inductor · zener · fotodiodo · fusible · altavoz · solar · generador · osciloscopio · ohmimetro · rele-bobina · cristal · varistor
 //             { f: <símbolo de 3 patas> }   npn · pnp · nmos · pmos · pot3 · conmutador · opamp · regulador
 //             { f: 'bloque', txt, izq: [nombres de pin], der: [nombres de pin] }   caja con pines a los lados
@@ -38,6 +39,8 @@
 //             coinciden uno a uno con `pines` (pueden repetirse: terminales unidos por dentro, como
 //             las 4 patas de un pulsador; o ser un subconjunto, como el símbolo de un operacional)
 //   avisos  textos fijos para la ficha (opcional)   solo  'v2' si necesita esa versión de micro:bit
+//   mb      pin de la micro:bit que representa (3V, GND, P0…): un borne suelto de la placa, sin dibujarla entera.
+//           El pin se puede cambiar en cada elemento; para los avisos cuenta como ese pin de la micro:bit.
 
 export const CATEGORIAS = [
   { id: 'basicos', nombre: 'Básicos' },
@@ -87,7 +90,7 @@ export const COMPONENTES = [
   { id: 'capacitor-electrolitico', nombre: 'Capacitor electrolítico', cat: 'basicos', alias: 'condensador polarizado uF', tk: true, pref: 'C', valor: '100 µF',
     desc: 'Capacitor de mucha capacidad con polaridad: la franja marca el negativo. Al revés se puede romper.', fisica: 'Carga y descarga de un capacitor (constante de tiempo RC), energía almacenada.',
     datos: [['Valores', '1 µF – 4700 µF'], ['Tensión', '16–50 V']], hoja: 'https://www.rubycon.co.jp/wp-content/uploads/catalog-aluminum/YXF.pdf',
-    pines: P2('+', '−'), esq: nat('capacitor'), proto: nat('capacitor') },
+    pines: P2('+', '−'), esq: nat('capacitor', { pol: true }), proto: nat('capacitor') },
   { id: 'inductor', nombre: 'Inductor (bobina)', cat: 'basicos', alias: 'bobina inductancia henry choque', tk: true, pref: 'L', valor: '10 mH',
     desc: 'Bobina que se opone a los cambios de corriente.', fisica: 'Circuitos RL y RLC, inducción electromagnética, oscilaciones.',
     datos: [['Valores', '1 µH – 100 mH']],
@@ -105,6 +108,19 @@ export const COMPONENTES = [
     desc: 'Un rótulo libre para anotar el dibujo.', pines: [], esq: nat('texto'), proto: null },
 
   /* ===== Alimentación ===== */
+  { id: 'mb-3v', nombre: '3V de la micro:bit', cat: 'fuentes', alias: 'microbit placa pin fuente positivo vcc 3,3 v 3.3v alimentacion borne', tk: false, mb: '3V',
+    desc: 'El pin 3V de la micro:bit usado como fuente de 3,3 V, sin dibujar la placa entera. Junto con el GND alimenta sensores y módulos chicos.', fisica: 'Alimentar el sensor de la práctica desde la misma placa que mide.',
+    datos: [['Tensión', '3,3 V'], ['Para circuitos externos', '90 mA (V1) · 270 mA (V2)']], hoja: 'https://tech.microbit.org/hardware/powersupply/',
+    pines: [], esq: nat('mbpin'), proto: nat('mbpin') },
+  { id: 'mb-gnd', nombre: 'GND de la micro:bit', cat: 'fuentes', alias: 'microbit placa pin fuente negativo masa tierra 0 v alimentacion borne', tk: false, mb: 'GND',
+    desc: 'El pin GND de la micro:bit: el negativo (0 V) del circuito. Todo lo que se conecta a la placa tiene que compartir este GND.', fisica: 'Referencia de 0 V de todas las medidas.',
+    datos: [['Tensión', '0 V (referencia)']], hoja: 'https://tech.microbit.org/hardware/powersupply/',
+    pines: [], esq: nat('mbpin'), proto: nat('mbpin') },
+  { id: 'mb-pin', nombre: 'Pin de la micro:bit (P0, P1, P2…)', cat: 'fuentes', alias: 'microbit placa pin fuente salida digital pwm entrada analogica p0 p1 p2 borne señal', tk: false, mb: 'P0',
+    desc: 'Un pin de la micro:bit, sin dibujar la placa entera. Programado como salida es una fuente de 3,3 V que se prende y se apaga (o se regula con PWM); como entrada, mide la tensión del punto al que se conecta. El pin se elige al seleccionarlo.',
+    fisica: 'Encender un LED o medir un sensor indicando solo el pin que se usa.',
+    datos: [['Tensión de salida', '0 o 3,3 V'], ['Corriente por pin', '≈ 5 mA'], ['Entradas analógicas', 'P0, P1, P2 (P3, P4 y P10 con la pantalla apagada)']], hoja: 'https://tech.microbit.org/hardware/edgeconnector/',
+    pines: [], esq: nat('mbpin'), proto: nat('mbpin') },
   { id: 'pila-aa', nombre: 'Pila AA (1,5 V)', cat: 'fuentes', alias: 'bateria alcalina', tk: true, pref: 'B', valor: '1,5 V',
     desc: 'Una pila alcalina de 1,5 V.', fisica: 'Fuerza electromotriz y resistencia interna.', datos: [['Tensión', '1,5 V'], ['Capacidad', '≈ 2500 mAh']],
     pines: fuente(1.5), esq: nat('pila'), proto: lib('1,5 V', 100, 34) },

@@ -640,6 +640,7 @@ ponerSimple(simple);
 // Dos botones mandan el trabajo al documento: el dibujo del dispositivo o el anexo de ensamblado.
 const EMBEBIDA = /[?&]embed=1/.test(location.search) && window.parent !== window;
 if (EMBEBIDA) {
+  $('#b-sitio').hidden = true; $('#marca').classList.add('sola');   // dentro del protocolo no se sale del editor
   const enviar = async (armar) => {
     const d = datosFicha();
     if (!d.partes.length) { estado('Agregá piezas antes de insertar.', 'err'); return; }
