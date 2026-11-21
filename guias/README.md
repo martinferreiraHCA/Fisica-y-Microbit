@@ -24,7 +24,8 @@ aparecen tres formas de empezar:
    guía queda armada, con piezas y pasos.
 2. **Empezar con una guía lista**: ley de Hooke, péndulo simple, carrito en
    plano inclinado, segunda ley de Newton, caída libre, máquina de Atwood,
-   enfriamiento de un líquido y péndulo con soporte de cartón.
+   enfriamiento de un líquido, péndulo con soporte de cartón, calentamiento de
+   agua y densidad de un sólido.
 3. **Armarla a mano**, con una ayuda de 5 pasos: nombre → piezas → ubicar →
    pasos → ficha.
 
@@ -35,17 +36,41 @@ rellenos, rotación numérica, estilo de la ficha, guardar y abrir archivos).
 **Agregar pieza** ofrece:
 
 - **Elementos de laboratorio** (se dibujan al instante): soporte universal,
-  varilla, nuez, pinza, mesa, bloque, riel, plano inclinado; resorte, masas,
-  pesas, portapesas, poleas, carrito, autito, esfera, lenteja, cilindro, hilo,
-  regla, dinamómetro, imán; micro:bit, portapilas, sensor de ultrasonido,
+  varilla, nuez, pinza, aro, mesa, bloque, riel, plano inclinado; resorte,
+  masas, pesas, portapesas, poleas, carrito, autito, esfera, lenteja, cilindro,
+  hilo, regla, dinamómetro, imán; micro:bit, portapilas, sensor de ultrasonido,
   módulo sensor, barrera óptica, protoboard, servo, motor, láser, celular;
-  vaso, termómetro, jeringa; tornillo, tuerca y arandela.
+  tornillo, tuerca y arandela.
+- **Material de vidrio**, con el **volumen elegible de una lista**: vaso de
+  bohemia (50 mL a 2 L), probeta graduada (10 mL a 1 L), matraz Erlenmeyer,
+  matraz aforado y matraz balón (hasta 1 L); además tubo de ensayo, embudo,
+  calorímetro y jeringa.
+- **Balanza y calor**: balanza digital, placa calefactora, trípode, rejilla,
+  mechero Bunsen y termómetro o sonda.
+- **Soportes ya armados**, para poner de una vez lo que más se usa: soporte con
+  nuez y varilla, con nuez y pinza, con aro y rejilla, con aro, rejilla y pinza,
+  y trípode con rejilla y mechero. Entran con cada pieza por separado (se
+  pueden mover, quitar o repartir en pasos) y la lista de piezas las cuenta una
+  por una.
 - Diseños de **encastre en cartón** (entran armados, con cada pieza suelta y
   con su nombre) y de **impresión 3D** del catálogo.
 - Archivos propios `.stl` / `.scad`.
 
 Si en un paso nadie indicó desde dónde entran las piezas, la ficha las dibuja
 entrando desde arriba.
+
+Estos elementos son solo para dibujar el armado de la práctica: no aparecen en
+el catálogo de piezas para imprimir en 3D.
+
+### De dónde salen los modelos
+
+Todos los elementos de laboratorio son **modelos propios del sitio**: los
+genera el código de `elementos.js` a partir de medidas habituales de catálogo
+(aproximadas; por ejemplo, un vaso de bohemia de 250 mL mide unos 70 × 95 mm).
+No se usan archivos de terceros, así que no hay licencias ajenas que respetar
+ni atribuciones que poner. Si alguna vez se quiere un modelo descargado (un
+`.stl` con licencia libre), se puede abrir desde «Tus archivos», anotando su
+autor y su licencia en este README.
 
 ## Estética
 
@@ -67,7 +92,8 @@ negro y letra blanca, recuadros con borde negro y etiqueta, notas en gris
   por cambio de pieza, arista o salto de profundidad, con cámara
   isométrica ajustada.
 - `ficha.js` — arma las hojas: portada, lista de piezas, pasos y llamadas.
-- `elementos.js` — elementos básicos de laboratorio (geometría generada en el
-  momento, sin OpenSCAD).
+- `elementos.js` — elementos de laboratorio (geometría generada en el momento,
+  sin OpenSCAD): piezas sueltas, material de vidrio por volumen y soportes ya
+  armados (`conjunto`).
 - `recetas.js` — formato de receta, guías listas, prompt para la IA y lectura
   de su respuesta.

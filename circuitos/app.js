@@ -91,7 +91,8 @@ const ESQ = {
   lampara: redondo(12, () => linea('M-8.5,-8.5 L8.5,8.5 M-8.5,8.5 L8.5,-8.5')),
   interruptor: { n: 2, s: 14, arr: 13, aba: 4, d: (el) => linea(el.cerrado ? 'M-14,0 L14,0' : 'M-14,0 L11,-12') + circ(2.6, -14, 0) + circ(2.6, 14, 0) },
   pulsador: { n: 2, s: 12, arr: 17, aba: 4, d: () => linea('M-15,-7 H15 M0,-7 V-15 M-6,-15 H6') + circ(2.6, -12, 0) + circ(2.6, 12, 0) },
-  capacitor: { n: 2, s: 4, arr: 13, aba: 13, d: () => linea('M-4,-12 V12 M4,-12 V12') },
+  // con polaridad (electrolítico): placa recta del positivo, del lado de la pata «+», placa curva del negativo y el signo +
+  capacitor: { n: 2, s: 4, arr: 13, aba: 13, d: (el, deg) => (polar(el) ? linea('M-4,-12 V12') + linea('M7,-12 Q1,0 7,12') + txt('+', -13, -11, { t: 12, w: 700, deg }) : linea('M-4,-12 V12 M4,-12 V12')) },
   potenciometro: { n: 2, s: 20, arr: 15, aba: 15, d: () => resEsq() + flecha(-14, 14, 14, -14) },
   ldr: { n: 2, s: 20, arr: 24, aba: 8, d: () => resEsq() + flecha(-14, -23, -7, -11) + flecha(-3, -23, 4, -11) },
   termistor: { n: 2, s: 20, arr: 15, aba: 14, d: () => resEsq() + linea('M-17,13 H-10 L12,-14', 1.6) },
@@ -171,11 +172,22 @@ function bloqueEsq(comp, fo) {
     rotAt: (el) => [el.a[0] + geo(el, true).w / 2, el.a[1] - 9, 'middle'] };
 }
 const verTxt = (el) => (el.ver === 'v1' ? 'V1' : 'V2');
+// Pin suelto de la micro:bit: qué pin es (el del elemento o el que trae el componente), si es de alimentación y el ancho de su etiqueta
+const pinDe = (el) => el.pin || (COMP.get(el.c) || {}).mb || 'P0';
+const potencia = (p) => p === '3V' || p === 'GND';
+const anchoPin = (el) => Math.max(28, pinDe(el).length * 7.5 + 12);
+const polar = (el) => { const c = COMP.get(el.c); return !!(c && c.esq && c.esq.pol); };
 const EXT_IZQ = EXTENSOR.slice(0, Math.ceil(EXTENSOR.length / 2)), EXT_DER = EXTENSOR.slice(Math.ceil(EXTENSOR.length / 2));
 Object.assign(ESQ, {
   tierra: { n: 1, term: (el) => [el.a],
     d: (el) => `<g transform="translate(${el.a[0]},${el.a[1]})"><rect x="-13" y="-2" width="26" height="25" fill="#000" fill-opacity="0"/>${linea('M0,0 V10 M-12,10 H12 M-8,15 H8 M-4,20 H4')}</g>` },
   texto: { n: 1, term: () => [], d: (el) => txt(el.valor || 'Texto', el.a[0], el.a[1], { t: 13, a: 'start' }) },
+  // pin suelto de la micro:bit (3V, GND, P0…): una etiqueta con su nombre; el terminal es la punta
+  mbpin: { n: 1, rota: 2, nombres: (el) => [pinDe(el)], term: (el) => [el.a],
+    rotAt: (el) => [el.a[0] + (el.rot ? -1 : 1) * (16 + anchoPin(el) / 2), el.a[1] + 21, 'middle'],
+    d: (el) => { const [x, y] = el.a, s = el.rot ? -1 : 1, p = pinDe(el), w = anchoPin(el), x1 = x + s * 16, x2 = x + s * (16 + w), cx = (x1 + x2) / 2 - s * 2;
+      return linea(`M${x},${y} H${x + s * 8}`) + forma(`M${x + s * 8},${y} L${x1},${y - 10} H${x2} V${y + 10} H${x1} Z`, potencia(p) ? '#111' : '#fff') +
+        txt(p, cx, y, { t: 10, w: 800, c: potencia(p) ? '#fff' : '#111' }) + txt('micro:bit', (x1 + x2) / 2, y - 16.5, { t: 6.5, w: 700, c: '#555' }); } },
   // micro:bit: simple (los 5 anillos, abajo) o con extensor (todos los pines, a los lados)
   microbit: { n: 1, nombres: (el) => (el.ext ? EXTENSOR : ANILLOS),
     term: (el) => (el.ext ? bloque(el.a, 'micro:bit ' + verTxt(el), EXT_IZQ, EXT_DER, true).pts : ANILLOS.map((p, i) => [el.a[0] + G * (i + 1), el.a[1] + 100])),
@@ -278,6 +290,13 @@ const PROTO = {
       }
       return `<g transform="translate(${el.a[0]},${el.a[1]})${el.arriba ? ' rotate(180 110 85)' : ''}">${s}</g>`;
     } },
+  // pin suelto de la micro:bit: un trozo del borde de la placa con su anillo (el terminal es el agujero del anillo)
+  mbpin: { n: 'libre', rota: 2, nombres: (el) => [pinDe(el)], term: (el) => [[el.a[0] + 20, el.a[1] + (el.rot ? 14 : 36)]],
+    rotAt: (el) => [el.a[0] + 20, el.a[1] + (el.rot ? 60 : -9), 'middle'],
+    d: (el) => { const [x, y] = el.a, r = !!el.rot, p = pinDe(el), yy = (v) => y + (r ? 50 - v : v);
+      return caja(x, y, 40, 50, 5) + caja(x + 7, r ? y : y + 22, 26, 28, 0, '#fff', 1.4) + circ(7.5, x + 20, yy(36), '#fff', 1.6) +
+        (potencia(p) ? `<rect x="${x + 7}" y="${yy(15.5) - 6.5}" width="26" height="13" fill="#111"/>` : '') + txt(p, x + 20, yy(15.5), { t: potencia(p) ? 8 : 9.5, w: 800, c: potencia(p) ? '#fff' : '#111' }) +
+        txt('micro:bit', x + 20, yy(6.5), { t: 5.4, w: 700, c: '#555' }); } },
   motor: { n: 'libre', rota: 2, rotAt: (el) => [el.a[0], el.a[1] - (el.rot ? 52 : 46), 'middle'], term: (el) => { const s = el.rot ? -1 : 1; return [[el.a[0] - 10, el.a[1] + 40 * s], [el.a[0] + 10, el.a[1] + 40 * s]]; },
     d: (el) => { const [x, y] = el.a, s = el.rot ? -1 : 1; return linea(`M${x - 10},${y + 20 * s} V${y + 40 * s} M${x + 10},${y + 20 * s} V${y + 40 * s}`, 1.6) + caja(x - 3.5, s > 0 ? y - 35 : y + 22, 7, 13, 1, '#fff', 1.6) + circ(24, x, y) + txt('M', x, y, { t: 15, w: 800 }) + borne(x - 10, y + 40 * s) + borne(x + 10, y + 40 * s); } },
 };
@@ -430,8 +449,11 @@ function nombres(el, v = vista) {   // nombre de cada terminal, en el mismo orde
 }
 const igual = (p, q) => Math.abs(p[0] - q[0]) < 0.5 && Math.abs(p[1] - q[1]) < 0.5;
 function estado(t, err) { const e = $('#estado'); e.textContent = t; e.title = t; e.className = err ? 'err' : ''; }
+const esPuerto = (el, v = vista) => nat(el, v) === 'mbpin';   // pin suelto de la micro:bit (3V, GND, P0…)
+const deMB = (el, v = vista) => esMB(el, v) || esPuerto(el, v);
 const primeraMB = (v = vista) => E[v].els.find((e) => esMB(e, v)) || null;
-const versionDibujo = () => { const m = primeraMB(); return m ? m.ver || 'v2' : verFicha; };
+const refMB = (v = vista) => primeraMB(v) || E[v].els.find((e) => esPuerto(e, v)) || null;   // la placa del dibujo o, si no hay, uno de sus pines sueltos
+const versionDibujo = () => { const m = refMB(); return m ? m.ver || 'v2' : verFicha; };
 
 /* ---------- Dibujo de un elemento ---------- */
 const haloEn = (x, y) => (real() && x > 0 && x < colX(colsP()) + 40 && y > -10 && y < 390 ? '#f4f0e3' : true);   // borde de un rótulo: del color de la placa si cae sobre ella
@@ -451,7 +473,7 @@ function rotulos(el, v, d) {
 }
 // Dibujo realista de un componente en la protoboard (null: va el de línea). Los de Wokwi aparecen cuando termina de cargar.
 const cacheReal = new Map();
-const X_ARTE = { bandas: (el) => { const b = bandas(el.ohm || 0); return [BANDA[b.d1][1], BANDA[b.d2][1], colorMult(b.m)[1], colorTol(el.tol || 5)[1]]; }, ver: (el) => verTxt(el) };
+const X_ARTE = { bandas: (el) => { const b = bandas(el.ohm || 0); return [BANDA[b.d1][1], BANDA[b.d2][1], colorMult(b.m)[1], colorTol(el.tol || 5)[1]]; }, ver: (el) => verTxt(el), pin: (el) => pinDe(el) };
 function realDe(c) {
   if (!real() || !c.proto) return null;
   const k = c.id + (wokwiListo() ? '|w' : ''); if (!cacheReal.has(k)) cacheReal.set(k, defReal(c, c.proto, defDe(c, 'proto'), X_ARTE));
@@ -502,21 +524,23 @@ function contenido(v, exp) {
 
 /* ---------- Redes: qué patas quedan unidas eléctricamente ----------
    Devuelve [[{ el, c, pin, ohm? }, …], …] (solo redes con 2 o más patas, salvo que se pidan todas; los cables
-   unen pero no figuran). En el esquemático, los símbolos de tierra son una sola red, la del GND de la placa. */
+   unen pero no figuran). En el esquemático, los símbolos de tierra son una sola red, la del GND de la placa.
+   Los pines sueltos de la micro:bit cuentan como pines de la placa (c: 'microbit'). */
 function redes(v = vista, todas) {
   const lista = E[v].els, padre = new Map();
   const raiz = (k) => { if (!padre.has(k)) padre.set(k, k); let r = k; while (padre.get(r) !== r) r = padre.get(r); padre.set(k, r); return r; };
   const unir = (a, b) => { const ra = raiz(a), rb = raiz(b); if (ra !== rb) padre.set(ra, rb); };
   const nodo = (p) => (v === 'proto' ? nodoProto(p) : 'p' + p[0] + ',' + p[1]);
-  const cables = lista.filter((e) => e.c === 'cable'), patas = [], puntos = [], hayTierra = v === 'esq' && lista.some((e) => nat(e, v) === 'tierra');
+  const cables = lista.filter((e) => e.c === 'cable'), patas = [], puntos = [], hayTierra = v === 'esq' && lista.some((e) => nat(e, v) === 'tierra'), hayPuertos = lista.some((e) => esPuerto(e, v));
   cables.forEach((c) => { unir(nodo(c.a), nodo(c.b)); puntos.push(c.a, c.b); });
   lista.forEach((el) => {
     if (el.c === 'cable') return;
-    const t = terminales(el, v), nom = nombres(el, v), c = esMB(el, v) ? 'microbit' : el.c, propio = nat(el, v);
+    const t = terminales(el, v), nom = nombres(el, v), c = deMB(el, v) ? 'microbit' : el.c, propio = nat(el, v);
     const ohm = el.ohm > 0 ? el.ohm : /Ω/.test(el.valor || '') ? leerOhm(el.valor) : NaN;   // resistencias y potenciómetros llevan su valor
     t.forEach((p, i) => {
       const k = 'e' + el.id + '|' + nom[i]; unir(k, nodo(p)); puntos.push(p);
       if (propio === 'tierra' || (hayTierra && c === 'microbit' && nom[i] === 'GND')) unir(k, 'TIERRA');
+      if (hayPuertos && c === 'microbit') unir(k, 'MB|' + nom[i]);   // los pines sueltos con el mismo nombre son un mismo punto (y el de la placa, si está)
       if (!patas.some((x) => x.k === k)) patas.push(Object.assign({ k, el: el.id, c, pin: nom[i] }, ohm > 0 ? { ohm } : {}));
     });
   });
@@ -642,7 +666,8 @@ function nuevo(cid) {
   if (c.valor) el.valor = c.valor;
   if (el.t === 'resistencia') { el.ohm = leerOhm(c.valor || '') || 220; el.tol = 5; if (!el.valor) el.valor = textoOhm(el.ohm); }
   if (cid === 'cable') el.color = colorNuevo[vista];
-  if (el.t === 'microbit') el.ver = versionDibujo();
+  if (el.t === 'microbit' || el.t === 'mbpin') el.ver = versionDibujo();
+  if (el.t === 'mbpin') el.pin = c.mb || 'P0';
   return el;
 }
 function agregar(el) { marcar(); els().push(el); return el; }
@@ -889,7 +914,7 @@ function rolTxt(p) {
   return ROLES[p.rol] || p.rol || '—';
 }
 function fichaHTML(c, conNombre) {
-  const v = versionDibujo(), enDibujo = !!primeraMB(); let h = '<div class="ficha">';
+  const v = versionDibujo(), enDibujo = !!refMB(); let h = '<div class="ficha">';
   if (conNombre) h += `<p class="tipo">${esc(c.nombre)}</p>`;
   if (c.desc) h += `<p>${esc(c.desc)}</p>`;
   if (c.fisica) h += `<div class="fis"><b>En física</b><br>${esc(c.fisica)}</div>`;
@@ -904,7 +929,9 @@ function fichaHTML(c, conNombre) {
       if (r.avisos.length) h += `<ul>${r.avisos.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
     }
   }
-  return h + '</div>';
+  h += '</div>';
+  if (c.mb && conNombre) h += pinHTML(c.mb, v);   // en el catálogo: para qué sirve ese pin
+  return h;
 }
 function pinHTML(pinN, ver) {   // para qué sirve un pin de la micro:bit según la versión
   const i = infoPin(pinN, ver), ul = (cls, l) => (l && l.length ? `<ul class="${cls}">${l.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : '');
@@ -952,6 +979,14 @@ function inspector() {
     if (el.ext && vista === 'proto') h += `<p class="nota" style="margin-top:6px">En el extensor: ■ comparte la pantalla · ○ comparte un botón · ◆ bus I2C.</p>`;
     h += pinSel && pinSel.el === el.id ? pinHTML(pinSel.pin, ver) : '';
   }
+  const puerto = esPuerto(el);
+  if (puerto) {
+    const placa = primeraMB(), ver = versionDibujo(), pn = pinDe(el), orden = ['3V', 'GND'].concat(EXTENSOR.filter((p) => !potencia(p)).sort((a, b) => +a.slice(1) - +b.slice(1)));
+    h += `<label class="c">Pin</label><select id="i-pin">${orden.map((p) => `<option value="${p}"${p === pn ? ' selected' : ''}>${p}${potencia(p) || ANILLOS.includes(p) ? '' : ' (con extensor)'}</option>`).join('')}</select>`;
+    h += placa ? `<p class="nota" style="margin-top:6px">Es el mismo punto que el pin ${esc(pn)} de la micro:bit del dibujo.</p>`
+      : `<label class="c">Versión de la micro:bit</label><select id="i-pver">${VERSIONES.map((x) => `<option value="${x.id}"${x.id === ver ? ' selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select>`;
+    h += `<p class="nota" style="margin-top:6px">Los pines sueltos con el mismo nombre son un mismo punto, aunque no haya un cable entre ellos.</p>` + pinHTML(pn, ver);
+  }
   h += `<div class="grupo-btn">${d.n === 2 && el.c !== 'cable' ? `<button class="btn chico" id="i-invertir" title="Intercambia los dos extremos (cambia la polaridad)">Invertir</button>` : ''}${giraSolo(el) ? '<button class="btn chico" id="i-rotar" title="Girar (R)">Girar</button>' : ''}<button class="btn chico" id="i-dup">Duplicar</button><button class="btn chico" id="i-borrar">Eliminar</button></div>`;
   if (el.c !== 'cable' && propio !== 'texto') h += fichaHTML(c, false);
   box.innerHTML = h; enlazarVers();
@@ -973,6 +1008,11 @@ function inspector() {
     if ($('#i-arriba')) $('#i-arriba').onchange = (e) => conCables(() => { el.arriba = e.target.checked; });
     box.querySelectorAll('.chip').forEach((b) => { b.onclick = () => { pinSel = pinSel && pinSel.pin === b.dataset.pin && pinSel.el === el.id ? null : { el: el.id, pin: b.dataset.pin }; pintarSobre(); inspector(); }; });
   }
+  if (puerto) {
+    // el componente acompaña al pin elegido, así el nombre del elemento siempre dice qué es
+    $('#i-pin').onchange = (e) => { marcar(); el.pin = e.target.value; el.c = el.pin === '3V' ? 'mb-3v' : el.pin === 'GND' ? 'mb-gnd' : 'mb-pin'; cambio(); inspector(); };
+    if ($('#i-pver')) $('#i-pver').onchange = (e) => { marcar(); for (const v of ['esq', 'proto']) E[v].els.forEach((x) => { if (deMB(x, v)) x.ver = e.target.value; }); cambio(); inspector(); };
+  }
   if ($('#i-invertir')) $('#i-invertir').onclick = () => { marcar(); [el.a, el.b] = [el.b, el.a]; cambio(); };
   if ($('#i-rotar')) $('#i-rotar').onclick = rotar;
   if ($('#i-codigo')) $('#i-codigo').onclick = abrirRes;
@@ -982,7 +1022,7 @@ function inspector() {
 /* ---------- Avisos de compatibilidad con la micro:bit ---------- */
 function revisarAhora() {
   pintarVinculo();
-  const mb = primeraMB(), antes = avisos.length;
+  const mb = refMB(), antes = avisos.length;
   try { avisos = mb ? revisar(redes(), mb.ver || 'v2') : []; } catch (e) { avisos = []; console.error(e); }
   if (resFijo) resFijo = avisos.find((a) => a.titulo === resFijo.titulo && a.texto === resFijo.texto) || null;
   resHover = null; resalte = resFijo;
@@ -991,7 +1031,7 @@ function revisarAhora() {
   pintarAvisos(); pintarSobre();
 }
 function pintarAvisos() {
-  const box = $('#avisos'), mb = primeraMB(); box.hidden = !avisosAbierto || !mb; if (box.hidden) return;
+  const box = $('#avisos'), mb = refMB(); box.hidden = !avisosAbierto || !mb; if (box.hidden) return;
   const ICO = { error: '✕', aviso: '▲', info: '●' };
   box.innerHTML = `<div class="av-cab"><span>Avisos · micro:bit ${(mb.ver || 'v2').toUpperCase()}</span><button class="btn chico" id="av-cerrar">Cerrar</button></div>` +
     (avisos.length ? avisos.map((a, i) => `<div class="av ${a.nivel}${resFijo === a ? ' fijo' : ''}" data-i="${i}"><i>${ICO[a.nivel] || '●'}</i><b>${esc(a.titulo)}</b><span>${esc(a.texto)}</span></div>`).join('')
@@ -1182,7 +1222,8 @@ const OTRA = { esq: 'proto', proto: 'esq' }, VISTA_TXT = { esq: 'el esquemático
 // Empareja los elementos de las dos vistas: mismo componente y rótulo; después, mismo componente, por orden
 function emparejar() {
   const A = sinCables('esq').filter((e) => comp(e).proto), B = sinCables('proto').filter((e) => comp(e).esq), pares = [], libresB = new Set(B);
-  const tomar = (a, igualRot) => { for (const b of libresB) if (b.c === a.c && (!igualRot || (b.rotulo || '') === (a.rotulo || ''))) { libresB.delete(b); pares.push([a, b]); return true; } return false; };
+  const pinClave = (e, v) => (esPuerto(e, v) ? pinDe(e) : '');   // dos pines sueltos de la micro:bit solo son el mismo si nombran el mismo pin
+  const tomar = (a, igualRot) => { for (const b of libresB) if (b.c === a.c && pinClave(a, 'esq') === pinClave(b, 'proto') && (!igualRot || (b.rotulo || '') === (a.rotulo || ''))) { libresB.delete(b); pares.push([a, b]); return true; } return false; };
   const quedan = A.filter((a) => !tomar(a, true)), solosA = quedan.filter((a) => !tomar(a, false));
   return { pares, solosA, solosB: [...libresB] };
 }
@@ -1193,7 +1234,7 @@ function vinculo() {
   solosB.forEach((b) => difs.push(nombreEl(b) + ' está en la protoboard y no en el esquemático.'));
   pares.forEach(([a, b], i) => {
     const na = new Set(nombres(a, 'esq')), comunes = new Set(nombres(b, 'proto').filter((n) => na.has(n)));   // solo las patas que existen en las dos vistas
-    clave.esq.set(a.id, { k: 'k' + i, comunes }); clave.proto.set(b.id, { k: 'k' + i, comunes }); rot.set('k' + i, esMB(a, 'esq') ? '' : nombreEl(a));
+    clave.esq.set(a.id, { k: 'k' + i, comunes }); clave.proto.set(b.id, { k: 'k' + i, comunes }); rot.set('k' + i, deMB(a, 'esq') ? '' : nombreEl(a));
   });
   const rotulo = (s) => { const [k, pinN] = s.split('\u0001'); return rot.get(k) ? rot.get(k) + ' (' + pinN + ')' : pinN; };
   const conj = (v) => redes(v).map((r) => r.map((x) => { const q = clave[v].get(x.el); return q && q.comunes.has(x.pin) ? q.k + '\u0001' + x.pin : null; }).filter(Boolean).sort()).filter((r) => r.length >= 2);
@@ -1223,7 +1264,7 @@ function conexiones(desde) {
     const c = comp(s);
     if (!c[hacia]) { if (nat(s, desde) !== 'tierra') fuera.push(nombreEl(s)); return; }
     const el = { id: uid(), c: s.c }; if (c[hacia].f === 'nativo') el.t = c[hacia].t;
-    ['rotulo', 'valor', 'ohm', 'tol', 'ver', 'ext', 'cerrado', 'tono'].forEach((k) => { if (s[k] != null && s[k] !== '') el[k] = s[k]; });
+    ['rotulo', 'valor', 'ohm', 'tol', 'ver', 'ext', 'cerrado', 'tono', 'pin'].forEach((k) => { if (s[k] != null && s[k] !== '') el[k] = s[k]; });
     dest.set(s.id, el); els.push(el);
   });
   const esTierra = (x) => { const s = porId(x.el, desde); return !!s && nat(s, desde) === 'tierra'; };
@@ -1242,7 +1283,7 @@ function ordenar(lista, nets) {
   const vec = new Map(lista.map((e) => [e, []]));
   nets.filter((r) => r.clase === 's').forEach((r) => r.patas.forEach((p) => r.patas.forEach((q) => { if (p.el !== q.el && vec.has(p.el) && vec.has(q.el) && !vec.get(p.el).includes(q.el)) vec.get(p.el).push(q.el); })));
   const dePlaca = new Set(), enPos = new Set(), fuentes = (e) => comp(e).pines.some((p) => p.rol === 'fuente+');
-  nets.forEach((r) => { const placa = r.patas.some((p) => p.el.t === 'microbit'); r.patas.forEach((p) => { if (r.clase === 's' && placa) dePlaca.add(p.el); if (r.clase[0] === '+') enPos.add(p.el); }); });
+  nets.forEach((r) => { const placa = r.patas.some((p) => p.el.t === 'microbit' || p.el.t === 'mbpin'); r.patas.forEach((p) => { if (r.clase === 's' && placa) dePlaca.add(p.el); if (r.clase[0] === '+') enPos.add(p.el); }); });
   const out = [], visto = new Set(), bajar = (e) => { if (visto.has(e) || !vec.has(e)) return; visto.add(e); out.push(e); vec.get(e).slice().sort((a, b) => vec.get(a).length - vec.get(b).length).forEach(bajar); };
   const resto = lista.filter((e) => !fuentes(e));   // las fuentes quedan para el final
   resto.filter((e) => dePlaca.has(e)).concat(resto.filter((e) => enPos.has(e)), resto, lista).forEach(bajar);
@@ -1527,7 +1568,7 @@ window.addEventListener('resize', () => pintarSobre());
 document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.con-menu')) { $('#m-ej').hidden = true; $('#m-vinc').hidden = true; } });
 
 /* ---------- Inicio ---------- */
-if (EMBED) { $('#b-insertar').hidden = false; $('#b-abrir').hidden = true; $('#b-guardar').hidden = true; }
+if (EMBED) { $('#b-insertar').hidden = false; $('#b-abrir').hidden = true; $('#b-guardar').hidden = true; $('#b-sitio').hidden = true; $('#marca').classList.add('sola'); }   // dentro del protocolo no se sale del editor
 try { const g = localStorage.getItem(CLAVE); if (g) { const o = JSON.parse(g); if (o && (o.estilo === 'linea' || o.estilo === 'real')) estilo = o.estilo; E = limpiar(o); if (E.esq.els.length || E.proto.els.length) estado('Se recuperó el circuito en el que estabas trabajando.'); } } catch (e) {}
 $('#n-circ').value = E.titulo; $('#s-res').value = E.resEstilo; $('#s-cols').value = String(colsP()); botonesHist();
 $('#e-real').classList.toggle('act', real()); $('#e-linea').classList.toggle('act', !real());

@@ -184,6 +184,11 @@ const NATIVOS = {
       R(x - 22, y0, 44, 50, 7, '#b9bfc6', `stroke="${METAL_O}" stroke-width="1"`) + R(x - 22, y0, 9, 50, 4, '#fff', 'opacity=".35"') + R(x + 11, y0, 11, 50, 4, '#000', 'opacity=".12"') + R(x - 22, s > 0 ? y + 12 : y - 20, 44, 8, 2, '#2b2d31') +
       R(x - 9, s > 0 ? y - 34 : y + 26, 18, 8, 2, '#8a9199') + T('M', x, y - 6 * s, { t: 15, w: 800, c: '#4a4f55' }) + borneReal(x - 10, y + 40 * s) + borneReal(x + 10, y + 40 * s); } },
   microbit: { d: (el, pts, x) => microbitReal(el, x.ver(el)) },
+  // pin suelto de la micro:bit: un trozo del borde de la placa, con su anillo dorado
+  mbpin: { d: (el, pts, x) => { const [ax, ay] = el.a, r = !!el.rot, p = x.pin(el), pot = p === '3V' || p === 'GND', yy = (v) => ay + (r ? 50 - v : v);
+    return R(ax + 1.5, ay + 3, 40, 50, 6, '#000', 'opacity=".14"') + R(ax, ay, 40, 50, 6, '#1c1e22', 'stroke="#0b0c0e" stroke-width="1"') + R(ax + 7, r ? ay + 0.5 : ay + 22, 26, 27.5, 0, ORO) +
+      C(ax + 20, yy(36), 7.6, '#fff', `stroke="${ORO_O}" stroke-width="1.5"`) + (pot ? R(ax + 7, yy(15.5) - 6.5, 26, 13, 2, p === '3V' ? '#e03131' : '#111', p === 'GND' ? 'stroke="#8d949b" stroke-width=".8"' : '') : '') +
+      T(p, ax + 20, yy(15.5), { t: pot ? 8 : 9.5, w: 800, c: '#fff' }) + T('micro:bit', ax + 20, yy(6.5), { t: 5.4, w: 700, c: '#aeb4bb' }); } },
 };
 
 /* ---------- micro:bit (V1 y V2) y su extensor ---------- */
