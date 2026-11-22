@@ -54,6 +54,14 @@ igual que «Dimensiones» del módulo MAPEO del sitio. Se imprime con el fondo
 sobre la cama, sin soportes; conviene usar 3 o más perímetros para que no
 pierda agua. Prototipo: todavía no se imprimió ni se probó con agua.
 
+La práctica completa está guiada en el módulo MAPEO del sitio (EXTRAS → MAPEO →
+«Campo eléctrico en cubeta con agua»): dibuja la cubeta con sus electrodos,
+muestra el esquema de conexiones (GND y 3V a los electrodos, P1 a la punta de
+prueba), abre el programa de la micro:bit en el editor del sitio y va marcando
+punto por punto dónde apoyar la punta. Desde ahí, «Cubeta 3D para imprimir»
+abre esta pieza en una pestaña aparte; el enlace directo es
+`#piezas3d=bandeja-para-mapeo-de-campo-electrico`.
+
 ## Perilla de apriete para tornillo hexagonal
 
 `perilla-de-apriete-para-tornillo-hexagonal.scad` reúne dos formas de
