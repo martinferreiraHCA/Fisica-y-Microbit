@@ -26211,8 +26211,8 @@ bluetooth.startIOPinService()</pre>
             </div>
             <div class="mapeo-mc-label">Transporte</div>
             <div class="mapeo-mc-sensors">
-              <button class="mapeo-btn active" data-transport="ble">Bluetooth (BLE)</button>
-              <button class="mapeo-btn" data-transport="serial">USB · Serial</button>
+              <button class="mapeo-btn active" data-transport="serial">USB · Serial</button>
+              <button class="mapeo-btn" data-transport="ble">Bluetooth (BLE)</button>
             </div>
             <div class="mapeo-mc-label">Sensor</div>
             <div class="mapeo-mc-sensors" style="flex-wrap:wrap;">
@@ -26235,6 +26235,7 @@ bluetooth.startIOPinService()</pre>
               <button class="mapeo-btn" id="mapeo-mc-copy">Copiar código</button>
               <button class="mapeo-btn" id="mapeo-mc-close">Listo</button>
             </div>
+            <div class="mapeo-mc-note" style="font-style:normal;">En el editor se abre en <strong style="color:#fff;">bloques</strong>; cada comentario queda en el globito de su bloque.</div>
             <pre class="mapeo-mc-code" id="mapeo-mc-code"></pre>
             <div class="mapeo-mc-note" id="mapeo-mc-note"></div>
             <div class="mapeo-mc-note" id="mapeo-mc-note-usb" style="display:none;color:#ffb74d;font-style:normal;">Por USB: después de descargar, cerrá la pestaña del editor para que suelte la placa y recién ahí tocá «Conectar USB».</div>
@@ -27013,8 +27014,8 @@ bluetooth.startIOPinService()</pre>
               <summary><span class="mp-step-n">3</span><span class="mp-step-t">Conexión</span></summary>
               <div class="mp-step-body">
                 <div class="mapeo-info" id="mp-conn" style="margin-top:0;"></div>
+                <button class="mapeo-btn primary" id="mp-conn-usb">Conectar USB</button>
                 <button class="mapeo-btn" id="mp-conn-bt">Conectar BLE</button>
-                <button class="mapeo-btn" id="mp-conn-usb">Conectar USB</button>
                 <button class="mapeo-btn danger" id="mp-disconnect" style="display:none;">Desconectar</button>
               </div>
             </details>
@@ -27889,12 +27890,12 @@ bluetooth.startIOPinService()</pre>
             acts = [['code', 'Ver el código']];
           } else if (cur === 3) {
             msg = 'Conectá la micro:bit';
-            acts = [['ble', 'Bluetooth'], ['usb', 'USB']];
+            acts = [['usb', 'USB'], ['ble', 'Bluetooth', 1]];
           } else if (cur === 4) {
             const ap = this.activePoint;
             if (!this.isCapturing) {
               if (connected) { msg = 'Todo listo para medir'; acts = [['cap', 'Iniciar captura']]; }
-              else { msg = 'Tocá un punto y escribí su valor, o conectá la micro:bit'; acts = [['ble', 'Bluetooth'], ['usb', 'USB']]; }
+              else { msg = 'Tocá un punto y escribí su valor, o conectá la micro:bit'; acts = [['usb', 'USB'], ['ble', 'Bluetooth', 1]]; }
             } else if (!ap) {
               msg = 'Tocá un punto de la grilla para empezar';
             } else {
@@ -27955,7 +27956,7 @@ bluetooth.startIOPinService()</pre>
               steps: [
                 '<strong>Práctica.</strong> Elegí qué vas a mapear y tocá «Preparar la grilla». Para el campo eléctrico en la cubeta con agua ya vienen las medidas de la cubeta 3D del sitio.',
                 '<strong>Programa.</strong> Abrí el código en el editor del sitio (pestaña aparte) y descargalo a la micro:bit.',
-                '<strong>Conexión.</strong> Conectá la placa por Bluetooth o por USB. Al conectar, la captura arranca sola.',
+                '<strong>Conexión.</strong> Conectá la placa por USB o por Bluetooth. Al conectar, la captura arranca sola.',
                 '<strong>Medición.</strong> Llevá el sensor al punto marcado con el anillo blanco y presioná <strong>A</strong> en la micro:bit: el valor se guarda, suena un bip y el anillo pasa al punto siguiente. El botón <strong>B</strong> deshace la última medida.',
                 '<strong>Resultado.</strong> Elegí cómo ver el mapa, abrí el análisis profesional o exportá los datos.'
               ],
@@ -27968,7 +27969,7 @@ bluetooth.startIOPinService()</pre>
               steps: [
                 '<strong>Activity.</strong> Choose what you will map and press “Set up the grid”. For the electric field in the water tray, the dimensions of the site\'s 3D tray are already loaded.',
                 '<strong>Program.</strong> Open the code in the site\'s editor (separate tab) and download it to the micro:bit.',
-                '<strong>Connection.</strong> Connect the board over Bluetooth or USB. Capture starts by itself once connected.',
+                '<strong>Connection.</strong> Connect the board over USB or Bluetooth. Capture starts by itself once connected.',
                 '<strong>Measurement.</strong> Take the sensor to the point marked with the white ring and press <strong>A</strong> on the micro:bit: the value is saved, a beep sounds and the ring moves to the next point. Button <strong>B</strong> undoes the last measurement.',
                 '<strong>Result.</strong> Choose how to view the map, open the professional analysis or export the data.'
               ],
@@ -27981,7 +27982,7 @@ bluetooth.startIOPinService()</pre>
               steps: [
                 '<strong>Prática.</strong> Escolha o que vai mapear e toque em «Preparar a grade». Para o campo elétrico na cuba com água já vêm as medidas da cuba 3D do site.',
                 '<strong>Programa.</strong> Abra o código no editor do site (aba separada) e baixe-o para o micro:bit.',
-                '<strong>Conexão.</strong> Conecte a placa por Bluetooth ou por USB. Ao conectar, a captura começa sozinha.',
+                '<strong>Conexão.</strong> Conecte a placa por USB ou por Bluetooth. Ao conectar, a captura começa sozinha.',
                 '<strong>Medição.</strong> Leve o sensor ao ponto marcado com o anel branco e pressione <strong>A</strong> no micro:bit: o valor é salvo, toca um bipe e o anel passa ao ponto seguinte. O botão <strong>B</strong> desfaz a última medida.',
                 '<strong>Resultado.</strong> Escolha como ver o mapa, abra a análise profissional ou exporte os dados.'
               ],
@@ -28853,40 +28854,56 @@ bluetooth.startIOPinService()</pre>
           const isSerial = (transportKey === 'serial');
           const writeLine = isSerial ? 'serial.writeLine' : 'bluetooth.uartWriteLine';
           pin = /^P[012]$/.test(pin || '') ? pin : 'P1';
-          const lines = [];
-          if (sensorKey === 'voltage') {
-            lines.push('// MAPEO · potencial eléctrico en la cubeta con agua');
-            lines.push('// GND → electrodo (−) · 3V → electrodo (+) · ' + pin + ' → punta de prueba');
-          } else {
-            lines.push('// MAPEO · ' + s.label.toLowerCase());
+          // El programa se abre en BLOQUES: cada comentario «//» queda pegado al
+          // bloque que sigue (el globito del bloque). Las variables se declaran
+          // arriba y se asignan adentro, así los bloques las reinician en cada medida.
+          const L = [];
+          const isV = (sensorKey === 'voltage');
+          if (isV) L.push('let suma = 0');
+          L.push('let valor = 0');
+          if (!isSerial) {
+            L.push('// Enciende el servicio Bluetooth (UART) por el que se envían las medidas.');
+            L.push('bluetooth.startUartService()');
           }
-          lines.push('// Botón A: mide y envía el valor. Botón B: deshace la última medida.');
-          if (!isSerial) lines.push('bluetooth.startUartService()');
-          lines.push('basic.showIcon(IconNames.Heart)');
-          lines.push('input.onButtonPressed(Button.A, function () {');
-          if (sensorKey === 'voltage') {
-            lines.push('    let suma = 0');
-            lines.push('    for (let i = 0; i < 20; i++) {');
-            lines.push('        suma += pins.analogReadPin(AnalogPin.' + pin + ')');
-            lines.push('        basic.pause(2)');
-            lines.push('    }');
-            lines.push('    // 0 a 1023 → 0 a 3.3 V (con pilas, cambiar 3300 por 3000)');
-            lines.push('    let valor = Math.round(suma / 20 * 3300 / 1023) / 1000');
+          L.push(isV
+            ? '// MAPEO · potencial eléctrico en la cubeta con agua. Conexiones: GND al electrodo (−), 3V al electrodo (+) y ' + pin + ' a la punta de prueba. El corazón avisa que el programa está listo.'
+            : '// MAPEO · ' + s.label.toLowerCase() + '. El corazón avisa que el programa está listo.');
+          L.push('basic.showIcon(IconNames.Heart)');
+          L.push('// Botón A: mide donde está ' + (isV ? 'la punta' : 'el sensor') + ' y envía el valor a MAPEO.');
+          L.push('input.onButtonPressed(Button.A, function () {');
+          if (isV) {
+            L.push('    // Empieza la suma desde cero.');
+            L.push('    suma = 0');
+            L.push('    // Repite 20 veces: lee el pin ' + pin + ' (un número de 0 a 1023) y lo suma. Promediar muchas lecturas reduce el ruido.');
+            L.push('    for (let i = 0; i < 20; i++) {');
+            L.push('        suma += pins.analogReadPin(AnalogPin.' + pin + ')');
+            L.push('        // Espera 2 ms entre una lectura y la siguiente.');
+            L.push('        basic.pause(2)');
+            L.push('    }');
+            L.push('    // Promedio (suma / 20) pasado a volts: 1023 equivale a 3,3 V (3300 mV). Se redondea al milivolt. Con pilas, cambiar 3300 por 3000.');
+            L.push('    valor = Math.round(suma / 20 * 3300 / 1023) / 1000');
           } else {
-            lines.push('    let valor = ' + s.sensor);
+            L.push('    // Lee el sensor y guarda la lectura.');
+            L.push('    valor = ' + s.sensor);
           }
-          lines.push('    ' + writeLine + '("" + input.runningTime() + "," + valor)');
-          lines.push('    basic.showIcon(IconNames.Yes)');
-          lines.push('    basic.pause(300)');
-          lines.push('    basic.showIcon(IconNames.Heart)');
-          lines.push('})');
-          lines.push('input.onButtonPressed(Button.B, function () {');
-          lines.push('    ' + writeLine + '("B")');
-          lines.push('    basic.showIcon(IconNames.No)');
-          lines.push('    basic.pause(300)');
-          lines.push('    basic.showIcon(IconNames.Heart)');
-          lines.push('})');
-          return lines.join('\n');
+          L.push('    // Envía una línea "tiempo,valor": MAPEO guarda el valor en el punto marcado.');
+          L.push('    ' + writeLine + '("" + input.runningTime() + "," + valor)');
+          L.push('    // Tilde: la medida salió.');
+          L.push('    basic.showIcon(IconNames.Yes)');
+          L.push('    basic.pause(300)');
+          L.push('    // Vuelve el corazón: lista para el punto siguiente.');
+          L.push('    basic.showIcon(IconNames.Heart)');
+          L.push('})');
+          L.push('// Botón B: pide a MAPEO que deshaga la última medida (para repetir un punto).');
+          L.push('input.onButtonPressed(Button.B, function () {');
+          L.push('    // Envía la letra B: MAPEO borra la última medida y vuelve a ese punto.');
+          L.push('    ' + writeLine + '("B")');
+          L.push('    // Cruz: la medida se deshizo.');
+          L.push('    basic.showIcon(IconNames.No)');
+          L.push('    basic.pause(300)');
+          L.push('    basic.showIcon(IconNames.Heart)');
+          L.push('})');
+          return L.join('\n');
         }
 
         _openMakeCodeModal() {
@@ -28899,13 +28916,11 @@ bluetooth.startIOPinService()</pre>
             this._mcSelected = ({ cubeta:'voltage', magnetic:'magnet', light:'light', temperature:'temp', sound:'sound' })[pr] || 'voltage';
           }
           this._mcPin = this._mcPin || 'P1';
-          // Default de transporte: si ya hay conexión, copiamos lo que el usuario
-          // eligió en la toolbar principal. Si no hay nada, BLE (lo más común
-          // en el aula con Chrome/Edge).
+          // Transporte por defecto: USB (primera opción). Solo si ya hay una
+          // conexión Bluetooth activa se propone Bluetooth.
           if (!this._mcTransport) {
             const connected = (typeof state !== 'undefined') && state.isConnected;
-            const isBLE = connected ? !!state.isBluetooth : true;
-            this._mcTransport = isBLE ? 'ble' : 'serial';
+            this._mcTransport = (connected && state.isBluetooth) ? 'ble' : 'serial';
           }
           this._renderMakeCodeModal();
 
@@ -40437,6 +40452,7 @@ bluetooth.startIOPinService()</pre>
     var pendingCode = null;
     var pendingBtName = null;   // práctica recién creada que todavía hay que pasar a Bluetooth
     var pendingBtCode = null;
+    var blocksForId = null;     // práctica que hay que mostrar en bloques al abrirla
     var tabMode = false;        // esta pestaña se abrió solo para el editor
     var ignoreSaves = false;    // el editor se está recargando: sus guardados viejos no cuentan
 
@@ -40638,6 +40654,14 @@ bluetooth.startIOPinService()</pre>
     function openHeader(id) {
         post({ type: 'pxteditor', action: 'openheader', response: false, headerId: id });
         currentHeaderId = id;
+        // Práctica creada a partir de un código: mostrarla en BLOQUES (el editor
+        // la abre en JavaScript y arma los bloques recién al cambiar de vista).
+        if (blocksForId && blocksForId === id) {
+            blocksForId = null;
+            [2500, 6000].forEach(function (ms) {
+                setTimeout(function () { if (currentHeaderId === id) post({ type: 'pxteditor', action: 'switchblocks', response: false }); }, ms);
+            });
+        }
     }
 
     /* ---------- Abrir un código dado (MAPEO, programas de ejemplo) ---------- */
@@ -40673,7 +40697,7 @@ bluetooth.startIOPinService()</pre>
         var list = projectList().filter(isFisicaBit);
         for (var i = 0; i < list.length; i++) {
             var p = list[i];
-            if ((p.header.name || '') === pc.nombre && normCode((p.text || {})['main.ts']) === normCode(pc.codigo) && projectHasBt(p) === !!pc.bt) return p;
+            if ((p.header.name || '') === pc.nombre && (p.fbCode || normCode((p.text || {})['main.ts'])) === normCode(pc.codigo) && projectHasBt(p) === !!pc.bt) return p;
         }
         return null;
     }
@@ -40712,10 +40736,15 @@ bluetooth.startIOPinService()</pre>
             setStatus('Cargando el código en «' + pc.nombre + '»…', 12000);
         }
         p.text['main.ts'] = pc.codigo;
-        delete p.text['main.blocks'];
+        p.fbCode = normCode(pc.codigo);
+        // main.blocks vacío (no borrado): así el editor abre en BLOQUES y los
+        // arma él mismo a partir del código, con sus comentarios.
+        p.text['main.blocks'] = '';
+        p.header.editor = 'blocksprj';
         p.header.modificationTime = Math.floor(Date.now() / 1000);
         projects[id] = p;
         saveProjects();
+        blocksForId = id;
         reloadEditor(id);
         arrivedNote(pc);
     }
@@ -40743,6 +40772,7 @@ bluetooth.startIOPinService()</pre>
             var pc = pendingCode; pendingCode = null; pendingOpenId = null;
             var same = findSameProject(pc);
             if (same && syncedIds[same.header.id]) {
+                blocksForId = same.header.id;
                 openHeader(same.header.id);
                 setStatus('Abriendo «' + pc.nombre + '» (ya la tenías guardada)', 5000);
                 arrivedNote(pc);
@@ -40805,7 +40835,10 @@ bluetooth.startIOPinService()</pre>
                     // Solo se guardan las prácticas FisicaBit (con la extensión); los
                     // proyectos en blanco que crea el editor al arrancar no ensucian la lista.
                     if (wasFb || isFisicaBit(msg.project)) {
+                        // fbCode: código original con el que se creó (los bloques reescriben main.ts)
+                        var prevFb = projects[id] && projects[id].fbCode;
                         projects[id] = { header: h, text: msg.project.text };
+                        if (prevFb) projects[id].fbCode = prevFb;
                         saveProjects();
                         currentHeaderId = id;
                         if (driveMap[id] && driveMap[id].fileId) scheduleAutoPush(id);
