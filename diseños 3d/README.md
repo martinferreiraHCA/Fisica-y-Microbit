@@ -59,7 +59,10 @@ La práctica completa está guiada en el módulo MAPEO del sitio (EXTRAS → MAP
 muestra el esquema de conexiones (GND y 3V a los electrodos, P1 a la punta de
 prueba), abre el programa de la micro:bit en el editor del sitio y va marcando
 punto por punto dónde apoyar la punta. Desde ahí, «Cubeta 3D para imprimir»
-abre esta pieza en una pestaña aparte; el enlace directo es
+abre esta pieza en una pestaña aparte. Si se cambian acá las medidas de la zona
+de mapeo o los electrodos, en MAPEO se cargan las mismas medidas (largo, ancho
+y paso) y se ubican los electrodos con «Mover y dibujar electrodos». El enlace
+directo es
 `#piezas3d=bandeja-para-mapeo-de-campo-electrico`.
 
 ## Perilla de apriete para tornillo hexagonal

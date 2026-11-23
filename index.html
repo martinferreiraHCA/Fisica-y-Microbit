@@ -4006,6 +4006,18 @@
         .mapeo-guide button.ghost { background:none; color:#fff; border-color:#666; }
         .mapeo-guide button.ghost:hover { background:#1a1d23; border-color:#fff; }
         .mapeo-modal-content.wide { max-width:720px; }
+        .mp-el-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:0 6px; }
+        .mp-el-grid label { margin-bottom:8px; }
+        .mp-el-editor { border:1px solid #f9a825; padding:10px; margin-top:8px; }
+        .mp-el-add { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+        .mp-el-add .mapeo-btn { margin-top:0; padding:8px 4px; }
+        .mp-el-add .mapeo-btn[data-add="libre"] { grid-column:1 / -1; }
+        #mp-el-list { margin-top:10px; }
+        .mapeo-btn.mp-el-item { display:flex; align-items:center; gap:8px; text-align:left; margin-top:4px; }
+        .mp-el-sw { width:12px; height:12px; border-radius:50%; flex:0 0 auto; }
+        .mp-el-pol { margin-left:auto; font-weight:400; letter-spacing:0; text-transform:none; opacity:.8; }
+        #mp-el-props { margin-top:10px; }
+        #mp-el-props .mp-el-grid { grid-template-columns:1fr 1fr; }
         .mapeo-mc-label {
           font-size:10px; font-weight:600; letter-spacing:1.5px; color:#9e9e9e;
           text-transform:uppercase; margin-bottom:6px;
@@ -26945,20 +26957,36 @@ bluetooth.startIOPinService()</pre>
                   </select>
                 </label>
                 <div id="mp-cubeta-box">
+                  <div class="mp-el-grid">
+                    <label>Largo (cm)<input type="number" id="mp-tray-w" value="14" min="4" max="60" step="0.5"></label>
+                    <label>Ancho (cm)<input type="number" id="mp-tray-h" value="10" min="4" max="60" step="0.5"></label>
+                    <label>Paso (cm)<input type="number" id="mp-cubeta-step" value="2" min="0.5" max="10" step="0.5"></label>
+                  </div>
                   <label>Electrodos
                     <select id="mp-electrodes">
                       <option value="planos">Dos planos (chapas)</option>
                       <option value="puntuales">Dos puntuales (tornillos)</option>
                       <option value="plano y punto">Un plano y un punto</option>
-                      <option value="ninguno">No dibujar</option>
+                      <option value="coaxial">Coaxial (punto y anillo)</option>
+                      <option value="ninguno">Sin electrodos</option>
+                      <option value="custom">A medida</option>
                     </select>
                   </label>
-                  <label>Paso de medición
-                    <select id="mp-cubeta-step">
-                      <option value="2">Cada 2 cm · 48 puntos (rápido)</option>
-                      <option value="1">Cada 1 cm · 165 puntos (completo)</option>
-                    </select>
-                  </label>
+                  <button class="mapeo-btn" id="mp-el-edit">Mover y dibujar electrodos</button>
+                  <div id="mp-el-editor" class="mp-el-editor" style="display:none;">
+                    <div class="mapeo-info" style="margin-top:0;">Arrastrá un electrodo sobre la cubeta para ubicarlo. Los puntos que tapa un electrodo no se miden.</div>
+                    <div class="section-title" style="margin-top:10px;">Agregar electrodo</div>
+                    <div class="mp-el-add" id="mp-el-add">
+                      <button type="button" class="mapeo-btn" data-add="linea">Placa</button>
+                      <button type="button" class="mapeo-btn" data-add="circulo">Círculo</button>
+                      <button type="button" class="mapeo-btn" data-add="anillo">Anillo</button>
+                      <button type="button" class="mapeo-btn" data-add="rect">Rectángulo</button>
+                      <button type="button" class="mapeo-btn" data-add="libre" title="Dibujá el electrodo a mano sobre la cubeta">Dibujar a mano</button>
+                    </div>
+                    <div id="mp-el-list"></div>
+                    <div id="mp-el-props"></div>
+                    <button type="button" class="mapeo-btn primary" id="mp-el-done">Listo</button>
+                  </div>
                   <button class="mapeo-btn" id="mp-setup-help">Montaje y conexiones</button>
                   <button class="mapeo-btn" id="mp-tray-3d">Cubeta 3D para imprimir ↗</button>
                 </div>
@@ -27472,8 +27500,9 @@ bluetooth.startIOPinService()</pre>
 
           const g = this._guide;
           if (g.practice) $('mp-practice').value = g.practice;
-          if (g.electrodes) $('mp-electrodes').value = g.electrodes;
           if (g.step) $('mp-cubeta-step').value = String(g.step);
+          if (g.trayW) $('mp-tray-w').value = String(g.trayW);
+          if (g.trayH) $('mp-tray-h').value = String(g.trayH);
           if (g.auto === false) $('mp-auto').checked = false;
           if (g.sound === false) $('mp-sound').checked = false;
           if (!$('mp-practice').value) $('mp-practice').value = 'cubeta';
@@ -27482,18 +27511,35 @@ bluetooth.startIOPinService()</pre>
             $('mp-cubeta-box').style.display = ($('mp-practice').value === 'cubeta') ? '' : 'none';
           };
           syncPracticeBox();
-          // Si ya había una práctica de cubeta preparada, el dibujo de la cubeta
-          // vuelve a aparecer al recargar la página.
+          // Si ya había una práctica de cubeta preparada, la cubeta y sus
+          // electrodos vuelven a aparecer al recargar la página.
           if (g.prepared && $('mp-practice').value === 'cubeta') {
-            this._setup = { kind: 'cubeta', electrodes: $('mp-electrodes').value };
+            const w0 = parseFloat($('mp-tray-w').value) || 14, h0 = parseFloat($('mp-tray-h').value) || 10;
             const st = parseFloat($('mp-cubeta-step').value) || 2;
+            this._inputs.w.value = w0; this._inputs.h.value = h0;
             this._inputs.sx.value = st; this._inputs.sy.value = st;
+            this._setup = this._normalizeSetup(g.setup || { kind: 'cubeta', electrodes: g.electrodes || 'planos' }, w0, h0);
+            if (this._setup) $('mp-electrodes').value = this._setup.template;
           }
           $('mp-practice').addEventListener('change', syncPracticeBox);
+          // Plantilla de electrodos: reemplaza los que haya
           $('mp-electrodes').addEventListener('change', () => {
-            this._guide.electrodes = $('mp-electrodes').value; this._saveGuide();
-            if (this._setup) { this._setup.electrodes = $('mp-electrodes').value; this._draw(); this._scheduleAutosave(); }
+            const tpl = $('mp-electrodes').value;
+            if (!this._setup || tpl === 'custom') return;
+            this._setup.template = tpl;
+            this._setup.electrodes = this._templateElectrodes(tpl, this.grid.widthCm, this.grid.heightCm);
+            if (this._edit) this._edit.sel = -1;
+            this._electrodesChanged(true);
+            this._renderElectrodeEditor();
           });
+          // Medidas de la cubeta: si todavía no se midió nada, se aplican al cambiar
+          ['mp-tray-w', 'mp-tray-h', 'mp-cubeta-step'].forEach(id => {
+            $(id).addEventListener('change', () => {
+              const measured = this.grid ? this.grid.points.filter(p => p.value !== null).length : 0;
+              if (this._setup && measured === 0) this._applyPractice(true);
+            });
+          });
+          this._bindElectrodeEditor($);
           $('mp-practice-apply').addEventListener('click', () => this._applyPractice());
           $('mp-setup-help').addEventListener('click', () => this._showInfo('Montaje de la cubeta', this._setupHelpHTML()));
           $('mp-tray-3d').addEventListener('click', () => this._openTray3D());
@@ -27532,6 +27578,7 @@ bluetooth.startIOPinService()</pre>
             else if (act === 'undo') this._undo();
             else if (act === 'result') this._showResult();
             else if (act === 'pro') this._openPro();
+            else if (act === 'eldone') this._setEditMode(false);
           });
 
           // Ventana de información (montaje / cómo se usa)
@@ -27576,7 +27623,7 @@ bluetooth.startIOPinService()</pre>
 
         // Aplica la práctica elegida en el paso 1: dimensiones, magnitud y, para
         // la cubeta, el dibujo de los electrodos.
-        _applyPractice() {
+        _applyPractice(quiet) {
           const $ = (id) => this.sidebar.querySelector('#' + id);
           const kind = $('mp-practice').value || 'cubeta';
           const measured = this.grid ? this.grid.points.filter(p => p.value !== null).length : 0;
@@ -27584,11 +27631,25 @@ bluetooth.startIOPinService()</pre>
           const presetOf = { cubeta: 'voltage', magnetic: 'magnetic', light: 'light', temperature: 'temperature', sound: 'sound', custom: 'custom' };
           const sensorOf = { cubeta: 'voltage', magnetic: 'magnet', light: 'light', temperature: 'temp', sound: 'sound' };
           if (kind === 'cubeta') {
-            // Zona de mapeo de la cubeta 3D del sitio: 14 × 10 cm
-            const st = parseFloat($('mp-cubeta-step').value) || 2;
-            this._inputs.w.value = 14; this._inputs.h.value = 10;
+            // Zona de mapeo: por defecto la de la cubeta 3D del sitio (14 × 10 cm)
+            const clampN = (v, lo, hi, d) => { v = parseFloat(v); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+            const w = clampN($('mp-tray-w').value, 4, 60, 14), h = clampN($('mp-tray-h').value, 4, 60, 10);
+            let st = clampN($('mp-cubeta-step').value, 0.5, 10, 2);
+            if ((Math.floor(w / st) + 1) * (Math.floor(h / st) + 1) > 2500) st = Math.max(st, 1);
+            $('mp-tray-w').value = w; $('mp-tray-h').value = h; $('mp-cubeta-step').value = st;
+            this._inputs.w.value = w; this._inputs.h.value = h;
             this._inputs.sx.value = st; this._inputs.sy.value = st;
-            this._setup = { kind: 'cubeta', electrodes: $('mp-electrodes').value };
+            const tpl = $('mp-electrodes').value || 'planos';
+            if (tpl === 'custom' && this._setup && this._setup.kind === 'cubeta') {
+              // Electrodos a medida: se conservan, sin dejarlos fuera de la cubeta
+              for (const e of this._setup.electrodes) {
+                e.x = Math.max(-1, Math.min(w + 1, e.x)); e.y = Math.max(-1, Math.min(h + 1, e.y));
+              }
+            } else {
+              const t2 = (tpl === 'custom') ? 'planos' : tpl;
+              this._setup = { kind: 'cubeta', template: t2, electrodes: this._templateElectrodes(t2, w, h) };
+              $('mp-electrodes').value = t2;
+            }
           } else {
             this._setup = null;
           }
@@ -27597,17 +27658,22 @@ bluetooth.startIOPinService()</pre>
           if (sensorOf[kind]) this._mcSelected = sensorOf[kind];
           Object.assign(this._guide, {
             practice: kind, prepared: true,
-            electrodes: $('mp-electrodes').value,
-            step: parseFloat($('mp-cubeta-step').value) || 2
+            step: parseFloat($('mp-cubeta-step').value) || 2,
+            trayW: parseFloat($('mp-tray-w').value) || 14,
+            trayH: parseFloat($('mp-tray-h').value) || 10,
+            setup: this._setup ? JSON.parse(JSON.stringify(this._setup)) : null
           });
+          delete this._guide.electrodes;
           this._saveGuide();
           this._regenerateGrid();
-          this.activePoint = this._order()[0] || null;
+          this.activePoint = this._nextEmpty(null);
           this._draw();
           this._refreshActivePanel();
-          this._openStep((typeof state !== 'undefined' && state.isConnected) ? 4 : 2);
+          if (this._edit && this._edit.on) this._renderElectrodeEditor();
+          else if (!quiet) this._openStep((typeof state !== 'undefined' && state.isConnected) ? 4 : 2);
           this._refreshGuide();
-          this._toast('Grilla lista: ' + this.grid.nx + ' × ' + this.grid.ny + ' = ' + this.grid.points.length + ' puntos');
+          const cnt = this._counts();
+          this._toast('Grilla lista: ' + cnt.total + ' puntos para medir' + (cnt.blocked ? ' (' + cnt.blocked + ' quedan bajo los electrodos)' : ''));
         }
 
         _openTray3D() {
@@ -27645,7 +27711,7 @@ bluetooth.startIOPinService()</pre>
           const start = from ? ord.indexOf(from) : -1;
           for (let k = 1; k <= ord.length; k++) {
             const p = ord[(start + k + ord.length) % ord.length];
-            if (p.value === null) return p;
+            if (p.value === null && !p.blocked) return p;
           }
           return null;
         }
@@ -27654,7 +27720,11 @@ bluetooth.startIOPinService()</pre>
           const ord = this._order();
           if (!ord.length) return;
           let idx = this.activePoint ? ord.indexOf(this.activePoint) : (dir > 0 ? -1 : 0);
-          idx = (idx + dir + ord.length) % ord.length;
+          for (let k = 0; k < ord.length; k++) {
+            idx = (idx + dir + ord.length) % ord.length;
+            if (!this._skip(ord[idx])) break;
+          }
+          if (this._skip(ord[idx])) return;
           this.activePoint = ord[idx];
           this._draw();
           this._refreshActivePanel();
@@ -27754,6 +27824,7 @@ bluetooth.startIOPinService()</pre>
         _commitValue(v, auto) {
           const p = this.activePoint;
           if (!p) return;
+          if (this._skip(p)) { this._toast('Ese punto está sobre un electrodo: no se mide'); return; }
           this._undoStack.push({ p, prev: p.value, at: performance.now(), auto: !!auto });
           if (this._undoStack.length > 300) this._undoStack.shift();
           p.value = v;
@@ -27836,8 +27907,7 @@ bluetooth.startIOPinService()</pre>
         _refreshGuide() {
           if (!this._guideReady || !this.grid) return;
           const $ = (id) => this.sidebar.querySelector('#' + id);
-          const total = this.grid.points.length;
-          const done = this.grid.points.filter(p => p.value !== null).length;
+          const { total, done } = this._counts();
           const connected = (typeof state !== 'undefined') && !!state.isConnected;
           const g = this._guide;
           const flags = [
@@ -27882,7 +27952,12 @@ bluetooth.startIOPinService()</pre>
           if (!banner) return;
           const probe = (this._setup && this._setup.kind === 'cubeta') ? 'la punta' : 'el sensor';
           let msg = '', live = '', acts = [];
-          if (cur === 1) {
+          if (this._edit && this._edit.on) {
+            cur = 1;
+            msg = this._edit.drawing ? 'Dibujá el electrodo sobre la cubeta: apretá y arrastrá'
+                                     : 'Arrastrá los electrodos para ubicarlos en la cubeta';
+            acts = [['eldone', 'Listo']];
+          } else if (cur === 1) {
             msg = 'Elegí la práctica y tocá «Preparar la grilla»';
             acts = [['step1', 'Elegir práctica']];
           } else if (cur === 2) {
@@ -27918,6 +27993,7 @@ bluetooth.startIOPinService()</pre>
             acts.push(['pro', 'Análisis profesional', 1]);
           }
           const key = [cur, msg, live, acts.map(a => a[0]).join(',')].join('|');
+          this.panel.classList.toggle('mp-editing', !!(this._edit && this._edit.on));
           if (key === this._bannerKey) return;
           this._bannerKey = key;
           banner.textContent = '';
@@ -27954,7 +28030,7 @@ bluetooth.startIOPinService()</pre>
             es: {
               intro: 'MAPEO sirve para medir una magnitud <strong>punto por punto</strong> sobre una grilla y ver el mapa: isolíneas, gradiente y mapa de calor. El panel de la izquierda te lleva en cinco pasos.',
               steps: [
-                '<strong>Práctica.</strong> Elegí qué vas a mapear y tocá «Preparar la grilla». Para el campo eléctrico en la cubeta con agua ya vienen las medidas de la cubeta 3D del sitio.',
+                '<strong>Práctica.</strong> Elegí qué vas a mapear y tocá «Preparar la grilla». Para el campo eléctrico en la cubeta con agua ya vienen las medidas de la cubeta 3D del sitio; podés cambiar el largo, el ancho y el paso, y con «Mover y dibujar electrodos» ubicar, agregar o dibujar los electrodos. Los puntos que quedan bajo un electrodo no se miden.',
                 '<strong>Programa.</strong> Abrí el código en el editor del sitio (pestaña aparte) y descargalo a la micro:bit.',
                 '<strong>Conexión.</strong> Conectá la placa por USB o por Bluetooth. Al conectar, la captura arranca sola.',
                 '<strong>Medición.</strong> Llevá el sensor al punto marcado con el anillo blanco y presioná <strong>A</strong> en la micro:bit: el valor se guarda, suena un bip y el anillo pasa al punto siguiente. El botón <strong>B</strong> deshace la última medida.',
@@ -28056,14 +28132,34 @@ bluetooth.startIOPinService()</pre>
               next: 'Seguinte: código para o micro:bit'
             }
           }[this._lang()];
-          const kind = (this.sidebar.querySelector('#mp-electrodes') || {}).value || 'planos';
-          const plate = (x, col) => '<line x1="' + x + '" y1="128" x2="' + x + '" y2="262" stroke="' + col + '" stroke-width="7" stroke-linecap="round"/>';
-          const dot = (x, col) => '<circle cx="' + x + '" cy="195" r="9" fill="' + col + '"/>';
-          const leftIsPlate = (kind === 'planos' || kind === 'plano y punto' || kind === 'ninguno');
-          const rightIsPlate = (kind === 'planos' || kind === 'ninguno');
+          // Los electrodos del esquema son los de la cubeta que está armada en pantalla
+          const gw = this.grid ? this.grid.widthCm : 14, gh = this.grid ? this.grid.heightCm : 10;
+          const els = (this._setup ? this._electrodes() : this._templateElectrodes('planos', gw, gh));
+          const kS = Math.min(280 / gw, 134 / gh);
+          const SX = (x) => +(390 + (x - gw / 2) * kS).toFixed(1), SY = (y) => +(195 - (y - gh / 2) * kS).toFixed(1);
+          const colOf = (e) => (e.pol === '+') ? '#ef5350' : '#42a5f5';
+          let elSvg = '';
+          for (const e of els) {
+            const c = colOf(e);
+            if (e.shape === 'circulo') elSvg += '<circle cx="' + SX(e.x) + '" cy="' + SY(e.y) + '" r="' + Math.max(5, e.r * kS).toFixed(1) + '" fill="' + c + '"/>';
+            else if (e.shape === 'anillo') elSvg += '<circle cx="' + SX(e.x) + '" cy="' + SY(e.y) + '" r="' + (e.r * kS).toFixed(1) + '" fill="none" stroke="' + c + '" stroke-width="5"/>';
+            else if (e.shape === 'rect') elSvg += '<rect x="' + SX(e.x - e.w / 2) + '" y="' + SY(e.y + e.h / 2) + '" width="' + (e.w * kS).toFixed(1) + '" height="' + (e.h * kS).toFixed(1) + '" fill="' + c + '"/>';
+            else for (const [x1, y1, x2, y2] of this._elSegments(e)) elSvg += '<line x1="' + SX(x1) + '" y1="' + SY(y1) + '" x2="' + SX(x2) + '" y2="' + SY(y2) + '" stroke="' + c + '" stroke-width="6" stroke-linecap="round"/>';
+          }
+          // Punto donde llega cada cable: el primer electrodo de cada polaridad
+          const anchor = (pol, def) => {
+            const e = els.filter(q => q.pol === pol)[0];
+            if (!e) return def;
+            if (e.shape === 'anillo') return [SX(e.x), SY(e.y + e.r)];
+            const segs = this._elSegments(e);
+            if (segs.length) return (pol === '+') ? [SX(segs[0][2]), SY(segs[0][3])] : [SX(segs[0][0] * 0.75 + segs[0][2] * 0.25), SY(segs[0][1] * 0.75 + segs[0][3] * 0.25)];
+            return [SX(e.x), SY(e.y)];
+          };
+          const aN = anchor('-', [250, 235]), aP = anchor('+', [530, 128]);
           let grid = '';
-          for (let i = 1; i < 14; i++) grid += '<line x1="' + (250 + i * 20) + '" y1="128" x2="' + (250 + i * 20) + '" y2="262" stroke="#3a4250" stroke-width="1"/>';
-          for (let j = 1; j < 7; j++) grid += '<line x1="250" y1="' + (128 + j * 19.14).toFixed(1) + '" x2="530" y2="' + (128 + j * 19.14).toFixed(1) + '" stroke="#3a4250" stroke-width="1"/>';
+          const gStep = Math.max(1, Math.ceil(Math.max(gw, gh) / 16));
+          for (let i = 0; i <= gw + 1e-6; i += gStep) grid += '<line x1="' + SX(i) + '" y1="' + SY(0) + '" x2="' + SX(i) + '" y2="' + SY(gh) + '" stroke="#3a4250" stroke-width="1"/>';
+          for (let j = 0; j <= gh + 1e-6; j += gStep) grid += '<line x1="' + SX(0) + '" y1="' + SY(j) + '" x2="' + SX(gw) + '" y2="' + SY(j) + '" stroke="#3a4250" stroke-width="1"/>';
           let leds = '';
           for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) leds += '<rect x="' + (62 + c * 13) + '" y="' + (48 + r * 13) + '" width="5" height="8" fill="#5a2a2a"/>';
           const pads = [['0', 38], ['1', 68], ['2', 98], ['3V', 128], ['GND', 158]];
@@ -28078,8 +28174,7 @@ bluetooth.startIOPinService()</pre>
               '<rect x="232" y="110" width="316" height="170" rx="12" fill="#16324a" stroke="#6b7686" stroke-width="3"/>' +
               '<text x="390" y="296" text-anchor="middle" font-size="11" fill="#9e9e9e">' + T.water + '</text>' +
               grid +
-              (leftIsPlate ? plate(250, '#42a5f5') : dot(250, '#42a5f5')) +
-              (rightIsPlate ? plate(530, '#ef5350') : dot(530, '#ef5350')) +
+              elSvg +
               '<text x="250" y="104" text-anchor="middle" font-size="12" font-weight="700" fill="#42a5f5">− GND</text>' +
               '<text x="518" y="104" text-anchor="end" font-size="12" font-weight="700" fill="#ef5350">+ 3V</text>' +
               // micro:bit
@@ -28087,8 +28182,8 @@ bluetooth.startIOPinService()</pre>
               '<text x="98" y="22" text-anchor="middle" font-size="11" fill="#9e9e9e">micro:bit</text>' +
               leds + padSvg +
               // cables
-              '<path d="M158 148 C158 250, 200 235, 250 235" fill="none" stroke="#42a5f5" stroke-width="3"/>' +
-              '<path d="M128 148 C128 200, 204 205, 204 125 C204 35, 540 10, 530 128" fill="none" stroke="#ef5350" stroke-width="3"/>' +
+              '<path d="M158 148 C158 250, ' + (aN[0] - 50) + ' ' + aN[1] + ', ' + aN[0] + ' ' + aN[1] + '" fill="none" stroke="#42a5f5" stroke-width="3"/>' +
+              '<path d="M128 148 C128 200, 204 205, 204 125 C204 35, ' + (aP[0] + 10) + ' 10, ' + aP[0] + ' ' + aP[1] + '" fill="none" stroke="#ef5350" stroke-width="3"/>' +
               '<path d="M68 148 C68 290, 250 290, 330 215 S 380 160, 390 190" fill="none" stroke="#fdd835" stroke-width="3"/>' +
               // punta de prueba
               '<circle cx="390" cy="192" r="6" fill="#fdd835" stroke="#000"/>' +
@@ -28104,6 +28199,384 @@ bluetooth.startIOPinService()</pre>
             '<h4>' + T.careT + '</h4>' +
             '<ul>' + T.care.map(x => '<li>' + x + '</li>').join('') + '</ul>' +
             '<button type="button" class="mapeo-btn primary" data-act="code" style="margin-top:12px;">' + T.next + '</button>';
+        }
+
+        // ===================================================================
+        // CUBETA A MEDIDA: dimensiones y electrodos
+        // Cada electrodo: { shape, pol:'+'|'-', x, y, … } en cm, con origen en
+        // la esquina inferior izquierda de la zona de mapeo.
+        //   linea   → len, ang (grados; 90 = vertical)      (placa / chapa)
+        //   circulo → r                                     (tornillo, disco)
+        //   anillo  → r                                     (aro; coaxial)
+        //   rect    → w, h                                  (bloque)
+        //   libre   → pts [[dx,dy],…] relativos a (x, y)    (dibujado a mano)
+        // Los puntos de la grilla tapados por un electrodo no se miden.
+        // ===================================================================
+        static EL_CLEAR = 0.35;   // cm: a menos de esto de un electrodo, el punto no se mide
+
+        _templateElectrodes(tpl, w, h) {
+          const plate = (x, pol) => ({ shape: 'linea', pol, x, y: h / 2, len: h + 1.5, ang: 90 });
+          const dot = (x, pol) => ({ shape: 'circulo', pol, x, y: h / 2, r: 0.5 });
+          if (tpl === 'planos') return [plate(0, '-'), plate(w, '+')];
+          if (tpl === 'puntuales') return [dot(0, '-'), dot(w, '+')];
+          if (tpl === 'plano y punto') return [plate(0, '-'), dot(w, '+')];
+          if (tpl === 'coaxial') {
+            const r = Math.max(1, Math.floor(Math.min(w, h) / 2));
+            return [{ shape: 'circulo', pol: '+', x: w / 2, y: h / 2, r: 0.5 },
+                    { shape: 'anillo', pol: '-', x: w / 2, y: h / 2, r }];
+          }
+          return [];
+        }
+
+        // Acepta el formato viejo (electrodes = nombre de plantilla) y el nuevo (lista)
+        _normalizeSetup(raw, w, h) {
+          if (!raw || raw.kind !== 'cubeta') return null;
+          const num = (v, d) => (typeof v === 'number' && Number.isFinite(v)) ? v : d;
+          if (typeof raw.electrodes === 'string') {
+            return { kind: 'cubeta', template: raw.electrodes, electrodes: this._templateElectrodes(raw.electrodes, w, h) };
+          }
+          const list = Array.isArray(raw.electrodes) ? raw.electrodes : [];
+          const out = [];
+          for (const e of list.slice(0, 24)) {
+            if (!e || typeof e !== 'object') continue;
+            const shape = ['linea', 'circulo', 'anillo', 'rect', 'libre'].indexOf(e.shape) >= 0 ? e.shape : null;
+            if (!shape) continue;
+            const o = { shape, pol: e.pol === '+' ? '+' : '-', x: num(e.x, w / 2), y: num(e.y, h / 2) };
+            if (shape === 'linea') { o.len = Math.max(0.5, num(e.len, 4)); o.ang = num(e.ang, 90); }
+            else if (shape === 'circulo' || shape === 'anillo') o.r = Math.max(0.2, num(e.r, 1));
+            else if (shape === 'rect') { o.w = Math.max(0.3, num(e.w, 2)); o.h = Math.max(0.3, num(e.h, 2)); }
+            else {
+              o.pts = (Array.isArray(e.pts) ? e.pts : []).filter(q => Array.isArray(q) && Number.isFinite(q[0]) && Number.isFinite(q[1])).slice(0, 400).map(q => [+q[0], +q[1]]);
+              if (o.pts.length < 2) continue;
+            }
+            out.push(o);
+          }
+          return { kind: 'cubeta', template: String(raw.template || 'custom'), electrodes: out };
+        }
+
+        // Tramos (en cm absolutos) que forman un electrodo de línea o dibujado
+        _elSegments(e) {
+          if (e.shape === 'linea') {
+            const a = e.ang * Math.PI / 180, dx = Math.cos(a) * e.len / 2, dy = Math.sin(a) * e.len / 2;
+            return [[e.x - dx, e.y - dy, e.x + dx, e.y + dy]];
+          }
+          if (e.shape === 'libre') {
+            const segs = [];
+            for (let k = 1; k < e.pts.length; k++) {
+              segs.push([e.x + e.pts[k - 1][0], e.y + e.pts[k - 1][1], e.x + e.pts[k][0], e.y + e.pts[k][1]]);
+            }
+            return segs;
+          }
+          return [];
+        }
+        // Distancia (cm) de un punto al cuerpo del electrodo; 0 si está adentro
+        _elDist(e, x, y) {
+          if (e.shape === 'circulo') return Math.max(0, Math.hypot(x - e.x, y - e.y) - e.r);
+          if (e.shape === 'anillo') return Math.abs(Math.hypot(x - e.x, y - e.y) - e.r);
+          if (e.shape === 'rect') {
+            const dx = Math.max(Math.abs(x - e.x) - e.w / 2, 0), dy = Math.max(Math.abs(y - e.y) - e.h / 2, 0);
+            return Math.hypot(dx, dy);
+          }
+          let best = Infinity;
+          for (const [x1, y1, x2, y2] of this._elSegments(e)) {
+            const vx = x2 - x1, vy = y2 - y1, L2 = vx * vx + vy * vy;
+            let t = L2 > 0 ? ((x - x1) * vx + (y - y1) * vy) / L2 : 0;
+            t = Math.max(0, Math.min(1, t));
+            const d = Math.hypot(x - (x1 + t * vx), y - (y1 + t * vy));
+            if (d < best) best = d;
+          }
+          return best;
+        }
+        _electrodes() { return (this._setup && Array.isArray(this._setup.electrodes)) ? this._setup.electrodes : []; }
+
+        // Marca los puntos de la grilla que quedan tapados por algún electrodo
+        _recomputeBlocked() {
+          if (!this.grid) return;
+          const els = this._electrodes();
+          for (const p of this.grid.points) {
+            let b = false;
+            for (const e of els) { if (this._elDist(e, p.x, p.y) <= MapeoController.EL_CLEAR) { b = true; break; } }
+            p.blocked = b;
+          }
+          if (this.activePoint && this._skip(this.activePoint)) this.activePoint = this.isCapturing ? this._nextEmpty(null) : null;
+        }
+        // Punto que no se mide: tapado por un electrodo y sin valor cargado
+        _skip(p) { return !!(p && p.blocked && p.value === null); }
+        _counts() {
+          const pts = this.grid ? this.grid.points : [];
+          let total = 0, done = 0, blocked = 0;
+          for (const p of pts) {
+            if (this._skip(p)) { blocked++; continue; }
+            total++; if (p.value !== null) done++;
+          }
+          return { total, done, blocked };
+        }
+
+        _saveSetup() {
+          this._guide.setup = this._setup ? JSON.parse(JSON.stringify(this._setup)) : null;
+          this._saveGuide();
+          this._scheduleAutosave();
+        }
+        _electrodesChanged(keepTemplate) {
+          if (this._setup && !keepTemplate) {
+            this._setup.template = 'custom';
+            const sel = this.sidebar.querySelector('#mp-electrodes');
+            if (sel) sel.value = 'custom';
+          }
+          this._recomputeBlocked();
+          this._saveSetup();
+          this._updateInfo();
+          this._draw();
+        }
+
+        // ---------- Editor de electrodos (sobre el lienzo) ----------
+        _bindElectrodeEditor($) {
+          this._edit = { on: false, sel: -1, drag: null, drawing: false, path: null };
+          $('mp-el-edit').addEventListener('click', () => this._setEditMode(!this._edit.on));
+          $('mp-el-done').addEventListener('click', () => this._setEditMode(false));
+          $('mp-el-add').addEventListener('click', (e) => {
+            const b = e.target.closest('button[data-add]');
+            if (b) this._addElectrode(b.dataset.add);
+          });
+          $('mp-el-list').addEventListener('click', (e) => {
+            const b = e.target.closest('button[data-el]');
+            if (!b) return;
+            this._edit.sel = parseInt(b.dataset.el, 10);
+            this._edit.drawing = false;
+            this._renderElectrodeEditor(); this._draw();
+          });
+          $('mp-el-props').addEventListener('input', (e) => {
+            const f = e.target && e.target.dataset && e.target.dataset.f;
+            const el = this._electrodes()[this._edit.sel];
+            if (!f || !el) return;
+            if (f === 'pol') el.pol = (e.target.value === '+') ? '+' : '-';
+            else {
+              const v = parseFloat(e.target.value);
+              if (!Number.isFinite(v)) return;
+              if (f === 'scale') return;   // se aplica al soltar (change)
+              if (f === 'x' || f === 'y' || f === 'ang') el[f] = v;
+              else el[f] = Math.max(0.2, v);
+            }
+            this._electrodesChanged();
+            if (f === 'pol') this._renderElectrodeEditor();
+          });
+          $('mp-el-props').addEventListener('change', (e) => {
+            const el = this._electrodes()[this._edit.sel];
+            if (!el || !e.target || e.target.dataset.f !== 'scale') return;
+            const k = parseFloat(e.target.value) / 100;
+            if (Number.isFinite(k) && k > 0.05 && k < 20 && el.pts) {
+              el.pts = el.pts.map(q => [q[0] * k, q[1] * k]);
+              this._electrodesChanged();
+            }
+            e.target.value = 100;
+          });
+          $('mp-el-props').addEventListener('click', (e) => {
+            const b = e.target.closest('button[data-elact]');
+            if (!b) return;
+            const els = this._electrodes();
+            if (b.dataset.elact === 'del' && els[this._edit.sel]) {
+              els.splice(this._edit.sel, 1);
+              this._edit.sel = Math.min(this._edit.sel, els.length - 1);
+              this._electrodesChanged();
+              this._renderElectrodeEditor();
+            }
+          });
+
+          // Punteros sobre el lienzo: arrastrar electrodos / dibujar a mano
+          const toCm = (ev) => {
+            const r = this.canvas.getBoundingClientRect(), sc = this._scale;
+            return { x: (ev.clientX - r.left - sc.ox) / sc.s, y: (sc.oy - (ev.clientY - r.top)) / sc.s };
+          };
+          const snap = (v) => Math.round(v * 2) / 2;   // medio centímetro
+          this.canvas.addEventListener('pointerdown', (ev) => {
+            if (!this._edit.on || !this._scale || !this._setup) return;
+            const c = toCm(ev);
+            if (this._edit.drawing) {
+              this._edit.path = [[c.x, c.y]];
+              try { this.canvas.setPointerCapture(ev.pointerId); } catch {}
+              ev.preventDefault();
+              return;
+            }
+            const els = this._electrodes();
+            let hit = -1, bestD = 0.6;
+            for (let k = els.length - 1; k >= 0; k--) {
+              let d = this._elDist(els[k], c.x, c.y);
+              // un anillo también se agarra desde adentro si no hay otra cosa
+              if (d < bestD) { bestD = d; hit = k; }
+            }
+            this._edit.sel = hit;
+            if (hit >= 0) {
+              this._edit.drag = { dx: c.x - els[hit].x, dy: c.y - els[hit].y, moved: false };
+              try { this.canvas.setPointerCapture(ev.pointerId); } catch {}
+              ev.preventDefault();
+            }
+            this._renderElectrodeEditor(); this._draw();
+          });
+          this.canvas.addEventListener('pointermove', (ev) => {
+            if (!this._edit.on || !this._scale) return;
+            const c = toCm(ev);
+            if (this._edit.path) {
+              const last = this._edit.path[this._edit.path.length - 1];
+              if (Math.hypot(c.x - last[0], c.y - last[1]) >= 0.25 && this._edit.path.length < 400) { this._edit.path.push([c.x, c.y]); this._draw(); }
+              return;
+            }
+            const d = this._edit.drag, el = this._electrodes()[this._edit.sel];
+            if (!d || !el) return;
+            const w = this.grid.widthCm, h = this.grid.heightCm;
+            el.x = Math.max(-1, Math.min(w + 1, snap(c.x - d.dx)));
+            el.y = Math.max(-1, Math.min(h + 1, snap(c.y - d.dy)));
+            d.moved = true;
+            this._recomputeBlocked();
+            this._draw();
+          });
+          const end = (ev) => {
+            if (!this._edit.on) return;
+            try { this.canvas.releasePointerCapture(ev.pointerId); } catch {}
+            if (this._edit.path) {
+              const path = this._edit.path; this._edit.path = null;
+              let len = 0;
+              for (let k = 1; k < path.length; k++) len += Math.hypot(path[k][0] - path[k - 1][0], path[k][1] - path[k - 1][1]);
+              if (path.length >= 2 && len >= 0.5) {
+                const x0 = snap(path[0][0]), y0 = snap(path[0][1]);
+                const els = this._electrodes();
+                els.push({ shape: 'libre', pol: this._nextPolarity(), x: x0, y: y0,
+                           pts: path.map(q => [+(q[0] - x0).toFixed(2), +(q[1] - y0).toFixed(2)]) });
+                this._edit.sel = els.length - 1;
+                this._edit.drawing = false;
+                this._electrodesChanged();
+              } else this._toast('Mantené apretado y arrastrá para dibujar el electrodo');
+              this._renderElectrodeEditor(); this._draw(); this._refreshGuide();
+              return;
+            }
+            if (this._edit.drag) {
+              const moved = this._edit.drag.moved; this._edit.drag = null;
+              if (moved) { this._electrodesChanged(); this._renderElectrodeEditor(); }
+            }
+          };
+          this.canvas.addEventListener('pointerup', end);
+          this.canvas.addEventListener('pointercancel', end);
+        }
+
+        _nextPolarity() {
+          const els = this._electrodes();
+          const pos = els.filter(e => e.pol === '+').length, neg = els.length - pos;
+          return pos < neg ? '+' : '-';
+        }
+
+        _setEditMode(on) {
+          const $ = (id) => this.sidebar.querySelector('#' + id);
+          if (on && (!this._setup || this._setup.kind !== 'cubeta')) {
+            this._applyPractice();
+            if (!this._setup) return;
+          }
+          this._edit.on = !!on; this._edit.drag = null; this._edit.path = null; this._edit.drawing = false;
+          if (!on) this._edit.sel = -1;
+          $('mp-el-editor').style.display = on ? '' : 'none';
+          $('mp-el-edit').classList.toggle('active', !!on);
+          this.canvas.style.touchAction = on ? 'none' : '';
+          this.canvas.style.cursor = on ? 'move' : '';
+          if (on) { if (this.isCapturing) this._setCapturing(false); this._openStep(1); }
+          this._renderElectrodeEditor();
+          this._bannerKey = null;
+          this._draw();
+          this._refreshGuide();
+          if (on && this._closeSidebar && window.innerWidth <= 768) this._closeSidebar();
+        }
+
+        _addElectrode(shape) {
+          if (!this._setup) return;
+          if (shape === 'libre') {
+            this._edit.drawing = !this._edit.drawing;
+            this._edit.sel = -1;
+            this.canvas.style.cursor = this._edit.drawing ? 'crosshair' : 'move';
+            this._renderElectrodeEditor(); this._bannerKey = null; this._refreshGuide(); this._draw();
+            if (this._edit.drawing && this._closeSidebar && window.innerWidth <= 768) this._closeSidebar();
+            return;
+          }
+          const w = this.grid.widthCm, h = this.grid.heightCm;
+          const cx = Math.round(w / 2), cy = Math.round(h / 2);
+          const e = { shape, pol: this._nextPolarity(), x: cx, y: cy };
+          if (shape === 'linea') { e.len = Math.max(2, Math.round(h * 0.6)); e.ang = 90; }
+          else if (shape === 'circulo') e.r = 1;
+          else if (shape === 'anillo') e.r = Math.max(1, Math.floor(Math.min(w, h) / 3));
+          else if (shape === 'rect') { e.w = 2; e.h = 2; }
+          const els = this._electrodes();
+          if (els.length >= 24) { this._toast('Demasiados electrodos'); return; }
+          els.push(e);
+          this._edit.sel = els.length - 1; this._edit.drawing = false;
+          this._electrodesChanged();
+          this._renderElectrodeEditor();
+        }
+
+        _elName(e) {
+          return ({ linea: 'Placa', circulo: 'Círculo', anillo: 'Anillo', rect: 'Rectángulo', libre: 'Dibujo' })[e.shape] || 'Electrodo';
+        }
+
+        _renderElectrodeEditor() {
+          const $ = (id) => this.sidebar.querySelector('#' + id);
+          const list = $('mp-el-list'), props = $('mp-el-props');
+          if (!list || !props) return;
+          const els = this._electrodes();
+          list.textContent = '';
+          els.forEach((e, k) => {
+            const b = document.createElement('button');
+            b.type = 'button'; b.className = 'mapeo-btn mp-el-item' + (k === this._edit.sel ? ' active' : '');
+            b.dataset.el = String(k);
+            const sw = document.createElement('span');
+            sw.className = 'mp-el-sw'; sw.style.background = (e.pol === '+') ? '#ef5350' : '#42a5f5';
+            const nm = document.createElement('span'); nm.textContent = this._elName(e);
+            const pl = document.createElement('span'); pl.className = 'mp-el-pol'; pl.textContent = (e.pol === '+') ? '+ 3V' : '− GND';
+            b.appendChild(sw); b.appendChild(nm); b.appendChild(pl);
+            list.appendChild(b);
+          });
+          const dr = $('mp-el-add').querySelector('[data-add="libre"]');
+          if (dr) dr.classList.toggle('active', !!this._edit.drawing);
+          const e = els[this._edit.sel];
+          props.textContent = '';
+          if (!e) return;
+          const row = document.createElement('div'); row.className = 'mp-el-grid';
+          const field = (label, f, val, step) => {
+            const l = document.createElement('label'); l.textContent = label;
+            const i = document.createElement('input'); i.type = 'number'; i.step = String(step || 0.5); i.value = String(+(+val).toFixed(2)); i.dataset.f = f;
+            l.appendChild(i); row.appendChild(l);
+          };
+          const pl = document.createElement('label'); pl.textContent = 'Conectado a';
+          const ps = document.createElement('select'); ps.dataset.f = 'pol';
+          [['-', '− GND (0 V)'], ['+', '+ 3V']].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; ps.appendChild(o); });
+          ps.value = e.pol;
+          pl.appendChild(ps); props.appendChild(pl);
+          field('X (cm)', 'x', e.x); field('Y (cm)', 'y', e.y);
+          if (e.shape === 'linea') { field('Largo (cm)', 'len', e.len); field('Ángulo (°)', 'ang', e.ang, 15); }
+          else if (e.shape === 'circulo' || e.shape === 'anillo') field('Radio (cm)', 'r', e.r);
+          else if (e.shape === 'rect') { field('Ancho (cm)', 'w', e.w); field('Alto (cm)', 'h', e.h); }
+          else field('Tamaño (%)', 'scale', 100, 10);
+          props.appendChild(row);
+          const del = document.createElement('button');
+          del.type = 'button'; del.className = 'mapeo-btn danger'; del.dataset.elact = 'del'; del.textContent = 'Quitar este electrodo';
+          props.appendChild(del);
+        }
+
+        // Dibuja un electrodo en el lienzo
+        _drawElectrode(ctx, e, ox, oy, s, selected) {
+          const col = (e.pol === '+') ? '#ef5350' : '#42a5f5';
+          const X = (x) => ox + x * s, Y = (y) => oy - y * s;
+          const thick = Math.max(4, s * 0.14);
+          const path = () => {
+            ctx.beginPath();
+            if (e.shape === 'circulo' || e.shape === 'anillo') ctx.arc(X(e.x), Y(e.y), Math.max(3, e.r * s), 0, Math.PI * 2);
+            else if (e.shape === 'rect') ctx.rect(X(e.x - e.w / 2), Y(e.y + e.h / 2), e.w * s, e.h * s);
+            else for (const [x1, y1, x2, y2] of this._elSegments(e)) { ctx.moveTo(X(x1), Y(y1)); ctx.lineTo(X(x2), Y(y2)); }
+          };
+          const filled = (e.shape === 'circulo' || e.shape === 'rect');
+          ctx.save();
+          ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          if (selected) {
+            path(); ctx.strokeStyle = '#fff'; ctx.lineWidth = (filled ? 0 : thick) + 6; ctx.stroke();
+          }
+          path();
+          if (filled) { ctx.fillStyle = col; ctx.fill(); }
+          else { ctx.strokeStyle = col; ctx.lineWidth = thick; ctx.stroke(); }
+          ctx.restore();
         }
 
         // Campo E = −∇V en un punto de la grilla (diferencias con los vecinos
@@ -28140,26 +28613,30 @@ bluetooth.startIOPinService()</pre>
           ctx.fill();
           ctx.strokeStyle = '#6b7686'; ctx.lineWidth = 3;
           ctx.stroke();
-          const el = st.electrodes || 'planos';
-          if (el === 'ninguno') return;
-          const NEG = '#42a5f5', POS = '#ef5350';
-          const plate = (xCm, col) => {
-            ctx.strokeStyle = col; ctx.lineWidth = Math.max(4, s * 0.14); ctx.lineCap = 'round';
+        }
+        // Electrodos: van por encima del mapa de calor y por debajo de los puntos
+        _drawElectrodes(ctx, ox, oy, s) {
+          const st = this._setup;
+          if (!st || st.kind !== 'cubeta') return;
+          const w = this.grid.widthCm, h = this.grid.heightCm, m = 1;
+          const x0 = ox - m * s, y0 = oy - (h + m) * s, tw = (w + 2 * m) * s;
+          const els = this._electrodes();
+          const selIdx = (this._edit && this._edit.on) ? this._edit.sel : -1;
+          els.forEach((e, k) => this._drawElectrode(ctx, e, ox, oy, s, k === selIdx));
+          // Trazo en curso (dibujo a mano)
+          if (this._edit && this._edit.path && this._edit.path.length > 1) {
+            ctx.save();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(4, s * 0.14); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
             ctx.beginPath();
-            ctx.moveTo(ox + xCm * s, oy + (m - 0.25) * s);
-            ctx.lineTo(ox + xCm * s, oy - (h + m - 0.25) * s);
-            ctx.stroke(); ctx.lineCap = 'butt';
-          };
-          const dot = (xCm, col) => {
-            ctx.fillStyle = col;
-            ctx.beginPath(); ctx.arc(ox + xCm * s, oy - (h / 2) * s, Math.max(6, 0.5 * s), 0, Math.PI * 2); ctx.fill();
-          };
-          if (el === 'planos' || el === 'plano y punto') plate(0, NEG); else dot(0, NEG);
-          if (el === 'planos') plate(w, POS); else dot(w, POS);
+            this._edit.path.forEach((q, k) => { const px = ox + q[0] * s, py = oy - q[1] * s; if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py); });
+            ctx.stroke(); ctx.restore();
+          }
+          if (!els.length) return;
           ctx.font = 'bold 12px -apple-system,Segoe UI,sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillStyle = NEG; ctx.fillText('− GND', ox, y0 - 7);
-          ctx.fillStyle = POS; ctx.fillText('+ 3V', ox + w * s, y0 - 7);
+          ctx.textAlign = 'left';
+          ctx.fillStyle = '#42a5f5'; ctx.fillText('− GND', x0 + 4, y0 - 7);
+          ctx.textAlign = 'right';
+          ctx.fillStyle = '#ef5350'; ctx.fillText('+ 3V', x0 + tw - 4, y0 - 7);
           ctx.textAlign = 'start';
         }
 
@@ -28180,6 +28657,7 @@ bluetooth.startIOPinService()</pre>
           this.grid = { widthCm:w, heightCm:h, stepXCm:sx, stepYCm:sy, nx, ny, points };
           this.activePoint = null;
           this._undoStack = [];
+          this._recomputeBlocked();
           this._updateInfo();
           this._draw();
           this._scheduleAutosave();
@@ -29230,7 +29708,7 @@ bluetooth.startIOPinService()</pre>
             magnitudeUnit: mag.unit,
             // Práctica de cubeta: qué electrodos se dibujan (opcional; los
             // archivos viejos no lo traen).
-            setup: this._setup ? { kind: this._setup.kind, electrodes: this._setup.electrodes } : null,
+            setup: this._setup ? JSON.parse(JSON.stringify(this._setup)) : null,
             // Solo persistimos el array de valores, no el de objetos completos
             // (las coordenadas son redundantes — se reconstruyen del paso/dim).
             // Esto reduce el blob ~3x.
@@ -29261,14 +29739,18 @@ bluetooth.startIOPinService()</pre>
             this._readMagnitudeFromInputs();
           }
           if (blob.setup !== undefined) {
-            const okSetup = blob.setup && blob.setup.kind === 'cubeta';
-            this._setup = okSetup ? { kind: 'cubeta', electrodes: String(blob.setup.electrodes || 'planos') } : null;
+            this._setup = this._normalizeSetup(blob.setup, +blob.widthCm, +blob.heightCm);
+            const okSetup = !!this._setup;
             const pr = this.sidebar.querySelector('#mp-practice');
             const elSel = this.sidebar.querySelector('#mp-electrodes');
             const box = this.sidebar.querySelector('#mp-cubeta-box');
             if (okSetup) {
               if (pr) pr.value = 'cubeta';
-              if (elSel) { elSel.value = this._setup.electrodes; if (!elSel.value) elSel.value = 'planos'; }
+              if (elSel) { elSel.value = this._setup.template; if (!elSel.value) elSel.value = 'custom'; }
+              const q = (id) => this.sidebar.querySelector('#' + id);
+              if (q('mp-tray-w')) q('mp-tray-w').value = blob.widthCm;
+              if (q('mp-tray-h')) q('mp-tray-h').value = blob.heightCm;
+              if (q('mp-cubeta-step')) q('mp-cubeta-step').value = blob.stepXCm;
             } else if (pr && pr.value === 'cubeta') pr.value = 'custom';
             if (box && pr) box.style.display = (pr.value === 'cubeta') ? '' : 'none';
           }
@@ -29664,6 +30146,7 @@ bluetooth.startIOPinService()</pre>
           if (this._info) {
             this._info.innerHTML =
               `Puntos: <strong style="color:#fff;">${this.grid.nx} × ${this.grid.ny} = ${total}</strong><br>` +
+              (this._counts().blocked ? `Bajo electrodos (no se miden): <strong style="color:#fff;">${this._counts().blocked}</strong><br>` : '') +
               `Medidos: <strong style="color:#fff;">${done}</strong>`;
           }
           // Refrescar también stats inline y panel del punto activo en cada cambio.
@@ -29774,6 +30257,8 @@ bluetooth.startIOPinService()</pre>
             this._toast('Necesitás al menos 3 puntos para visualizar');
           }
 
+          this._drawElectrodes(ctx, ox, oy, s);
+
           // Pelotitas — radio adaptativo:
           // - tamaño "ideal" según device (touch=10, desktop=7)
           // - capeado al 40% del paso de grilla en píxeles, así nunca se
@@ -29787,6 +30272,8 @@ bluetooth.startIOPinService()</pre>
           this.grid.points.forEach(p => {
             const px = ox + p.x*s;
             const py = oy - p.y*s;
+            // Punto bajo un electrodo: no se mide, no se dibuja la pelotita
+            if (this._skip(p)) return;
             ctx.beginPath();
             ctx.arc(px, py, dotR, 0, Math.PI*2);
             if (p.value === null) {
@@ -29878,8 +30365,10 @@ bluetooth.startIOPinService()</pre>
           const stepPx = Math.min(this.grid.stepXCm, this.grid.stepYCm) * s;
           const baseMax = this._isTouch ? 28 : 18;
           const maxR = Math.min(baseMax, stepPx * 0.45);
+          if (this._edit && this._edit.on) return;   // en edición los punteros mueven electrodos
           let best = null, bestD = maxR;
           this.grid.points.forEach(p => {
+            if (this._skip(p)) return;
             const px = ox + p.x*s, py = oy - p.y*s;
             const d = Math.hypot(px - mx, py - my);
             if (d < bestD) { bestD = d; best = p; }
@@ -36179,6 +36668,28 @@ bluetooth.startIOPinService()</pre>
     'El navegador bloqueó la pestaña nueva. Permití las ventanas emergentes para este sitio.': { en: 'The browser blocked the new tab. Allow pop-ups for this site.', pt: 'O navegador bloqueou a nova aba. Permita pop-ups para este site.' },
     'El editor del sitio no está disponible: copiá el código y pegalo en MakeCode': { en: 'The site\'s editor is not available: copy the code and paste it into MakeCode', pt: 'O editor do site não está disponível: copie o código e cole no MakeCode' },
     'Editor abierto en otra pestaña: descargá el programa y volvé acá': { en: 'Editor opened in another tab: download the program and come back here', pt: 'Editor aberto em outra aba: baixe o programa e volte aqui' },
+    // ---------- MAPEO · cubeta a medida ----------
+    'Largo (cm)': { en: 'Length (cm)', pt: 'Comprimento (cm)' },
+    'Paso (cm)': { en: 'Step (cm)', pt: 'Passo (cm)' },
+    'Radio (cm)': { en: 'Radius (cm)', pt: 'Raio (cm)' },
+    'Ángulo (°)': { en: 'Angle (°)', pt: 'Ângulo (°)' },
+    'Tamaño (%)': { en: 'Size (%)', pt: 'Tamanho (%)' },
+    'Mover y dibujar electrodos': { en: 'Move and draw electrodes', pt: 'Mover e desenhar eletrodos' },
+    'Arrastrá un electrodo sobre la cubeta para ubicarlo. Los puntos que tapa un electrodo no se miden.': { en: 'Drag an electrode over the tray to place it. Points covered by an electrode are not measured.', pt: 'Arraste um eletrodo sobre a cuba para posicioná-lo. Os pontos cobertos por um eletrodo não são medidos.' },
+    'Agregar electrodo': { en: 'Add electrode', pt: 'Adicionar eletrodo' },
+    'Placa': { en: 'Plate', pt: 'Placa' },
+    'Círculo': { en: 'Circle', pt: 'Círculo' },
+    'Anillo': { en: 'Ring', pt: 'Anel' },
+    'Rectángulo': { en: 'Rectangle', pt: 'Retângulo' },
+    'Dibujar a mano': { en: 'Draw freehand', pt: 'Desenhar à mão' },
+    'Dibujá el electrodo a mano sobre la cubeta': { en: 'Draw the electrode freehand over the tray', pt: 'Desenhe o eletrodo à mão sobre a cuba' },
+    'Conectado a': { en: 'Connected to', pt: 'Ligado a' },
+    'Quitar este electrodo': { en: 'Remove this electrode', pt: 'Remover este eletrodo' },
+    'Dibujá el electrodo sobre la cubeta: apretá y arrastrá': { en: 'Draw the electrode over the tray: press and drag', pt: 'Desenhe o eletrodo sobre a cuba: pressione e arraste' },
+    'Arrastrá los electrodos para ubicarlos en la cubeta': { en: 'Drag the electrodes to place them in the tray', pt: 'Arraste os eletrodos para posicioná-los na cuba' },
+    'Mantené apretado y arrastrá para dibujar el electrodo': { en: 'Hold down and drag to draw the electrode', pt: 'Mantenha pressionado e arraste para desenhar o eletrodo' },
+    'Ese punto está sobre un electrodo: no se mide': { en: 'That point is on an electrode: it is not measured', pt: 'Esse ponto está sobre um eletrodo: não é medido' },
+    'Demasiados electrodos': { en: 'Too many electrodes', pt: 'Eletrodos demais' },
     // ---------- MAPEO · ventana del programa ----------
     'PROGRAMA PARA TU MICRO:BIT': { en: 'PROGRAM FOR YOUR MICRO:BIT', pt: 'PROGRAMA PARA O SEU MICRO:BIT' },
     'Elegí cómo se conecta y qué mide.': { en: 'Choose how it connects and what it measures.', pt: 'Escolha como se conecta e o que mede.' },
@@ -36289,6 +36800,8 @@ bluetooth.startIOPinService()</pre>
     { es: 'Medidos %n% de %n%', en: 'Measured %n% of %n%', pt: 'Medidos %n% de %n%' },
     { es: '%s% guardado en (%n%, %n%) cm', en: '%s% saved at (%n%, %n%) cm', pt: '%s% salvo em (%n%, %n%) cm' },
     { es: 'Medida deshecha: volvé a (%n%, %n%) cm', en: 'Measurement undone: go back to (%n%, %n%) cm', pt: 'Medida desfeita: volte a (%n%, %n%) cm' },
+    { es: 'Grilla lista: %n% puntos para medir (%n% quedan bajo los electrodos)', en: 'Grid ready: %n% points to measure (%n% are under the electrodes)', pt: 'Grade pronta: %n% pontos para medir (%n% ficam sob os eletrodos)' },
+    { es: 'Grilla lista: %n% puntos para medir', en: 'Grid ready: %n% points to measure', pt: 'Grade pronta: %n% pontos para medir' },
     { es: 'Grilla lista: %n% × %n% = %n% puntos', en: 'Grid ready: %n% × %n% = %n% points', pt: 'Grade pronta: %n% × %n% = %n% pontos' },
     { es: '%n% de %n% partes listas · faltan %n%', en: '%n% of %n% parts done · %n% to go', pt: '%n% de %n% partes prontas · faltam %n%' },
     { es: '%n% partes vacías no se incluyen hasta que escribas algo en ellas.', en: '%n% empty parts are not included until you write something in them.', pt: '%n% partes vazias não são incluídas até você escrever algo nelas.' },
