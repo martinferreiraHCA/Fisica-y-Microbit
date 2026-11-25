@@ -4013,6 +4013,7 @@
           background:#1a1d23; color:#e0e0e0; border:1px solid #444; border-radius:0; font-family:inherit; font-size:12px;
         }
         .mp-field-result { border:1px solid #2b303b; border-left:4px solid #f9a825; background:#1a1d23; padding:10px 12px; margin-bottom:10px; }
+        .mp-cal-box { border:1px solid #2b303b; padding:10px; margin-top:8px; }
         .mp-field-diag { border:1px solid #2b303b; border-left:4px solid #42a5f5; background:#1a1d23; padding:10px 12px; margin-bottom:10px; font-size:12.5px; }
         .mp-field-diag p { margin:5px 0; }
         .mp-field-big { font-size:22px; font-weight:700; color:#fff; margin-bottom:4px; }
@@ -26246,7 +26247,6 @@ bluetooth.startIOPinService()</pre>
             <div class="mapeo-mc-label">Sensor</div>
             <div class="mapeo-mc-sensors" style="flex-wrap:wrap;">
               <button class="mapeo-btn active" data-sensor="voltage">Voltaje (cubeta)</button>
-              <button class="mapeo-btn" data-sensor="voltage_ac">Voltaje alterna (cubeta)</button>
               <button class="mapeo-btn" data-sensor="light">Luz</button>
               <button class="mapeo-btn" data-sensor="magnet">Imán</button>
               <button class="mapeo-btn" data-sensor="sound">Sonido</button>
@@ -27070,6 +27070,15 @@ bluetooth.startIOPinService()</pre>
               <summary><span class="mp-step-n">4</span><span class="mp-step-t">Medición</span></summary>
               <div class="mp-step-body">
                 <button class="mapeo-btn" id="mp-cap">● Iniciar captura</button>
+                <div id="mp-cal-box" class="mp-cal-box" style="display:none;">
+                  <div class="section-title" style="margin-top:0;">Potencial junto a los electrodos</div>
+                  <div class="mp-el-grid" style="grid-template-columns:1fr 1fr;">
+                    <label>Junto al − (V)<input type="number" id="mp-cal-neg" step="any" placeholder="sin medir"></label>
+                    <label>Junto al + (V)<input type="number" id="mp-cal-pos" step="any" placeholder="sin medir"></label>
+                  </div>
+                  <div class="mapeo-info" id="mp-cal-diff" style="margin-top:0;">Todavía sin medir</div>
+                  <button class="mapeo-btn" id="mp-cal-start" title="Medí con la punta en el agua, pegada a cada electrodo: es la tensión que de verdad hay en el agua">Medir los electrodos</button>
+                </div>
                 <button class="mapeo-btn primary" id="mp-record" style="display:none;">Registrar lectura (Espacio)</button>
                 <div class="mapeo-info" id="mp-next-info"></div>
                 <div class="mp-progress"><div id="mp-progress-bar"></div></div>
@@ -27569,6 +27578,14 @@ bluetooth.startIOPinService()</pre>
             this._openStep(3); this._refreshGuide();
           });
 
+          $('mp-cal-start').addEventListener('click', () => this._startCal());
+          ['mp-cal-neg', 'mp-cal-pos'].forEach(id => $(id).addEventListener('change', () => {
+            const a = parseFloat($('mp-cal-neg').value), b = parseFloat($('mp-cal-pos').value);
+            if (!this._setup) return;
+            this._setup.cal = (Number.isFinite(a) && Number.isFinite(b)) ? { neg: a, pos: b } : null;
+            this._calStage = null;
+            this._saveSetup(); this._syncCalInputs(); this._bannerKey = null; this._draw(); this._refreshGuide();
+          }));
           $('mp-prev').addEventListener('click', () => this._step(-1));
           $('mp-next').addEventListener('click', () => this._step(1));
           $('mp-undo').addEventListener('click', () => this._undo());
@@ -27600,6 +27617,7 @@ bluetooth.startIOPinService()</pre>
             else if (act === 'pro') this._openPro();
             else if (act === 'eldone') this._setEditMode(false);
             else if (act === 'field') this._openField();
+            else if (act === 'calskip') this._skipCal();
           });
 
           // Ventana de información (montaje / cómo se usa)
@@ -27759,6 +27777,8 @@ bluetooth.startIOPinService()</pre>
             if (!connected) this._toast('Atención: no hay conexión activa con la micro:bit');
             if (!this.activePoint) this.activePoint = this._nextEmpty(null);
             this._beep('init');
+            // Primero se mide el potencial junto a cada electrodo (una sola vez)
+            if (this._canCalibrate() && !this._setup.cal && !this._setup.calSkipped && !this._calStage) { this._calStage = 'neg'; this._calTmp = {}; }
           }
           this.isCapturing = on;
           const btn = this.sidebar.querySelector('#mp-cap');
@@ -27766,7 +27786,7 @@ bluetooth.startIOPinService()</pre>
             btn.textContent = on ? '■ Pausar captura' : '● Iniciar captura';
             btn.classList.toggle('recording', on);
           }
-          if (!on) { this._stream = false; this._streamBuf = []; }
+          if (!on) { this._stream = false; this._streamBuf = []; this._calStage = null; }
           this._updateStatus();
           if (on) this._startPolling(); else this._stopPolling();
           this._draw();
@@ -27815,7 +27835,7 @@ bluetooth.startIOPinService()</pre>
             this._refreshGuide();
             return;
           }
-          if (!this.activePoint) {
+          if (!this.activePoint && !this._calStage) {
             this._toast('Seleccioná un punto antes de capturar');
             return;
           }
@@ -27828,7 +27848,7 @@ bluetooth.startIOPinService()</pre>
           const now = performance.now();
           const recent = this._streamBuf.filter(r => now - r.at < 1500).slice(-5);
           if (!recent.length) { this._toast('Todavía no llegó ninguna lectura'); return; }
-          if (!this.activePoint) { this._toast('Seleccioná un punto antes de capturar'); return; }
+          if (!this.activePoint && !this._calStage) { this._toast('Seleccioná un punto antes de capturar'); return; }
           const mean = recent.reduce((a, r) => a + r.v, 0) / recent.length;
           this._commitValue(mean, false);
         }
@@ -27843,6 +27863,7 @@ bluetooth.startIOPinService()</pre>
         }
 
         _commitValue(v, auto) {
+          if (this._calStage) { this._calCommit(v); return; }
           const p = this.activePoint;
           if (!p) return;
           if (this._skip(p)) { this._toast('Ese punto está sobre un electrodo: no se mide'); return; }
@@ -27883,6 +27904,8 @@ bluetooth.startIOPinService()</pre>
         }
 
         _undo(silent) {
+          // Midiendo los electrodos: deshacer vuelve al primero
+          if (this._calStage === 'pos') { this._calStage = 'neg'; this._bannerKey = null; this._draw(); this._refreshGuide(); return; }
           let u = this._undoStack.pop();
           // Entradas de una grilla anterior ya no valen
           while (u && this.grid && this.grid.points.indexOf(u.p) < 0) u = this._undoStack.pop();
@@ -27961,6 +27984,7 @@ bluetooth.startIOPinService()</pre>
               (ap ? ' · punto activo: x = ' + (+ap.x.toFixed(2)) + ' cm, y = ' + (+ap.y.toFixed(2)) + ' cm' : '');
             if (ni.textContent !== txt) ni.textContent = txt;
           }
+          this._syncCalInputs();
           const bar = $('mp-progress-bar');
           if (bar) bar.style.width = (total ? (100 * done / total) : 0).toFixed(1) + '%';
           const rec = $('mp-record');
@@ -27992,6 +28016,11 @@ bluetooth.startIOPinService()</pre>
             if (!this.isCapturing) {
               if (connected) { msg = 'Todo listo para medir'; acts = [['cap', 'Iniciar captura']]; }
               else { msg = 'Tocá un punto y escribí su valor, o conectá la micro:bit'; acts = [['usb', 'USB'], ['ble', 'Bluetooth', 1]]; }
+            } else if (this._calStage) {
+              const cuál = this._calStage === 'neg' ? 'electrodo − (azul)' : 'electrodo + (rojo)';
+              msg = 'Antes de empezar · Poné la punta en el agua, pegada al ' + cuál + ', y ' + (this._stream ? 'tocá REGISTRAR' : 'presioná A');
+              if (this._stream) { live = (this._lastValue != null) ? this._fmtVal(this._lastValue) + this._unit() : ''; acts = [['record', 'Registrar']]; }
+              acts.push(['calskip', 'Saltar', 1]);
             } else if (!ap) {
               msg = 'Tocá un punto de la grilla para empezar';
             } else {
@@ -28111,7 +28140,7 @@ bluetooth.startIOPinService()</pre>
                 'Usá solo los 3 V de la micro:bit. No conectes fuentes externas a la cubeta mientras la punta esté en un pin.',
                 'No dejes que los cocodrilos de 3V y GND se toquen entre sí.',
                 'Medí sin demorar demasiado y sin mover los electrodos: con el tiempo se forman burbujas en las chapas y las lecturas cambian un poco.',
-                'La micro:bit mide entre 0 y 3,3 V respecto de GND: junto al electrodo − vas a leer cerca de 0 V y junto al + cerca de 3,3 V. Si en el agua, pegado a una placa, leés bastante distinto, mirá «Calcular el campo»: ahí se ve cuánta tensión se pierde en el contacto entre la placa y el agua.'
+                'La micro:bit mide entre 0 y 3,3 V respecto de GND, pero junto a las placas en el agua no vas a leer 0 V y 3,3 V, porque una parte de la tensión cae en el contacto entre cada placa y el agua. Por eso, antes de recorrer la grilla, MAPEO te pide medir con la punta en el agua pegada a cada electrodo, y usa esa tensión real.'
               ],
               next: 'Siguiente: código para la micro:bit'
             },
@@ -28130,7 +28159,7 @@ bluetooth.startIOPinService()</pre>
                 'Use only the micro:bit\'s 3 V. Do not connect external supplies to the tray while the probe is on a pin.',
                 'Do not let the 3V and GND clips touch each other.',
                 'Measure without long pauses and without moving the electrodes: bubbles form on the plates over time and readings drift a little.',
-                'The micro:bit measures between 0 and 3.3 V relative to GND: next to the − electrode you will read about 0 V and next to the + about 3.3 V. If the reading in the water right next to a plate is quite different, see “Calculate the field”: it shows how much voltage is lost at the contact between the plate and the water.'
+                'The micro:bit measures between 0 and 3.3 V relative to GND, but next to the plates in the water you will not read 0 V and 3.3 V, because part of the voltage drops at the contact between each plate and the water. That is why, before going over the grid, MAPPING asks you to measure with the probe in the water right next to each electrode, and uses that real voltage.'
               ],
               next: 'Next: code for the micro:bit'
             },
@@ -28149,7 +28178,7 @@ bluetooth.startIOPinService()</pre>
                 'Use apenas os 3 V do micro:bit. Não ligue fontes externas à cuba enquanto a ponta estiver em um pino.',
                 'Não deixe as garras de 3V e GND se tocarem.',
                 'Meça sem demorar demais e sem mover os eletrodos: com o tempo formam-se bolhas nas chapas e as leituras mudam um pouco.',
-                'O micro:bit mede entre 0 e 3,3 V em relação ao GND: junto ao eletrodo − você lerá perto de 0 V e junto ao + perto de 3,3 V. Se na água, encostado em uma placa, a leitura for bem diferente, veja «Calcular o campo»: lá se vê quanta tensão se perde no contato entre a placa e a água.'
+                'O micro:bit mede entre 0 e 3,3 V em relação ao GND, mas junto às placas na água você não lerá 0 V e 3,3 V, porque uma parte da tensão cai no contato entre cada placa e a água. Por isso, antes de percorrer a grade, o MAPEAMENTO pede para medir com a ponta na água encostada em cada eletrodo, e usa essa tensão real.'
               ],
               next: 'Seguinte: código para o micro:bit'
             }
@@ -28197,8 +28226,8 @@ bluetooth.startIOPinService()</pre>
               '<text x="390" y="296" text-anchor="middle" font-size="11" fill="#9e9e9e">' + T.water + '</text>' +
               grid +
               elSvg +
-              '<text x="250" y="104" text-anchor="middle" font-size="12" font-weight="700" fill="#42a5f5">− 0 V (GND)</text>' +
-              '<text x="518" y="104" text-anchor="end" font-size="12" font-weight="700" fill="#ef5350">+ 3,3 V (pin 3V)</text>' +
+              '<text x="250" y="104" text-anchor="middle" font-size="12" font-weight="700" fill="#42a5f5">− GND</text>' +
+              '<text x="518" y="104" text-anchor="end" font-size="12" font-weight="700" fill="#ef5350">+ 3V</text>' +
               // micro:bit
               '<rect x="20" y="28" width="156" height="126" rx="12" fill="#101216" stroke="#6b7686" stroke-width="2"/>' +
               '<text x="98" y="22" text-anchor="middle" font-size="11" fill="#9e9e9e">micro:bit</text>' +
@@ -28273,7 +28302,8 @@ bluetooth.startIOPinService()</pre>
             }
             out.push(o);
           }
-          return { kind: 'cubeta', template: String(raw.template || 'custom'), electrodes: out };
+          const okCal = raw.cal && Number.isFinite(raw.cal.neg) && Number.isFinite(raw.cal.pos);
+          return { kind: 'cubeta', template: String(raw.template || 'custom'), electrodes: out, cal: okCal ? { neg: +raw.cal.neg, pos: +raw.cal.pos } : null };
         }
 
         // Tramos (en cm absolutos) que forman un electrodo de línea o dibujado
@@ -28319,6 +28349,7 @@ bluetooth.startIOPinService()</pre>
             let b = false;
             for (const e of els) { if (this._elDist(e, p.x, p.y) <= MapeoController.EL_CLEAR) { b = true; break; } }
             p.blocked = b;
+            p.bpol = b ? (els.filter(e => this._elDist(e, p.x, p.y) <= MapeoController.EL_CLEAR)[0] || {}).pol : null;
           }
           if (this.activePoint && this._skip(this.activePoint)) this.activePoint = this.isCapturing ? this._nextEmpty(null) : null;
         }
@@ -28340,6 +28371,8 @@ bluetooth.startIOPinService()</pre>
           this._scheduleAutosave();
         }
         _electrodesChanged(keepTemplate) {
+          // Si cambian los electrodos, lo medido junto a ellos ya no vale
+          if (this._setup) { this._setup.cal = null; this._calStage = null; this._syncCalInputs(); }
           if (this._setup && !keepTemplate) {
             this._setup.template = 'custom';
             const sel = this.sidebar.querySelector('#mp-electrodes');
@@ -28547,7 +28580,7 @@ bluetooth.startIOPinService()</pre>
             const sw = document.createElement('span');
             sw.className = 'mp-el-sw'; sw.style.background = (e.pol === '+') ? '#ef5350' : '#42a5f5';
             const nm = document.createElement('span'); nm.textContent = this._elName(e);
-            const pl = document.createElement('span'); pl.className = 'mp-el-pol'; pl.textContent = (e.pol === '+') ? '+ 3,3 V' : '− 0 V';
+            const pl = document.createElement('span'); pl.className = 'mp-el-pol'; pl.textContent = (e.pol === '+') ? '+ pin 3V' : '− GND';
             b.appendChild(sw); b.appendChild(nm); b.appendChild(pl);
             list.appendChild(b);
           });
@@ -28564,7 +28597,7 @@ bluetooth.startIOPinService()</pre>
           };
           const pl = document.createElement('label'); pl.textContent = 'Conectado a';
           const ps = document.createElement('select'); ps.dataset.f = 'pol';
-          [['-', '− 0 V (pin GND)'], ['+', '+ 3,3 V (pin 3V)']].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; ps.appendChild(o); });
+          [['-', '− (pin GND)'], ['+', '+ (pin 3V)']].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; ps.appendChild(o); });
           ps.value = e.pol;
           pl.appendChild(ps); props.appendChild(pl);
           field('X (cm)', 'x', e.x); field('Y (cm)', 'y', e.y);
@@ -28599,6 +28632,67 @@ bluetooth.startIOPinService()</pre>
           if (filled) { ctx.fillStyle = col; ctx.fill(); }
           else { ctx.strokeStyle = col; ctx.lineWidth = thick; ctx.stroke(); }
           ctx.restore();
+        }
+
+        // ===================================================================
+        // POTENCIAL REAL DE LOS ELECTRODOS
+        // Antes de recorrer la grilla se mide el potencial en el agua, pegado a
+        // cada electrodo. Esa diferencia (y no los 3,3 V nominales de la placa)
+        // es la tensión que de verdad hay en el agua: con ella se rotulan los
+        // electrodos, se completa el mapa junto a ellos y se compara el campo.
+        // setup.cal = { neg, pos } en volts; _calStage = 'neg' | 'pos' | null.
+        // ===================================================================
+        _canCalibrate() {
+          const els = this._electrodes();
+          return !!this._setup && els.some(e => e.pol === '-') && els.some(e => e.pol === '+');
+        }
+        _startCal() {
+          if (!this._canCalibrate()) { this._toast('Hace falta al menos un electrodo − y uno + para medirlos'); return; }
+          this._calStage = 'neg'; this._calTmp = {};
+          if (!this.isCapturing) this._setCapturing(true);
+          this._bannerKey = null; this._draw(); this._refreshGuide();
+        }
+        _skipCal() {
+          this._calStage = null;
+          if (this._setup) this._setup.calSkipped = true;
+          this._bannerKey = null; this._draw(); this._refreshGuide();
+        }
+        _calCommit(v) {
+          if (this._calStage === 'neg') {
+            this._calTmp = { neg: v };
+            this._calStage = 'pos';
+            this._beep('ok');
+            this._toast('Junto al electrodo −: ' + this._fmtVal(v) + ' V');
+          } else {
+            const neg = (this._calTmp && Number.isFinite(this._calTmp.neg)) ? this._calTmp.neg : 0;
+            this._setup.cal = { neg, pos: v };
+            this._calStage = null;
+            this._saveSetup();
+            this._syncCalInputs();
+            this._beep('done');
+            this._toast(v < neg
+              ? 'Junto al + dio menos que junto al −: revisá si los cables de 3V y GND están cruzados'
+              : 'Entre los electrodos hay ' + this._fmtVal(v - neg) + ' V en el agua');
+          }
+          this._bannerKey = null; this._draw(); this._refreshGuide();
+        }
+        _syncCalInputs() {
+          const q = (id) => this.sidebar.querySelector('#' + id);
+          const box = q('mp-cal-box'); if (!box) return;
+          box.style.display = this._canCalibrate() ? '' : 'none';
+          const cal = this._setup && this._setup.cal;
+          if (document.activeElement !== q('mp-cal-neg')) q('mp-cal-neg').value = cal ? +cal.neg.toFixed(3) : '';
+          if (document.activeElement !== q('mp-cal-pos')) q('mp-cal-pos').value = cal ? +cal.pos.toFixed(3) : '';
+          const d = q('mp-cal-diff');
+          if (d) d.textContent = cal ? 'Entre los electrodos, en el agua: ' + this._fmtVal(cal.pos - cal.neg) + ' V' : 'Todavía sin medir';
+        }
+        // Grilla para dibujar el mapa: los puntos tapados por un electrodo toman
+        // el potencial medido junto a ese electrodo (si ya se midió).
+        _vizGrid() {
+          const cal = this._setup && this._setup.cal;
+          if (!cal) return this.grid;
+          return Object.assign({}, this.grid, { points: this.grid.points.map(p =>
+            (p.value === null && p.blocked && p.bpol) ? { x: p.x, y: p.y, value: p.bpol === '+' ? cal.pos : cal.neg } : p) });
         }
 
         // ===================================================================
@@ -28648,13 +28742,13 @@ bluetooth.startIOPinService()</pre>
           const L = {
             es: { title: 'Campo a partir del potencial', axis: 'Distancia medida a lo largo de', ax: 'x (de un electrodo al otro)', ay: 'y', from: 'Ajustar desde (cm)', to: 'hasta (cm)',
                   intro: 'Para cada distancia se promedian los potenciales medidos en esa columna. La recta que mejor ajusta V en función de la distancia da el campo: E = −ΔV/Δx.',
-                  vsup: 'Tensión entre electrodos (V)', csv: 'Exportar tabla CSV', hd: ['Distancia (cm)', 'V medio', 'Desvío', 'N° de puntos', 'E del tramo (con signo)'] },
+                  vsup: 'Tensión medida entre electrodos (V)', csv: 'Exportar tabla CSV', hd: ['Distancia (cm)', 'V medio', 'Desvío', 'N° de puntos', 'E del tramo (con signo)'] },
             en: { title: 'Field from the potential', axis: 'Distance measured along', ax: 'x (from one electrode to the other)', ay: 'y', from: 'Fit from (cm)', to: 'to (cm)',
                   intro: 'For each distance, the potentials measured in that column are averaged. The best-fit line of V against distance gives the field: E = −ΔV/Δx.',
-                  vsup: 'Voltage between electrodes (V)', csv: 'Export table CSV', hd: ['Distance (cm)', 'Mean V', 'Std. dev.', 'No. of points', 'E of the interval (signed)'] },
+                  vsup: 'Measured voltage between electrodes (V)', csv: 'Export table CSV', hd: ['Distance (cm)', 'Mean V', 'Std. dev.', 'No. of points', 'E of the interval (signed)'] },
             pt: { title: 'Campo a partir do potencial', axis: 'Distância medida ao longo de', ax: 'x (de um eletrodo ao outro)', ay: 'y', from: 'Ajustar de (cm)', to: 'até (cm)',
                   intro: 'Para cada distância faz-se a média dos potenciais medidos nessa coluna. A reta que melhor ajusta V em função da distância dá o campo: E = −ΔV/Δx.',
-                  vsup: 'Tensão entre eletrodos (V)', csv: 'Exportar tabela CSV', hd: ['Distância (cm)', 'V médio', 'Desvio', 'N.º de pontos', 'E do trecho (com sinal)'] }
+                  vsup: 'Tensão medida entre eletrodos (V)', csv: 'Exportar tabela CSV', hd: ['Distância (cm)', 'V médio', 'Desvio', 'N.º de pontos', 'E do trecho (com sinal)'] }
           }[this._lang()];
           const html =
             '<p style="margin-top:0;">' + L.intro + '</p>' +
@@ -28662,7 +28756,7 @@ bluetooth.startIOPinService()</pre>
               '<label>' + L.axis + '<select id="mp-fd-axis"><option value="x">' + L.ax + '</option><option value="y">' + L.ay + '</option></select></label>' +
               '<label>' + L.from + '<input type="number" id="mp-fd-lo" step="0.5"></label>' +
               '<label>' + L.to + '<input type="number" id="mp-fd-hi" step="0.5"></label>' +
-              '<label>' + L.vsup + '<input type="number" id="mp-fd-v" step="0.1" value="3.3"></label>' +
+              '<label>' + L.vsup + '<input type="number" id="mp-fd-v" step="0.01" placeholder="—"></label>' +
             '</div>' +
             '<div class="mp-field-result" id="mp-fd-result"></div>' +
             '<div class="mp-field-diag" id="mp-fd-diag" style="display:none;"></div>' +
@@ -28681,6 +28775,9 @@ bluetooth.startIOPinService()</pre>
             q('mp-fd-hi').value = rows.length ? rows[rows.length - 1 - trim].d : 0;
           };
           setRange();
+          // La referencia es lo medido junto a los electrodos (si ya se midió)
+          const cal0 = this._setup && this._setup.cal;
+          if (cal0) q('mp-fd-v').value = +Math.abs(cal0.pos - cal0.neg).toFixed(3);
           q('mp-fd-axis').addEventListener('change', () => { setRange(); this._renderField(); });
           ['mp-fd-lo', 'mp-fd-hi', 'mp-fd-v'].forEach(id => q(id).addEventListener('input', () => this._renderField()));
           q('mp-fd-csv').addEventListener('click', () => this._exportField());
@@ -28725,49 +28822,51 @@ bluetooth.startIOPinService()</pre>
             res.appendChild(b); res.appendChild(s1); res.appendChild(s2);
           }
 
-          // ---- Comparación con el caso ideal ----
-          // Con dos electrodos, uno + y uno −, la recta se lleva hasta la posición
-          // de cada uno: ahí se ve cuánta tensión hay de verdad en el agua y cuánta
-          // se pierde en el contacto electrodo–agua (con corriente continua y 3 V
-          // suele ser una parte grande: es la tensión que hace falta para que
-          // pase corriente del metal al agua).
+          // ---- Comparación con la tensión medida entre los electrodos ----
+          // La referencia es la diferencia de potencial medida en el agua junto a
+          // cada electrodo (paso 4), no los 3,3 V nominales de la micro:bit: una
+          // parte de esos 3,3 V cae en el contacto entre cada placa y el agua.
           const diag = q('mp-fd-diag');
           if (diag) {
             diag.style.display = 'none'; diag.textContent = '';
             const els = this._electrodes();
             const neg = els.filter(e => e.pol === '-'), pos = els.filter(e => e.pol === '+');
-            const vs = parseFloat(q('mp-fd-v').value);
+            const cal = this._setup && this._setup.cal;
+            let vs = parseFloat(q('mp-fd-v').value);
+            if (!Number.isFinite(vs) || vs <= 0) vs = null;
             this._fieldLast.diag = null;
-            if (fit && isV && neg.length === 1 && pos.length === 1 && Number.isFinite(vs) && vs > 0) {
+            if (fit && isV && neg.length === 1 && pos.length === 1) {
               const dn = axis === 'y' ? neg[0].y : neg[0].x, dp = axis === 'y' ? pos[0].y : pos[0].x, sep = Math.abs(dp - dn);
               if (sep > 0.5) {
-                const vn = fit.m * dn + fit.b, vp = fit.m * dp + fit.b;
-                const inWater = Math.abs(vp - vn), lost = vs - inWater, eIdeal = vs / sep * 100, eMeas = Math.abs(fit.m * 100);
-                const f1 = (v) => v.toFixed(2).replace('.', lang === 'en' ? '.' : ','), f0 = (v) => v.toFixed(1).replace('.', lang === 'en' ? '.' : ',');
-                this._fieldLast.diag = { vs, sep, vn, vp, inWater, lost, eIdeal };
-                const T = {
-                  es: ['Comparación con el caso ideal',
-                       'Si los ' + f1(vs) + ' V cayeran enteros en el agua, a lo largo de ' + f0(sep) + ' cm: E = ' + f0(eIdeal) + ' V/m. Medido: ' + f0(eMeas) + ' V/m (' + Math.round(100 * eMeas / eIdeal) + ' %).',
-                       'Llevando la recta hasta los electrodos: junto al − hay ' + f1(vn) + ' V (la placa está a 0 V) y junto al + hay ' + f1(vp) + ' V (la placa está a ' + f1(vs) + ' V).',
-                       'En el agua hay ' + f1(inWater) + ' V de diferencia. Los otros ' + f1(lost) + ' V se pierden en el contacto entre las placas y el agua.',
-                       'El campo medido es el que hay de verdad en el agua: la cuenta está bien. La diferencia con el valor ideal no es un error del mapeo sino esa caída en los electrodos, que con corriente continua de 3 V siempre es grande. Para achicarla: lijar las placas, usar placas de acero inoxidable o grafito, medir apenas se arma (cambia con el tiempo) o usar el programa «Alterna» del paso 2.'],
-                  en: ['Comparison with the ideal case',
-                       'If the whole ' + f1(vs) + ' V dropped across the water, over ' + f0(sep) + ' cm: E = ' + f0(eIdeal) + ' V/m. Measured: ' + f0(eMeas) + ' V/m (' + Math.round(100 * eMeas / eIdeal) + ' %).',
-                       'Extending the line to the electrodes: next to the − there are ' + f1(vn) + ' V (the plate is at 0 V) and next to the + there are ' + f1(vp) + ' V (the plate is at ' + f1(vs) + ' V).',
-                       'Across the water there is a difference of ' + f1(inWater) + ' V. The other ' + f1(lost) + ' V is lost at the contact between the plates and the water.',
-                       'The measured field is the one really present in the water: the calculation is right. The difference from the ideal value is not a mapping error but that drop at the electrodes, which is always large with 3 V direct current. To reduce it: sand the plates, use stainless steel or graphite plates, measure right after setting up (it changes with time) or use the “Alternating” program in step 2.'],
-                  pt: ['Comparação com o caso ideal',
-                       'Se os ' + f1(vs) + ' V caíssem inteiros na água, ao longo de ' + f0(sep) + ' cm: E = ' + f0(eIdeal) + ' V/m. Medido: ' + f0(eMeas) + ' V/m (' + Math.round(100 * eMeas / eIdeal) + ' %).',
-                       'Levando a reta até os eletrodos: junto ao − há ' + f1(vn) + ' V (a placa está a 0 V) e junto ao + há ' + f1(vp) + ' V (a placa está a ' + f1(vs) + ' V).',
-                       'Na água há ' + f1(inWater) + ' V de diferença. Os outros ' + f1(lost) + ' V se perdem no contato entre as placas e a água.',
-                       'O campo medido é o que existe de fato na água: a conta está certa. A diferença para o valor ideal não é um erro do mapeamento, e sim essa queda nos eletrodos, que com corrente contínua de 3 V é sempre grande. Para reduzi-la: lixar as placas, usar placas de aço inoxidável ou grafite, medir logo depois de montar (muda com o tempo) ou usar o programa «Alternada» do passo 2.']
-                }[lang];
-                const h = document.createElement('h4'); h.textContent = T[0]; h.style.marginTop = '0'; diag.appendChild(h);
-                T.slice(1).forEach((t, k) => {
-                  // la explicación larga solo hace falta cuando la pérdida es apreciable
-                  if (k === 3 && lost < 0.15 * vs) return;
-                  const d = document.createElement('p'); d.textContent = t; diag.appendChild(d);
-                });
+                const vn = fit.m * dn + fit.b, vp = fit.m * dp + fit.b, eMeas = Math.abs(fit.m * 100);
+                const en = lang === 'en';
+                const f2 = (v) => v.toFixed(2).replace('.', en ? '.' : ','), f1 = (v) => v.toFixed(1).replace('.', en ? '.' : ',');
+                const eRef = vs ? vs / sep * 100 : null;
+                this._fieldLast.diag = { vs, sep, vn, vp, eRef, cal: cal || null };
+                const P = [];
+                if (vs) {
+                  const pct = Math.round(100 * eMeas / eRef);
+                  P.push(({ es: 'Tensión medida entre los electrodos, en el agua: ' + f2(vs) + ' V a lo largo de ' + f1(sep) + ' cm. Entonces E = ΔV/d = ' + f1(eRef) + ' V/m.',
+                            en: 'Voltage measured between the electrodes, in the water: ' + f2(vs) + ' V over ' + f1(sep) + ' cm. So E = ΔV/d = ' + f1(eRef) + ' V/m.',
+                            pt: 'Tensão medida entre os eletrodos, na água: ' + f2(vs) + ' V ao longo de ' + f1(sep) + ' cm. Então E = ΔV/d = ' + f1(eRef) + ' V/m.' })[lang]);
+                  P.push(({ es: 'Por la pendiente de la recta: ' + f1(eMeas) + ' V/m (' + pct + ' % del valor anterior).',
+                            en: 'From the slope of the line: ' + f1(eMeas) + ' V/m (' + pct + ' % of the value above).',
+                            pt: 'Pela inclinação da reta: ' + f1(eMeas) + ' V/m (' + pct + ' % do valor anterior).' })[lang]);
+                } else {
+                  P.push(({ es: 'Todavía no se midió el potencial junto a los electrodos. Hacelo en el paso 4, con «Medir los electrodos», para comparar con E = ΔV/d.',
+                            en: 'The potential next to the electrodes has not been measured yet. Do it in step 4, with “Measure the electrodes”, to compare with E = ΔV/d.',
+                            pt: 'O potencial junto aos eletrodos ainda não foi medido. Faça isso no passo 4, com «Medir os eletrodos», para comparar com E = ΔV/d.' })[lang]);
+                }
+                P.push(({ es: 'La recta, llevada hasta los electrodos, da ' + f2(vn) + ' V junto al − y ' + f2(vp) + ' V junto al +' + (cal ? ' (medido: ' + f2(cal.neg) + ' V y ' + f2(cal.pos) + ' V).' : ': unos ' + f2(Math.abs(vp - vn)) + ' V entre electrodos.'),
+                          en: 'The line, extended to the electrodes, gives ' + f2(vn) + ' V next to the − and ' + f2(vp) + ' V next to the +' + (cal ? ' (measured: ' + f2(cal.neg) + ' V and ' + f2(cal.pos) + ' V).' : ': about ' + f2(Math.abs(vp - vn)) + ' V between electrodes.'),
+                          pt: 'A reta, levada até os eletrodos, dá ' + f2(vn) + ' V junto ao − e ' + f2(vp) + ' V junto ao +' + (cal ? ' (medido: ' + f2(cal.neg) + ' V e ' + f2(cal.pos) + ' V).' : ': cerca de ' + f2(Math.abs(vp - vn)) + ' V entre eletrodos.') })[lang]);
+                P.push(({ es: 'En el agua hay menos tensión que la que entrega la micro:bit, porque una parte cae en el contacto entre cada placa y el agua. Por eso la referencia es la tensión medida.',
+                          en: 'There is less voltage across the water than the micro:bit supplies, because part of it drops at the contact between each plate and the water. That is why the reference is the measured voltage.',
+                          pt: 'Na água há menos tensão do que a fornecida pelo micro:bit, porque uma parte cai no contato entre cada placa e a água. Por isso a referência é a tensão medida.' })[lang]);
+                const h = document.createElement('h4'); h.style.marginTop = '0';
+                h.textContent = ({ es: 'Comparación con la tensión medida', en: 'Comparison with the measured voltage', pt: 'Comparação com a tensão medida' })[lang];
+                diag.appendChild(h);
+                P.forEach(t => { const d = document.createElement('p'); d.textContent = t; diag.appendChild(d); });
                 diag.style.display = '';
               }
             }
@@ -28857,9 +28956,12 @@ bluetooth.startIOPinService()</pre>
             lines.push('% ajuste_desde_cm,' + f.lo, '% ajuste_hasta_cm,' + f.hi,
               '% pendiente_' + (unit || 'u') + '_por_cm,' + f.fit.m.toFixed(6), '% ordenada,' + f.fit.b.toFixed(6), '% R2,' + f.fit.r2.toFixed(6));
             if (isV) lines.push('% E_V_por_m,' + Math.abs(f.fit.m * 100).toFixed(3), '% incertidumbre_E_V_por_m,' + (f.fit.sm * 100).toFixed(3));
-            if (f.diag) lines.push('% tension_entre_electrodos_V,' + f.diag.vs, '% separacion_electrodos_cm,' + f.diag.sep, '% E_ideal_V_por_m,' + f.diag.eIdeal.toFixed(3),
-              '% V_junto_al_electrodo_negativo,' + f.diag.vn.toFixed(4), '% V_junto_al_electrodo_positivo,' + f.diag.vp.toFixed(4),
-              '% diferencia_en_el_agua_V,' + f.diag.inWater.toFixed(4), '% caida_en_los_electrodos_V,' + f.diag.lost.toFixed(4));
+            if (f.diag) {
+              lines.push('% separacion_electrodos_cm,' + f.diag.sep,
+                '% V_recta_junto_al_electrodo_negativo,' + f.diag.vn.toFixed(4), '% V_recta_junto_al_electrodo_positivo,' + f.diag.vp.toFixed(4));
+              if (f.diag.cal) lines.push('% V_medido_junto_al_electrodo_negativo,' + f.diag.cal.neg, '% V_medido_junto_al_electrodo_positivo,' + f.diag.cal.pos);
+              if (f.diag.vs) lines.push('% tension_medida_entre_electrodos_V,' + f.diag.vs, '% E_por_tension_medida_V_por_m,' + f.diag.eRef.toFixed(3));
+            }
           }
           lines.push(f.axis + '_cm,media' + (unit ? '_' + unit : '') + ',desvio,n,' + (isV ? 'E_tramo_V_por_m' : 'menos_pendiente_tramo'));
           f.rows.forEach((r, k) => {
@@ -28913,7 +29015,8 @@ bluetooth.startIOPinService()</pre>
           const x0 = ox - m * s, y0 = oy - (h + m) * s, tw = (w + 2 * m) * s;
           const els = this._electrodes();
           const selIdx = (this._edit && this._edit.on) ? this._edit.sel : -1;
-          els.forEach((e, k) => this._drawElectrode(ctx, e, ox, oy, s, k === selIdx));
+          const calPol = this._calStage === 'neg' ? '-' : this._calStage === 'pos' ? '+' : null;
+          els.forEach((e, k) => this._drawElectrode(ctx, e, ox, oy, s, k === selIdx || (calPol && e.pol === calPol)));
           // Trazo en curso (dibujo a mano)
           if (this._edit && this._edit.path && this._edit.path.length > 1) {
             ctx.save();
@@ -28923,11 +29026,14 @@ bluetooth.startIOPinService()</pre>
             ctx.stroke(); ctx.restore();
           }
           if (!els.length) return;
+          // Rótulos: el potencial medido en el agua junto a cada electrodo, si ya se midió
+          const cal0 = st.cal, coma = (v) => v.toFixed(2).replace('.', ',');
+          const calTxt = cal0 ? { neg: coma(cal0.neg), pos: coma(cal0.pos) } : null;
           ctx.font = 'bold 12px -apple-system,Segoe UI,sans-serif';
           ctx.textAlign = 'left';
-          ctx.fillStyle = '#42a5f5'; ctx.fillText('− 0 V (GND)', x0 + 4, y0 - 7);
+          ctx.fillStyle = '#42a5f5'; ctx.fillText(calTxt ? '− ' + calTxt.neg + ' V' : '− (pin GND)', x0 + 4, y0 - 7);
           ctx.textAlign = 'right';
-          ctx.fillStyle = '#ef5350'; ctx.fillText('+ 3,3 V (pin 3V)', x0 + tw - 4, y0 - 7);
+          ctx.fillStyle = '#ef5350'; ctx.fillText(calTxt ? '+ ' + calTxt.pos + ' V' : '+ (pin 3V)', x0 + tw - 4, y0 - 7);
           ctx.textAlign = 'start';
         }
 
@@ -29061,7 +29167,7 @@ bluetooth.startIOPinService()</pre>
           const dense = parseInt(document.getElementById('mp-pro-dense').value, 10) || 120;
           const streamDensity = parseInt(document.getElementById('mp-pro-stream-density').value, 10) || 12;
           const plot = document.getElementById('mapeo-pro-plot');
-          const M = MapeoViz.interpolate(this.grid, dense);
+          const M = MapeoViz.interpolate(this._vizGrid(), dense);
           if (!M) { this._toast('No se pudo interpolar'); return; }
           const r = MapeoViz.range(M);
           if (!r) { this._toast('Sin datos válidos para visualizar'); return; }
@@ -29228,7 +29334,7 @@ bluetooth.startIOPinService()</pre>
           }
           if (![x1, y1, x2, y2].every(Number.isFinite)) return null;
 
-          const M = MapeoViz.interpolate(this.grid, 120);
+          const M = MapeoViz.interpolate(this._vizGrid(), 120);
           if (!M) return null;
           const xs = [], ys = [], vs = [], ss = [];
           const totalLen = Math.hypot(x2 - x1, y2 - y1);
@@ -29611,75 +29717,11 @@ bluetooth.startIOPinService()</pre>
         _makecodeSensors() {
           return {
             voltage: { label:'Voltaje (cubeta)', note:'Mide el potencial de la punta de prueba respecto de GND, en volts (0 a 3,3 V), promediando 20 lecturas. GND va a un electrodo, 3V al otro y el pin elegido a la punta. Con pilas, cambiá 3300 por 3000.' },
-            voltage_ac: { label:'Voltaje alterna (cubeta)', note:'DE PRUEBA, todavía sin verificar con una cubeta real. Cambia el cableado: P0 al electrodo −, P2 al electrodo + y P1 a la punta; no se usan 3V ni GND. La micro:bit invierte la tensión de los electrodos cada 2 ms y promedia los dos sentidos, para que no se pierda tensión en el contacto entre las placas y el agua. Entre medidas no circula corriente.' },
             light:  { label:'Luz', sensor:'input.lightLevel()', note:'Devuelve 0-255 (0 oscuridad, 255 luz directa). Funciona en V1 y V2.' },
             magnet: { label:'Imán', sensor:'input.magneticForce(Dimension.Strength)', note:'Devuelve µT (microteslas). Calibrar la primera vez moviendo la micro:bit en círculo.' },
             sound:  { label:'Sonido', sensor:'input.soundLevel()', note:'Devuelve 0-255. Solo micro:bit V2 (tiene micrófono).' },
             temp:   { label:'Temperatura', sensor:'input.temperature()', note:'Devuelve °C del CPU (NO temperatura ambiente — está sesgada hacia arriba por autocalentamiento).' }
           };
-        }
-
-        // Programa con tensión ALTERNA para la cubeta. Los electrodos van a dos pines
-        // (P0 y P2) que la micro:bit invierte todo el tiempo; la punta va a P1.
-        // Como la corriente cambia de sentido cada pocos milisegundos, casi no se
-        // forma la caída de tensión en el contacto placa–agua que aparece con
-        // corriente continua, y entre una medida y otra no circula corriente.
-        _makecodeAlterna(writeLine, isSerial) {
-          const L = [];
-          L.push('let sumaA = 0');
-          L.push('let sumaB = 0');
-          L.push('let valor = 0');
-          if (!isSerial) {
-            L.push('// Enciende el servicio Bluetooth (UART) por el que se envían las medidas.');
-            L.push('bluetooth.startUartService()');
-          }
-          L.push('// MAPEO · potencial en la cubeta con tensión alterna. Conexiones: P0 al electrodo (−), P2 al electrodo (+) y P1 a la punta de prueba. NO se usan los pines 3V ni GND. Los dos electrodos arrancan apagados (0 V).');
-          L.push('pins.digitalWritePin(DigitalPin.P0, 0)');
-          L.push('pins.digitalWritePin(DigitalPin.P2, 0)');
-          L.push('// El corazón avisa que el programa está listo.');
-          L.push('basic.showIcon(IconNames.Heart)');
-          L.push('// Botón A: mide donde está la punta y envía el valor a MAPEO.');
-          L.push('input.onButtonPressed(Button.A, function () {');
-          L.push('    // Empieza las dos sumas desde cero.');
-          L.push('    sumaA = 0');
-          L.push('    sumaB = 0');
-          L.push('    // Repite 20 veces un ciclo completo de alterna: primero un sentido y después el otro.');
-          L.push('    for (let i = 0; i < 20; i++) {');
-          L.push('        // Sentido 1: P2 a 3,3 V y P0 a 0 V.');
-          L.push('        pins.digitalWritePin(DigitalPin.P0, 0)');
-          L.push('        pins.digitalWritePin(DigitalPin.P2, 1)');
-          L.push('        basic.pause(2)');
-          L.push('        // Lee la punta con la corriente en el sentido 1.');
-          L.push('        sumaA += pins.analogReadPin(AnalogPin.P1)');
-          L.push('        // Sentido 2: se invierte, P0 a 3,3 V y P2 a 0 V.');
-          L.push('        pins.digitalWritePin(DigitalPin.P2, 0)');
-          L.push('        pins.digitalWritePin(DigitalPin.P0, 1)');
-          L.push('        basic.pause(2)');
-          L.push('        // Lee la punta con la corriente en el sentido 2.');
-          L.push('        sumaB += pins.analogReadPin(AnalogPin.P1)');
-          L.push('    }');
-          L.push('    // Apaga los electrodos: entre una medida y otra no circula corriente.');
-          L.push('    pins.digitalWritePin(DigitalPin.P0, 0)');
-          L.push('    // Potencial respecto del electrodo de P0. En el sentido 2 la lectura está invertida (1023 − lectura), por eso se da vuelta antes de promediar las 40 lecturas. Después se pasa a volts: 1023 equivale a 3,3 V.');
-          L.push('    valor = Math.round((sumaA + (20 * 1023 - sumaB)) / 40 * 3300 / 1023) / 1000');
-          L.push('    // Envía una línea "tiempo,valor": MAPEO guarda el valor en el punto marcado.');
-          L.push('    ' + writeLine + '("" + input.runningTime() + "," + valor)');
-          L.push('    // Tilde: la medida salió.');
-          L.push('    basic.showIcon(IconNames.Yes)');
-          L.push('    basic.pause(300)');
-          L.push('    // Vuelve el corazón: lista para el punto siguiente.');
-          L.push('    basic.showIcon(IconNames.Heart)');
-          L.push('})');
-          L.push('// Botón B: pide a MAPEO que deshaga la última medida (para repetir un punto).');
-          L.push('input.onButtonPressed(Button.B, function () {');
-          L.push('    // Envía la letra B: MAPEO borra la última medida y vuelve a ese punto.');
-          L.push('    ' + writeLine + '("B")');
-          L.push('    // Cruz: la medida se deshizo.');
-          L.push('    basic.showIcon(IconNames.No)');
-          L.push('    basic.pause(300)');
-          L.push('    basic.showIcon(IconNames.Heart)');
-          L.push('})');
-          return L.join('\n');
         }
 
         _makecodeCode(sensorKey, transportKey, pin) {
@@ -29691,7 +29733,6 @@ bluetooth.startIOPinService()</pre>
           // bloque que sigue (el globito del bloque). Las variables se declaran
           // arriba y se asignan adentro, así los bloques las reinician en cada medida.
           const L = [];
-          if (sensorKey === 'voltage_ac') return this._makecodeAlterna(writeLine, isSerial);
           const isV = (sensorKey === 'voltage');
           if (isV) L.push('let suma = 0');
           L.push('let valor = 0');
@@ -30416,6 +30457,7 @@ bluetooth.startIOPinService()</pre>
             for (let i = 0; i < nx; i++) {
               const p = points[j*nx + i];
               if (p.value !== null) continue;
+              if (p.blocked) continue;   // bajo un electrodo: no se inventa un valor
               if (rowEmpty[j] || colEmpty[i]) { skipped++; continue; }
               const fx = (nx > 1) ? i / (nx - 1) : 0;
               const fy = (ny > 1) ? j / (ny - 1) : 0;
@@ -30577,6 +30619,9 @@ bluetooth.startIOPinService()</pre>
 
           // Rango para colormap
           const vals = this.grid.points.filter(p => p.value !== null).map(p => p.value);
+          // La escala de color incluye el potencial medido junto a los electrodos
+          const calV = this._setup && this._setup.cal;
+          if (calV && vals.length) vals.push(calV.neg, calV.pos);
           const vmin = vals.length ? _arrMin(vals) : 0;
           const vmax = vals.length ? _arrMax(vals) : 1;
 
@@ -30585,7 +30630,7 @@ bluetooth.startIOPinService()</pre>
           const vizMode = this.sidebar.querySelector('#mp-viz-mode')?.value || 'points';
           const measuredCount = this.grid.points.filter(p => p.value !== null).length;
           if (vizMode !== 'points' && measuredCount >= 3 && this.grid.nx >= 2 && this.grid.ny >= 2) {
-            const M = MapeoViz.interpolate(this.grid, 80);
+            const M = MapeoViz.interpolate(this._vizGrid(), 80);
             if (M) {
               const scale = {
                 ox, oy, s,
@@ -37050,9 +37095,21 @@ bluetooth.startIOPinService()</pre>
     'Calcular el campo': { en: 'Calculate the field', pt: 'Calcular o campo' },
     'Promedia el potencial a cada distancia, grafica V en función de x y calcula el campo con la pendiente': { en: 'Averages the potential at each distance, plots V against x and calculates the field from the slope', pt: 'Faz a média do potencial a cada distância, traça V em função de x e calcula o campo pela inclinação' },
     'Medí al menos dos columnas de puntos para calcular el campo': { en: 'Measure at least two columns of points to calculate the field', pt: 'Meça pelo menos duas colunas de pontos para calcular o campo' },
+    'Potencial junto a los electrodos': { en: 'Potential next to the electrodes', pt: 'Potencial junto aos eletrodos' },
+    'Junto al − (V)': { en: 'Next to the − (V)', pt: 'Junto ao − (V)' },
+    'Junto al + (V)': { en: 'Next to the + (V)', pt: 'Junto ao + (V)' },
+    'sin medir': { en: 'not measured', pt: 'sem medir' },
+    'Todavía sin medir': { en: 'Not measured yet', pt: 'Ainda sem medir' },
+    'Medir los electrodos': { en: 'Measure the electrodes', pt: 'Medir os eletrodos' },
+    'Medí con la punta en el agua, pegada a cada electrodo: es la tensión que de verdad hay en el agua': { en: 'Measure with the probe in the water, right next to each electrode: that is the voltage really present in the water', pt: 'Meça com a ponta na água, encostada em cada eletrodo: é a tensão que realmente existe na água' },
+    'Saltar': { en: 'Skip', pt: 'Pular' },
+    'Antes de empezar · Poné la punta en el agua, pegada al electrodo − (azul), y presioná A': { en: 'Before starting · Put the probe in the water, right next to the − electrode (blue), and press A', pt: 'Antes de começar · Coloque a ponta na água, encostada no eletrodo − (azul), e pressione A' },
+    'Antes de empezar · Poné la punta en el agua, pegada al electrodo + (rojo), y presioná A': { en: 'Before starting · Put the probe in the water, right next to the + electrode (red), and press A', pt: 'Antes de começar · Coloque a ponta na água, encostada no eletrodo + (vermelho), e pressione A' },
+    'Antes de empezar · Poné la punta en el agua, pegada al electrodo − (azul), y tocá REGISTRAR': { en: 'Before starting · Put the probe in the water, right next to the − electrode (blue), and press RECORD', pt: 'Antes de começar · Coloque a ponta na água, encostada no eletrodo − (azul), e toque em REGISTRAR' },
+    'Antes de empezar · Poné la punta en el agua, pegada al electrodo + (rojo), y tocá REGISTRAR': { en: 'Before starting · Put the probe in the water, right next to the + electrode (red), and press RECORD', pt: 'Antes de começar · Coloque a ponta na água, encostada no eletrodo + (vermelho), e toque em REGISTRAR' },
+    'Hace falta al menos un electrodo − y uno + para medirlos': { en: 'At least one − and one + electrode are needed to measure them', pt: 'É preciso pelo menos um eletrodo − e um + para medi-los' },
+    'Junto al + dio menos que junto al −: revisá si los cables de 3V y GND están cruzados': { en: 'Next to the + read less than next to the −: check whether the 3V and GND wires are swapped', pt: 'Junto ao + deu menos do que junto ao −: verifique se os cabos de 3V e GND estão trocados' },
     // ---------- MAPEO · ventana del programa ----------
-    'Voltaje alterna (cubeta)': { en: 'Alternating voltage (tray)', pt: 'Tensão alternada (cuba)' },
-    'DE PRUEBA, todavía sin verificar con una cubeta real. Cambia el cableado: P0 al electrodo −, P2 al electrodo + y P1 a la punta; no se usan 3V ni GND. La micro:bit invierte la tensión de los electrodos cada 2 ms y promedia los dos sentidos, para que no se pierda tensión en el contacto entre las placas y el agua. Entre medidas no circula corriente.': { en: 'EXPERIMENTAL, not yet verified with a real tray. The wiring changes: P0 to the − electrode, P2 to the + electrode and P1 to the probe; 3V and GND are not used. The micro:bit reverses the electrode voltage every 2 ms and averages both directions, so no voltage is lost at the contact between the plates and the water. No current flows between measurements.', pt: 'DE TESTE, ainda não verificado com uma cuba real. A ligação muda: P0 no eletrodo −, P2 no eletrodo + e P1 na ponta; não se usam 3V nem GND. O micro:bit inverte a tensão dos eletrodos a cada 2 ms e faz a média dos dois sentidos, para que não se perca tensão no contato entre as placas e a água. Entre medidas não circula corrente.' },
     'PROGRAMA PARA TU MICRO:BIT': { en: 'PROGRAM FOR YOUR MICRO:BIT', pt: 'PROGRAMA PARA O SEU MICRO:BIT' },
     'Elegí cómo se conecta y qué mide.': { en: 'Choose how it connects and what it measures.', pt: 'Escolha como se conecta e o que mede.' },
     'Tocá «Abrir en el editor»: se abre el editor del sitio en una pestaña aparte con el programa ya cargado.': { en: 'Press “Open in the editor”: the site\'s editor opens in a separate tab with the program already loaded.', pt: 'Toque em «Abrir no editor»: o editor do site abre em uma aba separada com o programa já carregado.' },
@@ -37164,6 +37221,9 @@ bluetooth.startIOPinService()</pre>
     { es: 'Medida deshecha: volvé a (%n%, %n%) cm', en: 'Measurement undone: go back to (%n%, %n%) cm', pt: 'Medida desfeita: volte a (%n%, %n%) cm' },
     { es: 'Grilla lista: %n% puntos para medir (%n% quedan bajo los electrodos)', en: 'Grid ready: %n% points to measure (%n% are under the electrodes)', pt: 'Grade pronta: %n% pontos para medir (%n% ficam sob os eletrodos)' },
     { es: 'Grilla lista: %n% puntos para medir', en: 'Grid ready: %n% points to measure', pt: 'Grade pronta: %n% pontos para medir' },
+    { es: 'Entre los electrodos, en el agua: %s% V', en: 'Between the electrodes, in the water: %s% V', pt: 'Entre os eletrodos, na água: %s% V' },
+    { es: 'Entre los electrodos hay %s% V en el agua', en: 'There are %s% V between the electrodes in the water', pt: 'Entre os eletrodos há %s% V na água' },
+    { es: 'Junto al electrodo −: %s% V', en: 'Next to the − electrode: %s% V', pt: 'Junto ao eletrodo −: %s% V' },
     { es: 'Grilla lista: %n% × %n% = %n% puntos', en: 'Grid ready: %n% × %n% = %n% points', pt: 'Grade pronta: %n% × %n% = %n% pontos' },
     { es: '%n% de %n% partes listas · faltan %n%', en: '%n% of %n% parts done · %n% to go', pt: '%n% de %n% partes prontas · faltam %n%' },
     { es: '%n% partes vacías no se incluyen hasta que escribas algo en ellas.', en: '%n% empty parts are not included until you write something in them.', pt: '%n% partes vazias não são incluídas até você escrever algo nelas.' },
