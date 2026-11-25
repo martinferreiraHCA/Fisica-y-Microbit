@@ -40802,6 +40802,11 @@ bluetooth.startIOPinService()</pre>
     .mk-list-name { font-size:12px; font-weight:600; }
     .mk-list-meta { font-size:10px; color:#8a919e; }
     .mk-list-action { color:#b39ddb; font-size:11px; letter-spacing:.5px; }
+    .mk-sens { min-width:340px; max-width:440px; white-space:normal; }
+    .mk-sens-item { display:flex; gap:10px; align-items:center; border-top:1px solid #23272e; padding:8px; }
+    .mk-sens-item img { width:92px; height:70px; object-fit:contain; flex:none; background:#f4f0e3; border-radius:3px; padding:3px; box-sizing:border-box; }
+    .mk-sens-item .mk-list-meta { margin:2px 0 6px; line-height:1.4; }
+    .mk-sens-act { display:flex; gap:5px; flex-wrap:wrap; }
     .mk-status { position:absolute; left:0; right:0; bottom:0; padding:6px 14px; font-size:11px; color:#aab; background:rgba(10,10,10,.85); pointer-events:none; }
     .mk-status:empty { display:none; }
     .mk-helpbox { display:none; position:absolute; inset:0; background:rgba(0,0,0,.6); align-items:flex-start; justify-content:center; overflow:auto; padding:24px; box-sizing:border-box; z-index:4; }
@@ -40827,6 +40832,7 @@ bluetooth.startIOPinService()</pre>
                     <button id="mk-disconnect" class="mk-top-btn warn" style="display:none" title="La micro:bit está conectada por USB a FisicaBit. Si la grabación desde MakeCode falla, desconectala acá primero.">Soltar USB</button>
                     <button id="mk-drive-save" class="mk-top-btn" title="Guardar esta práctica en tu Google Drive (fisicabit / prácticas de micro:bit)">Guardar en Drive</button>
                     <button id="mk-drive-list" class="mk-top-btn" title="Abrir una práctica guardada (en Drive o en este navegador)">Mis prácticas ▾</button>
+                    <button id="mk-sens-btn" class="mk-top-btn" title="Los sensores que tienen bloques en la extensión: cómo se conectan y su circuito, con el mismo dibujo que el simulador">Sensores ▾</button>
                     <button id="mk-bt" class="mk-top-btn bt" title="Activar el envío por Bluetooth en esta práctica (guiado: quita Radio y agrega la categoría FisicaBit BT)">Bluetooth</button>
                     <button id="mk-help-btn" class="mk-top-btn" title="Cómo usar MakeCode con FisicaBit">Ayuda</button>
                     <a class="mk-top-btn" href="https://makecode.microbit.org/" target="_blank" rel="noopener" title="Abrir MakeCode en una pestaña aparte">↗</a>
@@ -40835,6 +40841,7 @@ bluetooth.startIOPinService()</pre>
                 </div>
                 <button id="mk-showbar" class="mk-showbar" title="Volver a mostrar la barra de FisicaBit">▼ FisicaBit</button>
                 <div class="mk-list" id="mk-list" hidden></div>
+                <div class="mk-list mk-sens" id="mk-sens" hidden></div>
             </div>
             <iframe id="mk-iframe" title="MakeCode para micro:bit" allow="usb; serial; hid; clipboard-read; clipboard-write; fullscreen; microphone; camera; autoplay"></iframe>
             <div class="mk-status" id="mk-status"></div>
@@ -41516,10 +41523,41 @@ bluetooth.startIOPinService()</pre>
             ? ('Guardar esta práctica en tu Google Drive (fisicabit / ' + DRIVE_SUBFOLDER + ') · ' + ((u && u.emailAddress) || 'conectado'))
             : 'Guardar esta práctica en tu Google Drive (fisicabit / ' + DRIVE_SUBFOLDER + '). Te pide iniciar sesión con Google.';
     }
-    function closeList() { var l = el('mk-list'); if (l) l.hidden = true; }
+    function closeList() { var l = el('mk-list'); if (l) l.hidden = true; var s = el('mk-sens'); if (s) s.hidden = true; }
+    // Sensores de la extensión (pxtparts.json de pxt-fisicabit-usb): el mismo dibujo y la misma conexión que muestra
+    // el simulador, y que usa el editor de circuitos del sitio (circuitos/partes.js los lee de la extensión).
+    var sensP = null;
+    function loadSensors() {
+        if (!sensP) sensP = (new Function('u', 'return import(u)'))('./circuitos/partes.js').then(function (M) { return M.cargarPartes().then(function (d) { return d.partes || []; }); });
+        sensP.catch(function () { sensP = null; });
+        return sensP;
+    }
+    function toggleSensors() {
+        var box = el('mk-sens'), abierto = !box.hidden;
+        closeList(); if (abierto) return;
+        box.hidden = false; box.innerHTML = '<div class="mk-list-note">Leyendo los sensores de la extensión…</div>';
+        loadSensors().then(function (ps) {
+            if (!ps.length) { box.innerHTML = '<div class="mk-list-note">La extensión no trae sensores con dibujo.</div>'; return; }
+            box.innerHTML = '<div class="mk-list-note">Sensores con bloques en FisicaBit. Al usar sus bloques, el simulador los dibuja y los conecta así; el circuito del sitio usa el mismo dibujo.</div>' +
+                ps.map(function (p, i) {
+                    return '<div class="mk-sens-item"><img alt="" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(p.svg) + '"><div>' +
+                        '<div class="mk-list-name">' + escapeHtml(p.titulo) + '</div><div class="mk-list-meta">' + escapeHtml(p.conexion) + '</div>' +
+                        '<div class="mk-sens-act"><a class="mk-top-btn" target="_blank" rel="noopener" href="circuitos/?parte=' + encodeURIComponent(p.id) + '" title="Abre el editor de circuitos con este sensor conectado a la micro:bit como en el simulador">Ver el circuito ↗</a>' +
+                        (p.programa ? '<button class="mk-top-btn" data-sens="' + i + '" title="Abre una práctica nueva, en otra pestaña, que lee este sensor y lo envía a fisicabit.com">Programa de ejemplo ↗</button>' : '') + '</div></div></div>';
+                }).join('');
+            Array.prototype.forEach.call(box.querySelectorAll('[data-sens]'), function (b) {
+                b.addEventListener('click', function () {
+                    var p = ps[+b.getAttribute('data-sens')];
+                    if (!openCodeInNewTab({ nombre: p.titulo + ' · FisicaBit', codigo: p.programa })) setStatus('El navegador bloqueó la pestaña nueva: permití las ventanas emergentes para este sitio.', 7000);
+                    closeList();
+                });
+            });
+        }).catch(function () { box.innerHTML = '<div class="mk-list-note">No se pudieron leer los sensores de la extensión.</div>'; });
+    }
     async function toggleList() {
         var l = el('mk-list');
         if (!l.hidden) { closeList(); return; }
+        closeList();
         l.hidden = false;
         renderList('Cargando…');
         if (gOn()) {
@@ -41733,6 +41771,7 @@ bluetooth.startIOPinService()</pre>
         });
         el('mk-drive-list').addEventListener('click', toggleList);
         el('mk-list').addEventListener('click', onListClick);
+        el('mk-sens-btn').addEventListener('click', toggleSensors);
         el('mk-help-btn').addEventListener('click', function () { closeList(); el('mk-helpbox').classList.add('open'); });
         el('mk-bt').addEventListener('click', openBtBox);
         el('mk-btbox-close').addEventListener('click', closeBtBox);

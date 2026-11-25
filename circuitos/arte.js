@@ -7,6 +7,7 @@
 // Las posiciones de los terminales no cambian: las da la forma de siempre (app.js) y el arte se acomoda a ellas.
 import { EXTENSOR, caps } from './microbit.js';
 
+import { parte, svgAnidado } from './partes.js';
 const G = 20;
 const N = (n) => Math.round(n * 100) / 100;
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -385,8 +386,19 @@ function wokwiReal(comp, fo, base, cfg) {
    base = la forma de siempre (terminales, ancla, giro); x = { bandas(el) → 4 colores, ver(el) → 'V1' | 'V2' }.
    Devuelve { d2(el, L, deg), alto } para las piezas de dos patas o { d(el, pts), rotAt? } para el resto;
    null si no hay dibujo realista (se usa el de línea). */
+// Sensores de la extensión FisicaBit de MakeCode: el mismo dibujo que muestra el simulador, con sus patas sobre los agujeros
+function parteReal(comp, pt) {
+  const s = G / pt.paso, py = pt.pines[0].y;
+  const px0 = (pt.pines.find((k) => k.n === comp.pines[0].n) || pt.pines[0]).x;   // la primera pata del componente manda (por nombre; si no, por orden)
+  const lim = (el, pts) => { const k = el.rot ? -1 : 1, xs = [pts[0][0] - k * s * px0, pts[0][0] + k * s * (pt.w - px0)], ys = [pts[0][1] - k * s * py, pts[0][1] + k * s * (pt.h - py)]; return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]; };
+  return { parte: pt.id, alto: pt.h * s,
+    d: (el, pts) => `<g data-lim="${lim(el, pts).map(N).join(',')}"><g transform="translate(${N(pts[0][0])},${N(pts[0][1])}) rotate(${el.rot ? 180 : 0}) scale(${N(s)}) translate(${-px0},${-py})">${svgAnidado(pt, `width="${pt.w}" height="${pt.h}"`)}</g></g>`,
+    rotAt: (el, pts) => { const b = lim(el, pts); return [(b[0] + b[2]) / 2, el.rot ? b[3] + 11 : b[1] - 9, 'middle']; } };
+}
 export function defReal(comp, fo, base, x) {
   if (!fo) return null;
+  const pt = comp.parte ? parte(comp.parte) : null;
+  if (pt && base && base.n === 'fijo' && comp.pines.length) return parteReal(comp, pt);
   const cfg = WOKWI[comp.id];
   if (cfg) { const r = wokwiListo() ? wokwiReal(comp, fo, base, cfg) : null; if (r) { r.wokwi = true; if (r.d) { const d = r.d; r.d = (el, pts) => d(el, pts, x); } return r; } return null; }
   let r = null;

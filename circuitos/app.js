@@ -7,6 +7,7 @@
 import { CATEGORIAS, COMPONENTES } from './componentes.js';
 import { placaReal, cableReal, defReal, cargarWokwi, wokwiListo, simbolosDe, tonosDe } from './arte.js';
 import { VERSIONES, ANILLOS, EXTENSOR, caps, infoPin, recomendar, revisar } from './microbit.js';
+import { cargarPartes, partes, parte, enlaceMakeCode } from './partes.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -473,10 +474,11 @@ function rotulos(el, v, d) {
 }
 // Dibujo realista de un componente en la protoboard (null: va el de línea). Los de Wokwi aparecen cuando termina de cargar.
 const cacheReal = new Map();
+let verPartes = 0;   // sube cada vez que llegan o cambian los sensores de la extensión de MakeCode
 const X_ARTE = { bandas: (el) => { const b = bandas(el.ohm || 0); return [BANDA[b.d1][1], BANDA[b.d2][1], colorMult(b.m)[1], colorTol(el.tol || 5)[1]]; }, ver: (el) => verTxt(el), pin: (el) => pinDe(el) };
 function realDe(c) {
   if (!real() || !c.proto) return null;
-  const k = c.id + (wokwiListo() ? '|w' : ''); if (!cacheReal.has(k)) cacheReal.set(k, defReal(c, c.proto, defDe(c, 'proto'), X_ARTE));
+  const k = c.id + (wokwiListo() ? '|w' : '') + '|' + verPartes; if (!cacheReal.has(k)) cacheReal.set(k, defReal(c, c.proto, defDe(c, 'proto'), X_ARTE));
   return cacheReal.get(k);
 }
 function dibujar(el, v, exp) {
@@ -859,8 +861,9 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => { if (e.key === ' ') espacio = false; });
 
 /* ---------- Catálogo con buscador ---------- */
-let q = '', soloTk = false, resFijo = null, resHover = null;
+let q = '', soloTk = false, soloMk = false, resFijo = null, resHover = null;
 const CLAVE_CATS = 'fisicabit_circuito_cats';
+const abiertasMk = new Set();   // con el filtro de MakeCode las categorías se muestran abiertas
 let abiertas; try { abiertas = new Set(JSON.parse(localStorage.getItem(CLAVE_CATS) || 'null') || [CATEGORIAS[0].id]); } catch (e) { abiertas = new Set([CATEGORIAS[0].id]); }
 function icono(c) {   // miniatura dibujada con la misma función que el lienzo
   const fo = c[vista], rl = vista === 'proto' ? realDe(c) : null, el = { id: '_', c: c.id, a: [0, 0], b: [(rl && rl.icoL) || 64, 0], ohm: leerOhm(c.valor || '') || 220, tol: 5, color: colorNuevo[vista], ver: 'v2' };
@@ -868,18 +871,19 @@ function icono(c) {   // miniatura dibujada con la misma función que el lienzo
   return `<svg xmlns="${NS}" data-ico="1"><g>${dibujar(el, vista, true)}</g></svg>`;
 }
 const itemCat = (c) => { const otra = !enVista(c, vista);
-  return `<button class="comp${otra ? ' otra' : ''}${herr === c.id ? ' act' : ''}" data-c="${esc(c.id)}">${otra ? '<svg></svg>' : icono(c)}<span>${esc(c.nombre)}${otra ? `<small>solo en ${vista === 'esq' ? 'la protoboard' : 'el esquemático'}</small>` : ''}</span></button>`; };
+  return `<button class="comp${otra ? ' otra' : ''}${herr === c.id ? ' act' : ''}" data-c="${esc(c.id)}">${otra ? '<svg></svg>' : icono(c)}<span>${esc(c.nombre)}${otra ? `<small>solo en ${vista === 'esq' ? 'la protoboard' : 'el esquemático'}</small>` : c.parte && parte(c.parte) ? '<small class="mk">con bloques en MakeCode</small>' : ''}</span></button>`; };
 function catalogo() {
-  const box = $('#catalogo'), vale = (c) => c.id !== 'cable' && (c.esq || c.proto) && (!soloTk || c.tk); let h = '';
+  const box = $('#catalogo'), vale = (c) => c.id !== 'cable' && (c.esq || c.proto) && (!soloTk || c.tk) && (!soloMk || (c.parte && parte(c.parte))); let h = '';
   if (q.trim()) {
     const r = buscar(q, vista).filter(vale);
     h = r.length ? `<div class="cat-res">${r.length} resultado${r.length === 1 ? '' : 's'}</div><div class="cat-l">${r.map(itemCat).join('')}</div>`
       : `<div class="cat-vacio">No hay componentes con «${esc(q.trim())}».<br>Probá con otra palabra: el nombre, para qué sirve o el código (por ejemplo «temperatura», «distancia», «555»).</div>`;
   } else {
+    if (soloMk) CATEGORIAS.forEach((k) => abiertasMk.add(k.id));
     const cats = CATEGORIAS.concat(LISTA.some((c) => !CATEGORIAS.some((k) => k.id === c.cat)) ? [{ id: '', nombre: 'Otros' }] : []);
     cats.forEach((k) => {
       const l = LISTA.filter((c) => (k.id ? c.cat === k.id : !CATEGORIAS.some((x) => x.id === c.cat)) && enVista(c, vista) && vale(c)); if (!l.length) return;
-      const ab = abiertas.has(k.id);
+      const ab = soloMk ? abiertasMk.has(k.id) : abiertas.has(k.id);
       h += `<button class="cat-g${ab ? ' abierta' : ''}" data-g="${esc(k.id)}"><i>${ab ? '▾' : '▸'}</i><b>${esc(k.nombre)}</b><span>${l.length}</span></button>` + (ab ? `<div class="cat-l">${l.map(itemCat).join('')}</div>` : '');
     });
   }
@@ -892,7 +896,7 @@ function catalogo() {
 }
 $('#catalogo').addEventListener('click', (e) => {
   const g = e.target.closest('.cat-g'), b = e.target.closest('.comp');
-  if (g) { const id = g.dataset.g; if (abiertas.has(id)) abiertas.delete(id); else abiertas.add(id); try { localStorage.setItem(CLAVE_CATS, JSON.stringify([...abiertas])); } catch (er) {} catalogo(); return; }
+  if (g) { const id = g.dataset.g, ab = soloMk ? abiertasMk : abiertas; if (ab.has(id)) ab.delete(id); else ab.add(id); try { localStorage.setItem(CLAVE_CATS, JSON.stringify([...abiertas])); } catch (er) {} catalogo(); return; }
   if (!b) return;
   const c = COMP.get(b.dataset.c);
   if (!enVista(c, vista)) cambiarVista(vista === 'esq' ? 'proto' : 'esq');   // está solo en la otra vista: se pasa a ella
@@ -902,6 +906,7 @@ $('#catalogo').addEventListener('mouseover', (e) => { const b = e.target.closest
 $('#catalogo').addEventListener('mouseleave', () => { if (compMirado) { compMirado = null; inspector(); } });
 $('#q').oninput = (e) => { q = e.target.value; catalogo(); };
 $('#solo-tk').onchange = (e) => { soloTk = e.target.checked; catalogo(); };
+$('#solo-mk').onchange = (e) => { soloMk = e.target.checked; abiertasMk.clear(); catalogo(); };
 
 /* ---------- Ficha del componente ---------- */
 const coma = (n) => String(n).replace('.', ',');
@@ -921,8 +926,16 @@ function fichaHTML(c, conNombre) {
   if ((c.datos || []).length) h += `<div class="sub">Datos</div><table>${c.datos.map(([k, x]) => `<tr><td>${esc(k)}</td><td>${esc(x)}</td></tr>`).join('')}</table>`;
   if (c.id !== 'microbit' && c.pines.some((p) => p.rol && p.rol !== 'pas')) h += `<div class="sub">Patas</div><table>${c.pines.map((p) => `<tr><td class="pn">${esc(p.n)}</td><td>${esc(rolTxt(p))}</td></tr>`).join('')}</table>`;
   if (/^https?:\/\//.test(c.hoja || '')) h += `<a class="btn hoja" href="${esc(c.hoja)}" target="_blank" rel="noopener">Hoja de datos ↗</a>`;
+  const pt = c.parte ? parte(c.parte) : null;
+  if (pt) {   // sensor de la extensión FisicaBit de MakeCode: la conexión y los bloques, tal como están en la extensión
+    h += `<div class="sub"><span>En MakeCode + FisicaBit</span></div><p class="mk-n">Es el mismo sensor que dibuja el simulador de MakeCode cuando se usan sus bloques. Así lo conecta:</p>` +
+      `<table>${pt.pines.map((q) => `<tr><td class="pn">${esc(q.n)}</td><td>→ <b>${esc(q.destino || 'sin conectar')}</b>${q.param ? '<br><span style="color:#555">el pin se elige en el bloque</span>' : ''}</td></tr>`).join('')}</table>`;
+    if (pt.bloques.length) h += `<div class="sub">Bloques que lo usan</div><ul class="blq">${pt.bloques.map((b) => `<li>${esc(b.texto)}</li>`).join('')}</ul>`;
+    h += `<div class="grupo-btn"><button class="btn chico" data-armar="${esc(pt.id)}" title="Arma el circuito con la micro:bit y este sensor conectado como en MakeCode">Armar esta conexión</button>` +
+      (pt.programa ? `<a class="btn chico" target="_blank" rel="noopener" href="${esc(enlaceMakeCode('../', pt.titulo + ' · FisicaBit', pt.programa))}" title="Abre el editor de MakeCode del sitio con un programa que lee este sensor y lo envía a fisicabit.com">Programarlo en MakeCode ↗</a>` : '') + '</div>';
+  }
   if (c.id !== 'microbit') {
-    const r = recomendar(c.id, v);
+    const r = recomendar(c.id, v); if (pt) r.pines = [];   // la conexión ya está arriba
     if (r.pines.length || r.avisos.length) {
       h += `<div class="sub"><span>En la micro:bit</span>${enDibujo ? `<span>${v.toUpperCase()} (la del dibujo)</span>` : `<span class="vers">${VERSIONES.map((x) => `<button class="btn chico${x.id === v ? ' act' : ''}" data-ver="${x.id}">${x.id.toUpperCase()}</button>`).join('')}</span>`}</div>`;
       if (r.pines.length) h += `<table>${r.pines.map((p) => `<tr><td class="pn">${esc(p.pin)}</td><td>→ <b>${esc(p.a)}</b>${p.nota ? `<br><span style="color:#555">${esc(p.nota)}</span>` : ''}</td></tr>`).join('')}</table>`;
@@ -1169,16 +1182,16 @@ const EJEMPLOS = [
     p.pon('resistencia', hoyo(15, 'f'), Object.assign({ b: hoyo(8, 'f'), rotulo: 'R1' }, R10K)); p.pon('ldr', hoyo(11, 'h'), { b: hoyo(15, 'h'), rotulo: 'LDR1' });
     p.cable('negro', p.pata(mb, 'GND'), hoyo(8, 'j')); p.cable('rojo', p.pata(mb, '3V'), hoyo(11, 'j')); p.cable('amarillo', p.pata(mb, 'P1'), hoyo(15, 'j'));
   }) },
-  { nombre: 'Ultrasonido HC-SR04P con extensor', nota: 'Distancia con el sensor de 3,3 V en dos pines libres: TRIG en P8 y ECHO en P16.', hacer: () => armar('Ultrasonido con extensor', (e, p) => {
+  { nombre: 'Ultrasonido HC-SR04P con extensor', nota: 'Distancia con el sensor de 3,3 V en los pines que usa MakeCode: TRIG en P8 y ECHO en P12.', hacer: () => armar('Ultrasonido con extensor', (e, p) => {
     const id = COMP.has('hc-sr04p') ? 'hc-sr04p' : 'hc-sr04';
     const m = e.pon('microbit', [0, -120], { ver: 'v2', ext: true }), s = e.pon(id, [-300, -120], { rot: 1, rotulo: 'U1' });
-    const T = e.pata(s, 'TRIG'), EC = e.pata(s, 'ECHO'), P8 = e.pata(m, 'P8'), P16 = e.pata(m, 'P16');
+    const T = e.pata(s, 'TRIG'), EC = e.pata(s, 'ECHO'), P8 = e.pata(m, 'P8'), P12 = e.pata(m, 'P12');
     e.cable('negro', e.pata(s, 'VCC'), e.pata(m, '3V')); e.cable('negro', e.pata(s, 'GND'), e.pata(m, 'GND'));
     if (T && P8) e.cable('negro', T, [T[0] - 20, T[1]], [T[0] - 20, P8[1]], P8);
-    if (EC && P16) e.cable('negro', EC, [EC[0] - 40, EC[1]], [EC[0] - 40, 160], [P16[0] + 20, 160], [P16[0] + 20, P16[1]], P16);
+    if (EC && P12) e.cable('negro', EC, [EC[0] - 40, EC[1]], [EC[0] - 40, 160], [P12[0] + 20, 160], [P12[0] + 20, P12[1]], P12);
     const mb = p.pon('microbit', [110, 480], { ver: 'v2', ext: true, arriba: true }), u = p.pon(id, hoyo(12, 'g'));
     const col = (n) => { const q = p.pata(u, n); return q ? [q[0], FILAS.j] : null; };
-    p.cable('rojo', col('VCC'), p.pata(mb, '3V')); p.cable('negro', col('GND'), p.pata(mb, 'GND')); p.cable('amarillo', col('TRIG'), p.pata(mb, 'P8')); p.cable('azul', col('ECHO'), p.pata(mb, 'P16'));
+    p.cable('rojo', col('VCC'), p.pata(mb, '3V')); p.cable('negro', col('GND'), p.pata(mb, 'GND')); p.cable('amarillo', col('TRIG'), p.pata(mb, 'P8')); p.cable('azul', col('ECHO'), p.pata(mb, 'P12'));
   }) },
   { nombre: 'Servo con pilas aparte', nota: 'El servo se alimenta con 4 pilas y comparte el negativo con la micro:bit; la señal sale de P0.', hacer: () => armar('Servo con pilas aparte', (e, p) => {
     const pilas = COMP.has('portapilas-4aa') ? 'portapilas-4aa' : 'portapilas-2aa';
@@ -1191,13 +1204,39 @@ const EJEMPLOS = [
     p.cable('negro', p.pata(mb, 'GND'), hoyo(5, 3)); p.cable('amarillo', p.pata(mb, 'P0'), p.pata(sv, 'SEÑAL'));
   }) },
 ];
-$('#m-ej').innerHTML = EJEMPLOS.map((x, i) => `<button data-i="${i}">${esc(x.nombre)}<small>${esc(x.nota)}</small></button>`).join('');
+// Circuito de un sensor de la extensión de MakeCode, conectado como lo dibuja el simulador: la protoboard se arma
+// con esas conexiones y el esquemático se genera a partir de ella (así las dos vistas dicen lo mismo).
+const compDeParte = (pid) => LISTA.find((c) => c.parte === pid && c.proto && c.esq) || null;
+function ejemploParte(pid) {
+  const pt = parte(pid), c = compDeParte(pid); if (!pt || !c) return null;
+  const conExt = pt.pines.some((q) => q.destino && !ANILLOS.includes(q.destino)), izq = Math.ceil(Math.max(0, (pt.pines.find((k) => k.n === c.pines[0].n) || pt.pines[0]).x) * G / pt.paso / G);
+  const o = armar(c.nombre + ' · como en MakeCode', (e, p) => {
+    const mb = p.pon('microbit', conExt ? [110, 480] : [140, 430], { ver: 'v2', ext: conExt, arriba: true }), u = p.pon(c.id, hoyo(Math.max(4, izq + 2), 'g'), { rotulo: 'U1' });
+    let k = 0; const COL = ['amarillo', 'azul', 'verde', 'naranja'];
+    pt.pines.forEach((q) => { if (!q.destino) return; const a = p.pata(u, q.n), b = p.pata(mb, q.destino); if (a && b) p.cable(q.destino === '3V' ? 'rojo' : q.destino === 'GND' ? 'negro' : COL[k++ % COL.length], [a[0], FILAS.j], b); });
+  });
+  const antes = E, vAntes = vista; E = limpiar(o); vista = 'proto';
+  try { o.proto.els = E.proto.els; o.esq.els = aEsquematico().els; } catch (er) { console.error(er); } finally { E = antes; vista = vAntes; }
+  return o;
+}
+function abrirEjemplo(o, nombre) {
+  if (!o) return false;
+  if ((E.esq.els.length || E.proto.els.length) && !confirm('¿Abrir «' + nombre + '»? Reemplaza el circuito actual (guardalo antes si lo querés conservar).')) return false;
+  cargar(o); estado('Ejemplo: ' + nombre + '.'); return true;
+}
+function armarParte(pid) { const c = compDeParte(pid); if (!c) return false; const ok = abrirEjemplo(ejemploParte(pid), c.nombre + ' como en MakeCode'); if (ok) { cambiarVista('proto'); compMirado = null; inspector(); } return ok; }
+function pintarEjemplos() {
+  const mk = partes().filter((pt) => compDeParte(pt.id));
+  $('#m-ej').innerHTML = EJEMPLOS.map((x, i) => `<button data-i="${i}">${esc(x.nombre)}<small>${esc(x.nota)}</small></button>`).join('') +
+    (mk.length ? '<div class="ej-t">Sensores de MakeCode + FisicaBit</div>' + mk.map((pt) => `<button data-p="${esc(pt.id)}">${esc(compDeParte(pt.id).nombre)}<small>Conectado como lo dibuja el simulador de MakeCode: ${esc(pt.conexion)}.</small></button>`).join('') : '');
+}
+pintarEjemplos();
 $('#h-ejemplos').onclick = () => { $('#m-ej').hidden = !$('#m-ej').hidden; };
-$('#m-ej').querySelectorAll('button').forEach((b) => { b.onclick = () => {
-  $('#m-ej').hidden = true;
-  if ((E.esq.els.length || E.proto.els.length) && !confirm('¿Abrir el ejemplo? Reemplaza el circuito actual (se puede deshacer con «Nuevo» solo si lo guardaste).')) return;
-  cargar(EJEMPLOS[+b.dataset.i].hacer()); estado('Ejemplo: ' + EJEMPLOS[+b.dataset.i].nombre + '.');
-}; });
+$('#m-ej').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return; $('#m-ej').hidden = true;
+  if (b.dataset.p) armarParte(b.dataset.p); else abrirEjemplo(EJEMPLOS[+b.dataset.i].hacer(), EJEMPLOS[+b.dataset.i].nombre);
+});
+$('#insp').addEventListener('click', (e) => { const b = e.target.closest('[data-armar]'); if (b) armarParte(b.dataset.armar); });
 
 /* ---------- Archivo ---------- */
 $('#b-nuevo').onclick = () => { if ((E.esq.els.length || E.proto.els.length) && !confirm('¿Empezar un circuito vacío? Se pierde el actual si no lo guardaste.')) return; cargar(vacio()); estado('Circuito nuevo.'); };
@@ -1575,6 +1614,29 @@ $('#e-real').classList.toggle('act', real()); $('#e-linea').classList.toggle('ac
 cambiarVista('esq');
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { catalogo(); pintar(); });
 
+/* ---------- Sensores de la extensión FisicaBit de MakeCode ----------
+   Se leen de la extensión (copia del sitio y, si hay red, GitHub). Los que ya están en la base toman su dibujo;
+   los que no, se agregan solos al catálogo con lo que la extensión dice de ellos. */
+function compAuto(pt) {
+  const izq = pt.pines.filter((q) => q.rol === 'vcc' || q.rol === 'gnd').map((q) => q.n), der = pt.pines.filter((q) => q.rol !== 'vcc' && q.rol !== 'gnd').map((q) => q.n);
+  return { id: 'fb-' + pt.id, nombre: pt.titulo, cat: 'sensores', alias: 'makecode fisicabit extension sensor ' + pt.id, tk: false, pref: 'U', parte: pt.id, auto: true,
+    desc: 'Sensor de la extensión FisicaBit de MakeCode. Se dibuja igual que en el simulador.', datos: [],
+    pines: pt.pines.map((q) => (q.rol === 'vcc' ? { n: q.n, rol: 'vcc', v: [3, 3.6], i: 10 } : q.rol === 'gnd' ? { n: q.n, rol: 'gnd' } : { n: q.n, rol: q.rol === 'io' ? 'io' : 'pas' })),
+    esq: { f: 'bloque', txt: pt.titulo, izq, der }, proto: { f: 'modulo', txt: pt.titulo, w: Math.max(60, pt.pines.length * G + 20), h: 44 } };
+}
+let parteInicial = new URLSearchParams(location.search).get('parte');
+function alLlegarPartes() {
+  verPartes++; cacheReal.clear();
+  partes().forEach((pt) => {
+    if (LISTA.some((c) => c.parte === pt.id && !c.auto)) return;
+    const c = compAuto(pt), viejo = COMP.get(c.id);
+    if (viejo) { Object.assign(viejo, c); cacheDef.delete(c.id + '|esq'); cacheDef.delete(c.id + '|proto'); } else { COMP.set(c.id, c); LISTA.push(c); }
+  });
+  catalogo(); pintar(); inspector(); pintarEjemplos();
+  if (parteInicial && compDeParte(parteInicial)) { const pid = parteInicial; parteInicial = null; armarParte(pid); }   // llegó desde MakeCode: «Ver el circuito»
+}
+cargarPartes(alLlegarPartes);
+
 // Para pruebas y para la página que la incrusta
 const aVista = (v) => (v === 'protoboard' || v === 'proto' ? 'proto' : v === 'esquematico' || v === 'esq' ? 'esq' : vista);
 window.__circuitos = {
@@ -1589,6 +1651,7 @@ window.__circuitos = {
   vinculo, generar: (desde, sinPreguntar) => generar(aVista(desde), sinPreguntar), redesTodas: (v) => redes(aVista(v), true),
   redes: (v) => redes(aVista(v)), avisos: () => { revisarAhora(); return avisos; }, buscar: (t) => buscar(t, vista).map((c) => c.id),
   componentes: () => LISTA.map((c) => c.id), ejemplo: (i) => cargar(EJEMPLOS[i].hacer()), ejemplos: EJEMPLOS.map((x) => x.nombre),
+  partes, ejemploParte, armarParte: (pid) => { const o = ejemploParte(pid); if (o) { cargar(o); cambiarVista('proto'); } return !!o; }, partesListas: () => cargarPartes(),
   pata: (id, n) => { const el = porId(id); if (!el) return null; const i = nombres(el).indexOf(n); return i < 0 ? null : terminales(el)[i]; },
   patas: (id) => { const el = porId(id); return el ? nombres(el).map((n, i) => ({ n, p: terminales(el)[i] })) : []; },
   nombresBandas: (ohm, tol = 5) => { const b = bandas(ohm); return [BANDA[b.d1][0], BANDA[b.d2][0], colorMult(b.m)[0], colorTol(tol)[0]]; },
