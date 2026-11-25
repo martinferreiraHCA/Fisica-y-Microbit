@@ -28226,8 +28226,8 @@ bluetooth.startIOPinService()</pre>
               '<text x="390" y="296" text-anchor="middle" font-size="11" fill="#9e9e9e">' + T.water + '</text>' +
               grid +
               elSvg +
-              '<text x="250" y="104" text-anchor="middle" font-size="12" font-weight="700" fill="#42a5f5">− GND</text>' +
-              '<text x="518" y="104" text-anchor="end" font-size="12" font-weight="700" fill="#ef5350">+ 3V</text>' +
+              '<text x="250" y="104" text-anchor="middle" font-size="12" font-weight="700" fill="#42a5f5">− 0 V (GND)</text>' +
+              '<text x="518" y="104" text-anchor="end" font-size="12" font-weight="700" fill="#ef5350">+ 3,3 V (pin 3V)</text>' +
               // micro:bit
               '<rect x="20" y="28" width="156" height="126" rx="12" fill="#101216" stroke="#6b7686" stroke-width="2"/>' +
               '<text x="98" y="22" text-anchor="middle" font-size="11" fill="#9e9e9e">micro:bit</text>' +
@@ -28580,7 +28580,7 @@ bluetooth.startIOPinService()</pre>
             const sw = document.createElement('span');
             sw.className = 'mp-el-sw'; sw.style.background = (e.pol === '+') ? '#ef5350' : '#42a5f5';
             const nm = document.createElement('span'); nm.textContent = this._elName(e);
-            const pl = document.createElement('span'); pl.className = 'mp-el-pol'; pl.textContent = (e.pol === '+') ? '+ pin 3V' : '− GND';
+            const pl = document.createElement('span'); pl.className = 'mp-el-pol'; pl.textContent = (e.pol === '+') ? '+ 3,3 V' : '− 0 V';
             b.appendChild(sw); b.appendChild(nm); b.appendChild(pl);
             list.appendChild(b);
           });
@@ -28597,7 +28597,7 @@ bluetooth.startIOPinService()</pre>
           };
           const pl = document.createElement('label'); pl.textContent = 'Conectado a';
           const ps = document.createElement('select'); ps.dataset.f = 'pol';
-          [['-', '− (pin GND)'], ['+', '+ (pin 3V)']].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; ps.appendChild(o); });
+          [['-', '− 0 V (pin GND)'], ['+', '+ 3,3 V (pin 3V)']].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; ps.appendChild(o); });
           ps.value = e.pol;
           pl.appendChild(ps); props.appendChild(pl);
           field('X (cm)', 'x', e.x); field('Y (cm)', 'y', e.y);
@@ -29029,11 +29029,13 @@ bluetooth.startIOPinService()</pre>
           // Rótulos: el potencial medido en el agua junto a cada electrodo, si ya se midió
           const cal0 = st.cal, coma = (v) => v.toFixed(2).replace('.', ',');
           const calTxt = cal0 ? { neg: coma(cal0.neg), pos: coma(cal0.pos) } : null;
+          // Cada placa lleva su tensión (0 V y 3,3 V) y, si ya se midió, la del agua pegada a ella
+          const largo = tw >= 420;
           ctx.font = 'bold 12px -apple-system,Segoe UI,sans-serif';
           ctx.textAlign = 'left';
-          ctx.fillStyle = '#42a5f5'; ctx.fillText(calTxt ? '− ' + calTxt.neg + ' V' : '− (pin GND)', x0 + 4, y0 - 7);
+          ctx.fillStyle = '#42a5f5'; ctx.fillText('− 0 V' + (calTxt ? (largo ? ' · en el agua ' : ' · ') + calTxt.neg + ' V' : ''), x0 + 4, y0 - 7);
           ctx.textAlign = 'right';
-          ctx.fillStyle = '#ef5350'; ctx.fillText(calTxt ? '+ ' + calTxt.pos + ' V' : '+ (pin 3V)', x0 + tw - 4, y0 - 7);
+          ctx.fillStyle = '#ef5350'; ctx.fillText('+ 3,3 V' + (calTxt ? (largo ? ' · en el agua ' : ' · ') + calTxt.pos + ' V' : ''), x0 + tw - 4, y0 - 7);
           ctx.textAlign = 'start';
         }
 
