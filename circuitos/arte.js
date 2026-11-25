@@ -136,6 +136,14 @@ const pantalla = (x, y, w, h, dentro) => R(x, y, w, h, 2.5, '#12261c', 'stroke="
 const perilla = (x, y, r) => C(x, y, r, '#3a3d42', 'stroke="#1f2124" stroke-width=".8"') + P(`M${x},${y} l${N(r * 0.55)},${N(-r * 0.75)}`, 'stroke="#fff" stroke-width="1.5" stroke-linecap="round"');
 // Dibujos del cuerpo (x, y, w, h = la caja; t = texto). Devuelven todo el cuerpo, con su fondo.
 const CAJAS = {
+  // Sonda estanca DS18B20: los tres hilos entran al empalme, sigue el cable negro y termina en la cápsula de acero
+  sonda: (x, y, w, h, t) => { const cx = x + w / 2, cy = y + 16, x1 = x + w - 78, yb = y + h - 20, d = `M${N(cx)},${N(yb)} C${N(cx)},${N(cy + 4)} ${N(cx - 46)},${N(yb - 4)} ${N(cx - 46)},${N(cy + 10)} C${N(cx - 46)},${N(cy - 6)} ${N(cx - 20)},${N(cy)} ${N(cx + 6)},${N(cy)} H${N(x1)}`;
+    const hilos = [[-20, CABLES.rojo], [0, CABLES.amarillo], [20, CABLES.negro]].map(([dx, c]) => chicote(cx + dx, y + h, cx + dx * 0.3, yb + 6, c)).join('');
+    return hilos + P(d, 'fill="none" stroke="#0d0e10" stroke-width="7" stroke-linecap="round"') + P(d, 'fill="none" stroke="#34373c" stroke-width="5" stroke-linecap="round"') + P(d, 'fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="1.1" stroke-linecap="round"') +
+      R(cx - 9, yb - 4, 18, 14, 4, '#1f2124', 'stroke="#0d0e10" stroke-width="1"') +
+      R(x1 - 6, cy - 5.5, 20, 11, 3.5, '#1f2124', 'stroke="#0d0e10" stroke-width=".8"') +
+      R(x1 + 10, cy - 6.5, 64, 13, 6.5, METAL, `stroke="${METAL_O}" stroke-width="1"`) + brillo(x1 + 16, x1 + 67, cy - 3, 1.8) + P(`M${N(x1 + 21)},${N(cy - 6.5)} v13`, `stroke="${METAL_O}" stroke-width=".8"`) +
+      T(t, x + w - 44, y + h - 26, { t: 7.5, w: 800, c: '#4a4d52', halo: '#fff' }); },
   generica: (x, y, w, h, t) => R(x, y, w, h, 6, '#e8eaed', 'stroke="#aeb4bb" stroke-width="1.2"') + R(x, y, w, 8, 4, '#4b5560') + R(x, y + 5, w, 4, 0, '#4b5560') + T(t, x + w / 2, y + 6 + (h - 6) / 2, { t: cabe(t, w - 12, 10), w: 800, c: '#2b2f34' }),
   pilas: (x, y, w, h, t, comp) => { const n = +(/(\d)aa/.exec(comp.id) || [0, 1])[1], alto = Math.min(18, (h - 8 - (n - 1) * 3) / n); let s = R(x, y, w, h, 6, '#1f2124', 'stroke="#0d0e10" stroke-width="1"');
     for (let i = 0; i < n; i++) s += pilaAA(x + 12, y + (h - n * alto - (n - 1) * 3) / 2 + i * (alto + 3), w - 24, alto, i % 2 === 0);
@@ -162,13 +170,13 @@ const CAJAS = {
   calefactor: (x, y, w, h, t) => R(x, y, w, h, h / 2, '#d9d2c3', 'stroke="#a79f8c" stroke-width="1"') + P(`M${x + 10},${y + h / 2} ` + Array.from({ length: Math.floor((w - 20) / 8) }, (_, i) => `l4,${i % 2 ? 7 : -7}`).join(' '), 'fill="none" stroke="#c0392b" stroke-width="1.6" stroke-linejoin="round"'),
 };
 const CAJA_DE = { 'pila-aa': 'pilas', 'portapilas-3aa': 'pilas', 'portapilas-4aa': 'pilas', 'bateria-9v': 'pila9v', 'pila-boton': 'pila-boton', voltimetro: 'multimetro', amperimetro: 'multimetro', ohmimetro: 'multimetro', altavoz: 'altavoz', 'fuente-cc': 'fuente', generador: 'generador', osciloscopio: 'osciloscopio',
-  'celda-solar': 'solar', lampara: 'lampara', ventilador: 'ventilador', peltier: 'peltier', motorreductor: 'motorreductor', 'motor-encoder': 'motorreductor', electroiman: 'electroiman', 'fuente-usb': 'usb', calefactor: 'calefactor' };
-const REDONDAS = new Set(['pila-boton', 'altavoz', 'electroiman', 'lampara', 'calefactor', 'motorreductor', 'usb']);   // sin la sombra rectangular
+  'celda-solar': 'solar', lampara: 'lampara', ventilador: 'ventilador', peltier: 'peltier', motorreductor: 'motorreductor', 'motor-encoder': 'motorreductor', electroiman: 'electroiman', 'fuente-usb': 'usb', calefactor: 'calefactor', 'ds18b20-sonda': 'sonda' };
+const REDONDAS = new Set(['sonda', 'pila-boton', 'altavoz', 'electroiman', 'lampara', 'calefactor', 'motorreductor', 'usb']);   // sin la sombra rectangular
 function libreReal(comp, fo, base) {
   const { w, h, dos } = base.caja, titulo = fo.txt || comp.nombre, cuerpo = CAJAS[CAJA_DE[comp.id]] || CAJAS.generica;
   return { d: (el, pts) => {
     const [x, y] = el.a; let s = '', nom = '';
-    pts.forEach((p, i) => { const q = comp.pines[i], ab = p[1] > y + h / 2, col = COLOR_ROL[q.rol] || '#8d949b';
+    pts.forEach((p, i) => { const q = comp.pines[i], ab = p[1] > y + h / 2, col = COLOR_ROL[q.rol] || (CAJA_DE[comp.id] === 'sonda' ? CABLES.amarillo : '#8d949b');
       s += chicote(p[0], ab ? y + h - 2 : y + 2, p[0], p[1], col) + borneReal(p[0], p[1], q.rol);
       nom += T(q.n, p[0], p[1] + (ab ? 12.5 : -12.5), { t: cabe(q.n, 18, 6.6), c: '#4a4d52', halo: '#fff' }); });
     return s + (REDONDAS.has(CAJA_DE[comp.id]) ? '' : R(x + 2, y + 3, w, h, 6, '#000', 'opacity=".10"')) + cuerpo(x, y, w, h, titulo, comp) + nom;
