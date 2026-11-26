@@ -1,8 +1,9 @@
 // ============ BANDEJA PARA MAPEO DE CAMPO ELÉCTRICO ============
 // Cubeta baja para mapear potencial y campo eléctrico con una lámina
 // de agua: cuadrícula en el fondo para ubicar la punta de prueba,
-// ranuras para dos electrodos planos (chapas) y asientos para dos
-// electrodos puntuales (tornillos o tuercas).
+// encastres para dos electrodos planos (chapas), a la distancia de
+// la cuadrícula que se elija, y asientos para dos electrodos
+// puntuales (tornillos o tuercas).
 // La zona de mapeo coincide con «Dimensiones» del módulo MAPEO del
 // sitio: 14 × 10 cm con paso de 1 cm por defecto.
 // Imprimir con el fondo sobre la cama, sin soportes, con 3 o más
@@ -45,8 +46,10 @@ muescas_en_el_borde = true;
 /* [Electrodos] */
 // Qué electrodos lleva
 electrodos = "planos"; // [planos, puntuales, plano y punto, ninguno]
-// Separación entre los dos electrodos, centrada (mm)
-separacion = 140; // [20:10:300]
+// Distancia de los encastres de las chapas al borde de la cuadrícula (mm)
+distancia_a_la_grilla = 10; // [0:1:60]
+// Separación entre los dos electrodos puntuales, centrada (mm)
+separacion_puntuales = 80; // [20:10:300]
 // Espesor de la chapa de los electrodos planos, con holgura (mm)
 espesor_chapa = 1.5; // [0.5:0.1:4]
 // Diámetro del asiento de los electrodos puntuales (mm)
@@ -59,13 +62,18 @@ resolucion = 48; // [16:120]
 /* [Hidden] */
 $fn = resolucion;
 e = 0.01;
-li = largo_mapeo + 2 * margen;      // interior
+con_chapas = electrodos == "planos" || electrodos == "plano y punto";
+// en X el margen crece lo necesario para que el encastre, puesto a esa distancia de la cuadrícula, quede dentro de la bandeja
+margen_x = con_chapas ? max(margen, distancia_a_la_grilla + espesor_chapa / 2 + 2.8) : margen;
+li = largo_mapeo + 2 * margen_x;    // interior
 ai = ancho_mapeo + 2 * margen;
 le = li + 2 * pared;                // exterior
 ae = ai + 2 * pared;
 alto = fondo + profundidad;
 surco = min(0.5, fondo * 0.3);      // hondo de las líneas grabadas (o alto del relieve)
-sep = min(separacion, li - 2 * espesor_chapa - 2);
+x_grilla = floor(largo_mapeo / paso + 0.001) * paso / 2;         // última línea de la cuadrícula, medida desde el centro
+x_chapa = x_grilla + distancia_a_la_grilla;                     // centro de cada encastre
+sep = min(separacion_puntuales, largo_mapeo);                   // los puntuales van dentro de la zona de mapeo
 r_ext = min(radio_esquinas + pared, min(le, ae) / 2 - e);
 r_int = max(0.01, min(radio_esquinas, min(li, ai) / 2 - e));
 
@@ -126,8 +134,8 @@ difference() {
             translate([0, 0, fondo]) linear_extrude(profundidad + 1) rect_red(li, ai, r_int);
         }
         if (cuadricula == "en relieve") translate([0, 0, fondo - e]) linear_extrude(surco) lineas();
-        if (electrodos == "planos") { guia_chapa(-sep / 2); guia_chapa(sep / 2); }
-        if (electrodos == "plano y punto") guia_chapa(-sep / 2);
+        if (electrodos == "planos") { guia_chapa(-x_chapa); guia_chapa(x_chapa); }
+        if (electrodos == "plano y punto") guia_chapa(-x_chapa);
     }
     if (cuadricula == "grabada") translate([0, 0, fondo - surco]) linear_extrude(surco + e) lineas();
     if (muescas_en_el_borde) muescas();

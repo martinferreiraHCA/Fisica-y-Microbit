@@ -58,7 +58,8 @@ button, input, select, textarea { font-family:inherit; font-size:inherit; color:
 .cat-l { padding:4px 8px 8px; border-bottom:1px solid #d4d4d4; }
 .comp { display:flex; align-items:center; gap:8px; width:100%; background:#fff; border:1.5px solid transparent; padding:3px 5px; cursor:pointer; font-size:10.5px; font-weight:600; line-height:1.2; text-align:left; min-height:36px; }
 .comp svg { flex:none; width:50px; height:30px; display:block; pointer-events:none; }
-.comp span { flex:1; min-width:0; } .comp small { display:block; font-weight:500; font-size:9px; color:var(--tenue); }
+.comp span { flex:1; min-width:0; } .comp small { display:block; font-weight:500; font-size:9px; color:var(--tenue); } .comp small.mk { font-weight:700; color:#000; text-transform:uppercase; letter-spacing:.4px; font-size:8px; margin-top:2px; }
+.ficha .mk-n { margin:4px 0; color:#333; } .ficha ul.blq li::before { content:'▪'; font-size:11px; top:1px; } .ej-t { font-size:9.5px; font-weight:800; letter-spacing:1px; text-transform:uppercase; padding:9px 12px 4px; border-top:2px solid #000; margin-top:4px; }
 .comp:hover { border-color:#bbb; } .comp.act { border-color:#000; background:#000; color:#fff; } .comp.act svg { filter:invert(1); } .comp.act small { color:#ddd; }
 .comp.otra { opacity:.5; }
 /* En la protoboard: mosaico de dos columnas, con la miniatura grande y el nombre debajo */
@@ -157,6 +158,7 @@ input[type=text], select { width:100%; border:1.5px solid #000; border-radius:0;
       <div class="tit">Componentes <span id="cat-total"></span></div>
       <div class="buscar"><input type="text" id="q" placeholder="Buscar componente…" autocomplete="off" spellcheck="false"><kbd>/</kbd></div>
       <label class="chk"><input type="checkbox" id="solo-tk"> Solo los que están en Tinkercad</label>
+      <label class="chk" title="Los sensores que tienen bloques en la extensión FisicaBit: se dibujan igual que en el simulador de MakeCode"><input type="checkbox" id="solo-mk"> Solo los que tienen bloques en MakeCode</label>
     </div>
     <div id="catalogo"></div>
   </div>

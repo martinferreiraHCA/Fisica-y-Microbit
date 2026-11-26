@@ -82,6 +82,35 @@ pin; en la protoboard, un trozo del borde de la placa con su anillo.
 - En el archivo son los componentes `mb-3v`, `mb-gnd` y `mb-pin`, con el pin
   elegido en `pin`.
 
+## Los mismos sensores que en MakeCode + FisicaBit
+
+La extensión FisicaBit de MakeCode (`pxt-fisicabit-usb`) trae, para el
+simulador, el dibujo de cada sensor (`parts/*.svg`) y cómo se conecta
+(`pxtparts.json`). El editor **lee esos mismos archivos** (`partes.js`), así el
+estudiante ve el sensor igual en el simulador de MakeCode y en el circuito:
+
+- En la protoboard **realista**, el HC-SR04, el HY-SRF05 y la sonda DS18B20 se
+  dibujan con el dibujo de la extensión, con sus patas en el mismo orden.
+- La ficha del componente muestra **En MakeCode + FisicaBit**: a qué pin de la
+  micro:bit lo lleva cada bloque, los bloques que lo usan, **Armar esta
+  conexión** (el circuito ya armado, igual que en el simulador) y
+  **Programarlo en MakeCode** (abre el editor del sitio con un programa que
+  lee el sensor y lo envía a fisicabit.com).
+- El catálogo los marca «con bloques en MakeCode» y tiene un filtro para ver
+  solo esos; **Ejemplos** suma uno por sensor.
+- En el panel **MAKECODE + FISICABIT** del sitio, el botón **Sensores** de la
+  barra lista los mismos sensores con su dibujo, su conexión, **Ver el
+  circuito** (`circuitos/?parte=<id>`) y **Programa de ejemplo**.
+
+**Se actualiza solo.** Al abrir, se usa la copia que viene con el sitio
+(`partes/partes.json`) y, si hay red, se lee la extensión de GitHub: un sensor
+nuevo en `pxtparts.json` aparece en el catálogo sin tocar el sitio, con su
+dibujo, sus patas (los rótulos del dibujo), su conexión (los pines por defecto
+de sus bloques) y sus bloques en español. Para que además tenga ficha completa
+(datos, hoja de datos, avisos), se lo agrega a `componentes.js` con
+`parte: '<id>'` y las patas en el mismo orden que el dibujo. La copia del sitio
+se renueva con `node circuitos/partes/actualizar.mjs`.
+
 ## Avisos de compatibilidad
 
 Con una micro:bit en el dibujo, el editor calcula las **redes** (qué patas
@@ -210,5 +239,8 @@ Para pruebas: `window.__circuitos` (`estado`, `cargar(obj)`,
 - `arte.js` — estilo Realista de la protoboard: dibujos propios y carga de los
   de Wokwi Elements.
 - `componentes.js` — base de componentes (datos).
+- `partes.js` — sensores de la extensión FisicaBit de MakeCode: lee
+  `pxtparts.json`, los dibujos y los bloques, y arma el programa de ejemplo.
+  `partes/partes.json` es la copia que se usa sin red.
 - `microbit.js` — pines de la micro:bit por versión, recomendaciones y
   revisión de un circuito (datos y reglas).

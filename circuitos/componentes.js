@@ -39,6 +39,10 @@
 //             coinciden uno a uno con `pines` (pueden repetirse: terminales unidos por dentro, como
 //             las 4 patas de un pulsador; o ser un subconjunto, como el símbolo de un operacional)
 //   avisos  textos fijos para la ficha (opcional)   solo  'v2' si necesita esa versión de micro:bit
+//   parte   id del sensor en la extensión FisicaBit de MakeCode (pxtparts.json de pxt-fisicabit-usb): en la protoboard
+//           realista se dibuja con el mismo dibujo que usa el simulador de MakeCode y la ficha muestra su conexión y
+//           sus bloques. Las patas tienen que llamarse y ordenarse como en ese dibujo. Los sensores de la extensión
+//           que no estén en esta base se agregan solos (ver partes.js).
 //   mb      pin de la micro:bit que representa (3V, GND, P0…): un borne suelto de la placa, sin dibujarla entera.
 //           El pin se puede cambiar en cada elemento; para los avisos cuenta como ese pin de la micro:bit.
 
@@ -205,6 +209,11 @@ export const COMPONENTES = [
     desc: 'Entrega 10 mV por grado Celsius.', datos: [['Alimentación', '4–30 V'], ['Rango', '2 a 150 °C'], ['Precisión', '± 0,5 °C']], hoja: TI + 'lm35.pdf',
     pines: [vcc(4, 30, 0.06, '+VS'), s('VOUT', 'aout', { nivel33: true }), gnd()], esq: blo('LM35', ['+VS', 'GND'], ['VOUT']), proto: { f: 'to92', marca: 'LM35' },
     avisos: ['Necesita 4 V o más: con la micro:bit conviene el TMP36, que anda con 3,3 V.'] },
+  { id: 'ds18b20-modulo', nombre: 'Sonda DS18B20 con adaptador (como en MakeCode)', cat: 'sensores', alias: 'termometro digital sumergible onewire 1-wire sonda impermeable modulo bornera makecode fisicabit temperatura', tk: false, pref: 'U', parte: 'ds18b20',
+    desc: 'Termómetro digital en sonda sumergible de acero, con su adaptador de tres bornes. Un solo cable de datos. Es el sensor de temperatura de la extensión FisicaBit de MakeCode.', fisica: 'Calorimetría, cambios de estado, enfriamiento: mide bien dentro de líquidos.',
+    datos: [['Alimentación', '3–5,5 V'], ['Rango', '−55 a 125 °C'], ['Precisión', '± 0,5 °C'], ['Tiempo por lectura', '94 ms (9 bits) a 750 ms (12 bits)']], hoja: SF + 'Sensors/Temp/DS18B20.pdf',
+    pines: [gnd(), s('DAT', 'io'), vcc(3, 5.5, 1.5)], esq: blo('DS18B20', ['VCC', 'GND'], ['DAT']), proto: mod('DS18B20', 60, 44),
+    avisos: ['El adaptador ya trae la resistencia de 4,7 kΩ entre DAT y VCC. Con la sonda sola y cables cortos alcanza la resistencia interna que activa el bloque; con un metro o más de cable hay que ponerla.', 'Una lectura tarda hasta 0,75 s: no sirve para cambios rápidos.'] },
   { id: 'ds18b20-sonda', nombre: 'Sonda estanca DS18B20 (con cable)', cat: 'sensores', alias: 'termometro digital sumergible estanco impermeable waterproof onewire 1-wire sonda cable', tk: false, pref: 'U',
     desc: 'El DS18B20 dentro de una cápsula de acero sellada, con un cable de tres hilos: es el modelo que se sumerge.', fisica: 'Calorimetría, cambios de estado, enfriamiento: la cápsula va dentro del líquido y el circuito queda afuera.',
     datos: [['Alimentación', '3–5,5 V'], ['Rango', '−55 a 125 °C (el cable, hasta unos 85 °C)'], ['Precisión', '± 0,5 °C'], ['Tiempo por lectura', '750 ms (12 bits)'], ['Cables', 'rojo = VDD · amarillo = DQ · negro = GND']], hoja: SF + 'Sensors/Temp/DS18B20.pdf',
@@ -214,7 +223,7 @@ export const COMPONENTES = [
     desc: 'Termómetro digital en encapsulado TO-92, para pinchar en la protoboard. Un solo cable de datos. Para líquidos, usar la sonda estanca.', fisica: 'Temperatura del aire o de una superficie; para medir dentro de un líquido va la sonda estanca.',
     datos: [['Alimentación', '3–5,5 V'], ['Rango', '−55 a 125 °C'], ['Precisión', '± 0,5 °C'], ['Tiempo por lectura', '750 ms (12 bits)']], hoja: SF + 'Sensors/Temp/DS18B20.pdf',
     pines: [gnd(), s('DQ', 'io'), vcc(3, 5.5, 1.5, 'VDD')], esq: blo('DS18B20', ['VDD', 'GND'], ['DQ']), proto: { f: 'to92', marca: '18B20' },
-    avisos: ['Necesita una resistencia de 4,7 kΩ entre DQ y 3V.', 'Una lectura tarda hasta 0,75 s: no sirve para cambios rápidos.'] },
+    avisos: ['Necesita una resistencia de 4,7 kΩ entre DQ y 3V.', 'Se programa con los mismos bloques DS18B20 de la extensión FisicaBit.'] },
   { id: 'dht11', nombre: 'Temperatura y humedad DHT11', cat: 'sensores', alias: 'humedad relativa ambiente', tk: false, pref: 'U',
     desc: 'Mide temperatura y humedad del aire.', fisica: 'Humedad ambiente, punto de rocío, evaporación.',
     datos: [['Alimentación', '3,3–5,5 V'], ['Temperatura', '0–50 °C ± 2 °C'], ['Humedad', '20–90 % ± 5 %'], ['Lecturas', '1 por segundo']], hoja: 'https://www.mouser.com/datasheet/2/758/DHT11-Technical-Data-Sheet-Translated-Version-1143054.pdf',
@@ -245,16 +254,22 @@ export const COMPONENTES = [
   { id: 'flex', nombre: 'Sensor de flexión', cat: 'sensores', alias: 'flex doblar', tk: true, pref: 'FLX',
     desc: 'Tira cuya resistencia aumenta al doblarla.', datos: [['Recto', '≈ 25 kΩ'], ['Doblado', 'hasta 125 kΩ']], hoja: SF + 'Sensors/ForceFlex/FLEXSENSORREVA1.pdf',
     pines: P2('1', '2'), esq: nat('potenciometro'), proto: { f: 'axial', txt: 'FLEX' }, avisos: ['Va en un divisor de tensión con una resistencia de 22 kΩ.'] },
-  { id: 'hc-sr04', nombre: 'Ultrasonido HC-SR04', cat: 'sensores', alias: 'distancia sonar eco ultrasonic hy-srf05', tk: true, pref: 'U',
-    desc: 'Mide distancias de 2 a 400 cm con el eco de un pulso de ultrasonido.', fisica: 'Cinemática: posición en función del tiempo de un carrito o de un cuerpo que cae; velocidad del sonido.',
-    datos: [['Alimentación', '5 V (el HC-SR04P acepta 3,3 V)'], ['Consumo', '15 mA'], ['Rango', '2–400 cm'], ['Resolución', '≈ 3 mm'], ['Cono', '≈ 15°']], hoja: SF + 'Sensors/Proximity/HCSR04.pdf',
-    pines: [vcc(4.5, 5.5, 15), s('TRIG', 'din'), s('ECHO', 'dout'), gnd()],
+  { id: 'hc-sr04', nombre: 'Ultrasonido HC-SR04', cat: 'sensores', alias: 'distancia sonar eco ultrasonic makecode fisicabit', tk: true, pref: 'U', parte: 'hcsr04',
+    desc: 'Mide distancias de 2 a 400 cm con el eco de un pulso de ultrasonido. Es el sensor de distancia de la extensión FisicaBit de MakeCode.', fisica: 'Cinemática: posición en función del tiempo de un carrito o de un cuerpo que cae; velocidad del sonido.',
+    datos: [['Alimentación', '3–5 V'], ['Consumo', '15 mA'], ['Rango', '2–400 cm (1,5 a 2 m con 3 V)'], ['Resolución', '≈ 3 mm'], ['Cono', '≈ 15°']], hoja: SF + 'Sensors/Proximity/HCSR04.pdf',
+    pines: [vcc(3, 5.5, 15), s('TRIG', 'din'), s('ECHO', 'dout'), gnd()],
     esq: blo('HC-SR04', ['VCC', 'GND'], ['TRIG', 'ECHO']), proto: mod('HC-SR04', 90, 44),
-    avisos: ['La versión HC-SR04P (o el HY-SRF05 a 3,3 V) se alimenta directo desde 3V y no necesita divisor en ECHO.', 'La extensión FisicaBit tiene bloques propios para este sensor.'] },
-  { id: 'hc-sr04p', nombre: 'Ultrasonido HC-SR04P (3,3 V)', cat: 'sensores', alias: 'distancia sonar eco 3v', tk: false, pref: 'U',
-    desc: 'Igual al HC-SR04 pero funciona de 3 a 5,5 V: es el indicado para la micro:bit.', fisica: 'Posición en función del tiempo (carrito, caída, péndulo, resorte).',
+    avisos: ['Con los 3 V de la micro:bit (como lo conecta MakeCode) el alcance baja a 1,5–2 m. Algunos módulos antiguos solo andan con 5 V: en ese caso alimentarlo aparte, unir los GND y poner un divisor de 1 kΩ / 2 kΩ en ECHO.'] },
+  { id: 'hc-sr04p', nombre: 'Ultrasonido HC-SR04P (3,3 V)', cat: 'sensores', alias: 'distancia sonar eco 3v makecode fisicabit', tk: false, pref: 'U', parte: 'hcsr04',
+    desc: 'Igual al HC-SR04 pero pensado para 3 a 5,5 V: con la micro:bit conserva todo el alcance. Usa los mismos bloques HC-SR04.', fisica: 'Posición en función del tiempo (carrito, caída, péndulo, resorte).',
     datos: [['Alimentación', '3–5,5 V'], ['Consumo', '≈ 3 mA'], ['Rango', '2–400 cm']],
     pines: [vcc(3, 5.5, 3), s('TRIG', 'din'), s('ECHO', 'dout'), gnd()], esq: blo('HC-SR04P', ['VCC', 'GND'], ['TRIG', 'ECHO']), proto: mod('HC-SR04P', 90, 44) },
+  { id: 'hy-srf05', nombre: 'Ultrasonido HY-SRF05', cat: 'sensores', alias: 'distancia sonar eco srf05 5 pines makecode fisicabit', tk: false, pref: 'U', parte: 'hysrf05',
+    desc: 'Sensor de ultrasonido de cinco patas. Con OUT sin conectar se usa igual que el HC-SR04; tiene sus propios bloques en la extensión FisicaBit de MakeCode.', fisica: 'Posición en función del tiempo, igual que el HC-SR04.',
+    datos: [['Alimentación', '3–5 V'], ['Rango', '2–400 cm (1,5 a 2 m con 3 V)'], ['Patas', 'VCC · TRIG · ECHO · OUT · GND']],
+    pines: [vcc(3, 5.5, 15), s('TRIG', 'din'), s('ECHO', 'dout'), s('OUT', 'pas'), gnd()],
+    esq: blo('HY-SRF05', ['VCC', 'GND'], ['TRIG', 'ECHO', 'OUT']), proto: mod('HY-SRF05', 110, 44),
+    avisos: ['OUT queda sin conectar. Con 5 V en VCC hay que poner un divisor de 1 kΩ / 2 kΩ en ECHO.'] },
   { id: 'vl53l0x', nombre: 'Distancia láser VL53L0X', cat: 'sensores', alias: 'tof tiempo de vuelo distancia i2c', tk: false, pref: 'U',
     desc: 'Mide distancia con el tiempo de vuelo de un láser infrarrojo. Haz angosto y lecturas rápidas.', fisica: 'Posición en función del tiempo con objetos chicos, donde el ultrasonido se confunde.',
     datos: [['Alimentación', '2,6–5 V (módulo)'], ['Rango', '3–200 cm'], ['Lecturas', 'hasta 50 por segundo']], hoja: 'https://www.pololu.com/file/0J1187/VL53L0X.pdf',
