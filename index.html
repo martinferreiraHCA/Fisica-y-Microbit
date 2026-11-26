@@ -3832,6 +3832,14 @@
           letter-spacing:1px; font-weight:600;
         }
         .mapeo-close:hover { background:#1a1d23; }
+        /* Reset: siempre a mano mientras haya puntos medidos, debajo de CERRAR */
+        .mapeo-reset {
+          position:absolute; top:46px; right:12px; z-index:4;
+          background:#000; color:#ef5350; border:1px solid #ef5350;
+          padding:6px 14px; cursor:pointer; font-size:11px;
+          letter-spacing:1px; font-weight:600;
+        }
+        .mapeo-reset:hover { background:#ef5350; color:#000; }
 
         .mapeo-status {
           position:absolute; top:12px; left:12px;
@@ -4056,6 +4064,7 @@
           .mapeo-guide {
             top:52px; left:8px; right:8px; width:auto; max-width:none; font-size:12px;
           }
+          .mapeo-reset { top:12px; right:104px; padding:10px 12px; font-size:12px; }   /* al lado de CERRAR: debajo va el cartel */
         }
         /* ===== MAPEO PRO START ===== */
         .mapeo-pro {
@@ -26226,6 +26235,7 @@ bluetooth.startIOPinService()</pre>
       <main class="mapeo-stage">
         <div class="mapeo-status" id="mapeo-status"></div>
         <button class="mapeo-close" id="mapeo-close">CERRAR</button>
+        <button class="mapeo-reset" id="mapeo-reset" style="display:none" title="Borra todos los puntos medidos y vuelve al primero. La grilla y los electrodos quedan como están">RESET</button>
         <div class="mapeo-guide" id="mapeo-guide" role="status" aria-live="polite"></div>
         <canvas id="mapeo-canvas" class="mapeo-canvas"></canvas>
         <div class="mapeo-toast" id="mapeo-toast"></div>
@@ -27087,6 +27097,7 @@ bluetooth.startIOPinService()</pre>
                   <button class="mapeo-btn" id="mp-next" style="flex:1;" title="Pasar al punto siguiente sin medir (flecha derecha)">Saltar →</button>
                 </div>
                 <button class="mapeo-btn" id="mp-undo" title="Borra la última medida y vuelve a ese punto (Ctrl+Z o botón B de la micro:bit)">Deshacer última medida</button>
+                <button class="mapeo-btn danger" id="mp-reset" title="Borra todos los puntos medidos y vuelve al primero. La grilla y los electrodos quedan como están">Reset: borrar los puntos</button>
                 <label class="mp-check" style="margin-top:10px;"><input type="checkbox" id="mp-auto" checked>Pasar solo al punto siguiente</label>
                 <label class="mp-check"><input type="checkbox" id="mp-sound" checked>Sonido al registrar</label>
 
@@ -27589,6 +27600,8 @@ bluetooth.startIOPinService()</pre>
           $('mp-prev').addEventListener('click', () => this._step(-1));
           $('mp-next').addEventListener('click', () => this._step(1));
           $('mp-undo').addEventListener('click', () => this._undo());
+          $('mp-reset').addEventListener('click', () => this._resetPoints());
+          { const arriba = document.getElementById('mapeo-reset'); if (arriba) arriba.addEventListener('click', () => this._resetPoints()); }   // está fuera del panel lateral
           $('mp-record').addEventListener('click', () => this._recordLive());
           $('mp-auto').addEventListener('change', () => { this._guide.auto = $('mp-auto').checked; this._saveGuide(); });
           $('mp-sound').addEventListener('change', () => { this._guide.sound = $('mp-sound').checked; this._saveGuide(); });
@@ -27613,6 +27626,7 @@ bluetooth.startIOPinService()</pre>
             else if (act === 'prev') this._step(-1);
             else if (act === 'next') this._step(1);
             else if (act === 'undo') this._undo();
+            else if (act === 'reset') this._resetPoints();
             else if (act === 'result') this._showResult();
             else if (act === 'pro') this._openPro();
             else if (act === 'eldone') this._setEditMode(false);
@@ -27991,6 +28005,10 @@ bluetooth.startIOPinService()</pre>
           if (rec) rec.style.display = (this._stream && this.isCapturing) ? '' : 'none';
           const undoBtn = $('mp-undo');
           if (undoBtn) undoBtn.disabled = !this._undoStack.length;
+          const resetBtn = $('mp-reset');
+          if (resetBtn) resetBtn.disabled = !done;
+          const resetTop = document.getElementById('mapeo-reset');
+          if (resetTop) resetTop.style.display = done ? '' : 'none';
 
           // ---- Cartel ----
           const banner = document.getElementById('mapeo-guide');
@@ -28042,6 +28060,7 @@ bluetooth.startIOPinService()</pre>
             acts.push(['field', 'Calcular el campo']);
             if (sel && sel.value === 'points') acts.push(['result', 'Ver resultado', 1]);
             acts.push(['pro', 'Análisis profesional', 1]);
+            acts.push(['reset', 'Empezar de nuevo', 1]);
           }
           const key = [cur, msg, live, acts.map(a => a[0]).join(',')].join('|');
           this.panel.classList.toggle('mp-editing', !!(this._edit && this._edit.on));
@@ -30537,6 +30556,22 @@ bluetooth.startIOPinService()</pre>
           this._updateInfo();
           this._draw();
           this._scheduleAutosave();
+        }
+        // Reset: borra todas las medidas (pide confirmación) y vuelve al primer punto.
+        // La grilla, los electrodos y la conexión no cambian.
+        _resetPoints() {
+          if (!this.grid) return;
+          const n = this.grid.points.filter(p => p.value !== null).length;
+          if (!n) { this._toast('No hay puntos medidos para borrar'); return; }
+          if (!window.confirm('Se van a borrar los ' + n + ' puntos medidos. La grilla y los electrodos quedan como están. ¿Continuar?')) return;
+          this.grid.points.forEach(p => p.value = null);
+          this._undoStack = [];
+          this.activePoint = this.isCapturing ? this._nextEmpty(null) : null;
+          this._bannerKey = null;
+          this._updateInfo();
+          this._draw();
+          this._scheduleAutosave();
+          this._toast('Puntos borrados: el mapa empieza de nuevo');
         }
 
         _updateInfo() {
@@ -37044,6 +37079,11 @@ bluetooth.startIOPinService()</pre>
     '← Anterior': { en: '← Previous', pt: '← Anterior' },
     'Saltar →': { en: 'Skip →', pt: 'Pular →' },
     'Deshacer última medida': { en: 'Undo last measurement', pt: 'Desfazer última medida' },
+    'Reset: borrar los puntos': { en: 'Reset: clear the points', pt: 'Reset: apagar os pontos' },
+    'Borra todos los puntos medidos y vuelve al primero. La grilla y los electrodos quedan como están': { en: 'Clears every measured point and goes back to the first one. The grid and the electrodes stay as they are', pt: 'Apaga todos os pontos medidos e volta ao primeiro. A grade e os eletrodos ficam como estão' },
+    'Empezar de nuevo': { en: 'Start over', pt: 'Começar de novo' },
+    'No hay puntos medidos para borrar': { en: 'There are no measured points to clear', pt: 'Não há pontos medidos para apagar' },
+    'Puntos borrados: el mapa empieza de nuevo': { en: 'Points cleared: the map starts again', pt: 'Pontos apagados: o mapa começa de novo' },
     'Pasar solo al punto siguiente': { en: 'Move to the next point automatically', pt: 'Passar sozinho ao ponto seguinte' },
     'Sonido al registrar': { en: 'Sound when recording', pt: 'Som ao registrar' },
     'Sesiones guardadas': { en: 'Saved sessions', pt: 'Sessões salvas' },
