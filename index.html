@@ -27168,16 +27168,6 @@ bluetooth.startIOPinService()</pre>
               </div>
             </details>
 
-            <details class="mapeo-details" id="mp-probe-sec" style="display:none;">
-              <summary>Calibrar la punta (capacitor)</summary>
-              <div class="mapeo-details-body">
-                <div class="mapeo-info" style="margin-top:0;">P1 no mide como un multímetro: al leer toma corriente de la punta y la lectura se corre. Un capacitor cerámico de 100 nF («104») entre P1 y GND lo corrige.</div>
-                <label class="mp-check"><input type="checkbox" id="mp-probe-cap">Tengo el capacitor puesto</label>
-                <div class="mapeo-info" id="mp-probe-state"></div>
-                <button class="mapeo-btn" id="mp-probe-test" title="Con tres resistencias iguales, mide cuánto carga la entrada P1 de tu placa, sin y con el capacitor">Probar la entrada P1</button>
-              </div>
-            </details>
-
             <details class="mapeo-details">
               <summary>Sesiones guardadas</summary>
               <div class="mapeo-details-body">
@@ -27611,11 +27601,6 @@ bluetooth.startIOPinService()</pre>
           $('mp-next').addEventListener('click', () => this._step(1));
           $('mp-undo').addEventListener('click', () => this._undo());
           $('mp-reset').addEventListener('click', () => this._resetPoints());
-          // Apartado «Calibrar la punta (capacitor)»
-          $('mp-probe-test').addEventListener('click', () => this._openProbeTest());
-          try { $('mp-probe-cap').checked = localStorage.getItem('fisicabit_mapeo_capacitor') === '1'; } catch (e) {}
-          $('mp-probe-cap').addEventListener('change', (e) => { try { localStorage.setItem('fisicabit_mapeo_capacitor', e.target.checked ? '1' : '0'); } catch (er) {} this._refreshProbeState(); });
-          $('mp-probe-sec').addEventListener('toggle', () => this._refreshProbeState());
           { const arriba = document.getElementById('mapeo-reset'); if (arriba) arriba.addEventListener('click', () => this._resetPoints()); }   // está fuera del panel lateral
           $('mp-record').addEventListener('click', () => this._recordLive());
           $('mp-auto').addEventListener('change', () => { this._guide.auto = $('mp-auto').checked; this._saveGuide(); });
@@ -27864,7 +27849,7 @@ bluetooth.startIOPinService()</pre>
             this._refreshGuide();
             return;
           }
-          if (!this.activePoint && !this._calStage && !this._probeTap) {
+          if (!this.activePoint && !this._calStage) {
             this._toast('Seleccioná un punto antes de capturar');
             return;
           }
@@ -27892,8 +27877,6 @@ bluetooth.startIOPinService()</pre>
         }
 
         _commitValue(v, auto) {
-          // «Probar la entrada P1» (mapeo/entrada.js) recibe la medida mientras está abierta
-          if (this._probeTap && this._probeTap(v) !== false) return;
           if (this._calStage) { this._calCommit(v); return; }
           const p = this.activePoint;
           if (!p) return;
@@ -28106,26 +28089,6 @@ bluetooth.startIOPinService()</pre>
           if (tray) tray.addEventListener('click', () => this._openTray3D());
           const code = modal.querySelector('[data-act="code"]');
           if (code) code.addEventListener('click', () => { modal.classList.remove('open'); this._openMakeCodeModal(); });
-          const probe = modal.querySelector('[data-act="probe"]');
-          if (probe) probe.addEventListener('click', () => this._openProbeTest());
-        }
-
-        // Prueba de la entrada P1 (cuánto carga la punta, sin y con el capacitor): módulo aparte, se carga al usarlo
-        _openProbeTest() {
-          const go = () => {
-            try { window.FbitEntradaP1.abrir(this); } catch (e) { console.error(e); this._toast('No se pudo abrir la prueba de la entrada'); return; }
-            const modal = document.getElementById('mapeo-info-modal');
-            if (modal && window.MutationObserver) {
-              const ob = new MutationObserver(() => { if (!modal.classList.contains('open')) { ob.disconnect(); this._refreshProbeState(); } });
-              ob.observe(modal, { attributes: true, attributeFilter: ['class'] });
-            }
-          };
-          if (window.FbitEntradaP1) { go(); return; }
-          const sc = document.createElement('script');
-          sc.src = 'mapeo/entrada.js';
-          sc.onload = go;
-          sc.onerror = () => this._toast('No se pudo cargar la prueba de la entrada');
-          document.head.appendChild(sc);
         }
 
         _lang() {
@@ -28189,11 +28152,8 @@ bluetooth.startIOPinService()</pre>
                 '<strong>Electrodos.</strong> Poné las chapas en las ranuras de los extremos (o los tornillos en sus asientos). Tienen que tocar el agua.',
                 '<strong>Agua.</strong> Agua de la canilla hasta 5 a 8 mm de alto, pareja en toda la cubeta. Sin sal: con sal pasa demasiada corriente.',
                 '<strong>Cables.</strong> Con cocodrilos: %GND% al electrodo de la izquierda, %V3% al de la derecha y %P1% a la punta de prueba (un clavo o un cable pelado en la punta).',
-                '<strong>Capacitor.</strong> Poné un capacitor cerámico de 100 nF (dice «104») entre %P1% y %GND%, en los mismos cocodrilos de la micro:bit. Hace que la placa lea la tensión real de la punta: sin él, la lectura de P1 se corre, de más o de menos según la placa y el punto (ver «Cuidados»).',
-                '<strong>Punta.</strong> Apoyala vertical, tocando el fondo, justo en el cruce de la cuadrícula que marca la pantalla, esperá un instante y presioná <strong>A</strong>.'
+                '<strong>Punta.</strong> Apoyala vertical, tocando el fondo, justo en el cruce de la cuadrícula que marca la pantalla, y presioná <strong>A</strong>.'
               ],
-              cap: '100 nF', test: 'Probar la entrada P1',
-              capWhy: 'P1 no es un multímetro. Un multímetro casi no toma corriente; la entrada de la micro:bit, cada vez que mide, toma un poco de corriente de la punta, y como el agua tiene mucha resistencia la lectura se corre (puede dar de más o de menos): en la micro:bit V1 entre 1 % y 12 % de la escala según cómo apoye la punta, en la V2 menos de 1 %. El capacitor de 100 nF entre P1 y GND entrega esa corriente en lugar del agua y el corrimiento queda por debajo del 1 %. Con «Probar la entrada P1» lo medís en tu placa con tres resistencias. %TEST%',
               careT: 'Cuidados',
               care: [
                 'Usá solo los 3 V de la micro:bit. No conectes fuentes externas a la cubeta mientras la punta esté en un pin.',
@@ -28211,11 +28171,8 @@ bluetooth.startIOPinService()</pre>
                 '<strong>Electrodes.</strong> Put the metal plates in the slots at both ends (or the screws in their seats). They must touch the water.',
                 '<strong>Water.</strong> Tap water, 5 to 8 mm deep, level across the whole tray. No salt: with salt too much current flows.',
                 '<strong>Wires.</strong> With crocodile clips: %GND% to the left electrode, %V3% to the right one and %P1% to the probe (a nail or a wire stripped at the tip).',
-                '<strong>Capacitor.</strong> Put a 100 nF ceramic capacitor (marked “104”) between %P1% and %GND%, in the same crocodile clips on the micro:bit. It makes the board read the real voltage of the probe: without it, the P1 reading shifts, up or down depending on the board and the point (see “Care”).',
-                '<strong>Probe.</strong> Hold it vertical, touching the bottom, right on the grid crossing shown on screen, wait a moment and press <strong>A</strong>.'
+                '<strong>Probe.</strong> Hold it vertical, touching the bottom, right on the grid crossing shown on screen, and press <strong>A</strong>.'
               ],
-              cap: '100 nF', test: 'Test the P1 input',
-              capWhy: 'P1 is not a multimeter. A multimeter draws almost no current; the micro:bit input, every time it measures, draws a little current from the probe, and since water has a high resistance the reading shifts (it can read high or low): on the micro:bit V1 between 1 % and 12 % of full scale depending on how the probe touches, on the V2 less than 1 %. The 100 nF capacitor between P1 and GND supplies that current instead of the water and the shift stays below 1 %. With “Test the P1 input” you can measure it on your board with three resistors. %TEST%',
               careT: 'Care',
               care: [
                 'Use only the micro:bit\'s 3 V. Do not connect external supplies to the tray while the probe is on a pin.',
@@ -28233,11 +28190,8 @@ bluetooth.startIOPinService()</pre>
                 '<strong>Eletrodos.</strong> Coloque as chapas nas ranhuras das extremidades (ou os parafusos nos assentos). Devem tocar a água.',
                 '<strong>Água.</strong> Água da torneira até 5 a 8 mm de altura, nivelada em toda a cuba. Sem sal: com sal passa corrente demais.',
                 '<strong>Cabos.</strong> Com garras jacaré: %GND% no eletrodo da esquerda, %V3% no da direita e %P1% na ponta de prova (um prego ou um fio desencapado na ponta).',
-                '<strong>Capacitor.</strong> Coloque um capacitor cerâmico de 100 nF (marcado «104») entre %P1% e %GND%, nas mesmas garras do micro:bit. Faz a placa ler a tensão real da ponta: sem ele, a leitura do P1 se desloca, para mais ou para menos conforme a placa e o ponto (ver «Cuidados»).',
-                '<strong>Ponta.</strong> Apoie-a na vertical, tocando o fundo, bem no cruzamento da grade que a tela indica, espere um instante e pressione <strong>A</strong>.'
+                '<strong>Ponta.</strong> Apoie-a na vertical, tocando o fundo, bem no cruzamento da grade que a tela indica, e pressione <strong>A</strong>.'
               ],
-              cap: '100 nF', test: 'Testar a entrada P1',
-              capWhy: 'O P1 não é um multímetro. Um multímetro quase não puxa corrente; a entrada do micro:bit, cada vez que mede, puxa um pouco de corrente da ponta, e como a água tem muita resistência a leitura se desloca (pode dar a mais ou a menos): no micro:bit V1 entre 1 % e 12 % da escala conforme o apoio da ponta, no V2 menos de 1 %. O capacitor de 100 nF entre P1 e GND fornece essa corrente no lugar da água e o deslocamento fica abaixo de 1 %. Com «Testar a entrada P1» você mede isso na sua placa com três resistores. %TEST%',
               careT: 'Cuidados',
               care: [
                 'Use apenas os 3 V do micro:bit. Não ligue fontes externas à cuba enquanto a ponta estiver em um pino.',
@@ -28301,9 +28255,6 @@ bluetooth.startIOPinService()</pre>
               '<path d="M158 148 C158 250, ' + (aN[0] - 50) + ' ' + aN[1] + ', ' + aN[0] + ' ' + aN[1] + '" fill="none" stroke="#42a5f5" stroke-width="3"/>' +
               '<path d="M128 148 C128 200, 204 205, 204 125 C204 35, ' + (aP[0] + 10) + ' 10, ' + aP[0] + ' ' + aP[1] + '" fill="none" stroke="#ef5350" stroke-width="3"/>' +
               '<path d="M68 148 C68 290, 250 290, 330 215 S 380 160, 390 190" fill="none" stroke="#fdd835" stroke-width="3"/>' +
-              // capacitor de 100 nF entre P1 y GND, pegado a la placa
-              '<path d="M60 150 L44 176 M32 176 H56 M32 183 H56 M44 183 V196 M34 196 H54 M38 201 H50 M42 206 H46" fill="none" stroke="#e0e0e0" stroke-width="2"/>' +
-              '<text x="44" y="222" text-anchor="middle" font-size="10" fill="#e0e0e0">' + T.cap + '</text>' +
               // punta de prueba
               '<circle cx="390" cy="192" r="6" fill="#fdd835" stroke="#000"/>' +
               '<text x="402" y="186" font-size="11" fill="#fdd835">' + T.probe + '</text>' +
@@ -28316,7 +28267,7 @@ bluetooth.startIOPinService()</pre>
           return svg +
             '<ol>' + T.steps.map(x => '<li>' + fill(x) + '</li>').join('') + '</ol>' +
             '<h4>' + T.careT + '</h4>' +
-            '<ul>' + T.care.concat([T.capWhy]).map(x => '<li>' + x.replace('%TEST%', '<button type="button" class="mapeo-btn mp-inline" data-act="probe">' + T.test + '</button>') + '</li>').join('') + '</ul>' +
+            '<ul>' + T.care.map(x => '<li>' + x + '</li>').join('') + '</ul>' +
             '<button type="button" class="mapeo-btn primary" data-act="code" style="margin-top:12px;">' + T.next + '</button>';
         }
 
@@ -28744,27 +28695,7 @@ bluetooth.startIOPinService()</pre>
           }
           this._bannerKey = null; this._draw(); this._refreshGuide();
         }
-        // Apartado «Calibrar la punta (capacitor)»: si el capacitor está puesto y qué dio la última prueba de la entrada
-        _refreshProbeState() {
-          const q = (id) => this.sidebar.querySelector('#' + id);
-          const sec = q('mp-probe-sec'), st = q('mp-probe-state'); if (!sec || !st) return;
-          sec.style.display = (this._setup && this._setup.kind === 'cubeta') ? '' : 'none';
-          const T = {
-            es: { no: 'Sin el capacitor, en la micro:bit V1 la lectura puede correrse hasta un 12 % de la escala (en la V2, menos de 1 %).', si: 'Con el capacitor, esperá un instante después de apoyar la punta antes de presionar A.', sin: 'Todavía no probaste la entrada de esta placa.', ult: 'Última prueba', a: 'sin capacitor se corre', b: 'con capacitor' },
-            en: { no: 'Without the capacitor, on the micro:bit V1 the reading can shift by up to 12 % of full scale (on the V2, less than 1 %).', si: 'With the capacitor, wait a moment after placing the probe before pressing A.', sin: 'You have not tested this board\'s input yet.', ult: 'Last test', a: 'without capacitor it shifts', b: 'with capacitor' },
-            pt: { no: 'Sem o capacitor, no micro:bit V1 a leitura pode se deslocar até 12 % da escala (no V2, menos de 1 %).', si: 'Com o capacitor, espere um instante depois de apoiar a ponta antes de pressionar A.', sin: 'Você ainda não testou a entrada desta placa.', ult: 'Último teste', a: 'sem capacitor desloca', b: 'com capacitor' }
-          }[this._lang()];
-          let d = null; try { d = JSON.parse(localStorage.getItem('fisicabit_mapeo_entrada') || 'null'); } catch (e) {}
-          // corrimiento de una pasada: lo que más se aparta de 1/3 y 2/3 de la lectura en 3V
-          const corr = (l) => (l && l.f3 > 0.5 && l.a != null && l.b != null) ? Math.round(1000 * Math.max(Math.abs(l.a - l.f3 / 3), Math.abs(l.b - 2 * l.f3 / 3))) : null;
-          const cs = d ? corr(d.sin) : null, cc = d ? corr(d.con) : null;
-          const prueba = (cs == null && cc == null) ? T.sin
-            : T.ult + ': ' + [cs != null ? T.a + ' <strong style="color:#fff;">' + cs + ' mV</strong>' : '', cc != null ? T.b + ' <strong style="color:#fff;">' + cc + ' mV</strong>' : ''].filter(Boolean).join(' · ') + '.';
-          const html = (q('mp-probe-cap').checked ? T.si : T.no) + '<br>' + prueba;
-          if (html !== this._probeHtml) { this._probeHtml = html; st.innerHTML = html; }
-        }
         _syncCalInputs() {
-          this._refreshProbeState();
           const q = (id) => this.sidebar.querySelector('#' + id);
           const box = q('mp-cal-box'); if (!box) return;
           box.style.display = this._canCalibrate() ? '' : 'none';
@@ -29806,7 +29737,7 @@ bluetooth.startIOPinService()</pre>
 
         _makecodeSensors() {
           return {
-            voltage: { label:'Voltaje (cubeta)', note:'Mide el potencial de la punta de prueba respecto de GND, en volts (0 a 3,3 V), promediando 20 lecturas. GND va a un electrodo, 3V al otro y el pin elegido a la punta, con un capacitor de 100 nF entre ese pin y GND. Con pilas, cambiá 3300 por 3000.' },
+            voltage: { label:'Voltaje (cubeta)', note:'Mide el potencial de la punta de prueba respecto de GND, en volts (0 a 3,3 V), promediando 20 lecturas. GND va a un electrodo, 3V al otro y el pin elegido a la punta. Con pilas, cambiá 3300 por 3000.' },
             light:  { label:'Luz', sensor:'input.lightLevel()', note:'Devuelve 0-255 (0 oscuridad, 255 luz directa). Funciona en V1 y V2.' },
             magnet: { label:'Imán', sensor:'input.magneticForce(Dimension.Strength)', note:'Devuelve µT (microteslas). Calibrar la primera vez moviendo la micro:bit en círculo.' },
             sound:  { label:'Sonido', sensor:'input.soundLevel()', note:'Devuelve 0-255. Solo micro:bit V2 (tiene micrófono).' },
@@ -29831,7 +29762,7 @@ bluetooth.startIOPinService()</pre>
             L.push('bluetooth.startUartService()');
           }
           L.push(isV
-            ? '// MAPEO · potencial eléctrico en la cubeta con agua. Conexiones: GND al electrodo (−), 3V al electrodo (+), ' + pin + ' a la punta de prueba y un capacitor de 100 nF entre ' + pin + ' y GND. El corazón avisa que el programa está listo.'
+            ? '// MAPEO · potencial eléctrico en la cubeta con agua. Conexiones: GND al electrodo (−), 3V al electrodo (+) y ' + pin + ' a la punta de prueba. El corazón avisa que el programa está listo.'
             : '// MAPEO · ' + s.label.toLowerCase() + '. El corazón avisa que el programa está listo.');
           L.push('basic.showIcon(IconNames.Heart)');
           L.push('// Botón A: mide donde está ' + (isV ? 'la punta' : 'el sensor') + ' y envía el valor a MAPEO.');
@@ -29842,8 +29773,8 @@ bluetooth.startIOPinService()</pre>
             L.push('    // Repite 20 veces: lee el pin ' + pin + ' (un número de 0 a 1023) y lo suma. Promediar muchas lecturas reduce el ruido.');
             L.push('    for (let i = 0; i < 20; i++) {');
             L.push('        suma += pins.analogReadPin(AnalogPin.' + pin + ')');
-            L.push('        // Espera 5 ms entre una lectura y la siguiente: le da tiempo al capacitor a recuperarse.');
-            L.push('        basic.pause(5)');
+            L.push('        // Espera 2 ms entre una lectura y la siguiente.');
+            L.push('        basic.pause(2)');
             L.push('    }');
             L.push('    // Promedio (suma / 20) pasado a volts: 1023 equivale a 3,3 V (3300 mV). Se redondea al milivolt. Con pilas, cambiar 3300 por 3000.');
             L.push('    valor = Math.round(suma / 20 * 3300 / 1023) / 1000');
@@ -37156,11 +37087,6 @@ bluetooth.startIOPinService()</pre>
     'Pasar solo al punto siguiente': { en: 'Move to the next point automatically', pt: 'Passar sozinho ao ponto seguinte' },
     'Sonido al registrar': { en: 'Sound when recording', pt: 'Som ao registrar' },
     'Sesiones guardadas': { en: 'Saved sessions', pt: 'Sessões salvas' },
-    'Calibrar la punta (capacitor)': { en: 'Calibrate the probe (capacitor)', pt: 'Calibrar a ponta (capacitor)' },
-    'P1 no mide como un multímetro: al leer toma corriente de la punta y la lectura se corre. Un capacitor cerámico de 100 nF («104») entre P1 y GND lo corrige.': { en: 'P1 does not measure like a multimeter: while reading it draws current from the probe and the reading shifts. A 100 nF ceramic capacitor (“104”) between P1 and GND corrects it.', pt: 'O P1 não mede como um multímetro: ao ler, puxa corrente da ponta e a leitura se desloca. Um capacitor cerâmico de 100 nF («104») entre P1 e GND corrige isso.' },
-    'Tengo el capacitor puesto': { en: 'The capacitor is fitted', pt: 'O capacitor está colocado' },
-    'Probar la entrada P1': { en: 'Test the P1 input', pt: 'Testar a entrada P1' },
-    'Con tres resistencias iguales, mide cuánto carga la entrada P1 de tu placa, sin y con el capacitor': { en: 'With three equal resistors, measures how much your board\'s P1 input loads the probe, without and with the capacitor', pt: 'Com três resistores iguais, mede quanto a entrada P1 da sua placa carrega a ponta, sem e com o capacitor' },
     'Volver al punto anterior (flecha izquierda)': { en: 'Back to the previous point (left arrow)', pt: 'Voltar ao ponto anterior (seta esquerda)' },
     'Pasar al punto siguiente sin medir (flecha derecha)': { en: 'Go to the next point without measuring (right arrow)', pt: 'Passar ao ponto seguinte sem medir (seta direita)' },
     'Borra la última medida y vuelve a ese punto (Ctrl+Z o botón B de la micro:bit)': { en: 'Deletes the last measurement and goes back to that point (Ctrl+Z or button B on the micro:bit)', pt: 'Apaga a última medida e volta a esse ponto (Ctrl+Z ou botão B do micro:bit)' },
@@ -37239,9 +37165,7 @@ bluetooth.startIOPinService()</pre>
     'Listo': { en: 'Done', pt: 'Pronto' },
     'Abre el editor de MakeCode del sitio en una pestaña aparte, con este programa cargado y listo para descargar a la micro:bit': { en: 'Opens the site\'s MakeCode editor in a separate tab, with this program loaded and ready to download to the micro:bit', pt: 'Abre o editor MakeCode do site em uma aba separada, com este programa carregado e pronto para baixar para o micro:bit' },
     'Por USB: después de descargar, cerrá la pestaña del editor para que suelte la placa y recién ahí tocá «Conectar USB».': { en: 'Over USB: after downloading, close the editor tab so it releases the board, and only then press “Connect USB”.', pt: 'Por USB: depois de baixar, feche a aba do editor para que ele solte a placa e só então toque em «Conectar USB».' },
-    'Mide el potencial de la punta de prueba respecto de GND, en volts (0 a 3,3 V), promediando 20 lecturas. GND va a un electrodo, 3V al otro y el pin elegido a la punta, con un capacitor de 100 nF entre ese pin y GND. Con pilas, cambiá 3300 por 3000.': { en: 'Measures the potential of the probe relative to GND, in volts (0 to 3.3 V), averaging 20 readings. GND goes to one electrode, 3V to the other and the chosen pin to the probe, with a 100 nF capacitor between that pin and GND. On batteries, change 3300 to 3000.', pt: 'Mede o potencial da ponta de prova em relação ao GND, em volts (0 a 3,3 V), fazendo a média de 20 leituras. O GND vai a um eletrodo, o 3V ao outro e o pino escolhido à ponta, com um capacitor de 100 nF entre esse pino e o GND. Com pilhas, troque 3300 por 3000.' },
-    'No se pudo abrir la prueba de la entrada': { en: 'The input test could not be opened', pt: 'Não foi possível abrir o teste da entrada' },
-    'No se pudo cargar la prueba de la entrada': { en: 'The input test could not be loaded', pt: 'Não foi possível carregar o teste da entrada' },
+    'Mide el potencial de la punta de prueba respecto de GND, en volts (0 a 3,3 V), promediando 20 lecturas. GND va a un electrodo, 3V al otro y el pin elegido a la punta. Con pilas, cambiá 3300 por 3000.': { en: 'Measures the potential of the probe relative to GND, in volts (0 to 3.3 V), averaging 20 readings. GND goes to one electrode, 3V to the other and the chosen pin to the probe. On batteries, change 3300 to 3000.', pt: 'Mede o potencial da ponta de prova em relação ao GND, em volts (0 a 3,3 V), fazendo a média de 20 leituras. O GND vai a um eletrodo, o 3V ao outro e o pino escolhido à ponta. Com pilhas, troque 3300 por 3000.' },
     '¿Preferís el editor oficial sin el sitio? Copiá el código y pegalo en la vista JavaScript de': { en: 'Prefer the official editor without the site? Copy the code and paste it into the JavaScript view of', pt: 'Prefere o editor oficial sem o site? Copie o código e cole na visualização JavaScript de' },
     // ---------- MAPEO · toasts (no interpolados) ----------
     'Atención: no hay conexión activa con la micro:bit': { en: 'Warning: no active connection with the micro:bit', pt: 'Atenção: não há conexão ativa com o micro:bit' },
