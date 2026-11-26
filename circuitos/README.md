@@ -20,7 +20,7 @@ Cada pestaña tiene su propio dibujo.
 
 ## Catálogo con buscador
 
-Los componentes salen de la base `componentes.js` (unos 130, en 9
+Los componentes salen de la base `componentes.js` (unos 135, en 9
 categorías). El panel izquierdo tiene el **buscador** (tecla `/` o Ctrl+K;
 busca por nombre, alias, categoría y descripción, sin distinguir mayúsculas
 ni tildes; Esc lo limpia), el filtro *Solo los que están en Tinkercad* y las

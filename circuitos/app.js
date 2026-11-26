@@ -344,6 +344,9 @@ function moduloProto(comp, fo) {   // plaqueta con una tira de pines enchufada e
 }
 // Dibujos propios de algunos elementos sueltos (x, y, w, h = zona libre de la caja; t = texto)
 const ARTE = {
+  // sonda estanca: los tres hilos se juntan en un cable y terminan en la cápsula de acero
+  sonda: (x, y, w, h, t) => linea(`M${x + w / 2},${y + h - 18} V${y + h / 2 - 6} H${x + w - 62}`, 2.6) + `<rect x="${x + w - 62}" y="${y + h / 2 - 11}" width="56" height="10" rx="5" fill="#fff" stroke="#111" stroke-width="1.5"/>` +
+    txt(t, x + (w / 2 - 6) / 2 + 3, y + h / 2, { t: cabe(t, w / 2 - 14, 8), w: 800 }),
   servo: (x, y, w, h, t) => txt(t, x + (w - 26) / 2, y + h / 2, { t: cabe(t, w - 34, 9), w: 800 }) + `<rect x="${x + w - 30}" y="${y + h / 2 - 3}" width="26" height="6" rx="3" fill="#fff" stroke="#111" stroke-width="1.3" transform="rotate(-35 ${x + w - 15} ${y + h / 2})"/>` + circ(4, x + w - 15, y + h / 2, '#fff', 1.3),
   pila9v: (x, y, w, h, t) => circ(6, x + w / 2 - 11, y + 9, '#fff', 1.5) + forma(`M${x + w / 2 + 5},${y + 9} l3,-5.2 h6 l3,5.2 l-3,5.2 h-6 Z`, '#fff', 1.5) + txt(t, x + w / 2, y + h / 2 + 8, { t: cabe(t, w - 8, 10), w: 800 }),
   'pila-boton': (x, y, w, h, t) => circ(Math.min(w, h) / 2 - 2, x + w / 2, y + h / 2, '#fff', 1.5) + txt('+', x + w / 2, y + h / 2 - 7, { t: 10, w: 800 }) + txt(t, x + w / 2, y + h / 2 + 5, { t: cabe(t, Math.min(w, h) - 14, 7), w: 700 }),
@@ -1210,7 +1213,7 @@ const compDeParte = (pid) => LISTA.find((c) => c.parte === pid && c.proto && c.e
 function ejemploParte(pid) {
   const pt = parte(pid), c = compDeParte(pid); if (!pt || !c) return null;
   const conExt = pt.pines.some((q) => q.destino && !ANILLOS.includes(q.destino)), izq = Math.ceil(Math.max(0, (pt.pines.find((k) => k.n === c.pines[0].n) || pt.pines[0]).x) * G / pt.paso / G);
-  const o = armar(c.nombre + ' · como en MakeCode', (e, p) => {
+  const o = armar(pt.titulo + ' · como en MakeCode', (e, p) => {
     const mb = p.pon('microbit', conExt ? [110, 480] : [140, 430], { ver: 'v2', ext: conExt, arriba: true }), u = p.pon(c.id, hoyo(Math.max(4, izq + 2), 'g'), { rotulo: 'U1' });
     let k = 0; const COL = ['amarillo', 'azul', 'verde', 'naranja'];
     pt.pines.forEach((q) => { if (!q.destino) return; const a = p.pata(u, q.n), b = p.pata(mb, q.destino); if (a && b) p.cable(q.destino === '3V' ? 'rojo' : q.destino === 'GND' ? 'negro' : COL[k++ % COL.length], [a[0], FILAS.j], b); });
