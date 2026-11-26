@@ -54,7 +54,10 @@ está en la cubeta y la ve igual un multímetro. MAPEO la trata aparte, con
 
 ## Cómo verificarlo en la placa
 
-En MAPEO → **Montaje y conexiones** → **Probar la entrada P1** (`entrada.js`).
+En MAPEO, con la práctica de la cubeta elegida, el panel de la izquierda tiene
+el apartado **Calibrar la punta (capacitor)**: una casilla para anotar si el
+capacitor está puesto, el resultado de la última prueba y el botón **Probar la
+entrada P1** (`entrada.js`). El mismo botón está en **Montaje y conexiones**.
 
 1. Tres resistencias iguales (de 47 kΩ a 220 kΩ) en serie entre 3V y GND.
 2. Con el programa de MAPEO cargado, tocar con P1 el pin 3V, el punto A (1/3) y
