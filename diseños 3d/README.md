@@ -43,13 +43,16 @@ carpeta `diseños carton`.
 
 `bandeja-para-mapeo-de-campo-electrico.scad` es una cubeta baja para mapear
 potencial y campo eléctrico con una lámina de agua. Trae la cuadrícula en el
-fondo (grabada o en relieve), muescas en el borde alineadas con ella, ranuras
+fondo (grabada o en relieve), muescas en el borde alineadas con ella, encastres
 para dos electrodos planos (chapas) o asientos para electrodos puntuales
 (tornillos, tuercas), y una muesca en una esquina para vaciarla.
 
 Todas las medidas se cambian desde el editor: largo y ancho de la zona de
-mapeo, paso de la cuadrícula, margen, profundidad, espesores y separación de
-los electrodos. Por defecto la zona de mapeo es de 14 × 10 cm con paso de 1 cm,
+mapeo, paso de la cuadrícula, margen, profundidad, espesores, la **distancia
+de los encastres de las chapas a la cuadrícula** (10 mm por defecto: la chapa
+queda a un paso de la primera línea; con 0 queda sobre ella) y la separación
+de los electrodos puntuales. La bandeja se alarga sola para que los encastres
+entren. Por defecto la zona de mapeo es de 14 × 10 cm con paso de 1 cm,
 igual que «Dimensiones» del módulo MAPEO del sitio. Se imprime con el fondo
 sobre la cama, sin soportes; conviene usar 3 o más perímetros para que no
 pierda agua. Prototipo: todavía no se imprimió ni se probó con agua.
