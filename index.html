@@ -28189,11 +28189,11 @@ bluetooth.startIOPinService()</pre>
                 '<strong>Electrodos.</strong> Poné las chapas en las ranuras de los extremos (o los tornillos en sus asientos). Tienen que tocar el agua.',
                 '<strong>Agua.</strong> Agua de la canilla hasta 5 a 8 mm de alto, pareja en toda la cubeta. Sin sal: con sal pasa demasiada corriente.',
                 '<strong>Cables.</strong> Con cocodrilos: %GND% al electrodo de la izquierda, %V3% al de la derecha y %P1% a la punta de prueba (un clavo o un cable pelado en la punta).',
-                '<strong>Capacitor.</strong> Poné un capacitor cerámico de 100 nF (dice «104») entre %P1% y %GND%, en los mismos cocodrilos de la micro:bit. Hace que la placa lea la tensión real de la punta: sin él, P1 lee de menos (ver «Cuidados»).',
+                '<strong>Capacitor.</strong> Poné un capacitor cerámico de 100 nF (dice «104») entre %P1% y %GND%, en los mismos cocodrilos de la micro:bit. Hace que la placa lea la tensión real de la punta: sin él, la lectura de P1 se corre, de más o de menos según la placa y el punto (ver «Cuidados»).',
                 '<strong>Punta.</strong> Apoyala vertical, tocando el fondo, justo en el cruce de la cuadrícula que marca la pantalla, esperá un instante y presioná <strong>A</strong>.'
               ],
               cap: '100 nF', test: 'Probar la entrada P1',
-              capWhy: 'P1 no es un multímetro. Un multímetro casi no toma corriente; la entrada de la micro:bit, cada vez que mide, toma un poco de corriente de la punta, y como el agua tiene mucha resistencia la lectura se corre: en la micro:bit V1 entre 1 % y 12 % de la escala según cómo apoye la punta, en la V2 menos de 1 %. El capacitor de 100 nF entre P1 y GND entrega esa corriente en lugar del agua y el corrimiento queda por debajo del 1 %. Con «Probar la entrada P1» lo medís en tu placa con tres resistencias. %TEST%',
+              capWhy: 'P1 no es un multímetro. Un multímetro casi no toma corriente; la entrada de la micro:bit, cada vez que mide, toma un poco de corriente de la punta, y como el agua tiene mucha resistencia la lectura se corre (puede dar de más o de menos): en la micro:bit V1 entre 1 % y 12 % de la escala según cómo apoye la punta, en la V2 menos de 1 %. El capacitor de 100 nF entre P1 y GND entrega esa corriente en lugar del agua y el corrimiento queda por debajo del 1 %. Con «Probar la entrada P1» lo medís en tu placa con tres resistencias. %TEST%',
               careT: 'Cuidados',
               care: [
                 'Usá solo los 3 V de la micro:bit. No conectes fuentes externas a la cubeta mientras la punta esté en un pin.',
@@ -28211,11 +28211,11 @@ bluetooth.startIOPinService()</pre>
                 '<strong>Electrodes.</strong> Put the metal plates in the slots at both ends (or the screws in their seats). They must touch the water.',
                 '<strong>Water.</strong> Tap water, 5 to 8 mm deep, level across the whole tray. No salt: with salt too much current flows.',
                 '<strong>Wires.</strong> With crocodile clips: %GND% to the left electrode, %V3% to the right one and %P1% to the probe (a nail or a wire stripped at the tip).',
-                '<strong>Capacitor.</strong> Put a 100 nF ceramic capacitor (marked “104”) between %P1% and %GND%, in the same crocodile clips on the micro:bit. It makes the board read the real voltage of the probe: without it, P1 reads low (see “Care”).',
+                '<strong>Capacitor.</strong> Put a 100 nF ceramic capacitor (marked “104”) between %P1% and %GND%, in the same crocodile clips on the micro:bit. It makes the board read the real voltage of the probe: without it, the P1 reading shifts, up or down depending on the board and the point (see “Care”).',
                 '<strong>Probe.</strong> Hold it vertical, touching the bottom, right on the grid crossing shown on screen, wait a moment and press <strong>A</strong>.'
               ],
               cap: '100 nF', test: 'Test the P1 input',
-              capWhy: 'P1 is not a multimeter. A multimeter draws almost no current; the micro:bit input, every time it measures, draws a little current from the probe, and since water has a high resistance the reading shifts: on the micro:bit V1 between 1 % and 12 % of full scale depending on how the probe touches, on the V2 less than 1 %. The 100 nF capacitor between P1 and GND supplies that current instead of the water and the shift stays below 1 %. With “Test the P1 input” you can measure it on your board with three resistors. %TEST%',
+              capWhy: 'P1 is not a multimeter. A multimeter draws almost no current; the micro:bit input, every time it measures, draws a little current from the probe, and since water has a high resistance the reading shifts (it can read high or low): on the micro:bit V1 between 1 % and 12 % of full scale depending on how the probe touches, on the V2 less than 1 %. The 100 nF capacitor between P1 and GND supplies that current instead of the water and the shift stays below 1 %. With “Test the P1 input” you can measure it on your board with three resistors. %TEST%',
               careT: 'Care',
               care: [
                 'Use only the micro:bit\'s 3 V. Do not connect external supplies to the tray while the probe is on a pin.',
@@ -28233,11 +28233,11 @@ bluetooth.startIOPinService()</pre>
                 '<strong>Eletrodos.</strong> Coloque as chapas nas ranhuras das extremidades (ou os parafusos nos assentos). Devem tocar a água.',
                 '<strong>Água.</strong> Água da torneira até 5 a 8 mm de altura, nivelada em toda a cuba. Sem sal: com sal passa corrente demais.',
                 '<strong>Cabos.</strong> Com garras jacaré: %GND% no eletrodo da esquerda, %V3% no da direita e %P1% na ponta de prova (um prego ou um fio desencapado na ponta).',
-                '<strong>Capacitor.</strong> Coloque um capacitor cerâmico de 100 nF (marcado «104») entre %P1% e %GND%, nas mesmas garras do micro:bit. Faz a placa ler a tensão real da ponta: sem ele, o P1 lê a menos (ver «Cuidados»).',
+                '<strong>Capacitor.</strong> Coloque um capacitor cerâmico de 100 nF (marcado «104») entre %P1% e %GND%, nas mesmas garras do micro:bit. Faz a placa ler a tensão real da ponta: sem ele, a leitura do P1 se desloca, para mais ou para menos conforme a placa e o ponto (ver «Cuidados»).',
                 '<strong>Ponta.</strong> Apoie-a na vertical, tocando o fundo, bem no cruzamento da grade que a tela indica, espere um instante e pressione <strong>A</strong>.'
               ],
               cap: '100 nF', test: 'Testar a entrada P1',
-              capWhy: 'O P1 não é um multímetro. Um multímetro quase não puxa corrente; a entrada do micro:bit, cada vez que mede, puxa um pouco de corrente da ponta, e como a água tem muita resistência a leitura se desloca: no micro:bit V1 entre 1 % e 12 % da escala conforme o apoio da ponta, no V2 menos de 1 %. O capacitor de 100 nF entre P1 e GND fornece essa corrente no lugar da água e o deslocamento fica abaixo de 1 %. Com «Testar a entrada P1» você mede isso na sua placa com três resistores. %TEST%',
+              capWhy: 'O P1 não é um multímetro. Um multímetro quase não puxa corrente; a entrada do micro:bit, cada vez que mede, puxa um pouco de corrente da ponta, e como a água tem muita resistência a leitura se desloca (pode dar a mais ou a menos): no micro:bit V1 entre 1 % e 12 % da escala conforme o apoio da ponta, no V2 menos de 1 %. O capacitor de 100 nF entre P1 e GND fornece essa corrente no lugar da água e o deslocamento fica abaixo de 1 %. Com «Testar a entrada P1» você mede isso na sua placa com três resistores. %TEST%',
               careT: 'Cuidados',
               care: [
                 'Use apenas os 3 V do micro:bit. Não ligue fontes externas à cuba enquanto a ponta estiver em um pino.',

@@ -22,6 +22,14 @@ En las dos placas los anillos P0, P1 y P2 tienen además una resistencia fija de
 10 MΩ hacia 3V (la del sensor táctil). Con una punta de 20 kΩ corre la lectura
 unas milésimas de volt: es lo que queda cuando el capacitor está puesto.
 
+**Hacia dónde se corre no está documentado.** La entrada de la V1 tira hacia una
+tensión interna que el fabricante no da para esta configuración: los puntos
+por debajo de esa tensión se leen de más y los de arriba, de menos. La
+resistencia de 10 MΩ hacia 3V siempre empuja la lectura hacia arriba. Por eso
+en una placa real la lectura sin capacitor puede dar más alta o más baja que la
+del multímetro; con el capacitor tiene que acercarse a la del multímetro desde
+cualquiera de los dos lados. La prueba de más abajo mide esa tensión interna.
+
 Los números de la tabla salen de `simulacion_entrada.py`, que modela el
 muestreo de cada placa con los datos del fabricante. Es un cálculo, no una
 medida: para medirlo en una placa real está la prueba de más abajo.
