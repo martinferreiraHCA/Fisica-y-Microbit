@@ -221,7 +221,7 @@ const NATIVOS = {
       nervios(g.neg) + nervios(g.pos) + electrodo(g.neg) + electrodo(g.pos) + pinza(g.neg, AZUL) + pinza(g.pos, ROJO) + signo(g.neg, '−', AZUL) + signo(g.pos, '+', ROJO) +
       P(g.cable, `fill="none" stroke="${oscuro(AMAR, 0.62)}" stroke-width="4.6" stroke-linecap="round"`) + P(g.cable, `fill="none" stroke="${AMAR}" stroke-width="3" stroke-linecap="round"`) +
       C(tx, ty, 5.5, 'none', 'stroke="#fff" stroke-opacity=".85" stroke-width="1"') + C(tx, ty, 9.5, 'none', 'stroke="#fff" stroke-opacity=".4" stroke-width=".8"') +
-      `<g transform="translate(${N(tx)},${N(ty)}) rotate(${g.ang})">${x.punta(g.tipo, paleta)}</g>` +
+      `<g transform="translate(${N(tx)},${N(ty)}) rotate(${g.ang}) scale(${g.k})">${x.punta(g.tipo, paleta)}</g>` +
       C(B[2][0], B[2][1], 5.4, AMAR, 'stroke="#101216" stroke-width="1.3"') + C(B[2][0], B[2][1], 2, '#fff') + T('PUNTA', B[2][0] + 9, B[2][1], { t: 6.6, a: 'start', c: '#4a4d52', halo: '#fff' });
   } },
   // pin suelto de la micro:bit: un trozo del borde de la placa, con su anillo dorado

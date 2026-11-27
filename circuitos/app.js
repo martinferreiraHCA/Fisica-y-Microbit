@@ -251,7 +251,10 @@ const mbMundo = (el, l) => l.map(([x, y]) => (el.arriba ? [el.a[0] + 220 - x, el
 // proto.forma: placas · cilindros · placa-cilindro · coaxial (centro + y aro −, como la plantilla de MAPEO).
 // Terminales: la pinza de cada electrodo y el borne del cable de la punta de prueba.
 const PUNTAS = [['tester', 'Punta de tester'], ['cocodrilo', 'Clavo con pinza cocodrilo'], ['aguja', 'Aguja larga'], ['destornillador', 'Destornillador']];
-const COLA_PUNTA = { tester: [168, 0], cocodrilo: [142, 0], aguja: [168, 0], destornillador: [114, -7] };   // dónde nace el cable, en el eje de la punta
+// Dónde nace el cable de cada punta (en el eje de la punta, sin escalar) y hacia dónde sale (grados respecto del eje).
+// En el destornillador la pinza muerde el vástago de costado, antes del mango.
+const COLA_PUNTA = { tester: [168, 0, 0], cocodrilo: [142, 0, 0], aguja: [168, 0, 0], destornillador: [109.1, 34.4, 35] };
+const ESCALA_PUNTA = 0.8;
 const puntaDe = (el) => (COLA_PUNTA[el.punta] ? el.punta : 'tester');
 function cubetaGeo(el) {
   const [x, y] = el.a, f = ((COMP.get(el.c) || {}).proto || {}).forma || 'placas', chapas = f === 'placas' || f === 'placa-cilindro';
@@ -260,12 +263,13 @@ function cubetaGeo(el) {
   const ci = (px, s) => ({ t: 'cil', x: px, y: cy, r: 7.5, toma: [px, cy + 6], clip: [px, cy + 24], signo: [px + 20 * s, cy - 17] });
   const neg = f === 'cilindros' ? ci(cx - 80, -1) : f === 'coaxial' ? { t: 'aro', x: cx, y: cy, r: 100, toma: [cx - 71, cy + 71], clip: [cx - 71, cy + 89], signo: [cx - 92, cy - 62] } : pl(cx - 160, -1);
   const pos = f === 'placas' ? pl(cx + 160, 1) : f === 'coaxial' ? ci(cx, -1) : ci(cx + 80, 1);
-  // la punta: apoyada en el agua, con el cuerpo hacia arriba a la derecha (sale por encima del borde) y su cable
-  // bajando por fuera de la pared derecha hasta el borne
-  const tipo = puntaDe(el), ang = -56, u = [Math.cos(ang * Math.PI / 180), Math.sin(ang * Math.PI / 180)], T = f === 'coaxial' ? [cx + 46, cy - 6] : [cx, cy];
-  const [lx, ly] = COLA_PUNTA[tipo], cola = [N(T[0] + lx * u[0] - ly * u[1]), N(T[1] + lx * u[1] + ly * u[0])], borne = [x + w + 26, y + 290];
-  const cable = `M${cola[0]},${cola[1]} C${N(cola[0] + 46 * u[0])},${N(cola[1] + 46 * u[1])} ${borne[0]},${y - 46} ${borne[0]},${y + 40} L${borne[0]},${borne[1]}`;
-  return { f, w, h: 250, cx, cy, gx, gy, neg, pos, punta: T, ang, tipo, cable, borne };
+  // la punta: acostada dentro de la cubeta, con la punta en el agua y el cuerpo hacia la derecha, un poco levantado
+  // para no tapar los electrodos; su cable sale por encima de la pared derecha y baja por fuera hasta el borne
+  const tipo = puntaDe(el), ang = -30, k = ESCALA_PUNTA, rad = (g) => g * Math.PI / 180, T = f === 'coaxial' ? [cx + 46, cy - 6] : [cx, cy];
+  const [lx, ly, giro] = COLA_PUNTA[tipo], co = Math.cos(rad(ang)), se = Math.sin(rad(ang)), sale = [Math.cos(rad(ang + giro)), Math.sin(rad(ang + giro))];
+  const cola = [N(T[0] + k * (lx * co - ly * se)), N(T[1] + k * (lx * se + ly * co))], borne = [x + w + 26, y + 290], c1 = [N(cola[0] + 42 * sale[0]), N(cola[1] + 42 * sale[1])];
+  const cable = `M${cola[0]},${cola[1]} C${c1[0]},${c1[1]} ${borne[0]},${N(c1[1] - 6)} ${borne[0]},${N(c1[1] + 50)} L${borne[0]},${borne[1]}`;
+  return { f, w, h: 250, cx, cy, gx, gy, neg, pos, punta: T, ang, k, tipo, cable, borne };
 }
 const cubetaBornes = (el) => { const g = cubetaGeo(el); return [g.neg.clip, g.pos.clip, g.borne]; };   // −, + y la punta de prueba
 // Dibujo de una punta de prueba a lo largo del eje x, con la punta en el origen. p = colores: m/mo metal y su borde,
@@ -276,7 +280,7 @@ function puntaSVG(tipo, p) {
   if (tipo === 'cocodrilo') return F('M0,0 L7,-1.7 H112 V1.7 H7 Z', p.m, p.mo) + F('M112,-6 H115.5 V6 H112 Z', p.m, p.mo) + pinza(82);
   if (tipo === 'aguja') return F('M0,0 L12,-1 H150 Q156,-1 156,0 Q156,1 150,1 H12 Z', p.m, p.mo) + `<ellipse cx="148" cy="0" rx="4" ry="0.45" fill="${p.mo}"/>` + pinza(108);
   if (tipo === 'destornillador') return F('M0,-2.8 H6 L11,-1.9 H78 V1.9 H11 L6,2.8 H0 Z', p.m, p.mo) + F('M78,-4 L87,-8.5 H140 Q151,-8.5 151,0 Q151,8.5 140,8.5 H87 L78,4 Z', p.d, p.ho) +
-    `<path d="M92,-4.5 H138 M92,0 H140 M92,4.5 H138" fill="none" stroke="${p.ho}" stroke-opacity=".45" stroke-width="1"/>` + pinza(54, -7);
+    `<path d="M92,-4.5 H138 M92,0 H140 M92,4.5 H138" fill="none" stroke="${p.ho}" stroke-opacity=".45" stroke-width="1"/>` + `<g transform="rotate(35 60 0)">${pinza(60)}</g>`;
   // punta de tester: aguja, tope y mango con su pasacable
   return F('M0,0 L8,-1.5 H40 V1.5 H8 Z', p.m, p.mo) + F('M40,-4.5 H49 V4.5 H40 Z', p.h, p.ho) + `<rect x="48" y="-8" width="5.5" height="16" rx="2" fill="${p.a}" stroke="${p.ao}" stroke-width="${p.g}"/>` +
     F('M53.5,-5.5 L130,-6.6 Q151,-6.2 158,-3.4 V3.4 Q151,6.2 130,6.6 L53.5,5.5 Z', p.h, p.ho) + F('M158,-2.6 H168 V2.6 H158 Z', p.h, p.ho);
@@ -292,7 +296,7 @@ const PROTO = {
       for (let j = 0; j <= 10; j += 2) for (let i = 0; i <= 14; i += 2) puntos += `<circle cx="${g.gx + i * G}" cy="${g.gy + j * G}" r="2.2" fill="#fff" stroke="#888" stroke-width="0.9"/>`;
       return caja(x, y, g.w, g.h, 13) + puntos + electrodo(g.neg) + electrodo(g.pos) + pinza(g.neg) + pinza(g.pos) +
         txt('−', g.neg.signo[0], g.neg.signo[1], { t: 13, w: 800, halo: true }) + txt('+', g.pos.signo[0], g.pos.signo[1], { t: 13, w: 800, halo: true }) +
-        linea(g.cable, 1.6) + `<g transform="translate(${tx},${ty}) rotate(${g.ang})">${puntaSVG(g.tipo, { m: '#fff', mo: '#111', h: '#fff', ho: '#111', a: '#fff', ao: '#111', d: '#fff', g: 1.3 })}</g>` +
+        linea(g.cable, 1.6) + `<g transform="translate(${tx},${ty}) rotate(${g.ang}) scale(${g.k})">${puntaSVG(g.tipo, { m: '#fff', mo: '#111', h: '#fff', ho: '#111', a: '#fff', ao: '#111', d: '#fff', g: 1.3 })}</g>` +
         borne(B[2][0], B[2][1]) + txt('PUNTA', B[2][0] + 8, B[2][1], { t: 6.4, w: 700, a: 'start' });
     } },
   resistencia: { n: 2, alto: 10, d: (el) => cuerpoRes(el) },

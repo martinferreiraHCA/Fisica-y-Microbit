@@ -99,8 +99,8 @@ el montaje de la práctica de MAPEO.
   el dibujo.
 - Tres terminales: la pinza de cada electrodo (**−** y **+**) y el borne del
   cable de la punta (**PUNTA**, que para los avisos es una salida analógica).
-  El cable de la punta viene dibujado con la cubeta y baja por fuera de la
-  pared derecha. En el esquemático son un bloque con esos tres pines.
+  La punta va acostada dentro de la cubeta; su cable viene dibujado con ella,
+  sale por encima de la pared derecha y baja por fuera hasta el borne. En el esquemático son un bloque con esos tres pines.
 - El ejemplo *Campo eléctrico en cubeta (MAPEO)* une GND, 3V y P1 con cables
   en ángulo recto, sin cruces.
 
