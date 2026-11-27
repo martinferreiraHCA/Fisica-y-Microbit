@@ -12,15 +12,16 @@ desde el protocolo de práctico, que la abre embebida (`?embed=1`).
 
 - **1 · Esquemático** — cuadrícula de 20 px; los puntos de unión se dibujan
   solos.
-- **2 · Protoboard** — placa de 30 o 60 columnas con rieles de alimentación.
-  En la barra se elige el estilo **Realista / Línea** (se recuerda en el
-  navegador y se guarda con el circuito).
+- **2 · Protoboard** — placa de 30 o 60 columnas con rieles de alimentación,
+  o **Sin protoboard** (ver más abajo). En la barra se elige el estilo
+  **Realista / Línea** (se recuerda en el navegador y se guarda con el
+  circuito).
 
 Cada pestaña tiene su propio dibujo.
 
 ## Catálogo con buscador
 
-Los componentes salen de la base `componentes.js` (unos 135, en 9
+Los componentes salen de la base `componentes.js` (unos 140, en 10
 categorías). El panel izquierdo tiene el **buscador** (tecla `/` o Ctrl+K;
 busca por nombre, alias, categoría y descripción, sin distinguir mayúsculas
 ni tildes; Esc lo limpia), el filtro *Solo los que están en Tinkercad* y las
@@ -49,11 +50,65 @@ qué problemas trae, según la versión (V1 / V2).
 - **Resistencias**: doble clic (o clic sobre la que ya está elegida) abre el
   código de colores. Se escribe el valor (`220`, `4.7k`, `4k7`, `1M`) o se
   eligen las bandas; quedan sincronizados.
-- **Ejemplos**: cuatro circuitos listos (LED en P0, LDR en divisor a P1,
-  ultrasonido con extensor, servo con pilas aparte).
+- **Ejemplos**: cinco circuitos listos (LED en P0, LDR en divisor a P1,
+  ultrasonido con extensor, servo con pilas aparte, campo eléctrico en
+  cubeta sin protoboard).
 - **SVG** y **PNG** descargan la pestaña activa recortada, sin grilla ni
   avisos; **Guardar / Abrir** usan un archivo `.circuito.json`. El circuito se
   guarda solo en el navegador (`localStorage`, `fisicabit_circuito_v1`).
+
+## Montaje sin protoboard
+
+En la pestaña 2, el selector de tamaño de la placa tiene la opción **Sin
+protoboard** (`proto.cols = 0` en el archivo). Sirve para los montajes que no
+llevan placa: la micro:bit, una cubeta, pilas, un motor, cables con pinzas.
+
+- No se dibuja la placa y no hay agujeros ni columnas que unan: dos puntos
+  son el mismo nodo solo si coinciden o si los une un cable.
+- Las piezas de dos patas se colocan de un punto a otro (cada 10 px) y las de
+  huella fija, cada 20 px. El cable se engancha a los terminales de cualquier
+  pieza.
+- Los estilos Realista y Línea, los avisos, el vínculo con el esquemático y
+  **← Generar esquemático** funcionan igual. **Generar protoboard →** siempre
+  arma una placa.
+- Al pasar un circuito con placa a «Sin protoboard», las piezas dejan de
+  unirse por las columnas y la barra de estado lo avisa.
+
+### Cubetas para el campo eléctrico
+
+Categoría **Campo eléctrico**: cuatro cubetas vistas de arriba, para dibujar
+el montaje de la práctica de MAPEO.
+
+- **Realista**: es la bandeja imprimible del sitio
+  (`../diseños 3d/bandeja-para-mapeo-de-campo-electrico.scad`, con sus valores
+  por defecto, a 2 px por mm): plástico gris claro como en el visor de piezas
+  3D, zona de mapeo de 140 × 100 mm con la cuadrícula grabada cada 1 cm y una
+  línea gruesa cada 5, muescas en el borde, nervios que guían las chapas (a
+  10 mm de la cuadrícula), asientos de los electrodos puntuales (a 80 mm) y el
+  pico en una esquina; con agua, los electrodos de metal y una pinza cocodrilo
+  en cada uno. Los colores de MAPEO dicen qué es cada cosa: **−** azul, **+**
+  rojo y la punta de prueba amarilla.
+- **Línea**: lo mismo en blanco y negro, con los puntos de medida cada 2 cm.
+- La forma de los electrodos (`proto.forma`): placas paralelas
+  (`cubeta-placas`), conductores cilíndricos (`cubeta-cilindros`), placa y
+  cilindro (`cubeta-placa-cilindro`) y coaxial (`cubeta-coaxial`: cilindro
+  central + y aro −, como la plantilla de MAPEO; la bandeja 3D no trae esa
+  variante).
+- **Punta de prueba** a elegir en el panel derecho (`el.punta`): punta de
+  tester, clavo con pinza cocodrilo, aguja larga o destornillador. Cambia solo
+  el dibujo.
+- Tres terminales: la pinza de cada electrodo (**−** y **+**) y el borne del
+  cable de la punta (**PUNTA**, que para los avisos es una salida analógica).
+  La punta va acostada dentro de la cubeta; su cable viene dibujado con ella,
+  sale por encima de la pared derecha y baja por fuera hasta el borne. En el esquemático son un bloque con esos tres pines.
+- El ejemplo *Campo eléctrico en cubeta (MAPEO)* une GND, 3V y P1 con cables
+  en ángulo recto, sin cruces.
+
+Si cambia la bandeja 3D, hay que cambiar el dibujo también acá (`cubetaGeo`,
+`puntaSVG` y `PROTO.cubeta` en `app.js`, `NATIVOS.cubeta` en `arte.js`).
+
+En el estilo Realista, un cable no dibuja su terminación en el extremo donde
+sigue otro cable: los tramos en codo se ven como un solo cable.
 
 ## micro:bit: versión, extensor y pines
 
@@ -159,7 +214,7 @@ Cada entrada de la base dice cómo se dibuja en cada vista (`esq.f`,
   inductor, zener, fusible…), de tres patas (`npn`, `pnp`, `nmos`, `pmos`,
   `pot3`, `conmutador`, `opamp`, `regulador`) y `bloque` (caja con los pines
   rotulados a los lados; es también el dibujo de reserva).
-- Protoboard: piezas propias, `axial`, `radial`, `to92`, `to220`, `dip`,
+- Protoboard: piezas propias (entre ellas `cubeta`), `axial`, `radial`, `to92`, `to220`, `dip`,
   `modulo` y `libre` (caja suelta con un borne por pin, que es el dibujo de
   reserva; artes propios: servo, pila9v, pila-boton, multimetro, altavoz).
 

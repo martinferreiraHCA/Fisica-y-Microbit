@@ -35,6 +35,8 @@
 //             { f: 'dip', txt }                         integrado a caballo del canal (patas = pines.length)
 //             { f: 'modulo', txt, w?, h? }              plaqueta con tira de pines enchufada en la placa
 //             { f: 'libre', txt, w?, h?, arte? }        suelto, con un borne por pin (arte: dibujo propio opcional)
+//             { f: 'nativo', t: 'cubeta', forma }       cubeta con agua vista de arriba (la bandeja 3D del sitio); forma de los
+//                                                       electrodos: placas · cilindros · placa-cilindro · coaxial
 //   esq.pines / proto.pines (opcional): nombre de pin de cada terminal físico de esa vista, cuando no
 //             coinciden uno a uno con `pines` (pueden repetirse: terminales unidos por dentro, como
 //             las 4 patas de un pulsador; o ser un subconjunto, como el símbolo de un operacional)
@@ -56,6 +58,7 @@ export const CATEGORIAS = [
   { id: 'integrados', nombre: 'Integrados' },
   { id: 'placas', nombre: 'Placas' },
   { id: 'instrumentos', nombre: 'Instrumentos' },
+  { id: 'campo', nombre: 'Campo eléctrico' },
 ];
 
 const P2 = (a, b, ra = 'pas', rb = 'pas') => [{ n: a, rol: ra }, { n: b, rol: rb }];
@@ -68,6 +71,8 @@ const gnd = (n = 'GND') => ({ n, rol: 'gnd' });
 const s = (n, rol, extra) => Object.assign({ n, rol }, extra || {});
 const pas = (...ns) => ns.map((n) => ({ n, rol: 'pas' }));
 const carga = (i, a = '1', b = '2') => [{ n: a, rol: 'carga', i }, { n: b, rol: 'carga', i }];
+const CUBETA = [{ n: '−', rol: 'pas' }, { n: '+', rol: 'pas' }, { n: 'PUNTA', rol: 'aout', nivel33: true }];
+const AVISO_CUBETA = ['La punta de prueba se lee con un pin analógico: MAPEO usa P1.', 'En el editor va en la pestaña del montaje, con la opción «Sin protoboard». Con la cubeta elegida, el panel derecho deja cambiar la punta de prueba: de tester, clavo con pinza, aguja o destornillador.'];
 const fuente = (v, a = '+', b = '−') => [{ n: a, rol: 'fuente+', v }, { n: b, rol: 'fuente-' }];
 const TI = 'https://www.ti.com/lit/ds/symlink/', VI = 'https://www.vishay.com/docs/', SF = 'https://cdn.sparkfun.com/datasheets/', ON = 'https://www.onsemi.com/pdf/datasheet/';
 // Compuertas de 14 patas (74HC00, 08, 32, 86): 1A 1B 1Y 2A 2B 2Y GND 3Y 3A 3B 4Y 4A 4B VCC
@@ -566,4 +571,23 @@ export const COMPONENTES = [
     pines: P2('+', '−'), esq: { f: 'generador' }, proto: lib('GENERADOR', 130, 70) },
   { id: 'osciloscopio', nombre: 'Osciloscopio', cat: 'instrumentos', alias: 'forma de onda', tk: true, pref: 'OSC',
     desc: 'Muestra cómo cambia una tensión en el tiempo.', pines: P2('+', '−'), esq: { f: 'osciloscopio' }, proto: lib('OSCILOSCOPIO', 130, 90) },
+
+  // ---- Campo eléctrico: cubetas con agua para mapear el potencial (la práctica de MAPEO). Tres bornes: los dos
+  //      electrodos y la punta de prueba, que se lee con un pin analógico.
+  { id: 'cubeta-placas', nombre: 'Cubeta con placas paralelas', cat: 'campo', alias: 'bandeja agua mapeo potencial equipotenciales electrodos planos chapas campo uniforme', pref: 'CUB',
+    desc: 'Bandeja con agua y dos placas de metal enfrentadas. Entre las placas el campo es uniforme.',
+    fisica: 'Mapeo del potencial y del campo eléctrico uniforme con la herramienta MAPEO: GND a una placa, 3V a la otra y la punta de prueba a un pin analógico.',
+    datos: [['Zona de mapeo', '14 × 10 cm'], ['Electrodos', 'Dos placas paralelas']], pines: CUBETA, esq: blo('CUBETA · PLACAS', ['−', '+'], ['PUNTA']), proto: nat('cubeta', { forma: 'placas' }), avisos: AVISO_CUBETA },
+  { id: 'cubeta-cilindros', nombre: 'Cubeta con conductores cilíndricos', cat: 'campo', alias: 'bandeja agua mapeo potencial equipotenciales electrodos puntuales tornillos dipolo cargas', pref: 'CUB',
+    desc: 'Bandeja con agua y dos conductores cilíndricos (tornillos o varillas). El campo se parece al de dos cargas de signo opuesto.',
+    fisica: 'Mapeo del potencial y de las líneas de campo de un dipolo con la herramienta MAPEO.',
+    datos: [['Zona de mapeo', '14 × 10 cm'], ['Electrodos', 'Dos cilindros']], pines: CUBETA, esq: blo('CUBETA · CILINDROS', ['−', '+'], ['PUNTA']), proto: nat('cubeta', { forma: 'cilindros' }), avisos: AVISO_CUBETA },
+  { id: 'cubeta-placa-cilindro', nombre: 'Cubeta con placa y cilindro', cat: 'campo', alias: 'bandeja agua mapeo potencial equipotenciales electrodo plano puntual carga frente a plano', pref: 'CUB',
+    desc: 'Bandeja con agua, una placa de metal y un conductor cilíndrico enfrente. El campo se parece al de una carga frente a un plano.',
+    fisica: 'Mapeo del potencial de una carga frente a un plano conductor con la herramienta MAPEO.',
+    datos: [['Zona de mapeo', '14 × 10 cm'], ['Electrodos', 'Una placa y un cilindro']], pines: CUBETA, esq: blo('CUBETA · PLACA Y CILINDRO', ['−', '+'], ['PUNTA']), proto: nat('cubeta', { forma: 'placa-cilindro' }), avisos: AVISO_CUBETA },
+  { id: 'cubeta-coaxial', nombre: 'Cubeta con cilindro y aro (coaxial)', cat: 'campo', alias: 'bandeja agua mapeo potencial equipotenciales anillo cilindros concentricos campo radial', pref: 'CUB',
+    desc: 'Bandeja con agua, un conductor cilíndrico en el centro (+) y un aro de metal alrededor (−). El campo es radial.',
+    fisica: 'Mapeo del potencial entre conductores coaxiales (campo radial) con la herramienta MAPEO.',
+    datos: [['Zona de mapeo', '14 × 10 cm'], ['Electrodos', 'Cilindro central y aro']], pines: CUBETA, esq: blo('CUBETA · COAXIAL', ['−', '+'], ['PUNTA']), proto: nat('cubeta', { forma: 'coaxial' }), avisos: AVISO_CUBETA },
 ];

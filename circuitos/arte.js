@@ -44,9 +44,9 @@ export function placaReal(cols, geo) {   // geo = { colX, FILAS, RIELES, enRiel 
 }
 
 /* ---------- Cables ---------- */
-export function cableReal(L, color) {
+export function cableReal(L, color, puntaA = true, puntaB = true) {   // puntaA / puntaB: dibujar la terminación de ese extremo (no va en un codo)
   const c = CABLES[color] || CABLES.negro, o = oscuro(c, 0.62), d = `M0,0 H${N(L)}`;
-  return `<path d="${d}" stroke="${o}" stroke-width="6" stroke-linecap="round"/><path d="${d}" stroke="${c}" stroke-width="4.2" stroke-linecap="round"/><path d="M1,-1 H${N(L - 1)}" stroke="#fff" stroke-opacity=".38" stroke-width="1.1" stroke-linecap="round"/>` + C(0, 0, 3.6, o) + C(L, 0, 3.6, o) + C(0, 0, 1.6, '#e9ecef') + C(L, 0, 1.6, '#e9ecef');
+  return `<path d="${d}" stroke="${o}" stroke-width="6" stroke-linecap="round"/><path d="${d}" stroke="${c}" stroke-width="4.2" stroke-linecap="round"/><path d="M1,-1 H${N(L - 1)}" stroke="#fff" stroke-opacity=".38" stroke-width="1.1" stroke-linecap="round"/>` + (puntaA ? C(0, 0, 3.6, o) + C(0, 0, 1.6, '#e9ecef') : '') + (puntaB ? C(L, 0, 3.6, o) + C(L, 0, 1.6, '#e9ecef') : '');
 }
 
 /* ---------- Piezas de dos patas (dibujo propio) ----------
@@ -193,6 +193,37 @@ const NATIVOS = {
       R(x - 22, y0, 44, 50, 7, '#b9bfc6', `stroke="${METAL_O}" stroke-width="1"`) + R(x - 22, y0, 9, 50, 4, '#fff', 'opacity=".35"') + R(x + 11, y0, 11, 50, 4, '#000', 'opacity=".12"') + R(x - 22, s > 0 ? y + 12 : y - 20, 44, 8, 2, '#2b2d31') +
       R(x - 9, s > 0 ? y - 34 : y + 26, 18, 8, 2, '#8a9199') + T('M', x, y - 6 * s, { t: 15, w: 800, c: '#4a4f55' }) + borneReal(x - 10, y + 40 * s) + borneReal(x + 10, y + 40 * s); } },
   microbit: { d: (el, pts, x) => microbitReal(el, x.ver(el)) },
+  // Cubeta para el campo eléctrico, vista de arriba: la bandeja imprimible del sitio (plástico gris claro como en el
+  // visor de piezas 3D, cuadrícula grabada con una línea gruesa cada 5, muescas en el borde, nervios que guían las
+  // chapas, asientos de los puntuales y el pico en una esquina), con agua, los electrodos de metal y sus pinzas.
+  // Los colores de MAPEO marcan qué es cada cosa: − azul, + rojo y la punta de prueba amarilla.
+  cubeta: { d: (el, pts, x) => {
+    const [ax, ay] = el.a, g = x.cubeta(el), { w, h, gx, gy } = g, B = pts, [tx, ty] = g.punta;
+    const AZUL = '#42a5f5', ROJO = '#ef5350', AMAR = '#fdd835', PLA = '#d9dade', PLA_O = '#a3a8b0', SURCO = '#868d97';
+    let fina = '', gruesa = '', muesca = '';
+    for (let i = 0; i <= 14; i++) { const X = gx + i * G, d = `M${X},${gy - 0.6} V${gy + 200.6} `; if (i % 5) fina += d; else gruesa += d; muesca += R(X - 0.8, ay, 1.6, 5.2, 0, SURCO, i % 5 ? 'opacity=".55"' : '') + R(X - 0.8, ay + h - 5.2, 1.6, 5.2, 0, SURCO, i % 5 ? 'opacity=".55"' : ''); }
+    for (let j = 0; j <= 10; j++) { const Y = gy + j * G, d = `M${gx - 0.6},${Y} H${gx + 280.6} `; if (j % 5) fina += d; else gruesa += d; muesca += R(ax, Y - 0.8, 5.2, 1.6, 0, SURCO, j % 5 ? 'opacity=".55"' : '') + R(ax + w - 5.2, Y - 0.8, 5.2, 1.6, 0, SURCO, j % 5 ? 'opacity=".55"' : ''); }
+    const nervios = (e) => (e.t !== 'placa' ? '' : [-3.1, 3.1].map((dx) => R(e.x + dx - 1.6, ay + 4.8, 3.2, 12, 0.8, PLA, `stroke="${PLA_O}" stroke-width=".7"`) + R(e.x + dx - 1.6, ay + h - 16.8, 3.2, 12, 0.8, PLA, `stroke="${PLA_O}" stroke-width=".7"`)).join(''));
+    const asiento = (e) => (e.t === 'cil' && g.f !== 'coaxial' ? C(e.x, e.y, 10, '#c3c7cd', `stroke="${SURCO}" stroke-width="1.1"`) : '');
+    const electrodo = (e) => (e.t === 'placa' ? R(e.x - 2.4, e.y1, 4.8, e.y2 - e.y1, 1.2, '#b4bac1', 'stroke="#6f767e" stroke-width=".9"') + R(e.x - 1.3, e.y1 + 2, 1.1, e.y2 - e.y1 - 4, 0.5, '#fff', 'opacity=".75"')
+      : e.t === 'aro' ? C(e.x, e.y, e.r, 'none', `stroke="${METAL_O}" stroke-width="5.6"`) + C(e.x, e.y, e.r, 'none', `stroke="${METAL}" stroke-width="4"`) + C(e.x, e.y, e.r - 1, 'none', 'stroke="#fff" stroke-opacity=".6" stroke-width=".9"')
+      : C(e.x, e.y, e.r, METAL, `stroke="${METAL_O}" stroke-width="1"`) + P(`M${e.x - 4},${e.y} H${e.x + 4} M${e.x},${e.y - 4} V${e.y + 4}`, 'stroke="#6f767e" stroke-width="1.5" stroke-linecap="round"') + C(e.x - 2.4, e.y - 2.6, 1.6, '#fff', 'opacity=".7"'));
+    // pinza cocodrilo sobre el electrodo, con la funda del color del polo; el cable se engancha en su cola
+    const pinza = (e, c) => P(`M${e.toma[0]},${e.toma[1] - 3} L${e.toma[0] - 4.5},${e.toma[1] + 6} H${e.toma[0] + 4.5} Z`, `fill="${METAL}" stroke="${METAL_O}" stroke-width=".8" stroke-linejoin="round"`) +
+      R(e.toma[0] - 4.8, e.toma[1] + 6, 9.6, 14, 3.2, c, `stroke="${oscuro(c)}" stroke-width=".9"`) + R(e.toma[0] - 3, e.toma[1] + 8, 1.6, 9, 0.8, '#fff', 'opacity=".4"') + C(e.clip[0], e.clip[1], 2.2, '#e9ecef', `stroke="${oscuro(c, 0.55)}" stroke-width=".9"`);
+    const signo = (e, s, c) => T(s, e.signo[0], e.signo[1], { t: 16, w: 800, c: oscuro(c, 0.85), halo: e.t === 'placa' ? '#fff' : '#bcd9ea' });
+    const paleta = { m: METAL, mo: METAL_O, h: '#2b2f34', ho: '#15171a', a: AMAR, ao: oscuro(AMAR, 0.7), d: '#f08c00', g: 0.9 };
+    return R(ax + 3, ay + 5, w, h, 13, '#000', 'opacity=".16"') + R(ax, ay, w, h, 13, PLA, `stroke="${PLA_O}" stroke-width="1.2"`) + R(ax + 1.6, ay + 1.6, w - 3.2, h - 3.2, 11.5, 'none', 'stroke="#fff" stroke-opacity=".75" stroke-width="1.2"') + muesca +
+      P(`M${ax + w - 17},${ay + 1.2} L${ax + w - 1.2},${ay + 17} L${ax + w - 6.5},${ay + 20.5} L${ax + w - 20.5},${ay + 6.5} Z`, `fill="#bfc3ca" stroke="${PLA_O}" stroke-width=".7" stroke-linejoin="round"`) +   // pico para vaciar el agua
+      R(ax + 4.8, ay + 4.8, w - 9.6, h - 9.6, 8, '#cdd0d6', `stroke="${SURCO}" stroke-width=".9"`) + P(fina, `fill="none" stroke="${SURCO}" stroke-width="1.2" stroke-opacity=".8"`) + P(gruesa, `fill="none" stroke="${SURCO}" stroke-width="2.4"`) +
+      asiento(g.neg) + asiento(g.pos) + R(ax + 4.8, ay + 4.8, w - 9.6, h - 9.6, 8, '#4fb3ee', 'opacity=".34"') +   // el agua
+      P(`M${ax + 6.6},${ay + h - 14} V${ay + 14} Q${ax + 6.6},${ay + 6.6} ${ax + 14},${ay + 6.6} H${ax + w - 14}`, 'fill="none" stroke="#1f2a36" stroke-opacity=".2" stroke-width="3.2" stroke-linecap="round"') +   // sombra de la pared
+      nervios(g.neg) + nervios(g.pos) + electrodo(g.neg) + electrodo(g.pos) + pinza(g.neg, AZUL) + pinza(g.pos, ROJO) + signo(g.neg, '−', AZUL) + signo(g.pos, '+', ROJO) +
+      P(g.cable, `fill="none" stroke="${oscuro(AMAR, 0.62)}" stroke-width="4.6" stroke-linecap="round"`) + P(g.cable, `fill="none" stroke="${AMAR}" stroke-width="3" stroke-linecap="round"`) +
+      C(tx, ty, 5.5, 'none', 'stroke="#fff" stroke-opacity=".85" stroke-width="1"') + C(tx, ty, 9.5, 'none', 'stroke="#fff" stroke-opacity=".4" stroke-width=".8"') +
+      `<g transform="translate(${N(tx)},${N(ty)}) rotate(${g.ang}) scale(${g.k})">${x.punta(g.tipo, paleta)}</g>` +
+      C(B[2][0], B[2][1], 5.4, AMAR, 'stroke="#101216" stroke-width="1.3"') + C(B[2][0], B[2][1], 2, '#fff') + T('PUNTA', B[2][0] + 9, B[2][1], { t: 6.6, a: 'start', c: '#4a4d52', halo: '#fff' });
+  } },
   // pin suelto de la micro:bit: un trozo del borde de la placa, con su anillo dorado
   mbpin: { d: (el, pts, x) => { const [ax, ay] = el.a, r = !!el.rot, p = x.pin(el), pot = p === '3V' || p === 'GND', yy = (v) => ay + (r ? 50 - v : v);
     return R(ax + 1.5, ay + 3, 40, 50, 6, '#000', 'opacity=".14"') + R(ax, ay, 40, 50, 6, '#1c1e22', 'stroke="#0b0c0e" stroke-width="1"') + R(ax + 7, r ? ay + 0.5 : ay + 22, 26, 27.5, 0, ORO) +
