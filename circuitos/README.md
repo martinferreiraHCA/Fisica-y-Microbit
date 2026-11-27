@@ -77,27 +77,38 @@ llevan placa: la micro:bit, una cubeta, pilas, un motor, cables con pinzas.
 ### Cubetas para el campo eléctrico
 
 Categoría **Campo eléctrico**: cuatro cubetas vistas de arriba, para dibujar
-el montaje de la práctica de MAPEO. Se dibujan **con la misma identidad que la
-cubeta de MAPEO**, para que el circuito y la práctica se reconozcan como lo
-mismo: bandeja oscura de borde gris, cuadrícula con los puntos de medida cada
-2 cm, electrodo **−** en azul, **+** en rojo y la punta de prueba en amarillo
-(los colores y las medidas salen de `_drawTray`, `_drawElectrode` y
-`_templateElectrodes` de `index.html`). En el estilo Línea, lo mismo en blanco
-y negro.
+el montaje de la práctica de MAPEO.
 
-- Zona de mapeo de 14 × 10 cm con 1 cm de margen, a 20 px por cm.
-- La forma de los electrodos (`proto.forma`) sigue las plantillas de MAPEO:
-  placas paralelas (`cubeta-placas`), conductores cilíndricos
-  (`cubeta-cilindros`), placa y cilindro (`cubeta-placa-cilindro`) y coaxial
-  (`cubeta-coaxial`: cilindro central + y aro −).
-- Tres bornes: **−**, **+** y **PUNTA** (la punta de prueba, que para los
-  avisos es una salida analógica). Los cables de cada electrodo y de la punta
-  hasta su borne vienen dibujados con la cubeta. En el esquemático son un
-  bloque con esos tres pines.
-- El ejemplo *Campo eléctrico en cubeta (MAPEO)* une GND, 3V y P1.
+- **Realista**: es la bandeja imprimible del sitio
+  (`../diseños 3d/bandeja-para-mapeo-de-campo-electrico.scad`, con sus valores
+  por defecto, a 2 px por mm): plástico gris claro como en el visor de piezas
+  3D, zona de mapeo de 140 × 100 mm con la cuadrícula grabada cada 1 cm y una
+  línea gruesa cada 5, muescas en el borde, nervios que guían las chapas (a
+  10 mm de la cuadrícula), asientos de los electrodos puntuales (a 80 mm) y el
+  pico en una esquina; con agua, los electrodos de metal y una pinza cocodrilo
+  en cada uno. Los colores de MAPEO dicen qué es cada cosa: **−** azul, **+**
+  rojo y la punta de prueba amarilla.
+- **Línea**: lo mismo en blanco y negro, con los puntos de medida cada 2 cm.
+- La forma de los electrodos (`proto.forma`): placas paralelas
+  (`cubeta-placas`), conductores cilíndricos (`cubeta-cilindros`), placa y
+  cilindro (`cubeta-placa-cilindro`) y coaxial (`cubeta-coaxial`: cilindro
+  central + y aro −, como la plantilla de MAPEO; la bandeja 3D no trae esa
+  variante).
+- **Punta de prueba** a elegir en el panel derecho (`el.punta`): punta de
+  tester, clavo con pinza cocodrilo, aguja larga o destornillador. Cambia solo
+  el dibujo.
+- Tres terminales: la pinza de cada electrodo (**−** y **+**) y el borne del
+  cable de la punta (**PUNTA**, que para los avisos es una salida analógica).
+  El cable de la punta viene dibujado con la cubeta y baja por fuera de la
+  pared derecha. En el esquemático son un bloque con esos tres pines.
+- El ejemplo *Campo eléctrico en cubeta (MAPEO)* une GND, 3V y P1 con cables
+  en ángulo recto, sin cruces.
 
-Si cambia el dibujo de la cubeta en MAPEO, hay que cambiarlo también acá
-(`cubetaGeo` y `PROTO.cubeta` en `app.js`, `NATIVOS.cubeta` en `arte.js`).
+Si cambia la bandeja 3D, hay que cambiar el dibujo también acá (`cubetaGeo`,
+`puntaSVG` y `PROTO.cubeta` en `app.js`, `NATIVOS.cubeta` en `arte.js`).
+
+En el estilo Realista, un cable no dibuja su terminación en el extremo donde
+sigue otro cable: los tramos en codo se ven como un solo cable.
 
 ## micro:bit: versión, extensor y pines
 

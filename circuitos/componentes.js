@@ -35,8 +35,8 @@
 //             { f: 'dip', txt }                         integrado a caballo del canal (patas = pines.length)
 //             { f: 'modulo', txt, w?, h? }              plaqueta con tira de pines enchufada en la placa
 //             { f: 'libre', txt, w?, h?, arte? }        suelto, con un borne por pin (arte: dibujo propio opcional)
-//             { f: 'nativo', t: 'cubeta', forma }       cubeta con agua vista de arriba; forma de los electrodos:
-//                                                       placas · cilindros · placa-cilindro · coaxial
+//             { f: 'nativo', t: 'cubeta', forma }       cubeta con agua vista de arriba (la bandeja 3D del sitio); forma de los
+//                                                       electrodos: placas · cilindros · placa-cilindro · coaxial
 //   esq.pines / proto.pines (opcional): nombre de pin de cada terminal físico de esa vista, cuando no
 //             coinciden uno a uno con `pines` (pueden repetirse: terminales unidos por dentro, como
 //             las 4 patas de un pulsador; o ser un subconjunto, como el símbolo de un operacional)
@@ -72,7 +72,7 @@ const s = (n, rol, extra) => Object.assign({ n, rol }, extra || {});
 const pas = (...ns) => ns.map((n) => ({ n, rol: 'pas' }));
 const carga = (i, a = '1', b = '2') => [{ n: a, rol: 'carga', i }, { n: b, rol: 'carga', i }];
 const CUBETA = [{ n: '−', rol: 'pas' }, { n: '+', rol: 'pas' }, { n: 'PUNTA', rol: 'aout', nivel33: true }];
-const AVISO_CUBETA = ['La punta de prueba se lee con un pin analógico: MAPEO usa P1.', 'En el editor va en la pestaña del montaje, con la opción «Sin protoboard».'];
+const AVISO_CUBETA = ['La punta de prueba se lee con un pin analógico: MAPEO usa P1.', 'En el editor va en la pestaña del montaje, con la opción «Sin protoboard». Con la cubeta elegida, el panel derecho deja cambiar la punta de prueba: de tester, clavo con pinza, aguja o destornillador.'];
 const fuente = (v, a = '+', b = '−') => [{ n: a, rol: 'fuente+', v }, { n: b, rol: 'fuente-' }];
 const TI = 'https://www.ti.com/lit/ds/symlink/', VI = 'https://www.vishay.com/docs/', SF = 'https://cdn.sparkfun.com/datasheets/', ON = 'https://www.onsemi.com/pdf/datasheet/';
 // Compuertas de 14 patas (74HC00, 08, 32, 86): 1A 1B 1Y 2A 2B 2Y GND 3Y 3A 3B 4Y 4A 4B VCC
