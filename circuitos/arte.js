@@ -193,29 +193,24 @@ const NATIVOS = {
       R(x - 22, y0, 44, 50, 7, '#b9bfc6', `stroke="${METAL_O}" stroke-width="1"`) + R(x - 22, y0, 9, 50, 4, '#fff', 'opacity=".35"') + R(x + 11, y0, 11, 50, 4, '#000', 'opacity=".12"') + R(x - 22, s > 0 ? y + 12 : y - 20, 44, 8, 2, '#2b2d31') +
       R(x - 9, s > 0 ? y - 34 : y + 26, 18, 8, 2, '#8a9199') + T('M', x, y - 6 * s, { t: 15, w: 800, c: '#4a4f55' }) + borneReal(x - 10, y + 40 * s) + borneReal(x + 10, y + 40 * s); } },
   microbit: { d: (el, pts, x) => microbitReal(el, x.ver(el)) },
-  // Cubeta para el campo eléctrico, vista de arriba: bandeja con agua, cuadrícula de 1 cm, dos electrodos de metal con su
-  // pinza y la punta de prueba. La geometría (x.cubeta) es la misma del dibujo en línea.
+  // Cubeta para el campo eléctrico, vista de arriba, con la identidad de la cubeta de MAPEO (index.html, _drawTray,
+  // _drawElectrode y el esquema del montaje): bandeja oscura con borde gris, cuadrícula y puntos de medida, electrodo
+  // − en azul, + en rojo y la punta de prueba en amarillo. La geometría (x.cubeta) es la misma del dibujo en línea.
   cubeta: { d: (el, pts, x) => {
-    const [ax, ay] = el.a, g = x.cubeta(el), B = pts, [tx, ty] = g.punta, L = Math.hypot(B[2][0] - tx, B[2][1] - ty);
-    const en = (d) => [N(tx + (B[2][0] - tx) * d / L), N(ty + (B[2][1] - ty) * d / L)], mango = `M${en(14)} L${en(62)}`, cola = `M${en(62)} Q${ax + 255},${ay + 240} ${B[2][0]},${B[2][1]}`;   // el cable de la punta sale por abajo
-    let rej = '';
-    for (let i = 1; i < 14; i++) rej += `M${ax + 10 + i * G},${ay + 10} V${ay + 210} `;
-    for (let j = 1; j < 10; j++) rej += `M${ax + 10},${ay + 10 + j * G} H${ax + 290} `;
-    const metal = (e) => (e.t === 'placa' ? R(e.x - 3.5, e.y1, 7, e.y2 - e.y1, 1.5, METAL, `stroke="${METAL_O}" stroke-width="1"`) + R(e.x - 2.3, e.y1 + 2, 1.6, e.y2 - e.y1 - 4, 0.8, '#fff', 'opacity=".6"')
-      : e.t === 'aro' ? C(e.x, e.y, e.r, 'none', `stroke="${METAL_O}" stroke-width="7"`) + C(e.x, e.y, e.r, 'none', `stroke="${METAL}" stroke-width="5"`) + C(e.x, e.y, e.r - 1.3, 'none', 'stroke="#fff" stroke-opacity=".55" stroke-width="1"')
-      : C(e.x, e.y, e.r, METAL, `stroke="${METAL_O}" stroke-width="1.2"`) + C(e.x - e.r * 0.3, e.y - e.r * 0.3, N(e.r * 0.36), '#fff', 'opacity=".65"'));
-    const pinza = (p, c) => R(p[0] - 5, p[1] - 7, 10, 13, 2.5, c, `stroke="${oscuro(c)}" stroke-width=".8"`) + R(p[0] - 3, p[1] - 5, 6, 3, 1, '#fff', 'opacity=".3"');   // cocodrilo
-    const signo = (e, s, c) => T(s, e.signo[0], e.signo[1], { t: 14, w: 800, c, halo: '#eaf6fc' });
-    return R(ax + 2, ay + 4, 300, 220, 12, '#000', 'opacity=".12"') + R(ax, ay, 300, 220, 12, '#eef0f2', 'stroke="#b4bac1" stroke-width="1.2"') + R(ax + 4, ay + 4, 292, 212, 9, 'none', 'stroke="#fff" stroke-width="1.4" stroke-opacity=".8"') +
-      R(ax + 10, ay + 10, 280, 200, 4, '#c3e7f7', 'stroke="#8cc4de" stroke-width="1"') + P(rej, 'fill="none" stroke="#6fb1d0" stroke-opacity=".45" stroke-width=".7"') +
-      metal(g.neg) + metal(g.pos) + signo(g.neg, '−', '#2b2b2b') + signo(g.pos, '+', '#c92a2a') +
-      chicote(g.neg.toma[0], g.neg.toma[1], B[0][0], B[0][1], CABLES.negro) + chicote(g.pos.toma[0], g.pos.toma[1], B[1][0], B[1][1], CABLES.rojo) + pinza(g.neg.toma, '#3a3d42') + pinza(g.pos.toma, '#e03131') +
-      C(tx, ty, 6, 'none', 'stroke="#fff" stroke-opacity=".8" stroke-width="1"') + P(cola, `fill="none" stroke="${oscuro(CABLES.amarillo, 0.62)}" stroke-width="4.6" stroke-linecap="round"`) + P(cola, `fill="none" stroke="${CABLES.amarillo}" stroke-width="3" stroke-linecap="round"`) +
-      P(`M${tx},${ty} L${en(16)}`, `stroke="${METAL_O}" stroke-width="2" stroke-linecap="round"`) +
-      P(mango, 'stroke="#15171a" stroke-width="10" stroke-linecap="round"') + P(mango, 'stroke="#2f3338" stroke-width="7.6" stroke-linecap="round"') +
-      P(`M${en(20)} L${en(26)}`, `stroke="${CABLES.amarillo}" stroke-width="7.6"`) + P(`M${en(18)} L${en(58)}`, 'stroke="#fff" stroke-opacity=".18" stroke-width="1.6" stroke-linecap="round" transform="translate(-1.6,-1.6)"') +
-      borneReal(B[0][0], B[0][1], 'fuente-') + borneReal(B[1][0], B[1][1], 'fuente+') + borneReal(B[2][0], B[2][1]) +
-      T('−', B[0][0], B[0][1] + 14, { t: 11, w: 800, c: '#2b2b2b', halo: '#fff' }) + T('+', B[1][0], B[1][1] + 14, { t: 11, w: 800, c: '#c92a2a', halo: '#fff' }) + T('PUNTA', B[2][0], B[2][1] + 14, { t: 6.6, c: '#4a4d52', halo: '#fff' });
+    const [ax, ay] = el.a, g = x.cubeta(el), B = pts, [tx, ty] = g.punta, AZUL = '#42a5f5', ROJO = '#ef5350', AMAR = '#fdd835';
+    let rej = '', puntos = '';
+    for (let i = 0; i <= 14; i++) rej += `M${ax + 20 + i * G},${ay + 20} V${ay + 220} `;
+    for (let j = 0; j <= 10; j++) rej += `M${ax + 20},${ay + 20 + j * G} H${ax + 300} `;
+    for (let j = 0; j <= 10; j += 2) for (let i = 0; i <= 14; i += 2) puntos += C(ax + 20 + i * G, ay + 20 + j * G, 3.4, '#16324a', 'stroke="#7d8898" stroke-width="1"');
+    const electrodo = (e, c) => (e.t === 'placa' ? P(`M${e.x},${e.y1} V${e.y2}`, `stroke="${c}" stroke-width="6" stroke-linecap="round"`) : e.t === 'aro' ? C(e.x, e.y, e.r, 'none', `stroke="${c}" stroke-width="5"`) : C(e.x, e.y, e.r, c));
+    const cable = (d, c) => P(d, `fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round"`);
+    const borneC = (p, c) => C(p[0], p[1], 5.4, c, 'stroke="#101216" stroke-width="1.4"') + C(p[0], p[1], 2, '#fff');
+    const signo = (e, s, c) => T(s, e.signo[0], e.signo[1], { t: 16, w: 800, c: e.t === 'placa' ? oscuro(c, 0.8) : c, halo: e.t === 'placa' ? '#fff' : '#16324a' });
+    return R(ax + 2, ay + 4, 320, 240, 12, '#000', 'opacity=".14"') + R(ax, ay, 320, 240, 12, '#16324a', 'stroke="#6b7686" stroke-width="3"') +
+      P(rej, 'fill="none" stroke="#3a4250" stroke-width="1"') + puntos + electrodo(g.neg, AZUL) + electrodo(g.pos, ROJO) + signo(g.neg, '−', AZUL) + signo(g.pos, '+', ROJO) +
+      cable(g.cables[0], AZUL) + cable(g.cables[1], ROJO) + cable(g.cables[2], AMAR) + C(tx, ty, 6, AMAR, 'stroke="#000" stroke-width="1"') +
+      borneC(B[0], AZUL) + borneC(B[1], ROJO) + borneC(B[2], AMAR) +
+      T('−', B[0][0], B[0][1] + 14, { t: 11, w: 800, c: oscuro(AZUL, 0.8), halo: '#fff' }) + T('+', B[1][0], B[1][1] + 14, { t: 11, w: 800, c: oscuro(ROJO, 0.8), halo: '#fff' }) + T('PUNTA', B[2][0], B[2][1] + 14, { t: 6.6, c: '#4a4d52', halo: '#fff' });
   } },
   // pin suelto de la micro:bit: un trozo del borde de la placa, con su anillo dorado
   mbpin: { d: (el, pts, x) => { const [ax, ay] = el.a, r = !!el.rot, p = x.pin(el), pot = p === '3V' || p === 'GND', yy = (v) => ay + (r ? 50 - v : v);

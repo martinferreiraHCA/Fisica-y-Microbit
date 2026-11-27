@@ -76,15 +76,28 @@ llevan placa: la micro:bit, una cubeta, pilas, un motor, cables con pinzas.
 
 ### Cubetas para el campo eléctrico
 
-Categoría **Campo eléctrico**: cuatro cubetas con agua vistas de arriba
-(14 × 10 cm de agua, a 20 px por cm), para dibujar el montaje de la práctica
-de MAPEO. Cambia la forma de los electrodos (`proto.forma`): placas paralelas
-(`cubeta-placas`), conductores cilíndricos (`cubeta-cilindros`), placa y
-cilindro (`cubeta-placa-cilindro`) y cilindro con aro (`cubeta-coaxial`).
+Categoría **Campo eléctrico**: cuatro cubetas vistas de arriba, para dibujar
+el montaje de la práctica de MAPEO. Se dibujan **con la misma identidad que la
+cubeta de MAPEO**, para que el circuito y la práctica se reconozcan como lo
+mismo: bandeja oscura de borde gris, cuadrícula con los puntos de medida cada
+2 cm, electrodo **−** en azul, **+** en rojo y la punta de prueba en amarillo
+(los colores y las medidas salen de `_drawTray`, `_drawElectrode` y
+`_templateElectrodes` de `index.html`). En el estilo Línea, lo mismo en blanco
+y negro.
 
-Tienen tres bornes: **−**, **+** y **PUNTA** (la punta de prueba, que para los
-avisos es una salida analógica). En el esquemático son un bloque con esos
-tres pines. El ejemplo *Campo eléctrico en cubeta (MAPEO)* une GND, 3V y P1.
+- Zona de mapeo de 14 × 10 cm con 1 cm de margen, a 20 px por cm.
+- La forma de los electrodos (`proto.forma`) sigue las plantillas de MAPEO:
+  placas paralelas (`cubeta-placas`), conductores cilíndricos
+  (`cubeta-cilindros`), placa y cilindro (`cubeta-placa-cilindro`) y coaxial
+  (`cubeta-coaxial`: cilindro central + y aro −).
+- Tres bornes: **−**, **+** y **PUNTA** (la punta de prueba, que para los
+  avisos es una salida analógica). Los cables de cada electrodo y de la punta
+  hasta su borne vienen dibujados con la cubeta. En el esquemático son un
+  bloque con esos tres pines.
+- El ejemplo *Campo eléctrico en cubeta (MAPEO)* une GND, 3V y P1.
+
+Si cambia el dibujo de la cubeta en MAPEO, hay que cambiarlo también acá
+(`cubetaGeo` y `PROTO.cubeta` en `app.js`, `NATIVOS.cubeta` en `arte.js`).
 
 ## micro:bit: versión, extensor y pines
 
