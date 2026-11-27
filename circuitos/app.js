@@ -208,6 +208,7 @@ const RIELES = [20, 40, 340, 360];   // +, −, +, −
 const enRiel = (c) => c >= 2 && (c - 2) % 6 !== 5;
 const placas = {};
 function placa(cols) {
+  if (!cols) return { cols: 0, w: 0, agujeros: [], svg: '' };   // montaje sin protoboard
   const k = cols + (real() ? 'r' : ''); if (placas[k]) return placas[k];
   const ag = [], w = colX(cols) + 40;
   for (let c = 1; c <= cols; c++) { FILA_Y.forEach((y) => ag.push([colX(c), y])); if (enRiel(c)) RIELES.forEach((y) => ag.push([colX(c), y])); }
@@ -219,9 +220,13 @@ function placa(cols) {
   s += ag.map(([x, y]) => `<rect x="${x - 2.6}" y="${y - 2.6}" width="5.2" height="5.2" fill="#fff" stroke="#6d6d6d" stroke-width="1"/>`).join('');
   return (placas[k] = { cols, w, agujeros: ag, svg: real() ? placaReal(cols, { colX, FILAS, RIELES, enRiel }) : `<g pointer-events="none">${s}</g>` });
 }
-const colsP = () => (E.proto.cols === 60 ? 60 : 30);
-const colCerca = (x, ancho = 1) => Math.max(1, Math.min(colsP() - ancho + 1, Math.round((x - 40) / G) + 1));
-const filaCerca = (y) => FILA_Y.reduce((m, yy) => (Math.abs(yy - y) < Math.abs(m - y) ? yy : m), FILA_Y[0]);
+const colsP = () => (E.proto.cols === 60 ? 60 : E.proto.cols === 0 ? 0 : 30);
+// Sin protoboard (cols = 0): montaje suelto. No hay agujeros ni columnas que unan; las piezas van donde se las
+// deja (cada 20 px) y se unen solo con cables, de terminal a terminal.
+const sinPlaca = () => colsP() === 0;
+const colCerca = (x, ancho = 1) => (sinPlaca() ? Math.round((x - 40) / G) + 1 : Math.max(1, Math.min(colsP() - ancho + 1, Math.round((x - 40) / G) + 1)));
+const filaCerca = (y) => (sinPlaca() ? Math.round(y / G) * G : FILA_Y.reduce((m, yy) => (Math.abs(yy - y) < Math.abs(m - y) ? yy : m), FILA_Y[0]));
+const filaCanal = (y) => (sinPlaca() ? Math.round(y / G) * G : FILAS.e);   // las piezas a caballo del canal
 // Nodo eléctrico de un punto de la protoboard: media columna (a–e o f–j), un riel entero o el punto suelto
 function nodoProto(p) {
   const c = Math.round((p[0] - 40) / G) + 1;
@@ -240,15 +245,40 @@ function cuerpoRes(el) {   // cuerpo con sus 4 bandas de color
 }
 const MB_ANILLOS = [30, 70, 110, 150, 190].map((x) => [x, 150]), MB_EXT = EXTENSOR.map((p, i) => [-90 + G * i, 222]);
 const mbMundo = (el, l) => l.map(([x, y]) => (el.arriba ? [el.a[0] + 220 - x, el.a[1] + 170 - y] : [el.a[0] + x, el.a[1] + y]));
+// Cubeta para mapear el campo eléctrico, vista de arriba: 14 × 10 cm de agua a 20 px por cm. Los electrodos dependen
+// del componente (proto.forma): placas · cilindros · placa-cilindro · coaxial. «toma» es donde se engancha el cable.
+function cubetaGeo(el) {
+  const [x, y] = el.a, f = ((COMP.get(el.c) || {}).proto || {}).forma || 'placas', cy = y + 110;
+  const pl = (px) => ({ t: 'placa', x: px, y1: y + 16, y2: y + 204, toma: [px, y + 204], signo: [px + (px < x + 150 ? 13 : -13), y + 26] });
+  const ci = (cx) => ({ t: 'cil', x: cx, y: cy, r: 9, toma: [cx, cy], signo: [cx, cy - 20] });
+  const neg = f === 'cilindros' ? ci(x + 70) : f === 'coaxial' ? ci(x + 150) : pl(x + 20);
+  const pos = f === 'placas' ? pl(x + 280) : f === 'coaxial' ? { t: 'aro', x: x + 150, y: cy, r: 90, toma: [x + 213.6, cy + 63.6], signo: [x + 150, cy - 76] } : ci(x + 230);
+  return { f, neg, pos, punta: f === 'coaxial' ? [x + 200, cy - 20] : [x + 150, cy] };
+}
+const cubetaBornes = (el) => [[el.a[0] + 20, el.a[1] + 250], [el.a[0] + 280, el.a[1] + 250], [el.a[0] + 320, el.a[1] + 250]];   // −, + y la punta de prueba
 const PROTO = {
   cable: { n: 2 },
+  cubeta: { n: 'libre', term: cubetaBornes, rotAt: (el) => [el.a[0] + 150, el.a[1] - 9, 'middle'],
+    d: (el) => {
+      const [x, y] = el.a, g = cubetaGeo(el), B = cubetaBornes(el), [tx, ty] = g.punta, L = Math.hypot(B[2][0] - tx, B[2][1] - ty);
+      const en = (d) => [N(tx + (B[2][0] - tx) * d / L), N(ty + (B[2][1] - ty) * d / L)], mango = `M${en(14)} L${en(62)}`;
+      const cola = `M${en(62)} Q${x + 255},${y + 240} ${B[2][0]},${B[2][1]}`;   // el cable de la punta sale por abajo
+      const electrodo = (e) => (e.t === 'placa' ? `<rect x="${e.x - 3}" y="${e.y1}" width="6" height="${e.y2 - e.y1}" fill="#111"/>` : e.t === 'aro' ? `<circle cx="${e.x}" cy="${e.y}" r="${e.r}" fill="none" stroke="#111" stroke-width="5"/>` : circ(e.r, e.x, e.y, '#111', 1.6));
+      const hilo = (a, b) => linea(`M${N(a[0])},${N(a[1])} L${b[0]},${b[1]}`, 1.6);
+      return caja(x, y, 300, 220, 10) + caja(x + 10, y + 10, 280, 200, 4, '#fff', 1.2) + txt('agua', g.f === 'coaxial' ? x + 34 : x + 150, y + 22, { t: 8, c: '#555' }) +
+        electrodo(g.neg) + electrodo(g.pos) + txt('−', g.neg.signo[0], g.neg.signo[1], { t: 13, w: 800 }) + txt('+', g.pos.signo[0], g.pos.signo[1], { t: 13, w: 800 }) +
+        hilo(g.neg.toma, B[0]) + hilo(g.pos.toma, B[1]) + linea(cola, 1.6) +
+        `<path d="${mango}" stroke="#111" stroke-width="9" stroke-linecap="round"/><path d="${mango}" stroke="#fff" stroke-width="6" stroke-linecap="round"/>` + linea(`M${tx},${ty} L${en(14)}`, 1.6) + circ(2.4, tx, ty, '#111', 1) +
+        borne(B[0][0], B[0][1], '#111') + borne(B[1][0], B[1][1], CABLES.rojo) + borne(B[2][0], B[2][1]) +
+        txt('−', B[0][0], B[0][1] + 14, { t: 10, w: 800 }) + txt('+', B[1][0], B[1][1] + 14, { t: 10, w: 800 }) + txt('PUNTA', B[2][0], B[2][1] + 14, { t: 6.4, w: 700 });
+    } },
   resistencia: { n: 2, alto: 10, d: (el) => cuerpoRes(el) },
   led: { n: 2, alto: 12, d: () => forma('M7,-5.66 A9,9 0 1 0 7,5.66 Z', '#fff', 1.6) + circ(4.5, -0.6, 0, 'none', 1) },
   capacitor: { n: 2, alto: 13, d: () => circ(10, 0, 0, '#fff', 1.6) + `<path d="M5,-8.66 A10,10 0 0 1 5,8.66 Z" fill="#111"/>` },
   diodo: { n: 2, alto: 8, d: () => caja(-13, -5, 26, 10, 2, '#fff', 1.6) + `<rect x="6.5" y="-5" width="3.6" height="10" fill="#111"/>` },
   ldr: { n: 2, alto: 13, d: () => circ(10, 0, 0, '#fff', 1.6) + linea('M-6,-5 H6 V-1.7 H-6 V1.7 H6 V5 H-6', 1.2) },
   zumbador: { n: 2, alto: 17, d: (el, deg) => circ(14, 0, 0, '#fff', 1.6) + circ(3, 0, 0, '#fff', 1.4) + txt('+', -9, 0, { t: 9, w: 700, deg }) },
-  pulsador: { n: 'fijo', ancla: (p) => [colX(colCerca(p[0], 3)), FILAS.e], rotAt: (el) => [el.a[0] + 20, el.a[1] - 10, 'middle'],
+  pulsador: { n: 'fijo', ancla: (p) => [colX(colCerca(p[0], 3)), filaCanal(p[1])], rotAt: (el) => [el.a[0] + 20, el.a[1] - 10, 'middle'],
     term: (el) => { const [x, y] = el.a; return [[x, y], [x, y + 3 * G], [x + 2 * G, y], [x + 2 * G, y + 3 * G]]; },   // las dos patas de una misma columna están unidas por dentro
     d: (el) => { const [x, y] = el.a; return PROTO.pulsador.term(el).map((p) => pin(p[0], p[1])).join('') + linea(`M${x},${y} V${y + 6} M${x + 40},${y} V${y + 6} M${x},${y + 60} V${y + 54} M${x + 40},${y + 60} V${y + 54}`, 1.6) + caja(x - 5, y + 5, 50, 50, 3, '#fff', 1.6) + circ(11, x + 20, y + 30, '#fff', 1.6); } },
   potenciometro: { n: 'fijo', ancla: (p) => [colX(colCerca(p[0], 3)), filaCerca(p[1])], rotAt: (el) => [el.a[0] + 20, el.a[1] - 62, 'middle'],
@@ -325,7 +355,7 @@ function to220Proto(comp, fo) {   // 3 patas juntas, cuerpo con aleta
 function dipProto(comp, fo) {   // integrado a caballo del canal; la pata 1 está junto a la muesca
   const n = comp.pines.length + comp.pines.length % 2, m = n / 2;
   const term = (el) => comp.pines.map((_, i) => { const [x, y] = el.a; return i < m ? [x + G * (el.rot ? m - 1 - i : i), el.rot ? y : y + 3 * G] : [x + G * (el.rot ? i - m : n - 1 - i), el.rot ? y + 3 * G : y]; });
-  return { n: 'fijo', rota: 2, ancla: (p) => [colX(colCerca(p[0], m)), FILAS.e], term, rotAt: (el) => [el.a[0] + G * (m - 1) / 2, el.a[1] - 12, 'middle'],
+  return { n: 'fijo', rota: 2, ancla: (p) => [colX(colCerca(p[0], m)), filaCanal(p[1])], term, rotAt: (el) => [el.a[0] + G * (m - 1) / 2, el.a[1] - 12, 'middle'],
     d: (el) => {
       const [x, y] = el.a, pts = term(el), w = (m - 1) * G + 16, yc = y + 1.5 * G, xm = el.rot ? x + w - 8 : x - 8, titulo = fo.txt || comp.nombre;
       let s = pts.map((p) => linea(`M${p[0]},${p[1]} V${p[1] + (p[1] > yc ? -8 : 8)}`, 1.6) + pin(p[0], p[1])).join('') + caja(x - 8, y + 7, w, 3 * G - 14, 3, '#fff', 1.6);
@@ -460,7 +490,7 @@ const refMB = (v = vista) => primeraMB(v) || E[v].els.find((e) => esPuerto(e, v)
 const versionDibujo = () => { const m = refMB(); return m ? m.ver || 'v2' : verFicha; };
 
 /* ---------- Dibujo de un elemento ---------- */
-const haloEn = (x, y) => (real() && x > 0 && x < colX(colsP()) + 40 && y > -10 && y < 390 ? '#f4f0e3' : true);   // borde de un rótulo: del color de la placa si cae sobre ella
+const haloEn = (x, y) => (real() && colsP() && x > 0 && x < colX(colsP()) + 40 && y > -10 && y < 390 ? '#f4f0e3' : true);   // borde de un rótulo: del color de la placa si cae sobre ella
 function rotulos(el, v, d) {
   const t1 = el.rotulo || '', t2 = v === 'esq' && el.c !== 'cable' ? el.valor || '' : '';
   if (!t1 && !t2) return '';
@@ -478,7 +508,7 @@ function rotulos(el, v, d) {
 // Dibujo realista de un componente en la protoboard (null: va el de línea). Los de Wokwi aparecen cuando termina de cargar.
 const cacheReal = new Map();
 let verPartes = 0;   // sube cada vez que llegan o cambian los sensores de la extensión de MakeCode
-const X_ARTE = { bandas: (el) => { const b = bandas(el.ohm || 0); return [BANDA[b.d1][1], BANDA[b.d2][1], colorMult(b.m)[1], colorTol(el.tol || 5)[1]]; }, ver: (el) => verTxt(el), pin: (el) => pinDe(el) };
+const X_ARTE = { cubeta: (el) => cubetaGeo(el), bandas: (el) => { const b = bandas(el.ohm || 0); return [BANDA[b.d1][1], BANDA[b.d2][1], colorMult(b.m)[1], colorTol(el.tol || 5)[1]]; }, ver: (el) => verTxt(el), pin: (el) => pinDe(el) };
 function realDe(c) {
   if (!real() || !c.proto) return null;
   const k = c.id + (wokwiListo() ? '|w' : '') + '|' + verPartes; if (!cacheReal.has(k)) cacheReal.set(k, defReal(c, c.proto, defDe(c, 'proto'), X_ARTE));
@@ -602,7 +632,7 @@ function ajustar(p, omitir) {
   let mejor = null, dm = 13;
   const probar = (q) => { const d = Math.hypot(q[0] - p[0], q[1] - p[1]); if (d < dm) { dm = d; mejor = q; } };
   placa(colsP()).agujeros.forEach(probar);
-  els().forEach((el) => { if (el.id !== omitir && def(el).n === 'libre') terminales(el).forEach(probar); });
+  els().forEach((el) => { if (el.id !== omitir && (sinPlaca() || def(el).n === 'libre')) terminales(el).forEach(probar); });   // sin protoboard, los terminales de todas las piezas
   return mejor ? mejor.slice() : [Math.round(p[0] / 10) * 10, Math.round(p[1] / 10) * 10];
 }
 function anclar(el, p) {   // dónde queda un elemento de un clic: huellas fijas sobre los agujeros, sueltos cada 10 px, esquemático en la grilla
@@ -640,7 +670,7 @@ function volver(de, a) {
 function limpiar(o) {
   const e = vacio(); if (!o || typeof o !== 'object') return e;
   e.titulo = typeof o.titulo === 'string' ? o.titulo : ''; e.resEstilo = o.resEstilo === 'zigzag' ? 'zigzag' : 'iec';
-  e.proto.cols = o.proto && +o.proto.cols === 60 ? 60 : 30;
+  e.proto.cols = o.proto && +o.proto.cols === 60 ? 60 : o.proto && o.proto.cols === 0 ? 0 : 30;
   const par = (p) => Array.isArray(p) && p.length === 2 && p.every((n) => typeof n === 'number' && isFinite(n));
   for (const v of ['esq', 'proto']) e[v].els = ((o[v] && o[v].els) || []).map((el) => {
     if (!el || !par(el.a)) return null;
@@ -969,8 +999,8 @@ function inspector() {
   if (!el) {
     const c = herr !== 'sel' && herr !== 'cable' ? COMP.get(herr) : null;
     if (c) { box.innerHTML = '<div class="tit">Para colocar</div>' + fichaHTML(c, true); enlazarVers(); return; }
-    box.innerHTML = `<div class="tit">${vista === 'esq' ? 'Esquemático' : 'Protoboard'}</div>
-      <p class="nota">Buscá un componente a la izquierda (tecla <b>/</b>) y ${vista === 'esq' ? '<b>arrastrá de un punto a otro</b>; los bloques y los símbolos de tres patas van con un clic.' : '<b>arrastrá de un agujero a otro</b>; los integrados, módulos y elementos sueltos van con un clic.'}</p>
+    box.innerHTML = `<div class="tit">${vista === 'esq' ? 'Esquemático' : sinPlaca() ? 'Montaje sin protoboard' : 'Protoboard'}</div>
+      <p class="nota">Buscá un componente a la izquierda (tecla <b>/</b>) y ${vista === 'esq' ? '<b>arrastrá de un punto a otro</b>; los bloques y los símbolos de tres patas van con un clic.' : sinPlaca() ? '<b>arrastrá de un punto a otro</b>; los integrados, módulos y elementos sueltos van con un clic. Las piezas quedan sueltas: unilas con el <b>Cable</b> (tecla C), de terminal a terminal.' : '<b>arrastrá de un agujero a otro</b>; los integrados, módulos y elementos sueltos van con un clic.'}</p>
       <p class="nota">Al pasar por el catálogo se ve la <b>ficha</b> de cada componente: datos, patas, hoja de datos y cómo conectarlo a la micro:bit.</p>
       <p class="nota">Hacé <b>doble clic en una resistencia</b> para darle el valor: las bandas de color salen solas.</p>
       <p class="nota">Con una <b>micro:bit</b> en el dibujo, tocá uno de sus pines para ver para qué sirve, y mirá los <b>Avisos</b>: marcan lo que no va a funcionar.</p>`;
@@ -1206,6 +1236,17 @@ const EJEMPLOS = [
     p.cable('rojo', p.pata(b, '+'), hoyo(28, 2)); p.cable('negro', p.pata(b, '−'), hoyo(30, 3)); p.cable('rojo', p.pata(sv, 'V+'), hoyo(20, 2)); p.cable('negro', p.pata(sv, 'GND'), hoyo(18, 3));
     p.cable('negro', p.pata(mb, 'GND'), hoyo(5, 3)); p.cable('amarillo', p.pata(mb, 'P0'), p.pata(sv, 'SEÑAL'));
   }) },
+  { nombre: 'Campo eléctrico en cubeta (MAPEO)', nota: 'Montaje sin protoboard: GND y 3V a las placas y la punta de prueba en P1.', ver: 'proto', hacer: () => {
+    const o = armar('Campo eléctrico en cubeta', (e, p) => {
+      const c = p.pon('cubeta-placas', [0, 0], { rotulo: 'CUBETA' }), mb = p.pon('microbit', [0, 320], { ver: 'v2', arriba: true });
+      p.cable('negro', p.pata(mb, 'GND'), p.pata(c, '−')); p.cable('rojo', p.pata(mb, '3V'), p.pata(c, '+')); p.cable('amarillo', p.pata(mb, 'P1'), p.pata(c, 'PUNTA'));
+    });
+    o.proto.cols = 0;
+    // el esquemático sale de las conexiones del montaje, así las dos vistas dicen lo mismo
+    const antes = E, vAntes = vista; E = limpiar(o); vista = 'proto';
+    try { o.proto.els = E.proto.els; o.esq.els = aEsquematico().els; } catch (er) { console.error(er); } finally { E = antes; vista = vAntes; }
+    return o;
+  } },
 ];
 // Circuito de un sensor de la extensión de MakeCode, conectado como lo dibuja el simulador: la protoboard se arma
 // con esas conexiones y el esquemático se genera a partir de ella (así las dos vistas dicen lo mismo).
@@ -1237,7 +1278,8 @@ pintarEjemplos();
 $('#h-ejemplos').onclick = () => { $('#m-ej').hidden = !$('#m-ej').hidden; };
 $('#m-ej').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return; $('#m-ej').hidden = true;
-  if (b.dataset.p) armarParte(b.dataset.p); else abrirEjemplo(EJEMPLOS[+b.dataset.i].hacer(), EJEMPLOS[+b.dataset.i].nombre);
+  if (b.dataset.p) armarParte(b.dataset.p);
+  else { const ej = EJEMPLOS[+b.dataset.i]; if (abrirEjemplo(ej.hacer(), ej.nombre) && ej.ver) cambiarVista(ej.ver); }
 });
 $('#insp').addEventListener('click', (e) => { const b = e.target.closest('[data-armar]'); if (b) armarParte(b.dataset.armar); });
 
@@ -1601,9 +1643,10 @@ $('#h-deshacer').onclick = () => volver(hist, futuro); $('#h-rehacer').onclick =
 $('#h-encuadrar').onclick = encuadrar;
 $('#s-res').onchange = (e) => { marcar(); E.resEstilo = e.target.value; cambio(); catalogo(); };
 $('#s-cols').onchange = (e) => {   // al achicar la placa, las huellas fijas vuelven a entrar
-  marcar(); E.proto.cols = +e.target.value === 60 ? 60 : 30;
+  marcar(); const antes = colsP(), n = +e.target.value; E.proto.cols = n === 60 ? 60 : n === 0 ? 0 : 30;
   E.proto.els.forEach((el) => { const d = def(el, 'proto'); if (d.ancla) el.a = d.ancla(el.a, el); });
-  cambio(); encuadrar();
+  cambio(); inspector(); encuadrar();
+  if (sinPlaca() && antes && E.proto.els.some((el) => el.c !== 'cable' && def(el, 'proto').n !== 'libre')) estado('Sin protoboard: las piezas ya no se unen por las columnas de la placa. Unilas con cables.');
 };
 { let marcado = false; $('#n-circ').oninput = (e) => { if (!marcado) { marcar(); marcado = true; } E.titulo = e.target.value; cambio(); }; $('#n-circ').onblur = () => { marcado = false; }; }
 window.addEventListener('resize', () => pintarSobre());
