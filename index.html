@@ -26968,7 +26968,7 @@ bluetooth.startIOPinService()</pre>
         _buildUI() {
           this.sidebar.innerHTML = `
             <h2 style="display:flex;align-items:center;gap:8px;">MAPEO
-              <button type="button" class="mp-restart-btn" id="mp-restart" title="Deja MAPEO como la primera vez: borra los puntos, la cubeta y los electrodos configurados, y vuelve al paso 1">Reiniciar todo</button>
+              <button type="button" class="mp-restart-btn" id="mp-restart" title="Reinicio completo: borra los puntos, la cubeta y los electrodos configurados, desconecta la micro:bit y vuelve al paso 1">Reiniciar todo</button>
               <button type="button" class="mp-help-btn" id="mp-howto" title="Cómo se usa MAPEO">?</button>
             </h2>
             <div class="mp-steps-bar" id="mp-steps-bar">
@@ -30571,15 +30571,19 @@ bluetooth.startIOPinService()</pre>
         }
         // Reset: borra todas las medidas (pide confirmación) y vuelve al primer punto.
         // La grilla, los electrodos y la conexión no cambian.
-        // Deja MAPEO como la primera vez que se abre: sin práctica preparada, con
-        // las medidas de la cubeta por defecto, sin puntos y con la guía en el
-        // paso 1. No toca la conexión con la micro:bit ni las sesiones guardadas
-        // con nombre.
+        // Reinicio completo: deja MAPEO como la primera vez que se abre. Sin
+        // práctica preparada, con las medidas de la cubeta por defecto, sin puntos,
+        // sin conexión con la micro:bit y con los cinco pasos de la guía sin
+        // marcar. Solo se conservan las sesiones guardadas con nombre.
         _resetAll() {
-          if (!window.confirm('Se va a reiniciar MAPEO: se borran los puntos medidos y la cubeta y los electrodos que configuraste, y la guía vuelve al paso 1. Las sesiones guardadas con nombre no se borran. ¿Continuar?')) return;
+          if (!window.confirm('Se va a reiniciar MAPEO por completo: se borran los puntos medidos y la cubeta y los electrodos que configuraste, se desconecta la micro:bit y la guía vuelve al paso 1. Las sesiones guardadas con nombre no se borran. ¿Continuar?')) return;
           const $ = (id) => this.sidebar.querySelector('#' + id);
           if (this.isCapturing) this._setCapturing(false);
           if (this._edit && this._edit.on) this._setEditMode(false);
+          // También la conexión: con la placa conectada, la guía daría por hechos
+          // los pasos 2 y 3 y saltaría directo a medir.
+          if (typeof state !== 'undefined' && state.isConnected) { const off = $('mp-disconnect'); if (off) off.click(); }
+          this._wasConnected = false;
           // Lo guardado en el navegador: la guía y el trabajo en curso
           if (this._autosaveTimer) { clearTimeout(this._autosaveTimer); this._autosaveTimer = null; }
           try {
@@ -30604,8 +30608,9 @@ bluetooth.startIOPinService()</pre>
           this._stream = false; this._streamBuf = [];
           this._lastValue = null; this._lastReadAt = null;
           this._fieldLast = null; this._lastCut = null;
-          this._mcSelected = 'voltage';
+          this._mcSelected = null; this._mcTransport = null; this._mcPin = null;
           if (this._edit) this._edit.sel = -1;
+          this.sidebar.querySelectorAll('details.mapeo-details').forEach(d => { d.open = false; });
           $('mp-practice').value = 'cubeta';
           $('mp-cubeta-box').style.display = '';
           this._readMagnitudeFromInputs();
@@ -30620,10 +30625,12 @@ bluetooth.startIOPinService()</pre>
           this._updateInfo();
           this._draw();
           this._refreshActivePanel();
+          this._refreshConnIndicator();
+          this._updateStatus();
           this._refreshGuide();
           this._openStep(1);
           try { this.sidebar.scrollTop = 0; } catch {}
-          this._toast('MAPEO reiniciado: elegí la práctica y prepará la grilla');
+          this._toast('MAPEO reiniciado: empezá por el paso 1');
         }
 
         _resetPoints() {
@@ -37150,8 +37157,8 @@ bluetooth.startIOPinService()</pre>
     'Borra todos los puntos medidos y vuelve al primero. La grilla y los electrodos quedan como están': { en: 'Clears every measured point and goes back to the first one. The grid and the electrodes stay as they are', pt: 'Apaga todos os pontos medidos e volta ao primeiro. A grade e os eletrodos ficam como estão' },
     'Empezar de nuevo': { en: 'Start over', pt: 'Começar de novo' },
     'Reiniciar todo': { en: 'Restart everything', pt: 'Reiniciar tudo' },
-    'Deja MAPEO como la primera vez: borra los puntos, la cubeta y los electrodos configurados, y vuelve al paso 1': { en: 'Leaves MAPPING as it was the first time: clears the points, the tray and the electrodes you set up, and goes back to step 1', pt: 'Deixa o MAPEAMENTO como na primeira vez: apaga os pontos, a cuba e os eletrodos configurados, e volta ao passo 1' },
-    'MAPEO reiniciado: elegí la práctica y prepará la grilla': { en: 'MAPPING restarted: choose the activity and set up the grid', pt: 'MAPEAMENTO reiniciado: escolha a prática e prepare a grade' },
+    'Reinicio completo: borra los puntos, la cubeta y los electrodos configurados, desconecta la micro:bit y vuelve al paso 1': { en: 'Full restart: clears the points, the tray and the electrodes you set up, disconnects the micro:bit and goes back to step 1', pt: 'Reinício completo: apaga os pontos, a cuba e os eletrodos configurados, desconecta o micro:bit e volta ao passo 1' },
+    'MAPEO reiniciado: empezá por el paso 1': { en: 'MAPPING restarted: start with step 1', pt: 'MAPEAMENTO reiniciado: comece pelo passo 1' },
     'No hay puntos medidos para borrar': { en: 'There are no measured points to clear', pt: 'Não há pontos medidos para apagar' },
     'Puntos borrados: el mapa empieza de nuevo': { en: 'Points cleared: the map starts again', pt: 'Pontos apagados: o mapa começa de novo' },
     'Pasar solo al punto siguiente': { en: 'Move to the next point automatically', pt: 'Passar sozinho ao ponto seguinte' },
