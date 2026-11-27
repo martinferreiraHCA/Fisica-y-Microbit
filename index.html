@@ -27793,8 +27793,9 @@ bluetooth.startIOPinService()</pre>
             if (!connected) this._toast('Atención: no hay conexión activa con la micro:bit');
             if (!this.activePoint) this.activePoint = this._nextEmpty(null);
             this._beep('init');
-            // Primero se mide el potencial junto a cada electrodo (una sola vez)
-            if (this._canCalibrate() && !this._setup.cal && !this._setup.calSkipped && !this._calStage) { this._calStage = 'neg'; this._calTmp = {}; }
+            // Las lecturas van siempre al punto marcado de la grilla. Medir el
+            // potencial junto a los electrodos es opcional: se pide con el
+            // botón «Medir los electrodos».
           }
           this.isCapturing = on;
           const btn = this.sidebar.querySelector('#mp-cap');
@@ -28038,7 +28039,7 @@ bluetooth.startIOPinService()</pre>
               else { msg = 'Tocá un punto y escribí su valor, o conectá la micro:bit'; acts = [['usb', 'USB'], ['ble', 'Bluetooth', 1]]; }
             } else if (this._calStage) {
               const cuál = this._calStage === 'neg' ? 'electrodo − (azul)' : 'electrodo + (rojo)';
-              msg = 'Antes de empezar · Poné la punta en el agua, pegada al ' + cuál + ', y ' + (this._stream ? 'tocá REGISTRAR' : 'presioná A');
+              msg = 'Electrodos · Poné la punta en el agua, pegada al ' + cuál + ', y ' + (this._stream ? 'tocá REGISTRAR' : 'presioná A');
               if (this._stream) { live = (this._lastValue != null) ? this._fmtVal(this._lastValue) + this._unit() : ''; acts = [['record', 'Registrar']]; }
               acts.push(['calskip', 'Saltar', 1]);
             } else if (!ap) {
@@ -28161,7 +28162,7 @@ bluetooth.startIOPinService()</pre>
                 'Usá solo los 3 V de la micro:bit. No conectes fuentes externas a la cubeta mientras la punta esté en un pin.',
                 'No dejes que los cocodrilos de 3V y GND se toquen entre sí.',
                 'Medí sin demorar demasiado y sin mover los electrodos: con el tiempo se forman burbujas en las chapas y las lecturas cambian un poco.',
-                'La micro:bit mide entre 0 y 3,3 V respecto de GND, pero junto a las placas en el agua no vas a leer 0 V y 3,3 V, porque una parte de la tensión cae en el contacto entre cada placa y el agua. Por eso, antes de recorrer la grilla, MAPEO te pide medir con la punta en el agua pegada a cada electrodo, y usa esa tensión real.'
+                'La micro:bit mide entre 0 y 3,3 V respecto de GND, pero junto a las placas en el agua no vas a leer 0 V y 3,3 V, porque una parte de la tensión cae en el contacto entre cada placa y el agua. Si querés comparar con esa tensión real, en el paso 4 tocá «Medir los electrodos» y medí con la punta en el agua pegada a cada placa.'
               ],
               next: 'Siguiente: código para la micro:bit'
             },
@@ -28180,7 +28181,7 @@ bluetooth.startIOPinService()</pre>
                 'Use only the micro:bit\'s 3 V. Do not connect external supplies to the tray while the probe is on a pin.',
                 'Do not let the 3V and GND clips touch each other.',
                 'Measure without long pauses and without moving the electrodes: bubbles form on the plates over time and readings drift a little.',
-                'The micro:bit measures between 0 and 3.3 V relative to GND, but next to the plates in the water you will not read 0 V and 3.3 V, because part of the voltage drops at the contact between each plate and the water. That is why, before going over the grid, MAPPING asks you to measure with the probe in the water right next to each electrode, and uses that real voltage.'
+                'The micro:bit measures between 0 and 3.3 V relative to GND, but next to the plates in the water you will not read 0 V and 3.3 V, because part of the voltage drops at the contact between each plate and the water. If you want to compare with that real voltage, in step 4 press “Measure the electrodes” and measure with the probe in the water right next to each plate.'
               ],
               next: 'Next: code for the micro:bit'
             },
@@ -28199,7 +28200,7 @@ bluetooth.startIOPinService()</pre>
                 'Use apenas os 3 V do micro:bit. Não ligue fontes externas à cuba enquanto a ponta estiver em um pino.',
                 'Não deixe as garras de 3V e GND se tocarem.',
                 'Meça sem demorar demais e sem mover os eletrodos: com o tempo formam-se bolhas nas chapas e as leituras mudam um pouco.',
-                'O micro:bit mede entre 0 e 3,3 V em relação ao GND, mas junto às placas na água você não lerá 0 V e 3,3 V, porque uma parte da tensão cai no contato entre cada placa e a água. Por isso, antes de percorrer a grade, o MAPEAMENTO pede para medir com a ponta na água encostada em cada eletrodo, e usa essa tensão real.'
+                'O micro:bit mede entre 0 e 3,3 V em relação ao GND, mas junto às placas na água você não lerá 0 V e 3,3 V, porque uma parte da tensão cai no contato entre cada placa e a água. Se quiser comparar com essa tensão real, no passo 4 toque em «Medir os eletrodos» e meça com a ponta na água encostada em cada placa.'
               ],
               next: 'Seguinte: código para o micro:bit'
             }
@@ -37147,10 +37148,10 @@ bluetooth.startIOPinService()</pre>
     'Medir los electrodos': { en: 'Measure the electrodes', pt: 'Medir os eletrodos' },
     'Medí con la punta en el agua, pegada a cada electrodo: es la tensión que de verdad hay en el agua': { en: 'Measure with the probe in the water, right next to each electrode: that is the voltage really present in the water', pt: 'Meça com a ponta na água, encostada em cada eletrodo: é a tensão que realmente existe na água' },
     'Saltar': { en: 'Skip', pt: 'Pular' },
-    'Antes de empezar · Poné la punta en el agua, pegada al electrodo − (azul), y presioná A': { en: 'Before starting · Put the probe in the water, right next to the − electrode (blue), and press A', pt: 'Antes de começar · Coloque a ponta na água, encostada no eletrodo − (azul), e pressione A' },
-    'Antes de empezar · Poné la punta en el agua, pegada al electrodo + (rojo), y presioná A': { en: 'Before starting · Put the probe in the water, right next to the + electrode (red), and press A', pt: 'Antes de começar · Coloque a ponta na água, encostada no eletrodo + (vermelho), e pressione A' },
-    'Antes de empezar · Poné la punta en el agua, pegada al electrodo − (azul), y tocá REGISTRAR': { en: 'Before starting · Put the probe in the water, right next to the − electrode (blue), and press RECORD', pt: 'Antes de começar · Coloque a ponta na água, encostada no eletrodo − (azul), e toque em REGISTRAR' },
-    'Antes de empezar · Poné la punta en el agua, pegada al electrodo + (rojo), y tocá REGISTRAR': { en: 'Before starting · Put the probe in the water, right next to the + electrode (red), and press RECORD', pt: 'Antes de começar · Coloque a ponta na água, encostada no eletrodo + (vermelho), e toque em REGISTRAR' },
+    'Electrodos · Poné la punta en el agua, pegada al electrodo − (azul), y presioná A': { en: 'Electrodes · Put the probe in the water, right next to the − electrode (blue), and press A', pt: 'Eletrodos · Coloque a ponta na água, encostada no eletrodo − (azul), e pressione A' },
+    'Electrodos · Poné la punta en el agua, pegada al electrodo + (rojo), y presioná A': { en: 'Electrodes · Put the probe in the water, right next to the + electrode (red), and press A', pt: 'Eletrodos · Coloque a ponta na água, encostada no eletrodo + (vermelho), e pressione A' },
+    'Electrodos · Poné la punta en el agua, pegada al electrodo − (azul), y tocá REGISTRAR': { en: 'Electrodes · Put the probe in the water, right next to the − electrode (blue), and press RECORD', pt: 'Eletrodos · Coloque a ponta na água, encostada no eletrodo − (azul), e toque em REGISTRAR' },
+    'Electrodos · Poné la punta en el agua, pegada al electrodo + (rojo), y tocá REGISTRAR': { en: 'Electrodes · Put the probe in the water, right next to the + electrode (red), and press RECORD', pt: 'Eletrodos · Coloque a ponta na água, encostada no eletrodo + (vermelho), e toque em REGISTRAR' },
     'Hace falta al menos un electrodo − y uno + para medirlos': { en: 'At least one − and one + electrode are needed to measure them', pt: 'É preciso pelo menos um eletrodo − e um + para medi-los' },
     'Junto al + dio menos que junto al −: revisá si los cables de 3V y GND están cruzados': { en: 'Next to the + read less than next to the −: check whether the 3V and GND wires are swapped', pt: 'Junto ao + deu menos do que junto ao −: verifique se os cabos de 3V e GND estão trocados' },
     // ---------- MAPEO · ventana del programa ----------
